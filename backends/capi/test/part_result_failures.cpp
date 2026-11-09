@@ -11,17 +11,21 @@
 
 namespace {
 bool armed=false,persistent=false;
-std::size_t allocations=0,failAt=0,live=0,faults=0;
+std::size_t allocations=0,failAt=0,faults=0;
+// Volatile: an optimizer may assume a call to the global operator new or
+// delete does not touch other objects, and keep a plain counter in a register
+// across the calls inlined into main.
+volatile std::size_t live=0;
 void append(iprop::detail::Execution& ex,const iprop::Part2dValue& part) {
     ex.push(part);(void)iprop::detail::stepOutputs(ex,{iprop::Opcode::OutListPart,0,0});
 }
 }
 void* operator new(std::size_t size) {
     if(armed&&allocations++>=failAt){if(!persistent)armed=false;throw std::bad_alloc{};}
-    if(void* value=std::malloc(size?size:1)){++live;return value;}throw std::bad_alloc{};
+    if(void* value=std::malloc(size?size:1)){live=live+1;return value;}throw std::bad_alloc{};
 }
 void* operator new[](std::size_t size){return ::operator new(size);}
-void operator delete(void* value) noexcept{if(value){--live;std::free(value);}}
+void operator delete(void* value) noexcept{if(value){live=live-1;std::free(value);}}
 void operator delete[](void* value) noexcept{::operator delete(value);}
 void operator delete(void* value,std::size_t) noexcept{::operator delete(value);}
 void operator delete[](void* value,std::size_t) noexcept{::operator delete(value);}
@@ -40,7 +44,7 @@ int main() {
     for(const bool mode:{false,true})for(unsigned path=0;path<5;++path) {
         bool success=false;
         for(std::size_t at=0;at<8192;++at) {
-            const auto baseline=live;
+            const std::size_t baseline=live;
             {
                 if(path<2) {
                     LoadedFile internal;internal.code.functions.emplace_back();detail::Execution ex(internal);
