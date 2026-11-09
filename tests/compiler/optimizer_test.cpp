@@ -193,3 +193,96 @@ TEST_CASE("inline repeated expressions use one computation and anonymous memo st
         compare(compile(program,true),compile(program,false),2);
     }
 }
+
+namespace {
+std::vector<Opcode> entryOpcodes(const std::vector<u8>& bytes) {
+    const auto loaded = loadFile(bytes);
+    std::vector<Opcode> opcodes;
+    for (std::size_t i = 0; i < loaded.code.entry().code.size(); i += 4)
+        opcodes.push_back(decodeInstruction(loaded.code.entry().code.subspan(i,4)).opcode);
+    return opcodes;
+}
+u64 fuelUsed(const std::vector<u8>& bytes) {
+    const auto loaded = loadFile(bytes);
+    validate(loaded);
+    VM vm(loaded, GenerationInputs{7, 0, 0, {}});
+    vm.run();
+    return vm.fuelBudget() - vm.fuel();
+}
+}
+
+TEST_CASE("a negated integer comparison becomes the opposite comparison") {
+    // Loop exits, `!` and logical operands all test a comparison against 0.
+    const std::string source = R"(asset t { size 16x16 input i32 limit=11 output point p
+      draw { n=0 while (n < limit) { n=n+1 }
+             for y in 0..limit { if (!(y > 6)) { pixel(y,0,#f00) } if (!(y == 3) && y != 9) { pixel(y,1,#0f0) } }
+             u=limit+0 if (!(u <= 10)) { pixel(0,2,#00f) } if (!(!(u >= 11))) { pixel(1,2,#00f) }
+             p={n,unit()} } })";
+    const auto actual = compile(source,true), reference = compile(source,false);
+    compare(actual,reference);
+    const auto opcodes = entryOpcodes(actual);
+    for (std::size_t i = 2; i < opcodes.size(); ++i) {
+        const bool comparison = opcodes[i - 2] >= Opcode::I32Eq && opcodes[i - 2] <= Opcode::I32GeU;
+        CHECK_FALSE((comparison && opcodes[i - 1] == Opcode::ConstI32 &&
+                     (opcodes[i] == Opcode::I32Eq || opcodes[i] == Opcode::I32Ne)));
+    }
+    CHECK(std::count(opcodes.begin(), opcodes.end(), Opcode::I32GeS) >= 2); // both loop exits
+    CHECK(fuelUsed(actual) < fuelUsed(reference));
+    CHECK(compiler_test::execute(actual).outputs[0].points[0].x == 11);
+}
+
+TEST_CASE("an ordered float comparison keeps its negation, which is true for NaN") {
+    // nan is 0/0 at run time: every ordered comparison with it is false, so
+    // each negation below holds and none may turn into the opposite test.
+    const std::string source = R"(asset t { size 8x8 input f32 zero=0.0 output point p
+      draw { nan=zero/zero count=0
+             if (!(nan < 1.0)) { count=count+1 } if (!(nan > 1.0)) { count=count+1 }
+             if (!(nan <= 1.0)) { count=count+1 } if (!(nan >= 1.0)) { count=count+1 }
+             if (!(nan == nan)) { count=count+1 } if (nan != nan) { count=count+1 }
+             if (!(nan != nan)) { count=count+100 }
+             x=zero+2.0 if (!(x < 1.0)) { count=count+1 } if (!(x == 2.0)) { count=count+100 }
+             p={count,unit()} } })";
+    const auto actual = compile(source,true), reference = compile(source,false);
+    compare(actual,reference);
+    CHECK(compiler_test::execute(actual).outputs[0].points[0].x == 7);
+    CHECK(compiler_test::execute(reference).outputs[0].points[0].x == 7);
+    const auto opcodes = entryOpcodes(actual);
+    CHECK(std::count(opcodes.begin(), opcodes.end(), Opcode::F32Lt) >= 2);
+    CHECK(std::count(opcodes.begin(), opcodes.end(), Opcode::F32Ge) == 1); // only the source's own `>=`
+}
+
+TEST_CASE("a for body without continue loses its label and its branches still land") {
+    const auto blocks = [](const std::vector<u8>& bytes) {
+        const auto opcodes = entryOpcodes(bytes);
+        return std::count(opcodes.begin(), opcodes.end(), Opcode::Block);
+    };
+    // No continue: only the two break labels remain; the nested break crosses
+    // the removed label of its own loop and an `if`.
+    const std::string plain = R"(asset t { size 16x16 input i32 n=12 output point p
+      draw { hits=0 for y in 0..n { for x in 0..n { if (x == y) { pixel(x,y,#fff) hits=hits+1 }
+                                                   if (x > 8) { if (y > 2) { break } } } }
+             p={hits,unit()} } })";
+    const auto actual = compile(plain,true), reference = compile(plain,false);
+    compare(actual,reference);
+    CHECK(blocks(reference) == 4);
+    CHECK(blocks(actual) == 2);
+    CHECK(fuelUsed(actual) < fuelUsed(reference));
+    // Rows 10 and 11 break at x = 9, before their diagonal pixel.
+    CHECK(compiler_test::execute(actual).outputs[0].points[0].x == 10);
+    CHECK(compiler_test::execute(reference).outputs[0].points[0].x == 10);
+
+    // A continue keeps its own label, also when an outer loop loses one, and
+    // when the continue sits inside a capture or a nested loop.
+    for (const auto body : {
+        "for i in 0..n { if (i % 2 == 0) { continue } pixel(i,0,#f00) hits=hits+1 }",
+        "for y in 0..n { for x in 0..n { if (x < y) { continue } if (x > y + 3) { break } hits=hits+1 } }",
+        "for y in 0..n { for x in 0..n { hits=hits+1 } if (y % 3 == 0) { continue } hits=hits+10 }",
+        "for y in 0..n { k=0 while (k < y) { k=k+1 if (k == 4) { break } if (k % 2 == 0) { continue } hits=hits+1 } }",
+        "layer image(alpha=surface.source_over) { for i in 0..n { if (i == 5) { break } pixel(i,i,#abc) hits=hits+1 } } surface.paint(image)",
+        "for y in 0..n { if (y == 7) { break } } for z in 0..n { hits=hits+z }"}) {
+        const std::string program = "asset t { size 16x16 input i32 n=12 output point p draw { hits=0 " +
+            std::string(body) + " p={hits,unit()} } }";
+        CAPTURE(body);
+        compare(compile(program,true),compile(program,false));
+    }
+}

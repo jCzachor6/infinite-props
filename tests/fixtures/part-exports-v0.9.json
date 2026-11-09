@@ -29,7 +29,7 @@
       "parts": 256,
       "resources": 512,
       "semantic_sha256": "d64da05e4323c9654ab781778bc6e6865e788bc3c10426758258339e314b8a4d",
-      "default_fuel_used": 8205
+      "default_fuel_used": 7179
     },
     {
       "name": "empty",
@@ -99,7 +99,7 @@
       "parts": 3,
       "resources": 1,
       "semantic_sha256": "8cc1f9eae0a3123c12a9d91691d77447aac33ffe40946e409690ea1ee55a5b5a",
-      "default_fuel_used": 412
+      "default_fuel_used": 398
     }
   ]
 }

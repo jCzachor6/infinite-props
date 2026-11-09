@@ -12,6 +12,12 @@
   11 ms) and thin strokes about 5x. In WebAssembly (Node 26) the three
   butterfly parts take 23 ms instead of 94 ms; `iprop.wasm` is 7% larger
   (5% gzipped).
+- The optimizing compiler emits four fewer instructions around every `for`
+  iteration and two fewer around every `while` and `!`: a comparison tested
+  against zero becomes the opposite comparison (never for ordered float
+  comparisons, whose negation is true for NaN), and a `for` body without
+  `continue` loses its unused label. Recompiled loop-heavy programs spend
+  7-20% less fuel and run 3-12% faster with the same images and outputs.
 
 ## v0.9.0 — 2026-11-05
 
