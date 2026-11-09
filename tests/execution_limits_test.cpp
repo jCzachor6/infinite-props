@@ -280,3 +280,70 @@ TEST_CASE("scalar noise reserves work independently of its one-fuel legacy tarif
     scalar(Opcode::NoiseWarpVec, {0.2f,0.3f,0.0f,i32{7}}, 0);
     scalar(Opcode::NoiseFbmConfig, {0.2f,0.3f,i32{8},2.0f,0.0f,i32{7}}, 5, 7);
 }
+
+TEST_CASE("a run of unit steps is indistinguishable from spending them one at a time", "[execution-limits]") {
+    struct Polls {
+        u32 calls = 0, stopAt = 0;
+        static bool stop(void* context) {
+            auto& p = *static_cast<Polls*>(context);
+            return ++p.calls == p.stopAt;
+        }
+    };
+    u32 state = 0x6d2b79f5u;
+    const auto next = [&] { state ^= state << 13; state ^= state >> 17; state ^= state << 5; return state; };
+    u32 exhausted = 0, cancelled = 0, completed = 0;
+    for (u32 round = 0; round < 400; ++round) {
+        ExecutionLimits limits;
+        limits.workLimit = 1 + next() % (round % 2 == 0 ? 6000u : 60000u);
+        limits.cancelled = Polls::stop;
+        Polls single, batched;
+        single.stopAt = batched.stopAt = round % 3 == 0 ? 1 + next() % 12 : 0;
+        auto first = limits, second = limits;
+        first.context = &single; second.context = &batched;
+        detail::WorkBudget one(first), many(second);
+        auto oneReason = ErrorReason::None, manyReason = ErrorReason::None;
+        for (u32 step = 0; step < 60 && oneReason == ErrorReason::None; ++step) {
+            // Short runs stay between polls; long ones cross several.
+            const u64 count = next() % 4 == 0 ? next() % 3000 : next() % 40;
+            try { for (u64 i = 0; i < count; ++i) one.spend(); }
+            catch (const Trap& error) { oneReason = error.reason; }
+            try { many.spendEach(count); }
+            catch (const Trap& error) { manyReason = error.reason; }
+            REQUIRE(oneReason == manyReason);
+            REQUIRE(one.remaining() == many.remaining());
+            REQUIRE(single.calls == batched.calls);
+            if (oneReason != ErrorReason::None) break;
+            // An ordinary reservation next: when it polls depends on the
+            // steps left until the next poll, which must agree as well.
+            const u64 units = 1 + next() % 30;
+            try { one.spend(units); } catch (const Trap& error) { oneReason = error.reason; }
+            try { many.spend(units); } catch (const Trap& error) { manyReason = error.reason; }
+            REQUIRE(oneReason == manyReason);
+            REQUIRE(one.remaining() == many.remaining());
+            REQUIRE(single.calls == batched.calls);
+        }
+        if (oneReason == ErrorReason::WorkExhausted) ++exhausted;
+        else if (oneReason == ErrorReason::Cancelled) ++cancelled;
+        else ++completed;
+    }
+    CHECK(exhausted > 20);
+    CHECK(cancelled > 20);
+    CHECK(completed > 20);
+}
+
+TEST_CASE("a clip that covers everything leaves each raster kernel's pixels unchanged", "[execution-limits]") {
+    // Under a clip every pixel reserves its own steps; without one a row is
+    // reserved whole. Both must draw the same pixels.
+    for (const char* shape : {"poly(#c08040c0,3,5,60,9,31,58,9,40)", "rect(-4,7,40,70,#40c08090)",
+                              "poly(#c08040c0,2,2,61,60,61,2,2,60,31,-9)", "oval(30,28,25,14,#2060c0a0)",
+                              "curve({1,1},{32,70},{60,6},5,#c0c02080)"}) {
+        CAPTURE(shape);
+        const auto open = program(shape);
+        const auto clipped = program(std::string("layer cover(alpha=surface.source_over) { rect(0,0,64,64,#fff) }; "
+            "region = mask.from(cover); clip(region) { ") + shape + " }");
+        VM plain(open, {}); plain.run();
+        VM covered(clipped, {}); covered.run();
+        CHECK(plain.canvas().pixels == covered.canvas().pixels);
+        CHECK(covered.workBudget() - covered.work() > plain.workBudget() - plain.work());
+    }
+}

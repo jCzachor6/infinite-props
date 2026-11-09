@@ -11,6 +11,7 @@
 
 #include "iprop/Canvas.hpp"
 #include "iprop/VM.hpp"
+#include "iprop/math/Bezier.hpp"
 
 // Canvas operations (spec §9.8, exact rasterization §11). Outputs are
 // compared against reference implementations of the spec pseudocode; the
@@ -124,6 +125,106 @@ struct RefCanvas {
             }
     }
 };
+
+// The per-pixel loop of spec §11.2 with its work steps: one per row, one per
+// pixel visit and one per edge of every visit. It stops, as a work limit
+// does, before the first step it cannot afford; a pixel is written only
+// after all of its steps.
+void polyWithin(RefCanvas& ref, const std::vector<Vec2>& pts, Color c, u64 steps) {
+    f32 l = pts[0].x, r = pts[0].x, t = pts[0].y, b = pts[0].y;
+    for (const auto& p : pts) {
+        l = std::min(l, p.x); r = std::max(r, p.x);
+        t = std::min(t, p.y); b = std::max(b, p.y);
+    }
+    const i32 x0 = static_cast<i32>(std::floor(l)), x1 = static_cast<i32>(std::ceil(r));
+    const i32 y0 = static_cast<i32>(std::floor(t)), y1 = static_cast<i32>(std::ceil(b));
+    const std::size_t n = pts.size();
+    for (i32 py = y0; py <= y1; ++py) {
+        if (steps < 1) return;
+        steps -= 1;
+        for (i32 px = x0; px <= x1; ++px) {
+            if (steps < 1 + n) return;
+            steps -= 1 + n;
+            bool inside = false;
+            for (std::size_t i = 0; i < n; ++i) {
+                const auto& a = pts[i];
+                const auto& d = pts[(i + n - 1) % n];
+                const float cx = static_cast<float>(px) + .5f;
+                const float cy = static_cast<float>(py) + .5f;
+                if ((a.y > cy) != (d.y > cy) &&
+                    cx < (d.x - a.x) * (cy - a.y) / (d.y - a.y) + a.x) {
+                    inside = !inside;
+                }
+            }
+            if (inside) ref.pixel(px, py, c);
+        }
+    }
+}
+
+u64 polySteps(const std::vector<Vec2>& pts) {
+    f32 l = pts[0].x, r = pts[0].x, t = pts[0].y, b = pts[0].y;
+    for (const auto& p : pts) {
+        l = std::min(l, p.x); r = std::max(r, p.x);
+        t = std::min(t, p.y); b = std::max(b, p.y);
+    }
+    const u64 columns = static_cast<u64>(static_cast<i64>(std::ceil(r)) - static_cast<i64>(std::floor(l)) + 1);
+    const u64 rows = static_cast<u64>(static_cast<i64>(std::ceil(b)) - static_cast<i64>(std::floor(t)) + 1);
+    return rows * (1 + columns * (1 + pts.size()));
+}
+
+// Deterministic vertices on a quarter-pixel grid around a 32x32 canvas: edges
+// pass through pixel centres, leave the canvas and cross one another.
+struct Shapes {
+    u32 state = 0x2545f491u;
+    u32 next() { state ^= state << 13; state ^= state >> 17; state ^= state << 5; return state; }
+    std::vector<Vec2> scattered(std::size_t n) {
+        std::vector<Vec2> pts(n);
+        for (auto& p : pts)
+            p = {static_cast<f32>(static_cast<i32>(next() % 177u) - 24) / 4.f,
+                 static_cast<f32>(static_cast<i32>(next() % 177u) - 24) / 4.f};
+        return pts;
+    }
+    // Every row crosses nearly every edge: more crossings than a row sorts.
+    std::vector<Vec2> zigzag(std::size_t n) {
+        std::vector<Vec2> pts(n);
+        for (std::size_t i = 0; i < n; ++i)
+            pts[i] = {1.f + 29.f * static_cast<f32>(i) / static_cast<f32>(n) + static_cast<f32>(next() % 3u) / 4.f,
+                      (i & 1u) != 0 ? 30.25f - static_cast<f32>(next() % 5u) : 1.5f + static_cast<f32>(next() % 5u)};
+        return pts;
+    }
+};
+
+Prog polyProg(const std::vector<Vec2>& pts, Color c) {
+    Prog prog;
+    for (const auto& p : pts) prog.F(p.x).F(p.y);
+    prog.C(c).emit(0x83, static_cast<u16>(pts.size()));
+    return prog;
+}
+
+struct LimitedRun {
+    Canvas canvas;
+    u64 work = 0;
+    bool exhausted = false;
+};
+
+// Runs unscaled on a 32x32 canvas; a failed run keeps the canvas it reached.
+LimitedRun runLimited(const Prog& prog, u64 workLimit = 0) {
+    const auto bytes = buildProgFile(prog, 32, 32);
+    auto loaded = loadFile(bytes);
+    GenerationInputs inputs;
+    inputs.limits.workLimit = workLimit;
+    VM vm(loaded, inputs);
+    LimitedRun run;
+    try {
+        vm.run();
+    } catch (const Trap& error) {
+        REQUIRE(error.reason == ErrorReason::WorkExhausted);
+        run.exhausted = true;
+    }
+    run.canvas = vm.canvas();
+    run.work = vm.workBudget() - vm.work();
+    return run;
+}
 
 // Asserts the VM canvas equals the reference canvas, pixel by pixel.
 void requireSame(const Canvas& canvas, const RefCanvas& ref) {
@@ -310,6 +411,88 @@ TEST_CASE("poly fills by the point-in-polygon rule") {
     RefCanvas ref(8, 8);
     ref.poly({{0, 0}, {4, 0}, {0, 4}}, c);
     requireSame(canvas, ref);
+}
+
+TEST_CASE("polygon rows reproduce the per-pixel edge rule for every shape class") {
+    Shapes shapes;
+    const std::size_t counts[] = {3, 4, 5, 8, 17, 33, 64};
+    for (u32 shape = 0; shape < 140; ++shape) {
+        const std::size_t n = counts[shape % 7];
+        const auto pts = shape % 5 == 4 ? shapes.zigzag(n) : shapes.scattered(n);
+        // A translucent colour exposes a pixel written twice or not at all.
+        const Color c{200, 40, 90, static_cast<u8>(shape % 3 == 0 ? 255 : 120)};
+        INFO("shape " << shape << " with " << n << " vertices");
+        const auto run = runLimited(polyProg(pts, c));
+        REQUIRE_FALSE(run.exhausted);
+        RefCanvas ref(32, 32);
+        ref.poly(pts, c);
+        requireSame(run.canvas, ref);
+    }
+}
+
+TEST_CASE("polygon work is one step per row, visit and edge, and a limit stops at the same pixel") {
+    Shapes shapes;
+    for (const std::size_t n : {3u, 4u, 17u, 40u}) {
+        for (const bool crossing : {false, true}) {
+            const auto pts = crossing ? shapes.zigzag(n) : shapes.scattered(n);
+            const Color c{30, 200, 110, 140};
+            INFO(n << " vertices, crossing " << crossing);
+            const auto prog = polyProg(pts, c);
+            const auto full = runLimited(prog);
+            REQUIRE_FALSE(full.exhausted);
+
+            // Dropping the operands instead dispatches 2n more instructions
+            // than the fill, which pops n vertices and scans n for its box.
+            Prog dropped;
+            for (const auto& p : pts) dropped.F(p.x).F(p.y);
+            dropped.C(c);
+            for (std::size_t i = 0; i < 2 * n + 1; ++i) dropped.emit(0x16);
+            const u64 fill = polySteps(pts);
+            REQUIRE(full.work == runLimited(dropped).work + fill);
+
+            // The entry's implicit return is the one step after the fill.
+            const u64 before = full.work - 1 - fill;
+            for (const u64 afforded : {u64{0}, u64{1}, u64{2}, u64{n + 1}, u64{n + 2}, u64{3 * (n + 1) + 1},
+                                       fill / 3, fill / 2 + 1, fill - (n + 1), fill - 1, fill}) {
+                INFO("afforded " << afforded << " of " << fill);
+                const auto stopped = runLimited(prog, before + afforded);
+                REQUIRE(stopped.exhausted);
+                REQUIRE(stopped.work == before + afforded);
+                RefCanvas ref(32, 32);
+                polyWithin(ref, pts, c, afforded);
+                requireSame(stopped.canvas, ref);
+            }
+        }
+    }
+}
+
+TEST_CASE("strokes equal the per-pixel distance test, however much of the box is skipped") {
+    Shapes shapes;
+    const Color c{250, 250, 20, 255};
+    for (u32 shape = 0; shape < 120; ++shape) {
+        const bool cubic = shape % 2 != 0;
+        auto pts = shapes.scattered(cubic ? 4 : 3);
+        if (shape % 11 == 3) pts[1] = pts[0];              // a doubled control point
+        if (shape % 11 == 7) for (auto& p : pts) p = pts[0]; // a constant curve: a disk
+        if (shape % 13 == 5) for (auto& p : pts) p = {p.x * 3.f, p.y * 3.f}; // mostly off canvas
+        const f32 thickness = static_cast<f32>(1u + shapes.next() % 24u) / 4.f + (shape % 17 == 0 ? 21.f : 0.f);
+        INFO("shape " << shape << ", thickness " << thickness);
+
+        Prog prog;
+        for (const auto& p : pts) prog.F(p.x).F(p.y).emit(0x5B);
+        prog.F(thickness).C(c).emit(cubic ? 0x87 : 0x86);
+        const auto run = runLimited(prog);
+        REQUIRE_FALSE(run.exhausted);
+
+        const auto kernel = cubic ? math::BezierKernel::cubic(pts[0], pts[1], pts[2], pts[3])
+                                  : math::BezierKernel::quadratic(pts[0], pts[1], pts[2]);
+        const f32 radius = thickness * 0.5f;
+        RefCanvas ref(32, 32);
+        for (i32 y = 0; y < 32; ++y)
+            for (i32 x = 0; x < 32; ++x)
+                if (kernel.distanceTo({static_cast<f32>(x), static_cast<f32>(y)}) <= radius) ref.pixel(x, y, c);
+        requireSame(run.canvas, ref);
+    }
 }
 
 TEST_CASE("oval fills per the ellipse test") {
