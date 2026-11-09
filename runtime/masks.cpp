@@ -356,7 +356,30 @@ bool stepMasks(Execution& ex, Instruction ins) {
         const auto mask = ex.popMask();
         const auto bounds = maskBounds(mask);
         ex.spend(static_cast<u64>(bounds.width) * bounds.height);
-        for (u32 y = 0; y < bounds.height; ++y) { ex.work(); for (u32 x = 0; x < bounds.width; ++x) {
+        const auto mode = resolveComposition(static_cast<CompositionMode>(ins.operand), ex.target.mode);
+        const u64 rowSteps = 1u + static_cast<u64>(bounds.width);
+        for (u32 y = 0; y < bounds.height; ++y) {
+            if (ex.prepayRow(rowSteps)) {
+                // No clip: only the row's on-canvas pixels are read and composed.
+                Canvas& target = ex.canvas();
+                const i64 py = static_cast<i64>(bounds.y) + y;
+                if (py < 0 || py >= target.height) continue;
+                const i64 first = std::max<i64>(0, -static_cast<i64>(bounds.x));
+                const i64 last = std::min<i64>(bounds.width, static_cast<i64>(target.width) - bounds.x);
+                PrepaidSteps polls{*ex.workBudget};
+                for (i64 x = first; x < last; ++x) {
+                    polls.step();
+                    const i64 px = static_cast<i64>(bounds.x) + x;
+                    const auto coverage = maskCoverage(mask, px, py);
+                    if (!coverage) continue;
+                    auto source = color;
+                    source.a = multiplyCoverage(source.a, coverage);
+                    Color& into = target.at(static_cast<u32>(px), static_cast<u32>(py));
+                    into = composePixel(into, source, mode);
+                }
+                continue;
+            }
+            ex.work(); for (u32 x = 0; x < bounds.width; ++x) {
             ex.work();
             const i64 px = static_cast<i64>(bounds.x) + x, py = static_cast<i64>(bounds.y) + y;
             const auto coverage = maskCoverage(mask, px, py);

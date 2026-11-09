@@ -336,7 +336,10 @@ TEST_CASE("a clip that covers everything leaves each raster kernel's pixels unch
     // reserved whole. Both must draw the same pixels.
     for (const char* shape : {"poly(#c08040c0,3,5,60,9,31,58,9,40)", "rect(-4,7,40,70,#40c08090)",
                               "poly(#c08040c0,2,2,61,60,61,2,2,60,31,-9)", "oval(30,28,25,14,#2060c0a0)",
-                              "curve({1,1},{32,70},{60,6},5,#c0c02080)"}) {
+                              "oval(-6,58,25,14,#2060c0a0)", "curve({1,1},{32,70},{60,6},5,#c0c02080)",
+                              "layer image(alpha=surface.source_over) { oval(20,20,30,12,#40a080c0) }; surface.paint(image)",
+                              "layer image(alpha=surface.source_over) { oval(20,20,30,12,#40a080c0) }; "
+                              "surface.paint(mask.offset(mask.from(image),{-25,31}),#c08040)"}) {
         CAPTURE(shape);
         const auto open = program(shape);
         const auto clipped = program(std::string("layer cover(alpha=surface.source_over) { rect(0,0,64,64,#fff) }; "

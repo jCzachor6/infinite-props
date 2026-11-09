@@ -142,26 +142,21 @@ void fillPolygon(Execution& ex, std::span<const Vec2> points, const Color& colou
     const u64 rowSteps = 1u + static_cast<u64>(static_cast<i64>(x1) - x0 + 1) * pixelSteps;
     const i64 lastColumn = static_cast<i64>(ex.canvas().width) - 1;
     const i64 lastRow = static_cast<i64>(ex.canvas().height) - 1;
-    const bool clipped = !ex.target.clips.empty();
     for (i64 py = y0; py <= y1; ++py) {
         // Without clips a pixel cannot trap, so an affordable row is reserved
         // whole and only its on-canvas pixels are visited. Otherwise every
         // pixel reserves its own steps first, exactly as a per-edge loop.
-        const bool prepaid = !clipped && ex.workBudget->affords(rowSteps);
+        const bool prepaid = ex.prepayRow(rowSteps);
         i64 from = x0, to = x1;
         if (prepaid) {
-            ex.workEach(rowSteps);
             from = std::max<i64>(from, 0);
             to = std::min(to, lastColumn);
             if (py < 0 || py > lastRow || from > to) continue;
         } else {
             ex.work();
         }
-        // Prepaid steps still poll at most kWorkPollInterval steps apart.
-        u32 sincePoll = 0;
-        const auto step = [&] {
-            if (prepaid && ++sincePoll == kWorkPollInterval) { sincePoll = 0; ex.workBudget->poll(); }
-        };
+        PrepaidSteps polls{*ex.workBudget};
+        const auto step = [&] { if (prepaid) polls.step(); };
 
         const f32 cy = static_cast<f32>(py) + .5f;
         std::size_t count = 0;
@@ -338,14 +333,28 @@ bool stepCanvas(Execution& ex, Instruction ins) {
         const i32 x0 = coordToInt(ex, std::floor(x - rx), "oval x");
         const i32 x1 = coordToInt(ex, std::ceil(x + rx), "oval x");
         ex.spend(visitCount(static_cast<i64>(x1) - x0 + 1, static_cast<i64>(y1) - y0 + 1));
-        for (i32 py = y0; py <= y1; ++py) {
-            ex.work();
-            for (i32 px = x0; px <= x1; ++px) {
+        const u64 rowSteps = 1u + static_cast<u64>(static_cast<i64>(x1) - x0 + 1);
+        const i64 lastColumn = static_cast<i64>(ex.canvas().width) - 1;
+        const i64 lastRow = static_cast<i64>(ex.canvas().height) - 1;
+        for (i64 py = y0; py <= y1; ++py) {
+            // A prepaid row tests only its on-canvas pixels.
+            const bool prepaid = ex.prepayRow(rowSteps);
+            i64 from = x0, to = x1;
+            if (prepaid) {
+                from = std::max<i64>(from, 0);
+                to = std::min(to, lastColumn);
+                if (py < 0 || py > lastRow) continue;
+            } else {
                 ex.work();
+            }
+            PrepaidSteps polls{*ex.workBudget};
+            const f32 ny = (static_cast<f32>(py) - y) / ry;
+            for (i64 px = from; px <= to; ++px) {
+                if (prepaid) polls.step();
+                else ex.work();
                 const f32 nx = (static_cast<f32>(px) - x) / rx;
-                const f32 ny = (static_cast<f32>(py) - y) / ry;
                 if (nx * nx + ny * ny <= 1.f) {
-                    compositePixel(ex, px, py, colour);
+                    compositePixel(ex, static_cast<i32>(px), static_cast<i32>(py), colour);
                 }
             }
         }

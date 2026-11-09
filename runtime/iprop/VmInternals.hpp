@@ -216,6 +216,16 @@ struct Execution {
     // `count` unit steps at once, exactly as `count` calls of work().
     void workEach(u64 count) const { workBudget->location = activeInstruction; workBudget->spendEach(count); }
     void checkpoint() const { workBudget->checkpoint(); }
+    // Reserves all the unit steps of a raster row when nothing in the row can
+    // trap: no clip is active, so compositing spends nothing, and the steps
+    // are affordable. The caller then visits only the pixels it has to. When
+    // this returns false it reserves each step where the per-pixel loop does,
+    // so a limit still stops at the same pixel.
+    bool prepayRow(u64 steps) const {
+        if (!target.clips.empty() || !workBudget->affords(steps)) return false;
+        workEach(steps);
+        return true;
+    }
 
     // Frame lifecycle.
     // An empty frame, with the buffers of a finished one when there is one.
@@ -231,7 +241,10 @@ struct Execution {
     void beginClip();
     // Unwind layer and clip scopes together, in reverse entry order. Most
     // label exits have no open capture or clip at all.
-    void closeLayers(std::size_t labelDepth) { if (!layerScopes.empty()) [[unlikely]] closeOpenLayers(labelDepth); }
+    void closeLayers(std::size_t labelDepth) {
+        if (!layerScopes.empty() && layerScopes.back().frameDepth == frames.size() &&
+            layerScopes.back().labelDepth > labelDepth) [[unlikely]] closeOpenLayers(labelDepth);
+    }
     void closeOpenLayers(std::size_t labelDepth);
 
     // Precomputes the matching else/end indices of a function's control flow.
@@ -261,6 +274,16 @@ u8 clipCoverage(Execution& ex, i32 x, i32 y);
 MaskBounds validateSurfaceView(Execution& ex, const SurfaceBuffer& buffer, const SurfaceMapping& mapping,
                                bool matchTarget);
 void weatherPixel(Execution& ex, i32 x, i32 y, Color proposed);
+
+// A prepaid row has no work call per step; this keeps its polls at most
+// kWorkPollInterval physical steps apart.
+struct PrepaidSteps {
+    WorkBudget& budget;
+    u32 sincePoll = 0;
+    void step() {
+        if (++sincePoll == kWorkPollInterval) { sincePoll = 0; budget.poll(); }
+    }
+};
 
 // Per-domain VM adapters own stack access, traps, results and ip advancement.
 // Mathematical kernels are independent of Execution (iprop/math/*.hpp).
