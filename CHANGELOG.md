@@ -66,6 +66,9 @@ replacement. See [0.9 to 1.0 migration](docs/language/migration-v1.0.md).
   comparisons, whose negation is true for NaN), and a `for` body without
   `continue` loses its unused label. Recompiled loop-heavy programs spend
   7-20% less fuel and run 3-12% faster with the same images and outputs.
+- The row-wise blur above computed a pointer outside the row for a surface
+  narrower than its kernel. It was never read, and images, fuel and work are
+  the same, but it was undefined behaviour that UBSan reports; it is gone.
 
 ## v0.9.0 — 2026-11-05
 
