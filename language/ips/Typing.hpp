@@ -174,6 +174,17 @@ private:
     ValueType typeBinary(const Binary& binary);
     ValueType typeUnary(const Unary& unary);
     ValueType typeRandomRange(const RandomRange& range);
+    ValueType typeListMethod(const Expr& expr, const ListMethod& method, std::optional<ValueType> context);
+    ValueType typeBlur(const Expr& expr, const SurfaceBlur& blur);
+    ValueType typeMember(const Expr& expr, const Member& member);
+    ValueType typePoints(const PointDistributionLiteral& literal);
+    ValueType typeCapture(const SamplerCapture& capture);
+    ValueType typePick(const Expr& expr, const SamplerPick& pick);
+    ValueType typeMemberCall(const Call& call);
+    void checkKnownConstructor(const Expr& expr, const Call& call);
+    [[noreturn]] void failUndefinedFunction(const Identifier& name, const Call& call) const;
+    [[noreturn]] void failArgument(const Expr& argument, std::size_t index, const std::string& function,
+                                   ValueType expected, ValueType got) const;
     bool namesValue(const std::string& name) const;
     static std::string methodNamespace(ValueType type);
 

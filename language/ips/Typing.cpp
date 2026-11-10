@@ -244,152 +244,156 @@ Typer::PartRead Typer::partReadInfo(const Expr& expr) const {
 ValueType Typer::typeOf(const Expr& expr, std::optional<ValueType> context) {
     if (const auto found = expressions_.find(&expr); found != expressions_.end())
         return found->second;
+    // The two kinds that use the context a declaration or parameter gives.
     const auto* list = std::get_if<ListLit>(&expr);
-    const auto type = [&]() -> ValueType {
-        if (list) return typeList(*list, context);
-        if (const auto* method = std::get_if<ListMethod>(&expr)) {
-            const auto receiver = typeOf(*method->receiver, context);
-            if (!receiver.isList()) error(method->location, "." + method->name + " needs a list<T> receiver, got " + std::string(typeName(receiver)));
-            const auto found = listMethodSpecs().find(method->name);
-            const std::array arguments{receiver};
-            const auto* overload = found == listMethodSpecs().end() ? nullptr : builtinOverload(found->second, arguments);
-            if (!overload)
-                error(method->location, "." + method->name + " does not support " + std::string(typeName(receiver)));
-            resolutions_[&expr].overload = overload;
-            return receiver;
-        }
-        return infer(expr);
-    }();
+    const auto* method = list ? nullptr : std::get_if<ListMethod>(&expr);
+    const ValueType type = list ? typeList(*list, context) : method ? typeListMethod(expr, *method, context) : infer(expr);
     expressions_.emplace(&expr, type);
     return type;
 }
 
+ValueType Typer::typeListMethod(const Expr& expr, const ListMethod& method, std::optional<ValueType> context) {
+    const auto receiver = typeOf(*method.receiver, context);
+    if (!receiver.isList()) error(method.location, "." + method.name + " needs a list<T> receiver, got " + std::string(typeName(receiver)));
+    const auto found = listMethodSpecs().find(method.name);
+    const std::array arguments{receiver};
+    const auto* overload = found == listMethodSpecs().end() ? nullptr : builtinOverload(found->second, arguments);
+    if (!overload)
+        error(method.location, "." + method.name + " does not support " + std::string(typeName(receiver)));
+    resolutions_[&expr].overload = overload;
+    return receiver;
+}
+
+// Every nested expression and every helper call recurses through infer, so it
+// only dispatches: the work of each kind, and the messages it can raise, live
+// in a function of their own and take no stack on the way down.
 ValueType Typer::infer(const Expr& expr) {
-    if (const auto* blur = std::get_if<SurfaceBlur>(&expr)) {
-        const auto receiver = typeOf(*blur->receiver);
-        const auto sigma = typeOf(*blur->sigma.value, ValueType::F32);
-        if (receiver != ValueType::Layer && receiver != ValueType::Mask)
-            error(blur->location, ".blur needs a layer or mask receiver, got " + std::string(typeName(receiver)));
-        const std::array arguments{receiver, sigma};
-        const auto* overload = builtinOverload(surfaceMethodSpecs().at("blur"), arguments);
-        if (!overload)
-            error(locationOf(*blur->sigma.value), ".blur sigma must be f32, got " + std::string(typeName(sigma)));
-        if (const auto value = known(*blur->sigma.value)) {
-            const auto number = std::holds_alternative<i32>(*value) ? static_cast<f32>(std::get<i32>(*value)) : std::get<f32>(*value);
-            if (!std::isfinite(number) || number < 0 || number > kMaxBlurSigma)
-                valueError(locationOf(*blur->sigma.value), "blur sigma must be finite and in 0..64");
-        }
-        resolutions_[&expr].overload = overload;
-        return overload->result;
-    }
-    if (const auto* lit = std::get_if<Literal>(&expr)) {
-        return typeLiteral(*lit);
-    }
-    if (const auto* id = std::get_if<Identifier>(&expr)) {
-        return typeIdentifier(expr, *id);
-    }
-    if (std::holds_alternative<Member>(expr)) {
-        const auto& member = std::get<Member>(expr);
-        // Resolve the complete part-output path first, including outputs
-        // named x or y; a component access then types that point recursively.
-        const Path path = flatten(expr);
-        if (builtinConstant(expr))
-            return ValueType::I32;
-        if (path.segments.size() == 2 && path.segments[0] == "outputs") {
-            return typePartRead(expr);
-        }
-        const ValueType object = typeOf(*member.object);
-        if (object == ValueType::Vec2) {
-            if (member.name == "x" || member.name == "y") {
-                return ValueType::F32;
-            }
-            error(member.location,
-                  "vec2 has only .x and .y components, got '" +
-                      member.name + "'");
-        }
-        if (object == ValueType::Color) {
-            if (colorChannel(member.name)) return ValueType::I32;
-            error(member.location, "color has only .r, .g, .b and .a channels, got '." +
-                                       member.name + "'");
-        }
-        // Any other value has no members; only part paths remain above. A
-        // channel or component name says which value type it needs.
-        const bool channel = colorChannel(member.name).has_value();
-        if (channel || member.name == "x" || member.name == "y") {
-            const ValueType needed = channel ? ValueType::Color : ValueType::Vec2;
-            SourceError mismatch{member.location, "'." + member.name + "' reads a " +
-                std::string(channel ? "color channel" : "vec2 component") + " and needs a " +
-                typeName(needed) + ", got " + typeName(object), {}, DiagnosticCode::TypeError,
-                DiagnosticStage::Typing};
-            mismatch.expectedType = typeName(needed);
-            mismatch.actualType = typeName(object);
-            throw mismatch;
-        }
-        error(member.location, std::string(typeName(object)) +
-                                   " has no components, got '." + member.name + "'");
-    }
+    if (const auto* blur = std::get_if<SurfaceBlur>(&expr)) return typeBlur(expr, *blur);
+    if (const auto* lit = std::get_if<Literal>(&expr)) return typeLiteral(*lit);
+    if (const auto* id = std::get_if<Identifier>(&expr)) return typeIdentifier(expr, *id);
+    if (const auto* member = std::get_if<Member>(&expr)) return typeMember(expr, *member);
     if (const auto* call = std::get_if<Call>(&expr)) {
         const auto type = typeCall(*call);
-        // A distribution constructor checks its parameters when it runs, even
-        // if the result is never used. Known parameters it always rejects are
-        // reported here, as they are for an asset constant.
-        if (type == ValueType::Distribution)
-            if (const auto message = rejection(expr)) valueError(call->location, *message);
+        if (type == ValueType::Distribution) checkKnownConstructor(expr, *call);
         return type;
     }
-    if (const auto* d = std::get_if<PointDistributionLiteral>(&expr)) {
-        if (const auto* message = math::pointDistributionCountError(d->family,d->points.size())) error(d->location,message);
-        for (const auto& point : d->points) {
-            for (const auto* operand : {point.key.get(), point.value.get()}) {
-                const auto type = typeOf(*operand);
-                if (!isNumeric(type)) error(locationOf(*operand), "distribution points must be numeric, got " + std::string(typeName(type)));
-            }
-        }
-        checkKnownPoints(*d);
-        return ValueType::Distribution;
-    }
-    if (const auto* vector = std::get_if<VectorLit>(&expr)) {
-        return typeVector(*vector);
-    }
-    if (const auto* index = std::get_if<Index>(&expr)) {
-        return typeIndex(expr, *index);
-    }
-    if (const auto* bin = std::get_if<Binary>(&expr)) {
-        return typeBinary(*bin);
-    }
-    if (const auto* un = std::get_if<Unary>(&expr)) {
-        return typeUnary(*un);
-    }
+    if (const auto* points = std::get_if<PointDistributionLiteral>(&expr)) return typePoints(*points);
+    if (const auto* vector = std::get_if<VectorLit>(&expr)) return typeVector(*vector);
+    if (const auto* index = std::get_if<Index>(&expr)) return typeIndex(expr, *index);
+    if (const auto* bin = std::get_if<Binary>(&expr)) return typeBinary(*bin);
+    if (const auto* un = std::get_if<Unary>(&expr)) return typeUnary(*un);
     if (const auto* range = std::get_if<RandomRange>(&expr)) {
         const auto type = typeRandomRange(*range);
         checkKnownRange(*range, type, range->location);
         return type;
     }
-    if (const auto* capture = std::get_if<SamplerCapture>(&expr)) {
-        const auto* range = std::get_if<RandomRange>(capture->value.get());
-        const auto item = range ? typeRandomRange(*range) : typeOf(*capture->value);
-        const auto type = capture->stepper ? ValueType::stepper(item) : ValueType::sampler(item);
-        if (!type.isStorable()) error(capture->location, std::string(capture->stepper ? "stepper" : "sampler") +
-            " capture needs i32, f32, color or vec2, got " + typeName(item));
-        checkKnownBounds(*capture, item);
-        return type;
-    }
-    if (const auto* pick = std::get_if<SamplerPick>(&expr)) {
-        const auto type = typeOf(*pick->receiver);
-        if (!type.isDescription()) error(pick->location, ".pick needs a sampler<T> receiver or stepper<T> receiver, got " + std::string(typeName(type)));
-        const std::string kind = type.isStepper() ? "stepper" : "sampler";
-        if (type.isStepper() && !pick->count) error(pick->location, "stepper .pick requires one i32 count named 'n'");
-        std::vector<ValueType> args{type};
-        if (pick->count) args.push_back(typeOf(*pick->count));
-        const auto* signature = builtinOverload(type.isStepper() ? stepperPickSpec() : samplerPickSpec(), args);
-        if (!signature) error(locationOf(*pick->count), kind + " result count must be i32");
-        if (pick->count) if (const auto count = known(*pick->count);
-            count && (std::get<i32>(*count) < 0 || std::get<i32>(*count) > kMaxListElements))
-            valueError(locationOf(*pick->count), kind + " result count must be between 0 and 256");
-        resolutions_[&expr].overload = signature;
-        return signature->result;
-    }
+    if (const auto* capture = std::get_if<SamplerCapture>(&expr)) return typeCapture(*capture);
+    if (const auto* pick = std::get_if<SamplerPick>(&expr)) return typePick(expr, *pick);
     error(locationOf(expr), "unsupported expression");
+}
+
+ValueType Typer::typeBlur(const Expr& expr, const SurfaceBlur& blur) {
+    const auto receiver = typeOf(*blur.receiver);
+    const auto sigma = typeOf(*blur.sigma.value, ValueType::F32);
+    if (receiver != ValueType::Layer && receiver != ValueType::Mask)
+        error(blur.location, ".blur needs a layer or mask receiver, got " + std::string(typeName(receiver)));
+    const std::array arguments{receiver, sigma};
+    const auto* overload = builtinOverload(surfaceMethodSpecs().at("blur"), arguments);
+    if (!overload)
+        error(locationOf(*blur.sigma.value), ".blur sigma must be f32, got " + std::string(typeName(sigma)));
+    if (const auto value = known(*blur.sigma.value)) {
+        const auto number = std::holds_alternative<i32>(*value) ? static_cast<f32>(std::get<i32>(*value)) : std::get<f32>(*value);
+        if (!std::isfinite(number) || number < 0 || number > kMaxBlurSigma)
+            valueError(locationOf(*blur.sigma.value), "blur sigma must be finite and in 0..64");
+    }
+    resolutions_[&expr].overload = overload;
+    return overload->result;
+}
+
+ValueType Typer::typeMember(const Expr& expr, const Member& member) {
+    // Resolve the complete part-output path first, including outputs
+    // named x or y; a component access then types that point recursively.
+    const Path path = flatten(expr);
+    if (builtinConstant(expr))
+        return ValueType::I32;
+    if (path.segments.size() == 2 && path.segments[0] == "outputs") {
+        return typePartRead(expr);
+    }
+    const ValueType object = typeOf(*member.object);
+    if (object == ValueType::Vec2) {
+        if (member.name == "x" || member.name == "y") {
+            return ValueType::F32;
+        }
+        error(member.location,
+              "vec2 has only .x and .y components, got '" +
+                  member.name + "'");
+    }
+    if (object == ValueType::Color) {
+        if (colorChannel(member.name)) return ValueType::I32;
+        error(member.location, "color has only .r, .g, .b and .a channels, got '." +
+                                   member.name + "'");
+    }
+    // Any other value has no members; only part paths remain above. A
+    // channel or component name says which value type it needs.
+    const bool channel = colorChannel(member.name).has_value();
+    if (channel || member.name == "x" || member.name == "y") {
+        const ValueType needed = channel ? ValueType::Color : ValueType::Vec2;
+        SourceError mismatch{member.location, "'." + member.name + "' reads a " +
+            std::string(channel ? "color channel" : "vec2 component") + " and needs a " +
+            typeName(needed) + ", got " + typeName(object), {}, DiagnosticCode::TypeError,
+            DiagnosticStage::Typing};
+        mismatch.expectedType = typeName(needed);
+        mismatch.actualType = typeName(object);
+        throw mismatch;
+    }
+    error(member.location, std::string(typeName(object)) +
+                               " has no components, got '." + member.name + "'");
+}
+
+// A distribution constructor checks its parameters when it runs, even if the
+// result is never used. Known parameters it always rejects are reported
+// here, as they are for an asset constant.
+void Typer::checkKnownConstructor(const Expr& expr, const Call& call) {
+    if (const auto message = rejection(expr)) valueError(call.location, *message);
+}
+
+ValueType Typer::typePoints(const PointDistributionLiteral& literal) {
+    if (const auto* message = math::pointDistributionCountError(literal.family, literal.points.size()))
+        error(literal.location, message);
+    for (const auto& point : literal.points) {
+        for (const auto* operand : {point.key.get(), point.value.get()}) {
+            const auto type = typeOf(*operand);
+            if (!isNumeric(type)) error(locationOf(*operand), "distribution points must be numeric, got " + std::string(typeName(type)));
+        }
+    }
+    checkKnownPoints(literal);
+    return ValueType::Distribution;
+}
+
+ValueType Typer::typeCapture(const SamplerCapture& capture) {
+    const auto* range = std::get_if<RandomRange>(capture.value.get());
+    const auto item = range ? typeRandomRange(*range) : typeOf(*capture.value);
+    const auto type = capture.stepper ? ValueType::stepper(item) : ValueType::sampler(item);
+    if (!type.isStorable()) error(capture.location, std::string(capture.stepper ? "stepper" : "sampler") +
+        " capture needs i32, f32, color or vec2, got " + typeName(item));
+    checkKnownBounds(capture, item);
+    return type;
+}
+
+ValueType Typer::typePick(const Expr& expr, const SamplerPick& pick) {
+    const auto type = typeOf(*pick.receiver);
+    if (!type.isDescription()) error(pick.location, ".pick needs a sampler<T> receiver or stepper<T> receiver, got " + std::string(typeName(type)));
+    const std::string kind = type.isStepper() ? "stepper" : "sampler";
+    if (type.isStepper() && !pick.count) error(pick.location, "stepper .pick requires one i32 count named 'n'");
+    std::vector<ValueType> args{type};
+    if (pick.count) args.push_back(typeOf(*pick.count));
+    const auto* signature = builtinOverload(type.isStepper() ? stepperPickSpec() : samplerPickSpec(), args);
+    if (!signature) error(locationOf(*pick.count), kind + " result count must be i32");
+    if (pick.count) if (const auto count = known(*pick.count);
+        count && (std::get<i32>(*count) < 0 || std::get<i32>(*count) > kMaxListElements))
+        valueError(locationOf(*pick.count), kind + " result count must be between 0 and 256");
+    resolutions_[&expr].overload = signature;
+    return signature->result;
 }
 
 ValueType Typer::typeLiteral(const Literal& lit) {

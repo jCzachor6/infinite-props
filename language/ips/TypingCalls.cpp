@@ -38,6 +38,8 @@ std::string Typer::methodNamespace(ValueType type) {
     return {};
 }
 
+// A helper call recurses through here into the helper's body, so only the
+// plain-name dispatch stays in this function.
 ValueType Typer::typeCall(const Call& call) {
     if (const auto* name = std::get_if<Identifier>(call.callee.get())) {
         if (name->name == "ramp") {
@@ -50,46 +52,48 @@ ValueType Typer::typeCall(const Call& call) {
         }
         return typeUserCall(*name, call);
     }
-    if (std::holds_alternative<Member>(*call.callee)) {
-        // A dotted name is a builtin when the builtin table has it. An
-        // import alias cannot be a builtin namespace, so the first segment
-        // tells a namespace member from a part call.
-        const Path path = flatten(*call.callee);
-        if (!path.segments.empty()) {
-            std::string full = path.base;
-            for (const std::string& segment : path.segments) {
-                full += "." + segment;
-            }
-            // Recognized static imports precede builtin spelling suggestions
-            // (e.g. pot.draw resembles part.draw).
-            if (path.segments.size() == 1 && path.segments[0] == "draw" && findPart(path.base))
-                return typePartCall(call);
-            const auto builtin = builtinSpecs().find(full);
-            if (builtin != builtinSpecs().end()) {
-                Identifier synthetic{full, path.location};
-                return typeBuiltinCall(synthetic, call, builtin->second);
-            }
-            const auto former = formerBuiltinHint(full);
-            const auto hint = former.empty() ? didYouMean(full, builtinNames()) : former;
-            if (isBuiltinNamespace(path.base) || (!hint.empty() && !namesValue(path.base)))
-                error(path.location, "undefined builtin '" + full + "'" + hint);
-        }
-        // A call on a value: the language has only the statically resolved
-        // methods the parser recognizes, so name the function to use instead.
-        const auto& member = std::get<Member>(*call.callee);
-        if (!findPart(path.base) && (path.base.empty() || namesValue(path.base))) {
-            const auto receiver = typeOf(*member.object);
-            const auto space = methodNamespace(receiver);
-            std::string hint;
-            if (!space.empty() && builtinSpecs().contains(space + "." + member.name))
-                hint = "; write " + space + "." + member.name + "(...) with the value as its first argument";
-            else if (builtinSpecs().contains(member.name))
-                hint = "; write " + member.name + "(...) with the value as an argument";
-            error(member.location, std::string(typeName(receiver)) + " has no method '" + member.name + "'" + hint);
-        }
-        return typePartCall(call);
-    }
+    if (std::holds_alternative<Member>(*call.callee)) return typeMemberCall(call);
     error(call.location, "cannot call this expression");
+}
+
+ValueType Typer::typeMemberCall(const Call& call) {
+    // A dotted name is a builtin when the builtin table has it. An
+    // import alias cannot be a builtin namespace, so the first segment
+    // tells a namespace member from a part call.
+    const Path path = flatten(*call.callee);
+    if (!path.segments.empty()) {
+        std::string full = path.base;
+        for (const std::string& segment : path.segments) {
+            full += "." + segment;
+        }
+        // Recognized static imports precede builtin spelling suggestions
+        // (e.g. pot.draw resembles part.draw).
+        if (path.segments.size() == 1 && path.segments[0] == "draw" && findPart(path.base))
+            return typePartCall(call);
+        const auto builtin = builtinSpecs().find(full);
+        if (builtin != builtinSpecs().end()) {
+            Identifier synthetic{full, path.location};
+            return typeBuiltinCall(synthetic, call, builtin->second);
+        }
+        const auto former = formerBuiltinHint(full);
+        const auto hint = former.empty() ? didYouMean(full, builtinNames()) : former;
+        if (isBuiltinNamespace(path.base) || (!hint.empty() && !namesValue(path.base)))
+            error(path.location, "undefined builtin '" + full + "'" + hint);
+    }
+    // A call on a value: the language has only the statically resolved
+    // methods the parser recognizes, so name the function to use instead.
+    const auto& member = std::get<Member>(*call.callee);
+    if (!findPart(path.base) && (path.base.empty() || namesValue(path.base))) {
+        const auto receiver = typeOf(*member.object);
+        const auto space = methodNamespace(receiver);
+        std::string hint;
+        if (!space.empty() && builtinSpecs().contains(space + "." + member.name))
+            hint = "; write " + space + "." + member.name + "(...) with the value as its first argument";
+        else if (builtinSpecs().contains(member.name))
+            hint = "; write " + member.name + "(...) with the value as an argument";
+        error(member.location, std::string(typeName(receiver)) + " has no method '" + member.name + "'" + hint);
+    }
+    return typePartCall(call);
 }
 
 ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
@@ -172,30 +176,35 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
 ValueType Typer::typeUserCall(const Identifier& name, const Call& call) {
     if (name.name == "draw")
         error(call.location, "'draw' is an entry block; call a helper or an imported part instead");
+    // Resolving a helper checks its body on first use, which recurses here
+    // for every call in a chain: the failure messages are built elsewhere.
     const std::optional<FunctionSurface> surface =
         resolveFunction(name.name, call.location, ns_);
-    if (!surface.has_value()) {
-        auto candidates = builtinNames();
-        for (const auto& function : owner_->asset.functions)
-            if (function.name != "draw") candidates.push_back(function.name);
-        const auto former = formerBuiltinHint(name.name);
-        const auto hint = !former.empty() ? former : name.name == "mix" || name.name == "shade" ?
-            "; did you mean 'color." + name.name + "'?" : didYouMean(name.name, candidates);
-        error(call.location, "undefined function '" + name.name + "'" + hint);
-    }
+    if (!surface.has_value()) failUndefinedFunction(name, call);
     const auto bound = bind(call, helperCallSignature(surface->names), name.name);
     const auto& args = bound.arguments;
     for (std::size_t i = 0; i < args.size(); ++i) {
         const Arg& arg = *args[i];
         const ValueType got = typeOf(*arg.value, surface->params[i]);
-        if (!argFits(surface->params[i], got)) {
-            error(locationOf(*arg.value),
-                  "argument " + std::to_string(i + 1) + " of '" + name.name +
-                      "' must be " + typeName(surface->params[i]) +
-                      ", got " + typeName(got));
-        }
+        if (!argFits(surface->params[i], got)) failArgument(*arg.value, i, name.name, surface->params[i], got);
     }
     return surface->result.value_or(ValueType::Void);
+}
+
+void Typer::failUndefinedFunction(const Identifier& name, const Call& call) const {
+    auto candidates = builtinNames();
+    for (const auto& function : owner_->asset.functions)
+        if (function.name != "draw") candidates.push_back(function.name);
+    const auto former = formerBuiltinHint(name.name);
+    const auto hint = !former.empty() ? former : name.name == "mix" || name.name == "shade" ?
+        "; did you mean 'color." + name.name + "'?" : didYouMean(name.name, candidates);
+    error(call.location, "undefined function '" + name.name + "'" + hint);
+}
+
+void Typer::failArgument(const Expr& argument, std::size_t index, const std::string& function,
+                         ValueType expected, ValueType got) const {
+    error(locationOf(argument), "argument " + std::to_string(index + 1) + " of '" + function +
+                                    "' must be " + typeName(expected) + ", got " + typeName(got));
 }
 
 // `part.draw(seed = seed, at = {x, y}, uniforms...)`
