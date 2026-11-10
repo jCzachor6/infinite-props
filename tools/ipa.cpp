@@ -1,6 +1,7 @@
 #include "ipa.hpp"
 
 #include "iprop/Code.hpp"
+#include "iprop/Constants.hpp"
 #include "iprop/Consts.hpp"
 #include "iprop/Format.hpp"
 #include "iprop/Instruction.hpp"
@@ -103,7 +104,7 @@ struct AsmPart {
 struct Program {
     u32 sizeX = 0, sizeY = 0;
     f32 originX = 0.f, originY = 0.f;
-    u64 fuel = 5000000;
+    u64 fuel = kDefaultFuelBudget;
     std::vector<AsmInput> inputs;
     std::vector<AsmOutput> outputs;
     std::vector<AsmFunction> functions;

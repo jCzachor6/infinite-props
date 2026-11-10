@@ -8,7 +8,8 @@ what to write instead.
 
 Only source changes. The VM, the binary format and the fuel tariff are the
 same, existing `.iprop` files run as before, and a migrated source compiles to
-the bytecode it produced under 0.9.
+the bytecode it produced under 0.9. Its metadata records a larger default fuel
+budget, described below.
 
 <!-- example: ../../examples/language/errors/renamed-builtin.ips -->
 
@@ -100,6 +101,12 @@ comparison whose result you compare.
 - `size` and `origin` are declared once. A second declaration used to replace
   the first.
 - A spare `;` is accepted between declarations, as it was between statements.
+
+## Fuel budget
+
+The compiler writes a default fuel budget of 25,000,000 instead of 5,000,000.
+Prices are unchanged, so a program spends what it spent before; a binary
+compiled earlier keeps the budget it was built with until it is recompiled.
 
 ## Reported earlier
 

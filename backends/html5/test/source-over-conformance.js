@@ -92,7 +92,7 @@ function run(iprop,tool,directory) {
         assert.throws(()=>iprop.generate(new Uint8Array(fs.readFileSync(binary)),{}),message);++traps;
     }
     for(const opt of [false,true])for(const source of ["asset t{input i32 v=0 size 1x1 draw{layer image(alpha=surface.source_over){x=1/(v-v)}}}",
-        "asset t{size 2048x2048 draw{layer image(alpha=surface.source_over){}surface.paint(image,blend=surface.source_over)}}"])
+        "asset t{size 2048x2048 draw{for i in 0..5{layer image(alpha=surface.source_over){}surface.paint(image,blend=surface.source_over)}}}"])
         trap(compile(source,opt),/divide by zero|fuel exhausted/);
     function reject(data) {
         const binary=base+"-bad.iprop";fs.writeFileSync(binary,data);const native=spawnSync(tool("ipval"),[binary],{encoding:"utf8"});

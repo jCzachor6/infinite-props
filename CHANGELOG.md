@@ -48,6 +48,17 @@ replacement. See [0.9 to 1.0 migration](docs/language/migration-v1.0.md).
 - The editor grammar highlights every builtin the compiler reports; a test
   keeps the two in step.
 
+### A larger default fuel budget
+
+- The compiler and assembler default fuel budget rises from 5,000,000 to
+  25,000,000. Recompiled assets record the new budget in `meta.fuel`; existing
+  binaries keep the budget they were built with. Instruction costs, images,
+  outputs and RNG are unchanged. The host's independent work guard keeps its
+  100,000,000-unit default. A program made mostly of discounted kernels can
+  now reach that guard before its fuel: full-canvas four-octave noise masks
+  do at about 16,000,000 fuel. A host that runs such programs passes a larger
+  work limit.
+
 ### Performance
 
 - Faster generation with unchanged images, outputs, fuel and work totals;

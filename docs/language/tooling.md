@@ -129,7 +129,7 @@ can exceed a resource limit or encounter invalid data.
 
 ## Execution limits
 
-The compiler emits a default fuel budget of 5,000,000 in program metadata.
+The compiler emits a default fuel budget of 25,000,000 in program metadata.
 Runtime 0.9 applies the [current tariff](../../spec/fuel-v0.9.md) to old programs
 too; historical fuel totals are not guaranteed. Hosts independently control
 work (default 100,000,000), cancellation and monotonic deadlines through

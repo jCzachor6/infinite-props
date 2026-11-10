@@ -173,7 +173,8 @@ Capture begin/end costs `2 + ceil(width*height*70/100)`; paint costs
 allocation or scanning. Drawing inside a layer keeps the primitive's usual
 fuel cost. Each surface buffer releases when its last handle is destroyed;
 success or a trap clears the generation's remaining handles. A failed
-generation never publishes a partial image. Default fuel remains 5,000,000.
+generation never publishes a partial image. The default fuel budget is
+25,000,000.
 
 Layers use the file's type descriptor table. They do not add
 public C input/output enums or host layouts. Typed part outputs can retain

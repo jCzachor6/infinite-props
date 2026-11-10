@@ -102,8 +102,8 @@ and three recorded samples, one generation per sample. Process CPU, wall time,
 fuel, deterministic work, requested C++ peak and allocation traffic are saved
 in `results.json.gz`, with sources/tool hashes and exact fixture sources.
 The allocation-counter scope is the same as above. Explicit **1B test fuel and
-work limits** let the slow old morphology finish; production defaults remain
-5M/100M and are verified separately. `--group` supports focused reproduction.
+work limits** let the slow old morphology finish; production defaults are
+25M/100M and are verified separately. `--group` supports focused reproduction.
 The benchmark executable also accepts optional seed, batch, work-limit and
 warmup arguments; its original two-argument protocol remains unchanged.
 
