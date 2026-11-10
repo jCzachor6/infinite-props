@@ -105,10 +105,14 @@ std::shared_ptr<const SurfaceBuffer> filter(Execution& ex, const SurfaceBuffer& 
                         double& sum = row[static_cast<std::size_t>(x) * Channels + c];
                         sum = sum + leftEdge[c] * weight;
                     }
-                const double* const taps = line.get() + static_cast<std::size_t>(interiorBegin + j) * Channels;
-                double* const sums = row + static_cast<std::size_t>(interiorBegin) * Channels;
-                const auto count = static_cast<std::size_t>(interiorEnd - interiorBegin) * Channels;
-                for (std::size_t i = 0; i < count; ++i) sums[i] = sums[i] + taps[i] * weight;
+                // A row narrower than this tap's offset has no interior: every
+                // column reads an edge, and no pointer into the row is formed.
+                if (interiorBegin < interiorEnd) {
+                    const double* const taps = line.get() + static_cast<std::size_t>(interiorBegin + j) * Channels;
+                    double* const sums = row + static_cast<std::size_t>(interiorBegin) * Channels;
+                    const auto count = static_cast<std::size_t>(interiorEnd - interiorBegin) * Channels;
+                    for (std::size_t i = 0; i < count; ++i) sums[i] = sums[i] + taps[i] * weight;
+                }
                 for (i64 x = interiorEnd; x < static_cast<i64>(width); ++x)
                     for (std::size_t c = 0; c < Channels; ++c) {
                         double& sum = row[static_cast<std::size_t>(x) * Channels + c];
