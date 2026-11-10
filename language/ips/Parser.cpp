@@ -18,6 +18,8 @@ ParseResult ParserImpl::parseRecoveringProgram(std::size_t limit) {
     bool hasAsset = false;
     try {
         while (kind() != TokenKind::End) {
+            // Semicolons are optional separators at every level.
+            if (match(TokenKind::Semi)) continue;
             const auto start = pos_;
             try {
                 if (kind() == TokenKind::KeywordImport && !hasAsset && program.materials.empty()) {
@@ -244,6 +246,9 @@ Asset ParserImpl::parseAsset() {
         if (kind() == TokenKind::End) {
             failHere("unterminated asset block (missing '}')");
         }
+        // Semicolons are optional separators between declarations, as they
+        // are between statements.
+        if (match(TokenKind::Semi)) continue;
         const auto start = pos_;
         try {
             parseDeclaration(asset);
@@ -285,9 +290,13 @@ void ParserImpl::parseDeclaration(Asset& asset) {
     case TokenKind::Identifier: {
         const Token declaration = advance();
         if (declaration.text == "size") {
+            if (asset.sizeX.has_value())
+                throw SourceError{declaration.location, "duplicate 'size' declaration"};
             parseSize(asset);
             asset.metadataSyntax.push_back({MetadataSyntax::Kind::Size, {start, pos_}});
         } else if (declaration.text == "origin") {
+            if (asset.originX)
+                throw SourceError{declaration.location, "duplicate 'origin' declaration"};
             parseOrigin(asset);
             asset.metadataSyntax.push_back({MetadataSyntax::Kind::Origin, {start, pos_}});
         } else if (declaration.text == "palette") {
@@ -325,6 +334,8 @@ void ParserImpl::parseSize(Asset& asset) {
         if (height.text.size() > 1 &&
             (height.text[0] == 'x' || height.text[0] == 'X') &&
             isDigits(std::string_view(height.text).substr(1))) {
+            if (height.text.size() > 2 && height.text[1] == '0')
+                throw SourceError{height.location, "leading zeros are not allowed in the height"};
             asset.sizeY = toU32(
                 Token{TokenKind::Int, height.text.substr(1), height.location},
                 "height");
@@ -520,7 +531,7 @@ ParamType ParserImpl::parseParamType(bool insideList) {
         advance();
         return ParamType::Vec2;
     case TokenKind::TypeU32:
-        failHere("u32 is a uniform-only type; parameters are i32, f32, color, vec2 or distribution");
+        failHere("u32 is only an input type; use i32 here");
     case TokenKind::TypeDistribution:
         advance();
         return ParamType::Distribution;

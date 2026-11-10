@@ -31,6 +31,11 @@ std::optional<i32> builtinConstant(const Expr& expression) {
 
 const char* typeName(ValueType type) { return iprop::valueTypeName(type); }
 
+std::string typePhrase(ValueType type) {
+    const std::string name = typeName(type);
+    return (name == "i32" || name == "f32" ? "an " : "a ") + name;
+}
+
 std::optional<ValueType> geometryType(std::string_view name) {
     for (const auto type : {ValueType::Diagram2d, ValueType::Contours2d, ValueType::Regions2d,
                             ValueType::Part2d, ValueType::Parts2d})

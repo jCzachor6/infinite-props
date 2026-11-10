@@ -15,11 +15,18 @@
 
 namespace iprop::ips {
 
+// Base of an integer literal: 16 after an optional sign and 0x, otherwise 10.
+// A leading zero never selects octal.
+inline int integerLiteralBase(std::string_view text) {
+    const std::size_t at = !text.empty() && (text[0] == '-' || text[0] == '+') ? 1 : 0;
+    return text.size() >= at + 2 && text[at] == '0' && (text[at + 1] == 'x' || text[at + 1] == 'X') ? 16 : 10;
+}
+
 // Integer literal (decimal or 0x hex) → 32-bit pattern.
 inline bool parseIntBits(const std::string& text, u32& bits) {
     try {
         std::size_t used = 0;
-        const long long value = std::stoll(text, &used, 0);
+        const long long value = std::stoll(text, &used, integerLiteralBase(text));
         if (used != text.size()) {
             return false;
         }

@@ -13,6 +13,7 @@
 
 #include "ips/Ast.hpp"
 #include "ips/Lexer.hpp"
+#include "ips/Literals.hpp"
 #include "ips/Parser.hpp"
 #include "ips/Suggestions.hpp"
 
@@ -22,7 +23,7 @@ namespace detail {
 // Converts a numeric token to a u32, rejecting values out of range.
 inline std::uint32_t toU32(const Token& token, const char* what) {
     char* end = nullptr;
-    const unsigned long long value = std::strtoull(token.text.c_str(), &end, 0);
+    const unsigned long long value = std::strtoull(token.text.c_str(), &end, integerLiteralBase(token.text));
     if (end == token.text.c_str() || *end != '\0' || value > 0xFFFFFFFFull) {
         throw SourceError{token.location,
                           std::string(what) + " out of range: " + token.text};

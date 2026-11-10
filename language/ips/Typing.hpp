@@ -174,6 +174,8 @@ private:
     ValueType typeUnary(const Unary& unary);
     ValueType typeRandomRange(const RandomRange& range);
     bool yieldsToHelper(const std::string& name) const;
+    bool namesValue(const std::string& name) const;
+    static std::string methodNamespace(ValueType type);
 
     struct PartRead {
         std::string alias;

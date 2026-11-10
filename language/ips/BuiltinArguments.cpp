@@ -55,7 +55,7 @@ std::vector<std::string> builtinParameterNames(const BuiltinSpec& spec, std::siz
     std::vector<std::string> names;
     if (variadicPolygon(spec, arity)) {
         if (arity < 7 || arity % 2 == 0)
-            throw SourceError{at, "poly expects a colour and at least three (x, y) vertex pairs"};
+            throw SourceError{at, "poly expects a color and at least three (x, y) vertex pairs"};
         names.push_back("color");
         for (std::size_t i = 1; i < arity; ++i)
             names.push_back(std::string(i % 2 ? "x" : "y") + std::to_string((i - 1) / 2));

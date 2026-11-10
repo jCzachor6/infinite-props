@@ -291,6 +291,13 @@ private:
                 if (atLimit()) break;
                 checkRecoveringStmt(stmt);
             }
+            // The bytecode validator rejects a value function whose end is
+            // reachable; report it here, where the function can be named.
+            if (function.returnType.has_value() && !alwaysReturns(function.body) && !atLimit())
+                recover([&] {
+                    error(function.location, "function '" + function.name +
+                        "' must return a value on every path; end it with a return");
+                });
             returnTypes_[function.name] = function.returnType.has_value()
                                               ? std::optional<ValueType>(valueTypeOf(
                                                     *function.returnType))
@@ -307,6 +314,24 @@ private:
         loopDepth_ = savedLoopDepth;
         surfaceDepth_ = savedSurfaceDepth;
         typer_.restoreScope(std::move(savedScope));
+    }
+
+    // Statements after one that always returns are unreachable, so any such
+    // statement in the list is enough. A loop never counts: its body may not run.
+    static bool alwaysReturns(const std::vector<Stmt>& body) {
+        for (const auto& stmt : body) {
+            if (const auto* ret = std::get_if<ReturnStmt>(&stmt)) {
+                if (ret->value) return true;
+            } else if (const auto* branch = std::get_if<IfStmt>(&stmt)) {
+                if (!branch->elseBranch.empty() && alwaysReturns(branch->thenBranch) &&
+                    alwaysReturns(branch->elseBranch)) return true;
+            } else if (const auto* capture = std::get_if<LayerStmt>(&stmt)) {
+                if (alwaysReturns(capture->body)) return true;
+            } else if (const auto* clip = std::get_if<ClipStmt>(&stmt)) {
+                if (alwaysReturns(clip->body)) return true;
+            }
+        }
+        return false;
     }
 
     // ---- statements ---------------------------------------------------------
@@ -440,12 +465,12 @@ private:
         if (!isStorable(type)) {
             error(ret.location,
                   "cannot return " + std::string(typeName(type)) +
-                      " (only scalars can be returned)");
+                      "; it is not a value a function can return");
         }
         if (!current_->returnType.has_value()) {
             error(ret.location, "function '" + current_->name +
                                     "' returns a value but declares no return "
-                                    "type ('-> i32', '-> f32' or '-> color')");
+                                    "type; add '-> " + typeName(type) + "' after its parameters");
         }
         const ValueType declared = valueTypeOf(*current_->returnType);
         if (!argFits(declared, type)) {
@@ -492,7 +517,7 @@ private:
         if (decl.declaredType && type != valueTypeOf(*decl.declaredType)) {
             const auto* declared = typeName(valueTypeOf(*decl.declaredType));
             SourceError diagnostic{locationOf(*decl.value), std::string(declared) + " '" + decl.name +
-                "' needs a " + declared + ", got " + typeName(type), {},
+                "' needs " + typePhrase(valueTypeOf(*decl.declaredType)) + ", got " + typeName(type), {},
                 DiagnosticCode::TypeError, DiagnosticStage::Typing};
             diagnostic.expectedType = declared;
             diagnostic.actualType = typeName(type);
@@ -500,8 +525,9 @@ private:
         }
         if (!isStorable(type)) {
             error(decl.location, "cannot store " + std::string(typeName(type)) +
-                                     " in local '" + decl.name +
-                                     "' (only scalars can be stored)");
+                                     " in local '" + decl.name + "'" +
+                                     (type == ValueType::Void ? "; the call returns no value" :
+                                      "; it can only be assigned to an output"));
         }
         const auto& locals = typer_.locals();
         const auto existing = locals.find(decl.name);

@@ -423,6 +423,9 @@ ValueType Typer::typeIdentifier(const Expr& expr, const Identifier& id) {
             return ValueType::list(resolved.type);
         }
     }
+    for (const auto& output : owner_->asset.outputs)
+        if (output.name == id.name)
+            error(id.location, "output '" + id.name + "' is write-only; keep the value in a local to read it");
     std::vector<std::string> candidates{"seed"};
     for (const auto& [name, type] : locals_) { (void)type; candidates.push_back(name); }
     if (isDraw_) for (const auto& input : owner_->asset.inputs) candidates.push_back(input.name);

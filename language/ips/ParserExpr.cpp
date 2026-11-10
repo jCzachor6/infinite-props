@@ -312,13 +312,23 @@ std::unique_ptr<Expr> ParserImpl::parseLiteral() {
         expr->sourceRange = expr->sourceCoreRange = {start, pos_};
         return expr;
     };
+    // `3px` lexes as a number and a word; no expression continues that way.
+    const auto rejectSuffix = [&](const Token& number) {
+        const Token& next = peek();
+        const char first = next.text.empty() ? '\0' : next.text[0];
+        const bool word = (first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z') || first == '_';
+        if (word && next.location.byteOffset == number.location.endByteOffset)
+            throw SourceError{next.location, "unexpected '" + next.text + "' directly after a number"};
+    };
     switch (kind()) {
     case TokenKind::Int: {
         const Token token = advance();
+        rejectSuffix(token);
         return rangedLiteral(Literal::Kind::Int, token, token.text);
     }
     case TokenKind::Float: {
         const Token token = advance();
+        rejectSuffix(token);
         return rangedLiteral(Literal::Kind::Float, token, token.text);
     }
     case TokenKind::Color: {

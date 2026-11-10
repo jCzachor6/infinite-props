@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
 
 #include <string>
 
@@ -27,19 +28,32 @@ TEST_CASE("metadata and imports accept one optional terminating semicolon") {
     CHECK_NOTHROW(parse("asset t { size 8x8\n; output point p\n; draw{} }"));
 }
 
-TEST_CASE("metadata semicolons do not create implicit newline or empty declarations") {
+TEST_CASE("metadata semicolons never split a declaration or continue one across a newline") {
     for (const std::string source : {
-            "import child from \"child.ips\";; asset t { size 8x8 draw{} }",
-            "asset t { ; size 8x8 draw{} }",
             "asset t { size 8; 8 draw{} }",
-            "asset t { size 8x8;; draw{} }",
             "asset t { size 8x8 origin 0; , 0 draw{} }",
             "asset t { size 8x8 input i32 n=1\n+2 draw{} }",
-            "asset t { size 8x8 palette p=[1;2] draw{} }",
-            "asset t { size 8x8 draw{}; }"}) {
+            "asset t { size 8x8 palette p=[1;2] draw{} }"}) {
         INFO(source);
         CHECK_THROWS_AS(parse(source), SourceError);
     }
+}
+
+TEST_CASE("spare semicolons separate declarations at every level, as they separate statements") {
+    for (const std::string source : {
+            "import child from \"child.ips\";; asset t { size 8x8 draw{} }",
+            "asset t { ; size 8x8 draw{} }",
+            "asset t { size 8x8;; draw{} }",
+            "asset t { size 8x8 draw{}; helper() {}; }",
+            "asset t { size 8x8 draw{ x = 1;; } };"}) {
+        INFO(source);
+        CHECK_NOTHROW(parse(source));
+    }
+}
+
+TEST_CASE("size and origin are declared once") {
+    CHECK_THROWS_WITH(parse("asset t { size 4x4 size 8x8 draw{} }"), "duplicate 'size' declaration");
+    CHECK_THROWS_WITH(parse("asset t { size 8x8 origin 1,1 origin 0,0 draw{} }"), "duplicate 'origin' declaration");
 }
 
 namespace {

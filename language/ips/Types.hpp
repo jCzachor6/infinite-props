@@ -9,6 +9,7 @@
 #include "ips/Ast.hpp"
 
 #include <optional>
+#include <string>
 #include <string_view>
 
 namespace iprop::ips {
@@ -16,6 +17,8 @@ namespace iprop::ips {
 using ValueType = iprop::TypeDescriptor;
 
 const char* typeName(ValueType type);
+// The type with its article, for messages: "an i32", "a color".
+std::string typePhrase(ValueType type);
 // Contextual type spellings remain ordinary identifiers outside declarations.
 std::optional<ValueType> geometryType(std::string_view name);
 

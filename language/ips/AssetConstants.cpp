@@ -132,8 +132,8 @@ public:
                 const auto actual = typer_.typeOf(*current_->value, current_->type);
                 const auto expected = valueTypeOf(current_->type);
                 if (!argFits(expected, actual)) {
-                    SourceError error{locationOf(*current_->value), "const '" + current_->name + "' needs a " +
-                        typeName(expected) + ", got " + typeName(actual), {}, DiagnosticCode::TypeError, DiagnosticStage::Typing};
+                    SourceError error{locationOf(*current_->value), "const '" + current_->name + "' needs " +
+                        typePhrase(expected) + ", got " + typeName(actual), {}, DiagnosticCode::TypeError, DiagnosticStage::Typing};
                     error.expectedType = typeName(expected); error.actualType = typeName(actual);
                     throw error;
                 }

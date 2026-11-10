@@ -32,6 +32,7 @@ add_executable(iprop_tests
     language/semantics_types_test.cpp
     language/semantics_functions_test.cpp
     language/semantics_parts_test.cpp
+    language/consistency_test.cpp
     compiler/basics_test.cpp
     compiler/optimizer_test.cpp
     compiler/scalar_test.cpp

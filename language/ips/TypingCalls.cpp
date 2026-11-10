@@ -14,6 +14,30 @@ std::vector<std::string> builtinNames() {
 }
 }
 
+bool Typer::namesValue(const std::string& name) const {
+    if (name == "seed" || locals_.contains(name)) return true;
+    const auto named = [&](const auto& declarations) {
+        return std::any_of(declarations.begin(), declarations.end(),
+                           [&](const auto& declaration) { return declaration.name == name; });
+    };
+    return named(owner_->asset.constants) || named(owner_->asset.palettes) ||
+           (isDraw_ && named(owner_->asset.inputs));
+}
+
+// The namespace whose functions take a value of this type first.
+std::string Typer::methodNamespace(ValueType type) {
+    if (type == ValueType::Vec2) return "vec2";
+    if (type == ValueType::Color) return "color";
+    if (type == ValueType::Mask) return "mask";
+    if (type == ValueType::Layer) return "surface";
+    if (type == ValueType::Regions2d) return "regions";
+    if (type == ValueType::Diagram2d) return "diagram";
+    if (type == ValueType::Part2d) return "part";
+    if (type == ValueType::Parts2d) return "parts";
+    if (type.isList()) return "list";
+    return {};
+}
+
 ValueType Typer::typeCall(const Call& call) {
     if (const auto* name = std::get_if<Identifier>(call.callee.get())) {
         if (name->name == "ramp") {
@@ -58,7 +82,21 @@ ValueType Typer::typeCall(const Call& call) {
                 return typeBuiltinCall(synthetic, call, builtin->second);
             }
             const auto hint = didYouMean(full, builtinNames());
-            if (reserved || !hint.empty()) error(path.location, "undefined builtin '" + full + "'" + hint);
+            if (reserved || (!hint.empty() && !namesValue(path.base)))
+                error(path.location, "undefined builtin '" + full + "'" + hint);
+        }
+        // A call on a value: the language has only the statically resolved
+        // methods the parser recognizes, so name the function to use instead.
+        const auto& member = std::get<Member>(*call.callee);
+        if (!findPart(path.base) && (path.base.empty() || namesValue(path.base))) {
+            const auto receiver = typeOf(*member.object);
+            const auto space = methodNamespace(receiver);
+            std::string hint;
+            if (!space.empty() && builtinSpecs().contains(space + "." + member.name))
+                hint = "; write " + space + "." + member.name + "(...) with the value as its first argument";
+            else if (builtinSpecs().contains(member.name))
+                hint = "; write " + member.name + "(...) with the value as an argument";
+            error(member.location, std::string(typeName(receiver)) + " has no method '" + member.name + "'" + hint);
         }
         return typePartCall(call);
     }

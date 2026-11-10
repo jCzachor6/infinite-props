@@ -160,7 +160,7 @@ TEST_CASE("constant effects cycles and invalid constructors fail without compile
         {"const i32 bad=1/0", ips::DiagnosticCode::AssetConstantValue, "divide by zero"},
         {"const i32 bad=-2147483648/-1", ips::DiagnosticCode::AssetConstantValue, "integer overflow"},
         {"const f32 bad=noise.grad(1.0/0.0,0,1)", ips::DiagnosticCode::AssetConstantValue, "coordinate out of range"},
-        {"const i32 bad=1.0", ips::DiagnosticCode::TypeError, "needs a i32, got f32"},
+        {"const i32 bad=1.0", ips::DiagnosticCode::TypeError, "needs an i32, got f32"},
         {"const color bad={1,2}", ips::DiagnosticCode::TypeError, "needs a color, got vec2"},
         {"const i32 x=1 const i32 x=2", ips::DiagnosticCode::TypeError, "duplicate constant"},
         {"const i32 seed=1", ips::DiagnosticCode::TypeError, "reserved name"},

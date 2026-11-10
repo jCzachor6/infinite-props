@@ -62,7 +62,7 @@ std::string Plan::sourcePath(const ips::Program* owner) const {
 
 ValueType Planner::storedType(ips::ValueType type, const ips::SourceLocation& at, const std::string& slot) {
     if (!type.isStorable())
-        error(at, "cannot store " + std::string(ips::typeName(type)) + " in " + slot + " (only scalars can be stored)");
+        error(at, "cannot store " + std::string(ips::typeName(type)) + " in " + slot);
     return type;
 }
 
@@ -455,6 +455,11 @@ void Planner::prepareFunctionBody(const std::string& name) {
         }
     };
     walk(walk, ast->body);
+    // Later passes index locals by slot; report the limit where it is named.
+    if (info.params.size() + info.locals.size() > kMaxLocals)
+        throw ips::SourceError{ast->location, "function '" + ast->name + "' has more than " +
+            std::to_string(kMaxLocals) + " parameters and locals", {}, ips::DiagnosticCode::ResourceLimit,
+            ips::DiagnosticStage::Planning};
 
     ips::ConstantFolder constants;
     const auto& assetConstants = plan_->assetConstants.at(owner);
