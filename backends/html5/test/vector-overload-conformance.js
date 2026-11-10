@@ -24,7 +24,7 @@ function run(iprop, tool, directory) {
         ["oval(p,size,tint)", "oval(p.x,p.y,size.x,size.y,tint)"],
         ["oval(p,size.x,size.y,tint)", "oval(p.x,p.y,size.x,size.y,tint)"],
         ["oval(p.x,p.y,size,tint)", "oval(p.x,p.y,size.x,size.y,tint)"],
-        ...["noise","fault","noise.grad","noise.cell"].map(name =>
+        ...["noise.value","noise.fault","noise.grad","noise.cell"].map(name =>
             [`samples={${name}(p,seed),0}`, `samples={${name}(p.x,p.y,seed),0}`]),
         ...["noise.fbm","noise.ridge"].map(name =>
             [`samples={${name}(p,4,seed),0}`, `samples={${name}(p.x,p.y,4,seed),0}`]),

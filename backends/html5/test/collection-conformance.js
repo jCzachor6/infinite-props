@@ -71,7 +71,8 @@ function run(iprop, tool, directory) {
         ["items=[1] value=items[1]",/list index out of range/],
         ["if(false){items=[1]} value=list.len(items)",/list handle is unassigned/],
         ["poly([{0,0},{1,1}],#ffffff)",/poly requires at least three vertices/],
-        ["items=[gaussian(0.5,0.18),gaussian(0,0)]",/finite sigma > 0/],
+        // A constant sigma of zero is a compile error; this one is only known when it runs.
+        ["sigma=0.0 items=[gaussian(0.5,0.18),gaussian(0,sigma)]",/finite sigma > 0/],
     ];
     function trap(binary, message) {
         const png=base+"-rejected.png";
