@@ -21,5 +21,5 @@ asset Materials {
     paint(n)
   }
   paint(m: mat.paint) { pixel(0, 1, m.base) }
-  gaussian(mean: f32, sigma: f32) -> f32 { return mean + sigma }
+  spread(mean: f32, sigma: f32) -> f32 { return mean + sigma }
 }

@@ -199,10 +199,14 @@ TEST_CASE("constant sampler pools preserve bits sharing and deterministic transp
     }
 }
 
-TEST_CASE("list parameters sharing a palette name retain their own values and bounds", "[sampling-palette]") {
+TEST_CASE("list parameters keep their own values and checked bounds beside a palette", "[sampling-palette]") {
     const auto declarations="palette widths=[10 to 15,40]";
-    const auto helpers="copy(widths:list<sampler<i32>>)->list<sampler<i32>>{return widths} "
-        "selected(widths:list<sampler<i32>>,i:i32)->sampler<i32>{return widths[i]}";
+    const auto helpers="copy(items:list<sampler<i32>>)->list<sampler<i32>>{return items} "
+        "selected(items:list<sampler<i32>>,i:i32)->sampler<i32>{return items[i]}";
+    // A parameter cannot take the palette's name: ramp and indexing would
+    // then disagree about which of the two the name means.
+    rejectPalette(std::string(declarations)+" copy(widths:list<sampler<i32>>)->list<sampler<i32>>{return widths} draw{}",
+        "parameter 'widths' has the same name as a palette");
     for (const bool optimize : {false,true}) {
         const auto actual=compileChecked(asset(declarations,"before=seed items=copy([sampler(7)]) "
             "values={selected(items,0).pick(),widths[-1].pick()} values={seed==before,list.len(items)}",helpers),optimize);

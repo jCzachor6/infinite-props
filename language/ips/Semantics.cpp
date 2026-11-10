@@ -4,10 +4,12 @@
 #include "ips/AssetConstants.hpp"
 
 #include <algorithm>
+#include <map>
 #include <optional>
 #include <set>
 #include <utility>
 
+#include "ips/BuiltinSpec.hpp"
 #include "ips/Typing.hpp"
 #include "iprop/Surface.hpp"
 
@@ -136,8 +138,12 @@ private:
     void checkImports() {
         std::set<std::string> seen;
         for (const auto& import : program_.imports) {
-            if (import.alias == "surface")
-                error(import.location, "import alias 'surface' conflicts with the surface namespace; rename the alias");
+            if (import.alias == "seed")
+                error(import.location, "'seed' is a reserved name");
+            // `noise.fbm(...)` and `noise.draw(...)` would share one spelling.
+            if (isBuiltinNamespace(import.alias))
+                error(import.location, "import alias '" + import.alias + "' conflicts with the " +
+                                           import.alias + " namespace; rename the alias");
             if (!seen.insert(import.alias).second) {
                 error(import.location,
                       "duplicate import alias '" + import.alias + "'");
@@ -149,6 +155,9 @@ private:
         }
     }
 
+    // Everything an asset declares shares one namespace: an input, output,
+    // palette, constant, helper and import alias cannot have the same name.
+    // Constants check themselves against the others when they are resolved.
     bool checkAssetDecls() {
         recover([&] {
             if (!program_.asset.sizeX.has_value())
@@ -156,34 +165,38 @@ private:
         });
         bool namespaceValid = true;
 
-        std::set<std::string> inputNames;
+        // The name and what declared it, for the message of a later clash.
+        std::map<std::string, std::string> declared;
+        for (const auto& import : program_.imports) declared.emplace(import.alias, "an import alias");
+        const auto declare = [&](const std::string& kind, const std::string& name,
+                                 const SourceLocation& at, const std::string& phrase) {
+            // `seed` reads the stream and `draw` is the entry block.
+            if (name == "seed" || (name == "draw" && kind != "function"))
+                error(at, "'" + name + "' is a reserved name");
+            const auto [existing, fresh] = declared.emplace(name, phrase);
+            if (fresh) return;
+            if (existing->second == phrase) error(at, "duplicate " + kind + " '" + name + "'");
+            error(at, kind + " '" + name + "' has the same name as " + existing->second);
+        };
+
         for (const auto& input : program_.asset.inputs) {
             if (atLimit()) return false;
             const bool valid = recover([&] {
-                if (input.name == "seed" || input.name == "at" ||
-                    input.name == "rot" ||
+                // A part call binds these names to its placement arguments.
+                if (input.name == "at" || input.name == "rot" ||
                     input.name == "mirror_x" || input.name == "mirror_y") {
                     error(input.location, "'" + input.name + "' is a reserved name");
                 }
-                if (!inputNames.insert(input.name).second) {
-                    error(input.location, "duplicate input '" + input.name + "'");
-                }
+                declare("input", input.name, input.location, "an input");
             });
             namespaceValid = valid && namespaceValid;
             recover([&] { checkInputDefault(input); });
         }
 
-        std::set<std::string> outputNames;
         for (const auto& output : program_.asset.outputs) {
             if (atLimit()) return false;
             const bool valid = recover([&] {
-                if (!outputNames.insert(output.name).second) {
-                    error(output.location, "duplicate output '" + output.name + "'");
-                }
-                if (inputNames.count(output.name) != 0) {
-                    error(output.location, "output '" + output.name +
-                                               "' collides with an input of the same name");
-                }
+                declare("output", output.name, output.location, "an output");
             });
             namespaceValid = valid && namespaceValid;
         }
@@ -191,12 +204,15 @@ private:
         for (const auto& function : program_.asset.functions) {
             if (atLimit()) return false;
             const bool valid = recover([&] {
-                if (!functions_.emplace(function.name, &function).second) {
-                    error(function.location,
-                          "duplicate function '" + function.name + "'");
-                }
+                // A call by that name always reaches the builtin.
+                if (isBuiltinFunctionName(function.name))
+                    error(function.location, "function '" + function.name +
+                                                 "' has the name of a builtin; choose another name");
+                declare("function", function.name, function.location, "a function");
+                functions_.emplace(function.name, &function);
                 std::set<std::string> parameters;
                 for (const auto& param : function.params) {
+                    if (param.name == "seed") error(param.location, "'seed' is a reserved name");
                     if (!parameters.insert(param.name).second)
                         error(param.location, "duplicate parameter '" + param.name + "'");
                 }
@@ -204,28 +220,31 @@ private:
             namespaceValid = valid && namespaceValid;
         }
 
-        std::set<std::string> paletteNames;
         bool paletteDeclarationsValid = true;
         for (const auto& palette : program_.asset.palettes) {
             if (atLimit()) return false;
             const bool valid = recover([&] {
-                if (!paletteNames.insert(palette.name).second) {
-                    error(palette.location, "duplicate palette '" + palette.name + "'");
-                }
-                if (inputNames.count(palette.name) != 0 ||
-                    outputNames.count(palette.name) != 0) {
-                    error(palette.location,
-                          "palette '" + palette.name +
-                              "' collides with an input or output of the same name");
-                }
-                if (functions_.count(palette.name) != 0) {
-                    error(palette.location,
-                          "palette '" + palette.name +
-                              "' collides with a function of the same name");
-                }
+                declare("palette", palette.name, palette.location, "a palette");
             });
             namespaceValid = valid && namespaceValid;
             if (valid) paletteDeclarationsValid = recover([&] { checkPaletteDecl(palette); }) && paletteDeclarationsValid;
+        }
+
+        // A helper sees the asset's palettes and writes its outputs by name, so
+        // a parameter with such a name would hide one use and not another:
+        // `ramp(name, t)` and `name = value` would still mean the declaration.
+        // An input's name is free: helpers do not see inputs. Constants make
+        // the same check when they are resolved.
+        for (const auto& function : program_.asset.functions) {
+            for (const auto& param : function.params) {
+                if (atLimit()) return false;
+                const bool valid = recover([&] {
+                    const auto found = declared.find(param.name);
+                    if (found != declared.end() && (found->second == "a palette" || found->second == "an output"))
+                        error(param.location, "parameter '" + param.name + "' has the same name as " + found->second);
+                });
+                namespaceValid = valid && namespaceValid;
+            }
         }
         // Do not report the same invalid legacy palette again when resolving
         // the shared declaration graph. Recovery already recorded its error.
@@ -239,9 +258,6 @@ private:
     }
 
     void checkPaletteDecl(const PaletteDecl& palette) {
-        if (palette.name == "seed" || palette.name == "at") {
-            error(palette.location, "'" + palette.name + "' is a reserved name");
-        }
         if (!extendedPalette(palette)) (void)resolvePalette(palette);
     }
 

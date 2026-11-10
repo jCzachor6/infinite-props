@@ -219,11 +219,18 @@ TEST_CASE("part masks ignore appearance and construction clips while draws honor
     CHECK(ex.dynamicPartCreations==2);}
     ex.target.clips.clear();CHECK(ex.resources.bytes==0);
 }
-TEST_CASE("dynamic drawing coexists with a static component aliased part and shares the ID counter","[dynamic-parts-v09]") {
+TEST_CASE("dynamic drawing coexists with a static component and shares the ID counter","[dynamic-parts-v09]") {
+    // The part namespace belongs to dynamic parts: an import cannot take it.
+    const std::map<std::string,std::string> aliased{
+        {"root.ips",R"(import part from "leaf.ips" asset t{size 8x4 draw{part.draw(seed=7,at={0,0})}})"},
+        {"leaf.ips","asset leaf{size 4x4 draw{pixel(0,0,#fff)}}"}};
+    const auto rejected=compileSource("root.ips",[&](std::string_view path){return aliased.at(std::string(path));});
+    REQUIRE(rejected.diagnostics.size()==1);
+    CHECK(rejected.diagnostics[0].message=="import alias 'part' conflicts with the part namespace; rename the alias");
     const std::map<std::string,std::string> sources{
-        {"root.ips",R"(import part from "leaf.ips" asset t{size 8x4 output list point ids
+        {"root.ips",R"(import leaf from "leaf.ips" asset t{size 8x4 output list point ids
             make()->part2d{layer image{pixel(1,1,#abc)}return part.create(image)}
-            draw{first=make()ids={part.id(first),seed}part.draw(seed=7,at={0,0})
+            draw{first=make()ids={part.id(first),seed}leaf.draw(seed=7,at={0,0})
                 part.draw(first)last=make()ids={part.id(last),seed}m=part.mask(first)
                 surface.paint(m,#fff,blend=surface.source_over)}})"},
         {"leaf.ips",R"(asset leaf{size 4x4 output point id draw{

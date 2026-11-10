@@ -170,7 +170,7 @@ Json randomRange() {
             {"effects", operationEffects(spec->effects)}});
     };
     return Json::object({{"operator", "to"}, {"keyword", "reserved"},
-        {"precedence", Json::object({{"tighter_than", "<"}, {"looser_than", "<<"}})},
+        {"precedence", Json::object({{"tighter_than", "<"}, {"looser_than", "|"}})},
         {"chaining", false}, {"evaluation_order", Json::array({"lower", "upper"})},
         {"overloads", Json::array({overload("i32", Opcode::RngInt, kRangeDraws),
                                    overload("f32", Opcode::RngFloat, 1)})},

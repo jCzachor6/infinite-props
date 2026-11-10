@@ -102,8 +102,8 @@ TEST_CASE("contour source frontend handles named calls helpers formatting and tr
         CHECK(disassemble(round)==assembly);CHECK_NOTHROW(VM(loadFile(round),{}).run());
         const auto formatted=ips::formatProgram(ips::parse(text));CHECK(ips::formatProgram(ips::parse(formatted))==formatted);
         const auto f2=loadFile(compile(formatted,optimize));CHECK_NOTHROW(VM(f2,{}).run());
-        const auto helper=compile("asset t{size 1x1 contour(x:i32)->i32{return x}draw{pixel(contour(0),0,#fff)}}",optimize);
-        CHECK_NOTHROW(VM(loadFile(helper),{}).run());
+        CHECK_THROWS_WITH(compile("asset t{size 1x1 contour(x:i32)->i32{return x}draw{}}",optimize),
+            "function 'contour' has the name of a builtin; choose another name");
         const auto unset=loadFile(compile("asset t{size 1x1 draw{if(false){layer l{} m=mask.from(l)} contour(m,0.5)}}",optimize));
         CHECK_THROWS_WITH(VM(unset,{}).run(),Catch::Matchers::ContainsSubstring("unassigned"));
     }

@@ -178,6 +178,10 @@ TEST_CASE("every builtin numeric-range effect has an executable accepted-source 
             continue;
         }
         std::string setup, args=arguments(overload,true);
+        // Constant parameters a distribution constructor always rejects are a
+        // compile error, so the trap needs a value only known when it runs.
+        if (overload.result == ips::ValueType::Distribution)
+            args.replace(args.find("1.0/0.0"), 7, "float(v)/float(v)");
         if(name=="part.place"){
             setup="p=part.create(regions(voronoi({0,0},{8,8},1,0)),0) ";args="p,{float(v)/float(v),0},0,0,0";
         }

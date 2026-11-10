@@ -1,4 +1,5 @@
 #include "Plan.hpp"
+#include "ips/BuiltinSpec.hpp"
 #include "ips/Fold.hpp"
 #include "ips/Imports.hpp"
 #include "ips/Semantics.hpp"
@@ -223,6 +224,19 @@ void Planner::planParts() {
 }
 
 void Planner::planFunctions() {
+    // A call by a builtin's name always reaches the builtin. The checker
+    // reports such a helper first; a program planned without it must not
+    // compile with the helper silently unused.
+    const auto rejectBuiltinNames = [](const ips::Program& owner, const std::string& source) {
+        for (const auto& function : owner.asset.functions)
+            if (ips::isBuiltinFunctionName(function.name))
+                throw ips::SourceError{function.location, "function '" + function.name +
+                    "' has the name of a builtin; choose another name", source,
+                    ips::DiagnosticCode::PlanError, ips::DiagnosticStage::Planning};
+    };
+    rejectBuiltinNames(entry_, {});
+    for (std::size_t i = 0; i < plan_->parts.size(); ++i)
+        rejectBuiltinNames(*plan_->parts[i], plan_->instances[i].source);
     // Table order: draw first, then the entry's other functions in
     // declaration order, then each part's functions.
     std::vector<std::string> planned;

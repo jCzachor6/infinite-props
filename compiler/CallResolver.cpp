@@ -34,9 +34,7 @@ ResolvedCall CallResolver::resolve(const ips::Call& call) const {
         return {call.location, std::move(result)};
     }
     const auto ns = functionNamespace(function_.name);
-    if (const auto found = ips::builtinSpecs().find(name); found != ips::builtinSpecs().end() &&
-        !(name=="part.draw"&&call.args.size()!=1) &&
-        (call.builtinOnly || !(ips::builtinYieldsToHelper(name) && plan_.functionId(name, ns)))) {
+    if (const auto found = ips::builtinSpecs().find(name); found != ips::builtinSpecs().end()) {
         const auto& spec = found->second;
         std::vector<T> types;
         for (const auto* arg : args) types.push_back(function_.typeOf(*arg->value));

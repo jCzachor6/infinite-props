@@ -358,7 +358,7 @@ TEST_CASE("distribution types are checked in source") {
     CHECK(checkErrorMessage("asset t { size 1x1 input distribution d = 1 draw { } }").find("input type") != std::string::npos);
 }
 
-TEST_CASE("'with' parses after a range and formats alongside ordinary constructor helpers") {
+TEST_CASE("'with' parses after a range and formats alongside ordinary helpers") {
     CHECK(format("asset t { size 1x1 draw { d = gaussian(mean=0.0, sigma=1.0) x = 1 + 2 to 9 with d < 5 } }")
               .find("x = (((1 + 2) to 9 with d) < 5)") != std::string::npos);
     const auto typed = format("asset t { size 1x1 draw { distribution d=gaussian(sigma=2.0,mean=0.0) x=-5 to 5 with d } }");
@@ -367,17 +367,19 @@ TEST_CASE("'with' parses after a range and formats alongside ordinary constructo
     CHECK(format(typed) == typed);
     const auto helper = format("asset t { size 1x1 f(d: distribution) -> distribution { return d } draw { } }");
     CHECK(helper.find("f(d: distribution) -> distribution {") != std::string::npos);
-    // Constructor builtins remain ordinary callable names; range/type keywords
-    // cannot name locals or helpers.
+    // A constructor is a builtin like any other: a helper cannot take its name.
+    for (const std::string name : {"gaussian", "triangular", "beta"})
+        CHECK(checkErrorMessage("asset t { size 1x1 " + name + "(x: f32) -> f32 { return x } draw { } }") ==
+              "function '" + name + "' has the name of a builtin; choose another name");
     const std::string old = R"(asset t { size 4x1 output list point p
-      gaussian(a: i32, b: i32) -> i32 { return a * 10 + b }
-      beta(x: f32) -> f32 { return x * 2.0 }
+      tens(a: i32, b: i32) -> i32 { return a * 10 + b }
+      twice(x: f32) -> f32 { return x * 2.0 }
       mark(x: i32) { pixel(x, 0, #fff) }
       draw {
         shapeCount = 3 markCount = 4
         p = {shapeCount, markCount}
         x = 1 mark(2)
-        p = {gaussian(1, 2), beta(0.25)}
+        p = {tens(1, 2), twice(0.25)}
         y = (1 to 3 with triangular(min=1.0, peak=2.0, max=3.0)) p = {x, y}
       } })";
     for (const bool optimize : {false, true}) {

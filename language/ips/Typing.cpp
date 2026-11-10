@@ -146,23 +146,36 @@ void Typer::checkKnownPoints(const PointDistributionLiteral& literal) {
 }
 
 void Typer::checkKnownBounds(const SamplerCapture& capture, ValueType item) {
-    const auto* range = std::get_if<RandomRange>(capture.value.get());
-    auto lower = known(range ? *range->lower : *capture.value);
-    auto upper = range ? known(*range->upper) : std::optional<Value>(Value{});
+    if (const auto* range = std::get_if<RandomRange>(capture.value.get())) {
+        checkKnownRange(*range, item, capture.location);
+        return;
+    }
+    auto value = known(*capture.value);
+    if (value && item == ValueType::F32 && std::holds_alternative<i32>(*value))
+        value = static_cast<f32>(std::get<i32>(*value));
+    if (value) if (const auto* message = samplerBoundsError(item, *value, Value{}, false))
+        valueError(capture.location, message);
+}
+
+// A drawn range and a captured one obey the same rules, so bounds known here
+// that the draw always rejects are reported for both.
+void Typer::checkKnownRange(const RandomRange& range, ValueType item, const SourceLocation& at) {
+    auto lower = known(*range.lower);
+    auto upper = known(*range.upper);
     if (item == ValueType::F32) {
         for (auto* bound : {&lower, &upper})
             if (*bound && std::holds_alternative<i32>(**bound)) *bound = static_cast<f32>(std::get<i32>(**bound));
     }
     if (lower) if (const auto* message = samplerBoundsError(item, *lower, Value{}, false))
-        valueError(capture.location, message);
-    if (range && upper) if (const auto* message = samplerBoundsError(item, *upper, Value{}, false))
-        valueError(capture.location, message);
-    if (lower && upper) if (const auto* message = samplerBoundsError(item, *lower, *upper, range != nullptr))
-        valueError(capture.location, message);
-    // A description snapshots its distribution: a constructor that rejects
-    // its known parameters can never produce one.
-    if (range && range->distribution) if (const auto message = rejection(*range->distribution))
-        valueError(locationOf(*range->distribution), *message);
+        valueError(at, message);
+    if (upper) if (const auto* message = samplerBoundsError(item, *upper, Value{}, false))
+        valueError(at, message);
+    if (lower && upper) if (const auto* message = samplerBoundsError(item, *lower, *upper, true))
+        valueError(at, message);
+    // A constructor that rejects its known parameters can never produce the
+    // distribution the range draws from.
+    if (range.distribution) if (const auto message = rejection(*range.distribution))
+        valueError(locationOf(*range.distribution), *message);
 }
 
 // ---- member chains ----------------------------------------------------------
@@ -316,7 +329,13 @@ ValueType Typer::infer(const Expr& expr) {
                                    " has no components, got '." + member.name + "'");
     }
     if (const auto* call = std::get_if<Call>(&expr)) {
-        return typeCall(*call);
+        const auto type = typeCall(*call);
+        // A distribution constructor checks its parameters when it runs, even
+        // if the result is never used. Known parameters it always rejects are
+        // reported here, as they are for an asset constant.
+        if (type == ValueType::Distribution)
+            if (const auto message = rejection(expr)) valueError(call->location, *message);
+        return type;
     }
     if (const auto* d = std::get_if<PointDistributionLiteral>(&expr)) {
         if (const auto* message = math::pointDistributionCountError(d->family,d->points.size())) error(d->location,message);
@@ -342,7 +361,9 @@ ValueType Typer::infer(const Expr& expr) {
         return typeUnary(*un);
     }
     if (const auto* range = std::get_if<RandomRange>(&expr)) {
-        return typeRandomRange(*range);
+        const auto type = typeRandomRange(*range);
+        checkKnownRange(*range, type, range->location);
+        return type;
     }
     if (const auto* capture = std::get_if<SamplerCapture>(&expr)) {
         const auto* range = std::get_if<RandomRange>(capture->value.get());

@@ -1,6 +1,7 @@
 #include "ips/BuiltinSpec.hpp"
 #include "iprop/Samplers.hpp"
 #include "iprop/ListOperations.hpp"
+#include <set>
 #include <stdexcept>
 
 namespace iprop::ips {
@@ -363,8 +364,21 @@ std::optional<ValueType> selectionType(std::span<const ValueType> arguments) {
     return result;
 }
 
-bool builtinYieldsToHelper(std::string_view name) {
-    return name == "gaussian" || name == "triangular" || name == "beta" || name == "voronoi" || name == "contour" || name == "regions";
+bool isBuiltinFunctionName(std::string_view name) {
+    return name == "ramp" || (name.find('.') == std::string_view::npos && builtinSpecs().contains(std::string(name)));
+}
+
+bool isBuiltinNamespace(std::string_view name) {
+    static const auto spaces = [] {
+        // Namespaces that only hold constants have no entry in the table.
+        std::set<std::string> result{"surface", "noise", "voronoi", "contour"};
+        for (const auto& [full, spec] : builtinSpecs()) {
+            (void)spec;
+            if (const auto dot = full.find('.'); dot != std::string::npos) result.insert(full.substr(0, dot));
+        }
+        return result;
+    }();
+    return spaces.contains(std::string(name));
 }
 
 OperationEffects builtinEffects(const BuiltinSpec& spec, const BuiltinOverload* overload) {

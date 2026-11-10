@@ -58,9 +58,13 @@ const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::span<const 
 // A polygon call without a fixed overload of its arity: poly(color, x0, y0, ...)
 // is variadic, while poly(points, color) lowers through its overload.
 bool variadicPolygon(const BuiltinSpec& spec, std::size_t arity);
-// The distribution/geometry constructors arrived after helpers could take their
-// names, so a helper declared with one of these names keeps its calls.
-bool builtinYieldsToHelper(std::string_view name);
+// A builtin function called by a bare name, such as `rect` or `ramp`. A helper
+// cannot take one of these names: its calls would resolve to the builtin.
+bool isBuiltinFunctionName(std::string_view name);
+// The first segment of a dotted builtin or builtin constant, such as `noise`
+// or `surface`. An import alias cannot reuse one: `alias.draw(...)` and the
+// namespace's own members would share one spelling.
+bool isBuiltinNamespace(std::string_view name);
 // Choices preserve identical storable types; mixed numeric choices widen to f32.
 std::optional<ValueType> selectionType(std::span<const ValueType> arguments);
 

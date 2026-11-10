@@ -92,7 +92,8 @@ TEST_CASE("region metadata frontend roundtrips sharing helper names and checked 
             GenerationInputs inputs;inputs.seed=1;VM invalid(bad,inputs);CHECK_THROWS(invalid.run());
         }
     }
-    CHECK_NOTHROW(compile("asset t{size 1x1 regions(x:i32)->i32{return x} draw{pixel(0,0,rgba(regions(7),0,0,255))}}"));
+    CHECK_THROWS_WITH(compile("asset t{size 1x1 regions(x:i32)->i32{return x} draw{}}"),
+        "function 'regions' has the name of a builtin; choose another name");
     CHECK_THROWS(compile("asset t{size 1x1 const a=regions(voronoi({0,0},{1,1},1,0)) draw{}}"));
     CHECK_THROWS(compile("asset t{size 1x1 draw{regions(1)}}"));
 }

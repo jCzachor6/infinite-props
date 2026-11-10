@@ -145,7 +145,7 @@ TEST_CASE("constant effects cycles and invalid constructors fail without compile
         {"const f32 x=roll(1,0,1)", ips::DiagnosticCode::AssetConstantEffect, "RNG or generation effects"},
         {"const i32 x=helper() helper()->i32{return 1}", ips::DiagnosticCode::AssetConstantEffect, "user helper"},
         {"const distribution x=gaussian(0,1) gaussian(first:f32,second:f32)->distribution{return beta(1,1)}",
-            ips::DiagnosticCode::AssetConstantEffect, "user helper"},
+            ips::DiagnosticCode::TypeError, "function 'gaussian' has the name of a builtin"},
         {"const i32 x=y const i32 y=x", ips::DiagnosticCode::AssetConstantCycle, "x -> y -> x"},
         {"const i32 x=x", ips::DiagnosticCode::AssetConstantCycle, "x -> x"},
         {"const i32 x=0 && y const i32 y=x", ips::DiagnosticCode::AssetConstantCycle, "cyclic"},

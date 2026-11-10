@@ -1,6 +1,7 @@
 #include "iprop/math/Distribution.hpp"
 #include "ips/Parser.hpp"
 
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -16,6 +17,9 @@ std::unique_ptr<Expr> literal(Literal::Kind literalKind, const Token& token,
         Literal{literalKind, text, token.location});
 }
 
+// `at` is the operator. Callers read it before parsing the right operand:
+// argument evaluation order is unspecified, and the location must not
+// depend on the host compiler.
 std::unique_ptr<Expr> binary(Binary::Op op, std::unique_ptr<Expr> left,
                              std::unique_ptr<Expr> right,
                              const SourceLocation& at) {
@@ -31,26 +35,28 @@ std::unique_ptr<Expr> binary(Binary::Op op, std::unique_ptr<Expr> left,
 // ---- expressions -----------------------------------------------------------
 //
 // Precedence, loosest to tightest:
-//   ||  <  &&  <  |  <  ^  <  &  <  ==/!=  <  </<=/>/>=  <  to  <  <</>>
+//   ||  <  &&  <  ==/!=  <  </<=/>/>=  <  to  <  |  <  ^  <  &  <  <</>>
 //   <  +,-  <  *,/,%
 //   <  unary  <  postfix (member access and calls)
+// Bitwise operators bind tighter than comparisons, so `x & 1 == 0` tests the
+// masked value. Equality, ordering and `to` do not chain.
 
 std::unique_ptr<Expr> ParserImpl::parseExpr() { return parseOr(); }
 
 std::unique_ptr<Expr> ParserImpl::parseOr() {
     auto left = parseAnd();
     while (match(TokenKind::OrOr)) {
-        left = binary(Binary::Op::Or, std::move(left), parseAnd(),
-                     tokens_[pos_ - 1].location);
+        const auto at = tokens_[pos_ - 1].location;
+        left = binary(Binary::Op::Or, std::move(left), parseAnd(), at);
     }
     return left;
 }
 
 std::unique_ptr<Expr> ParserImpl::parseAnd() {
-    auto left = parseBitOr();
+    auto left = parseEquality();
     while (match(TokenKind::AndAnd)) {
-        left = binary(Binary::Op::And, std::move(left), parseBitOr(),
-                     tokens_[pos_ - 1].location);
+        const auto at = tokens_[pos_ - 1].location;
+        left = binary(Binary::Op::And, std::move(left), parseEquality(), at);
     }
     return left;
 }
@@ -58,8 +64,8 @@ std::unique_ptr<Expr> ParserImpl::parseAnd() {
 std::unique_ptr<Expr> ParserImpl::parseBitOr() {
     auto left = parseBitXor();
     while (match(TokenKind::Pipe)) {
-        left = binary(Binary::Op::BitOr, std::move(left), parseBitXor(),
-                     tokens_[pos_ - 1].location);
+        const auto at = tokens_[pos_ - 1].location;
+        left = binary(Binary::Op::BitOr, std::move(left), parseBitXor(), at);
     }
     return left;
 }
@@ -67,62 +73,67 @@ std::unique_ptr<Expr> ParserImpl::parseBitOr() {
 std::unique_ptr<Expr> ParserImpl::parseBitXor() {
     auto left = parseBitAnd();
     while (match(TokenKind::Caret)) {
-        left = binary(Binary::Op::Xor, std::move(left), parseBitAnd(),
-                     tokens_[pos_ - 1].location);
+        const auto at = tokens_[pos_ - 1].location;
+        left = binary(Binary::Op::Xor, std::move(left), parseBitAnd(), at);
     }
     return left;
 }
 
 std::unique_ptr<Expr> ParserImpl::parseBitAnd() {
-    auto left = parseEquality();
+    auto left = parseShift();
     while (match(TokenKind::Amp)) {
-        left = binary(Binary::Op::BitAnd, std::move(left), parseEquality(),
-                     tokens_[pos_ - 1].location);
+        const auto at = tokens_[pos_ - 1].location;
+        left = binary(Binary::Op::BitAnd, std::move(left), parseShift(), at);
     }
     return left;
 }
 
+// `a == b == c` would compare a 0/1 result with c. Like `to`, it is rejected.
 std::unique_ptr<Expr> ParserImpl::parseEquality() {
     auto left = parseComparison();
-    for (;;) {
-        if (match(TokenKind::Equal)) {
-            left = binary(Binary::Op::Eq, std::move(left), parseComparison(), tokens_[pos_ - 1].location);
-        } else if (match(TokenKind::NotEqual)) {
-            left = binary(Binary::Op::Ne, std::move(left), parseComparison(), tokens_[pos_ - 1].location);
-        } else {
-            return left;
-        }
-    }
+    const auto op = kind() == TokenKind::Equal ? Binary::Op::Eq : Binary::Op::Ne;
+    if (!match(TokenKind::Equal) && !match(TokenKind::NotEqual)) return left;
+    const auto at = tokens_[pos_ - 1].location;
+    left = binary(op, std::move(left), parseComparison(), at);
+    if (kind() == TokenKind::Equal || kind() == TokenKind::NotEqual)
+        failHere("'==' and '!=' cannot be chained; compare each pair and join them with &&, "
+                 "or parenthesize the comparison whose 0/1 result is compared");
+    return left;
 }
 
+// `a < b < c` would compare the 0/1 result of `a < b` with c.
 std::unique_ptr<Expr> ParserImpl::parseComparison() {
-    auto left = parseRandomRange();
-    for (;;) {
-        if (match(TokenKind::Less)) {
-            left = binary(Binary::Op::Lt, std::move(left), parseRandomRange(), tokens_[pos_ - 1].location);
-        } else if (match(TokenKind::LessEqual)) {
-            left = binary(Binary::Op::Le, std::move(left), parseRandomRange(), tokens_[pos_ - 1].location);
-        } else if (match(TokenKind::Greater)) {
-            left = binary(Binary::Op::Gt, std::move(left), parseRandomRange(), tokens_[pos_ - 1].location);
-        } else if (match(TokenKind::GreaterEqual)) {
-            left = binary(Binary::Op::Ge, std::move(left), parseRandomRange(), tokens_[pos_ - 1].location);
-        } else {
-            return left;
+    const auto ordering = [&]() -> std::optional<Binary::Op> {
+        switch (kind()) {
+        case TokenKind::Less: return Binary::Op::Lt;
+        case TokenKind::LessEqual: return Binary::Op::Le;
+        case TokenKind::Greater: return Binary::Op::Gt;
+        case TokenKind::GreaterEqual: return Binary::Op::Ge;
+        default: return std::nullopt;
         }
-    }
+    };
+    auto left = parseRandomRange();
+    const auto op = ordering();
+    if (!op) return left;
+    const auto at = advance().location;
+    left = binary(*op, std::move(left), parseRandomRange(), at);
+    if (ordering())
+        failHere("comparisons cannot be chained; write a < b && b < c, "
+                 "or parenthesize the comparison whose 0/1 result is compared");
+    return left;
 }
 
 std::unique_ptr<Expr> ParserImpl::parseRandomRange() {
-    auto lower = parseShift();
+    auto lower = parseBitOr();
     if (kind() != TokenKind::KeywordTo) return lower;
     const SourceLocation at = advance().location; // 'to'
-    auto upper = parseShift();
+    auto upper = parseBitOr();
     auto end = upper->sourceRange.end;
     std::unique_ptr<Expr> distribution;
     SourceLocation withAt{};
     if (kind() == TokenKind::KeywordWith) {
         withAt = advance().location; // 'with'
-        distribution = parseShift();
+        distribution = parseBitOr();
         end = distribution->sourceRange.end;
     }
     if (kind() == TokenKind::KeywordTo) {
@@ -140,11 +151,11 @@ std::unique_ptr<Expr> ParserImpl::parseShift() {
     auto left = parseAdditive();
     for (;;) {
         if (match(TokenKind::Shl)) {
-            left = binary(Binary::Op::Shl, std::move(left), parseAdditive(),
-                          tokens_[pos_ - 1].location);
+            const auto at = tokens_[pos_ - 1].location;
+            left = binary(Binary::Op::Shl, std::move(left), parseAdditive(), at);
         } else if (match(TokenKind::Shr)) {
-            left = binary(Binary::Op::Shr, std::move(left), parseAdditive(),
-                          tokens_[pos_ - 1].location);
+            const auto at = tokens_[pos_ - 1].location;
+            left = binary(Binary::Op::Shr, std::move(left), parseAdditive(), at);
         } else {
             return left;
         }
@@ -155,9 +166,11 @@ std::unique_ptr<Expr> ParserImpl::parseAdditive() {
     auto left = parseMultiplicative();
     for (;;) {
         if (match(TokenKind::Plus)) {
-            left = binary(Binary::Op::Add, std::move(left), parseMultiplicative(), tokens_[pos_ - 1].location);
+            const auto at = tokens_[pos_ - 1].location;
+            left = binary(Binary::Op::Add, std::move(left), parseMultiplicative(), at);
         } else if (match(TokenKind::Minus)) {
-            left = binary(Binary::Op::Sub, std::move(left), parseMultiplicative(), tokens_[pos_ - 1].location);
+            const auto at = tokens_[pos_ - 1].location;
+            left = binary(Binary::Op::Sub, std::move(left), parseMultiplicative(), at);
         } else {
             return left;
         }
@@ -168,11 +181,14 @@ std::unique_ptr<Expr> ParserImpl::parseMultiplicative() {
     auto left = parseUnary();
     for (;;) {
         if (match(TokenKind::Star)) {
-            left = binary(Binary::Op::Mul, std::move(left), parseUnary(), tokens_[pos_ - 1].location);
+            const auto at = tokens_[pos_ - 1].location;
+            left = binary(Binary::Op::Mul, std::move(left), parseUnary(), at);
         } else if (match(TokenKind::Slash)) {
-            left = binary(Binary::Op::Div, std::move(left), parseUnary(), tokens_[pos_ - 1].location);
+            const auto at = tokens_[pos_ - 1].location;
+            left = binary(Binary::Op::Div, std::move(left), parseUnary(), at);
         } else if (match(TokenKind::Percent)) {
-            left = binary(Binary::Op::Mod, std::move(left), parseUnary(), tokens_[pos_ - 1].location);
+            const auto at = tokens_[pos_ - 1].location;
+            left = binary(Binary::Op::Mod, std::move(left), parseUnary(), at);
         } else {
             return left;
         }

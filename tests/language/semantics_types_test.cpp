@@ -47,8 +47,8 @@ asset t { input i32 v = 0
     expectCheckError("asset t { size 8x8 palette p = [\"x\"] draw { } }", "string elements");
     expectCheckError("asset t { size 8x8 palette p = [#111111] palette p = [#222222] draw { } }", "duplicate palette 'p'");
     expectCheckError("asset t { size 8x8 palette seed = [#111111] draw { } }", "reserved name");
-    expectCheckError("asset t { size 8x8 input color c = #ffffff palette c = [#111111] draw { } }", "collides with an input or output");
-    expectCheckError("asset t { size 8x8 palette f = [#111111] draw { } f(x: i32) { return x } }", "collides with a function");
+    expectCheckError("asset t { size 8x8 input color c = #ffffff palette c = [#111111] draw { } }", "palette 'c' has the same name as an input");
+    expectCheckError("asset t { size 8x8 palette f = [#111111] draw { } f(x: i32) { return x } }", "palette 'f' has the same name as a function");
 }
 
 TEST_CASE("palette indexing is type checked") {
@@ -198,7 +198,7 @@ TEST_CASE("duplicate declarations and missing requirements") {
     expectCheckError("asset t { size 8x8 output point p output point p "
                      "draw { } }", "duplicate output 'p'");
     expectCheckError("asset t { size 8x8 input color p = #ffffff output point p "
-                     "draw { } }", "collides with an input");
+                     "draw { } }", "output 'p' has the same name as an input");
     expectCheckError("asset t { size 8x8 draw { } helper(x: i32) { return 1 } "
                      "helper(x: i32) { return 2 } }", "duplicate function");
     expectCheckError("import a from \"a.ips\" import a from \"a.ips\" "

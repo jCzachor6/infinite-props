@@ -41,7 +41,8 @@ TEST_CASE("comparison operands share shift precedence") {
     }
 }
 
-TEST_CASE("shifted comparisons preserve arithmetic bitwise and logical precedence") {
+TEST_CASE("comparisons bind looser than bitwise, shift and arithmetic operators") {
+    // || < && < == < "<" < | < ^ < & < "<<" < +
     const Program program = parse(R"(
 asset expr {
   draw { result = 1 + 2 << 3 < 64 >> 1 == 1 & 3 ^ 2 | 1 && 0 || 1 }
@@ -49,39 +50,67 @@ asset expr {
     const auto& statement = std::get<VarDecl>(program.asset.functions[0].body[0]);
     const auto& logicalOr = requireBinary(*statement.value, Binary::Op::Or);
     const auto& logicalAnd = requireBinary(*logicalOr.left, Binary::Op::And);
-    const auto& bitOr = requireBinary(*logicalAnd.left, Binary::Op::BitOr);
-    const auto& bitXor = requireBinary(*bitOr.left, Binary::Op::Xor);
-    const auto& bitAnd = requireBinary(*bitXor.left, Binary::Op::BitAnd);
-    const auto& equality = requireBinary(*bitAnd.left, Binary::Op::Eq);
+    const auto& equality = requireBinary(*logicalAnd.left, Binary::Op::Eq);
     const auto& comparison = requireBinary(*equality.left, Binary::Op::Lt);
     const auto& leftShift = requireBinary(*comparison.left, Binary::Op::Shl);
     requireBinary(*leftShift.left, Binary::Op::Add);
     requireBinary(*comparison.right, Binary::Op::Shr);
+    const auto& bitOr = requireBinary(*equality.right, Binary::Op::BitOr);
+    const auto& bitXor = requireBinary(*bitOr.left, Binary::Op::Xor);
+    requireBinary(*bitXor.left, Binary::Op::BitAnd);
 }
 
-TEST_CASE("comparison and shift chains remain left associative") {
+TEST_CASE("a masked value is compared without parentheses") {
+    const Program program = parse("asset expr { draw { even = value & 1 == 0  high = flags | 4 > 2 } }");
+    const auto& body = program.asset.functions[0].body;
+    const auto& even = requireBinary(*std::get<VarDecl>(body[0]).value, Binary::Op::Eq);
+    requireBinary(*even.left, Binary::Op::BitAnd);
+    const auto& high = requireBinary(*std::get<VarDecl>(body[1]).value, Binary::Op::Gt);
+    requireBinary(*high.left, Binary::Op::BitOr);
+}
+
+TEST_CASE("a range takes bitwise operands and stays below comparisons") {
+    const Program program = parse("asset expr { draw { drawn = low | 1 to high & 7  rare = (0 to 100) < 10 } }");
+    const auto& body = program.asset.functions[0].body;
+    const auto* range = std::get_if<RandomRange>(std::get<VarDecl>(body[0]).value.get());
+    REQUIRE(range != nullptr);
+    requireBinary(*range->lower, Binary::Op::BitOr);
+    requireBinary(*range->upper, Binary::Op::BitAnd);
+    const auto& rare = requireBinary(*std::get<VarDecl>(body[1]).value, Binary::Op::Lt);
+    CHECK(std::holds_alternative<RandomRange>(*rare.left));
+}
+
+TEST_CASE("shifts stay left associative and comparisons do not chain") {
     const Program program = parse(R"(
 asset expr {
   draw {
-    comparisons = left << 1 < middle >> 1 <= right << 2
     shifts = value << 1 >> 2
     grouped = left < (middle < right)
+    mixed = left < middle == middle < right
   }
 })");
     const auto& body = program.asset.functions[0].body;
-    const auto& comparisons = requireBinary(*std::get<VarDecl>(body[0]).value,
-                                           Binary::Op::Le);
-    const auto& first = requireBinary(*comparisons.left, Binary::Op::Lt);
-    requireBinary(*first.left, Binary::Op::Shl);
-    requireBinary(*first.right, Binary::Op::Shr);
-    requireBinary(*comparisons.right, Binary::Op::Shl);
-    const auto& shifts = requireBinary(*std::get<VarDecl>(body[1]).value,
+    const auto& shifts = requireBinary(*std::get<VarDecl>(body[0]).value,
                                       Binary::Op::Shr);
     requireBinary(*shifts.left, Binary::Op::Shl);
-    const auto& grouped = requireBinary(*std::get<VarDecl>(body[2]).value,
+    const auto& grouped = requireBinary(*std::get<VarDecl>(body[1]).value,
                                        Binary::Op::Lt);
     REQUIRE(std::holds_alternative<Identifier>(*grouped.left));
     requireBinary(*grouped.right, Binary::Op::Lt);
+    // An equality of two orderings is two levels, not a chain.
+    const auto& mixed = requireBinary(*std::get<VarDecl>(body[2]).value, Binary::Op::Eq);
+    requireBinary(*mixed.left, Binary::Op::Lt);
+    requireBinary(*mixed.right, Binary::Op::Lt);
+
+    const auto rejected = [](const std::string& expression) {
+        try { (void)parse("asset expr { draw { x = " + expression + " } }"); }
+        catch (const SourceError& error) { return error.message; }
+        return std::string{};
+    };
+    for (const std::string chain : {"a < b < c", "a <= b > c", "left << 1 < middle >> 1 <= right << 2"})
+        CHECK(rejected(chain).starts_with("comparisons cannot be chained; write a < b && b < c"));
+    for (const std::string chain : {"a == b == c", "a != b == c", "a < b == c != d"})
+        CHECK(rejected(chain).starts_with("'==' and '!=' cannot be chained"));
 }
 
 TEST_CASE("expression precedence and forms") {

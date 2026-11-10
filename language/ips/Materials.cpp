@@ -35,7 +35,7 @@ std::unique_ptr<Expr> cloneExpr(const Expr& expr) {
                 std::vector<Arg> args;
                 for (const auto& arg : node.args)
                     args.push_back(Arg{arg.name, cloneExpr(*arg.value), arg.location});
-                return mk(Expr{Call{cloneExpr(*node.callee), std::move(args), node.location, node.builtinOnly}}, expr);
+                return mk(Expr{Call{cloneExpr(*node.callee), std::move(args), node.location}}, expr);
             } else if constexpr (std::is_same_v<T, VectorLit>) {
                 std::vector<std::unique_ptr<Expr>> items;
                 for (const auto& item : node.elements) items.push_back(cloneExpr(*item));
@@ -126,13 +126,6 @@ std::string fieldName(const std::string& owner, const std::string& field) {
 
 std::string privateName(const std::string& alias, const std::string& name) {
     return "$material$private$" + alias + "$" + name;
-}
-
-// A material file has no helpers. Preserve its checked builtin resolution
-// when its expressions are copied into an asset with its own helpers.
-void bindMaterialBuiltins(Expr& expr) {
-    if (auto* call = std::get_if<Call>(&expr)) call->builtinOnly = true;
-    forEachChild(expr, [&](std::unique_ptr<Expr>& child) { bindMaterialBuiltins(*child); });
 }
 
 // Renames value references, leaving the independently bound callees alone.
@@ -239,7 +232,6 @@ void mergeMaterialFile(Program& importer, const Program& source, const Import& i
     const auto clone = [&](const Expr& expr) {
         auto copy = cloneExpr(expr);
         renameReferences(copy, names);
-        bindMaterialBuiltins(*copy);
         return copy;
     };
     for (const auto& def : source.materials) {
@@ -399,8 +391,7 @@ struct Expander {
                                                       "' can only be created by assignment, such as m = " + name + "()"};
             if (const auto* callee = std::get_if<Identifier>(call->callee.get())) {
                 const bool builtin = callee->name == "ramp" || builtinSpecs().contains(callee->name);
-                if (const auto fn = funcs.find(callee->name); fn != funcs.end() && !call->builtinOnly &&
-                    (!builtin || builtinYieldsToHelper(callee->name))) {
+                if (const auto fn = funcs.find(callee->name); fn != funcs.end() && !builtin) {
                     expandCall(*call, fn->second);
                     return;
                 }

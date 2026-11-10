@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
 #include "support/geometry_fixture.hpp"
 #include "support/test_support.hpp"
 #include "Compiler.hpp"
@@ -103,16 +104,33 @@ TEST_CASE("geometry descriptors validate unused code and malformed wire records"
     }
 }
 
-TEST_CASE("geometry names remain ordinary locals helper names and import aliases", "[geometry-v09]") {
-    for (const std::string name : {"diagram2d","contours2d","regions2d","part2d","parts2d","diagram","regions","part","parts"}) {
-        const auto source="asset t{size 1x1 "+name+"(v:i32)->i32{return v}draw{"+name+"=1 x="+name+"("+name+")}}";
-        CHECK_NOTHROW(compile(source));
+TEST_CASE("geometry type spellings stay ordinary names; namespaces and builtins keep theirs", "[geometry-v09]") {
+    const auto imported=[](const std::string& name){
         const std::map<std::string,std::string> files{{"root.ips","import "+name+" from \"child.ips\" asset t{size 1x1 draw{"+name+".draw(seed,at={0,0})}}"},
             {"child.ips","asset t{size 1x1 draw{pixel(0,0,#fff)}}"}};
-        const auto result=compileSource("root.ips",[&](std::string_view path){return files.at(std::string(path));});
+        return compileSource("root.ips",[&](std::string_view path){return files.at(std::string(path));});
+    };
+    const auto helper=[](const std::string& name){
+        return "asset t{size 1x1 "+name+"(v:i32)->i32{return v}draw{"+name+"=1 x="+name+"("+name+")}}";
+    };
+    // A type spelling is contextual: it can name a local, a helper and an import.
+    for (const std::string name : {"diagram2d","contours2d","regions2d","part2d","parts2d"}) {
         INFO(name);
+        CHECK_NOTHROW(compile(helper(name)));
+        const auto result=imported(name);
         INFO((result.diagnostics.empty()?"no diagnostics":result.diagnostics[0].message));
         REQUIRE(result.succeeded());
+    }
+    // A namespace can name a local and, unless it is also a function, a helper.
+    // An import cannot take it: `part.draw(...)` has one meaning.
+    for (const std::string name : {"diagram","regions","part","parts"}) {
+        INFO(name);
+        CHECK_NOTHROW(compile("asset t{size 1x1 draw{"+name+"=1 x="+name+"}}"));
+        if (name=="regions") CHECK_THROWS_WITH(compile(helper(name)),"function 'regions' has the name of a builtin; choose another name");
+        else CHECK_NOTHROW(compile(helper(name)));
+        const auto result=imported(name);
+        REQUIRE(result.diagnostics.size()==1);
+        CHECK(result.diagnostics[0].message=="import alias '"+name+"' conflicts with the "+name+" namespace; rename the alias");
     }
 }
 

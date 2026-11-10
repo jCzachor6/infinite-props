@@ -112,8 +112,8 @@ TEST_CASE("surface.paint lowers and formats through its overloads", "[review]") 
 
 TEST_CASE("part output slots skip resource outputs wherever they are declared", "[review]") {
     const std::map<std::string, std::string> sources{
-        {"root.ips", "import part from \"part.ips\" asset t { size 8x8 output point a output rect r output circle c "
-                     "draw { part.draw(seed, at = {0, 0}) a = part.outputs.a r = part.outputs.r c = part.outputs.c } }"},
+        {"root.ips", "import child from \"part.ips\" asset t { size 8x8 output point a output rect r output circle c "
+                     "draw { child.draw(seed, at = {0, 0}) a = child.outputs.a r = child.outputs.r c = child.outputs.c } }"},
         {"part.ips", "asset t { size 4x4 output mask m output point a output layer l output rect r output mask n "
                      "output circle c draw { layer image { pixel(0, 0, #fff) } l = image m = mask.from(image) n = mask.from(image) "
                      "a = {1, 2} r = {3, 4, 5, 6} c = {7, 8, 9} } }"}};

@@ -43,16 +43,17 @@ ValueType Typer::typeCall(const Call& call) {
         if (name->name == "ramp") {
             return typeRamp(*name, call);
         }
+        // A helper cannot share a builtin's name, so the name alone decides.
         const auto builtin = builtinSpecs().find(name->name);
-        if (builtin != builtinSpecs().end() && (call.builtinOnly || !yieldsToHelper(name->name))) {
+        if (builtin != builtinSpecs().end()) {
             return typeBuiltinCall(*name, call, builtin->second);
         }
         return typeUserCall(*name, call);
     }
     if (std::holds_alternative<Member>(*call.callee)) {
-        // The dotted builtin names (dist.circle, noise.fbm, ...): the
-        // bases dist/noise/cell are the reserved namespaces; anything
-        // else is a part call.
+        // A dotted name is a builtin when the builtin table has it. An
+        // import alias cannot be a builtin namespace, so the first segment
+        // tells a namespace member from a part call.
         const Path path = flatten(*call.callee);
         if (!path.segments.empty()) {
             std::string full = path.base;
@@ -60,29 +61,16 @@ ValueType Typer::typeCall(const Call& call) {
                 full += "." + segment;
             }
             // Recognized static imports precede builtin spelling suggestions
-            // (e.g. pot.draw resembles the new part.draw). An import aliased
-            // `part` uses seed/at; dynamic part.draw has exactly one p.
-            if(path.segments.size()==1&&path.segments[0]=="draw"&&findPart(path.base)&&
-                (path.base!="part"||call.args.size()!=1))return typePartCall(call);
-            const bool reserved = path.base == "dist" || path.base == "noise" ||
-                path.base == "cell" || path.base == "color" || path.base == "vec2" ||
-                path.base == "surface" || path.base == "mask" || full == "list.len" ||
-                full == "diagram.count" || full == "diagram.site" || full == "diagram.neighbors" ||
-                full == "regions.count" || full == "regions.id" || full == "regions.area" ||
-                full == "regions.center" || full == "regions.neighbors" ||
-                full == "part.create" || full == "parts.from_regions" || full == "parts.count" ||
-                full == "parts.get" || full == "part.id" || full == "part.source_id" ||
-                full == "part.center" || full == "part.bounds_origin" || full == "part.bounds_size" ||
-                full == "part.place" || full == "part.fill" || full == "part.texture" ||
-                full == "part.draw" || full == "part.mask" ||
-                full == "regions.points" || full == "regions.mask" || full == "regions.gap" || full == "regions.bevel";
+            // (e.g. pot.draw resembles part.draw).
+            if (path.segments.size() == 1 && path.segments[0] == "draw" && findPart(path.base))
+                return typePartCall(call);
             const auto builtin = builtinSpecs().find(full);
-            if (reserved && builtin != builtinSpecs().end()) {
+            if (builtin != builtinSpecs().end()) {
                 Identifier synthetic{full, path.location};
                 return typeBuiltinCall(synthetic, call, builtin->second);
             }
             const auto hint = didYouMean(full, builtinNames());
-            if (reserved || (!hint.empty() && !namesValue(path.base)))
+            if (isBuiltinNamespace(path.base) || (!hint.empty() && !namesValue(path.base)))
                 error(path.location, "undefined builtin '" + full + "'" + hint);
         }
         // A call on a value: the language has only the statically resolved
@@ -173,13 +161,6 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
                 "' must be " + typeName(expected) + ", got " + typeName(types[i]));
     }
     error(call.location, "no matching overload for '" + name.name + "'");
-}
-
-bool Typer::yieldsToHelper(const std::string& name) const {
-    if (!builtinYieldsToHelper(name)) return false;
-    for (const auto& function : owner_->asset.functions)
-        if (function.name == name) return true;
-    return false;
 }
 
 ValueType Typer::typeUserCall(const Identifier& name, const Call& call) {
