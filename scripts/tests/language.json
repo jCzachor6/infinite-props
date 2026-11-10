@@ -251,7 +251,7 @@
       "keyword": "reserved",
       "precedence": {
         "tighter_than": "<",
-        "looser_than": "<<"
+        "looser_than": "|"
       },
       "chaining": false,
       "evaluation_order": [

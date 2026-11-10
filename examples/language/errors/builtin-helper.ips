@@ -1,0 +1,8 @@
+asset BuiltinHelper {
+  size 4x4
+  draw {
+    pixel(int(sqrt(4.0)), 0, #fff)
+  }
+  // A call to sqrt always reaches the builtin, so this helper cannot exist.
+  sqrt(x: f32) -> f32 { return x * 0.5 }
+}

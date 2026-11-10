@@ -3,6 +3,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const path = require("node:path");
 const { execFileSync } = require("node:child_process");
+const fs = require("node:fs");
 const { entries, registerAuthoring } = require("../authoring");
 const compiler = process.env.IPROP_COMPILER || path.resolve(__dirname, "../../build/tools/ipc");
 
@@ -33,7 +34,21 @@ test("completion replaces the full qualified name and hover uses compiler signat
     const items = await providers.completion.provideCompletionItems(document, {}, {});
     assert.equal(items.find(i => i.label === "part.draw").range, range);
     const hover = await providers.hover.provideHover(document, {}, {});
-    assert.match(hover.contents.value, /part.draw\(p: part2d\) -> void/);
+    assert.match(hover.contents.value, /part.draw\(part: part2d\) -> void/);
     assert.equal(hover.range, range);
     assert.deepEqual(await providers.completion.provideCompletionItems(document, {}, { isCancellationRequested: true }), []);
+});
+
+test("the grammar highlights every builtin the compiler reports, and no retired spelling", () => {
+    const catalog = JSON.parse(execFileSync(compiler, ["--describe-language"], { encoding: "utf8" }));
+    const grammar = JSON.parse(fs.readFileSync(path.join(__dirname, "../syntaxes/ips.tmLanguage.json"), "utf8"));
+    const builtin = new RegExp(grammar.repository.builtins.match);
+    for (const { name } of catalog.builtins) {
+        const match = builtin.exec("x = " + name + "(1)");
+        assert.equal(match && match[1], name, name);
+    }
+    // A member call is not a bare builtin, and a value named like one is not a call.
+    for (const source of ["items.pick(3)", "noise(1.0, 2.0, 3)", "fill(d, 1.0)", "stream_push(1)", "i32trunc(1.5)",
+        "refill(1)", "rect = 2"])
+        assert.equal(builtin.test(source), false, source);
 });

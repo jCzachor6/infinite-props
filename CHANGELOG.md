@@ -2,6 +2,48 @@
 
 ## Unreleased
 
+### Language 1.0: one spelling and one rule (breaking for sources)
+
+The VM, the binary format and the fuel tariff are unchanged: existing `.iprop`
+files run as before, and a migrated source compiles to the bytecode it produced
+before. Nothing is aliased; an old spelling is a compile error that names its
+replacement. See [0.9 to 1.0 migration](docs/language/migration-v1.0.md).
+
+- **Renamed builtins.** `noise` is `noise.value`, `fault` is `noise.fault`,
+  `warp` is `noise.warp`, `fold` and `polar` are `vec2.fold` and `vec2.polar`,
+  `fill` is `dist.fill`, `color.set.a` is `color.set_a`, and `stream_push` and
+  `stream_pop` are `stream.push` and `stream.pop`. Every builtin is now a bare
+  word or one namespace and one member.
+- **Renamed named arguments.** `noise.mask(mode)`, `vec2.rot(angle)`,
+  `vec2.fold(sectors)`, `dist.fill(distance, width)`, `surface.paint(source)`,
+  and the handle of `part.*`, `regions.*`, `diagram.*` and `parts.*` accessors
+  is `part`, `regions`, `diagram` and `parts`.
+- **Removed duplicates.** `i32trunc(x)` was `int(x)`; `pick(n)` was `index(n)`;
+  the variadic `poly` takes its color last, like every other drawing call.
+- **Names.** A helper cannot take a builtin's name: before, it was silently
+  never called, except for six constructor names where the helper won. Inputs,
+  outputs, palettes, constants, helpers and import aliases share one namespace.
+  An import alias cannot be a builtin namespace. `seed` and `draw` cannot be
+  declared; `at`, `rot`, `mirror_x` and `mirror_y` are reserved for inputs only.
+  A parameter cannot take the name of a palette or an output.
+- **Operators.** Bitwise operators bind more tightly than comparisons, so
+  `flags & 1 == 0` tests the masked value. `a < b < c` and `a == b == c` are
+  rejected instead of comparing a 0/1 result.
+- **Literals.** `010` was octal 8 and `4294967296` wrapped to 0; both are now
+  errors, as are a float literal outside `f32` and a word attached to a number.
+- **Declarations.** `size` and `origin` are declared once. A spare `;` is
+  accepted between declarations, as it was between statements. A `for` counter
+  can take any name a local can.
+- **Earlier and clearer errors.** A value-returning helper that can reach its
+  end, more than 1024 locals, a call on a value (`v.len()`), a read of an
+  output, and a `to` range or distribution constructor whose constant operands
+  always trap are reported where they are written. A binary operator's
+  diagnostic location no longer depends on the host compiler.
+- The editor grammar highlights every builtin the compiler reports; a test
+  keeps the two in step.
+
+### Performance
+
 - Faster generation with unchanged images, outputs, fuel and work totals;
   existing `.iprop` files need no recompilation. The interpreter keeps its
   per-instruction accounting and its stack, control and scalar instructions

@@ -266,8 +266,8 @@ fills and textures do not change it.
 Draw one runtime instance in the current composition mode and clip. Region and
 mask sources need `part.fill` or `part.texture`; a captured layer keeps its original RGBA
 appearance by default, applying alpha once. Drawing does not create another ID
-or export a snapshot. A static import aliased `part` continues to use
-`part.draw(seed, at=...)`; a single argument selects the dynamic operation.
+or export a snapshot. `part` is a builtin namespace, so an import cannot use
+it as its alias.
 
 <!-- example: ../../examples/language/dynamic-tiles.ips -->
 

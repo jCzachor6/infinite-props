@@ -118,7 +118,7 @@
     },
     "builtins": {
       "name": "support.function.builtin.ips",
-      "match": "\\b((?:noise|voronoi|contour|regions|part|parts)\\.[A-Za-z_][A-Za-z_0-9]*|voronoi|contour|regions|surface\\.paint|mask\\.(from|union|intersect|subtract|invert|expand|shrink|offset)|list\\.len|vec2\\.(len|dot|rot|normalize)|unit|stream_push|stream_pop|range|index|pick|chance|roll|choose|hash|noise|fault|smooth|sqrt|sin|cos|abs|floor|ceil|min|max|pow|exp|atan2|i32trunc|int|float|rgb|rgba|round|lerp|gaussian|triangular|beta|color\\.(mix|shade|mul|scale|hsv|set\\.a)|pixel|rect|line|oval|weather|poly)\\b(?=\\s*\\()"
+      "match": "(?<![.\\w])((?:cell|color|diagram|dist|list|mask|noise|part|parts|regions|stream|surface|vec2)\\.[A-Za-z_][A-Za-z_0-9]*|abs|atan2|beta|ceil|chance|choose|clamp|contour|cos|curve|dither|exp|float|floor|gain|gaussian|hash|index|int|lerp|line|max|min|oval|pick|pixel|poly|pow|quintic|ramp|range|rect|regions|remap|rgb|rgba|roll|round|sin|smooth|smoothstep|sqrt|triangular|unit|voronoi|weather)\\b(?=\\s*\\()"
     },
     "samplerCapture": {
       "name": "support.function.sampler.ips",

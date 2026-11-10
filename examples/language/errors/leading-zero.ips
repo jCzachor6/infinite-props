@@ -1,0 +1,7 @@
+asset LeadingZero {
+  size 16x16
+  draw {
+    // Write 10. A leading zero does not mean octal.
+    pixel(010, 0, #fff)
+  }
+}

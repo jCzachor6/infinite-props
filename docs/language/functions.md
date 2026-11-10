@@ -7,6 +7,8 @@ A helper parameter may also use an imported [material type](materials.md),
 such as `m: forest.Bark`; the compiler passes its immutable fields by value.
 Materials are not supported as helper return types.
 A value-returning helper declares `-> type`; omission means a void helper.
+A helper cannot take the name of a builtin function, such as `rect` or
+`gaussian`: a call by that name always reaches the builtin.
 Arguments may be positional, named by the declared parameter, or mixed.
 Every parameter is required, parameter names are unique, and `i32` may widen
 to `f32`. For example, `paint(tint=#9dc, x=8)` binds to
@@ -16,8 +18,10 @@ Forward calls are allowed. Direct and indirect recursion are rejected.
 Pass uniforms to helpers explicitly. Helpers share the executing
 asset's RNG stream and may draw or write its declared output slots. A helper
 cannot access a caller's local variables or mutate its own parameters.
-Asset [constants](assets.md#asset-constants) are directly visible to helpers;
-helper parameters cannot shadow their names. Const initializers cannot call helpers.
+Asset [constants](assets.md#asset-constants) and palettes are directly visible
+to helpers, and helpers write the asset's outputs by name, so a parameter
+cannot take the name of a constant, a palette or an output. It may repeat the
+name of an input, which helpers do not see. Const initializers cannot call helpers.
 Calling a value-returning function as a statement discards its result.
 
 <!-- example: ../../examples/language/functions.ips -->

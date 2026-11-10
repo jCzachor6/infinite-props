@@ -239,8 +239,8 @@ index behavior, transfer/immutability, palette compatibility and resource
 limits. Each published capability must satisfy its complete contract.
 
 The compiler catalogue adds fixed `list.len` overloads and the two-argument
-`poly(points, color)` overload. The existing variadic polygon template remains
-separate, with its original minimum arity and evaluation order. Type strings
+`poly(points, color)` overload. The variadic polygon template remains
+separate, with its minimum arity of seven; its color is the last parameter. Type strings
 are canonical descriptor spellings. Effects include `index_range`,
 `unassigned_handle` and `scope_depth` (the 32 combined layer/clip scopes, active
 across the call stack); generation memory remains an execution-wide resource trap.
@@ -278,7 +278,8 @@ creation counter/limit, shared sources, immutable ID-preserving views, original
 pixel-frame anchors, absolute D4 placement with one translation rounding,
 alpha-once layer drawing and shape-only A8 masks. Creation is generation state
 with a conservative effect summary, never asset-constant evaluation. Dynamic
-`part.draw(p)` writes the canvas and checks required appearance. Static imports
-continue to bind seed/at calls, including an import aliased `part`.
+`part.draw(part)` writes the canvas and checks required appearance. Static
+imports bind seed/at calls; an import cannot be aliased `part` or any other
+builtin namespace.
 The optional `geometry_scale` detail selects the inverse-D4 target grid for
 vector geometry; raster sources and textures keep exact pixel-scale matching.

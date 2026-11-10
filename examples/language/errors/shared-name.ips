@@ -1,0 +1,9 @@
+asset SharedName {
+  size 8x8
+  input f32 scale = 1.0
+  draw {
+    pixel(int(scale), 0, #fff)
+  }
+  // An input and a helper cannot share a name.
+  scale(value: f32) -> f32 { return value * 2.0 }
+}

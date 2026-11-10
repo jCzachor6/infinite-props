@@ -171,8 +171,10 @@ These compile errors and surprises catch most first drafts:
 - Colors cannot be compared with `==`. Compare channels, as in
   `tint.a == 0`.
 - `for` bounds must be `i32`: write `for i in 0..int(count)`.
-- There are no arrays besides palettes. Use a palette for a fixed list and
-  compute repeated positions inside a loop.
+- A list cannot grow: there is no append. Declare a fixed set as a palette or
+  write a whole list literal, and compute repeated positions inside a loop.
+- A helper cannot take a builtin's name. `rect`, `line`, `noise.fbm` and the
+  rest keep their meaning; name helpers after what they draw.
 - `part.outputs.name` reads the last call of that part. Read an output right
   after the call that produced it.
 - A translucent color drawn inside a part over its empty canvas disappears.

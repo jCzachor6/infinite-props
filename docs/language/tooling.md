@@ -50,9 +50,8 @@ dependent cascades are suppressed and a damaged AST never reaches generation.
 `ipc entry.ips --format canonical.ips` also writes canonical parseable source.
 The output uses two-space indentation, explicit expression grouping, word
 keywords and normalized literals. Calls use the compiler's shared binding and
-evaluation plan: ordinary builtins and helpers follow parameter order, `poly`
-puts vertex coordinates before its colour, and a known part puts uniforms in
-declaration order before seed/at and transforms. Unknown imports retain
+evaluation plan: builtins and helpers follow parameter order, and a known
+part puts inputs in declaration order before seed/at and transforms. Unknown imports retain
 written order until their declarations are available. Helpers keep their
 existing `helper(parameters) -> type` syntax.
 It must differ from the input and binary output. Comments keep their exact

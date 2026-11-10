@@ -41,6 +41,7 @@ files; their contents are included in the generated book and tested by CI.
 23. [Migrating from 0.6 to 0.7](migration-v0.7.md)
 24. [Migrating from 0.7 to 0.8](migration-v0.8.md)
 25. [Migrating from 0.8 to 0.9](migration-v0.9.md)
+26. [Migrating from 0.9 to 1.0](migration-v1.0.md)
 
 The [format and VM specifications](../../spec/README.md) define binary
 encoding, exact numerical/raster algorithms, validation and deterministic

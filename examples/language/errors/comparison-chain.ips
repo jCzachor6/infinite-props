@@ -1,0 +1,8 @@
+asset ComparisonChain {
+  size 4x4
+  input i32 level = 2
+  draw {
+    // Write 0 < level && level < 4.
+    if (0 < level < 4) { pixel(0, 0, #fff) }
+  }
+}
