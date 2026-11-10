@@ -14,7 +14,7 @@ compiler rules in plain sentences. The handbook follows: assets, syntax,
 types, control flow, helpers, randomness, colors, palettes, materials,
 collections, samplers, parts, surfaces, geometry and masks, execution limits
 and the grammar. Every builtin is listed, and checked repairs close the
-document. For source language 0.9 the default document has a **131,072-byte
+document. For source language 1.0 the default document has a **131,072-byte
 UTF-8 budget (128 KiB)**, with the same maximum allowed budget, and covers
 materials, surfaces, geometry, masks and typed parts. The 0.7 release used
 102,400 bytes (100 KiB).

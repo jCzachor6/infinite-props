@@ -150,6 +150,61 @@ bool droppedValues(PlannedFunction& f) {
     return true;
 }
 
+// A block that no branch targets only costs its two instructions: validated
+// code reaches its end at the height it entered with. A `for` body's
+// continue label is one whenever the body has no `continue`. Branches from
+// inside a removed block to outer labels cross one label fewer.
+bool untargetedBlocks(PlannedFunction& f) {
+    const auto n = f.code.size();
+    std::vector<std::size_t> open, closes(n, n);
+    std::vector<bool> targeted(n, false);
+    for (std::size_t i = 0; i < n; ++i) {
+        switch (f.code[i].opcode) {
+        case Opcode::Block: case Opcode::Loop: case Opcode::If: case Opcode::LayerBegin: case Opcode::ClipBegin:
+            open.push_back(i); break;
+        case Opcode::End:
+            if (open.empty()) return false; // malformed: leave it to the validator
+            closes[open.back()] = i; open.pop_back(); break;
+        case Opcode::Br: case Opcode::BrIf:
+            if (f.code[i].operand >= open.size()) return false;
+            targeted[open[open.size() - 1 - f.code[i].operand]] = true; break;
+        default: break;
+        }
+    }
+    if (!open.empty()) return false;
+    std::vector<bool> remove(n, false);
+    bool changed = false;
+    for (std::size_t i = 0; i < n; ++i) {
+        if (f.code[i].opcode != Opcode::Block || targeted[i] || closes[i] == n) continue;
+        remove[i] = remove[closes[i]] = true;
+        changed = true;
+    }
+    if (!changed) return false;
+    std::vector<Instruction> code;
+    std::vector<u32> lines;
+    for (std::size_t i = 0; i < n; ++i) {
+        auto ins = f.code[i];
+        switch (ins.opcode) {
+        case Opcode::Block: case Opcode::Loop: case Opcode::If: case Opcode::LayerBegin: case Opcode::ClipBegin:
+            open.push_back(i); break;
+        case Opcode::End: open.pop_back(); break;
+        case Opcode::Br: case Opcode::BrIf: {
+            // The labels between the branch and its target, innermost first.
+            u16 crossed = 0;
+            for (u16 depth = 0; depth < ins.operand; ++depth)
+                if (remove[open[open.size() - 1 - depth]]) ++crossed;
+            ins.operand = static_cast<u16>(ins.operand - crossed);
+            break;
+        }
+        default: break;
+        }
+        if (remove[i]) continue;
+        code.push_back(ins); lines.push_back(f.sourceLines[i]);
+    }
+    f.code = std::move(code); f.sourceLines = std::move(lines);
+    return true;
+}
+
 bool localOperand(Opcode opcode) { return operandKind(opcode) == OperandKind::Local; }
 
 void compactLocals(PlannedFunction& f) {
@@ -184,6 +239,7 @@ void eliminateDeadCode(Plan& plan) {
             const bool values = droppedValues(f);
             if (!stores && !values) break;
         }
+        untargetedBlocks(f);
         compactLocals(f);
     }
 }

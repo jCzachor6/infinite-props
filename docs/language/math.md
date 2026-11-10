@@ -20,12 +20,6 @@ pixel coordinates and conditions.
 Widens `i32` to binary32. An existing `f32` is preserved, including negative
 zero. Integers beyond binary32 precision can round.
 
-## i32trunc
-<!-- builtin: i32trunc -->
-
-The explicit floating truncation operation: same saturated/NaN conversion
-as the `f32` overload of `int`.
-
 ## round
 <!-- builtin: round -->
 

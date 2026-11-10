@@ -21,7 +21,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # macos-latest is Apple silicon; macos-26-intel builds and tests the
+        # x86_64 SDK for Macs with Intel processors.
+        os: [ubuntu-latest, macos-latest, macos-26-intel, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4

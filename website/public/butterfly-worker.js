@@ -6,6 +6,11 @@ let interpreter;
 let files;
 let ready;
 const here = new URL(".", self.location.href);
+// Two compiled models share the interpreter: the 256x256 benchmark butterfly,
+// loaded with the worker, and the 128x128 swarm butterfly, loaded on first use.
+// A failed load stays failed; Try again starts a new worker.
+const MANIFESTS = new Map([["benchmark", "showcase/butterfly-benchmark.json"], ["swarm", "showcase/butterfly-swarm.json"]]);
+const models = Object.create(null);
 
 async function sha256(data) {
     if (self.crypto?.subtle) {
@@ -67,15 +72,14 @@ function partPoint(result, name) {
     return point;
 }
 
-async function initialise() {
-    importScripts(new URL("iprop.js", here).href);
-    const module = self.createIpropModule({ locateFile: () => new URL("iprop.wasm", here).href });
-    const response = await fetch(new URL("showcase/butterfly-benchmark.json", here));
+async function loadModel(name) {
+    if (!MANIFESTS.has(name)) throw new Error("Unknown butterfly model.");
+    const response = await fetch(new URL(MANIFESTS.get(name), here));
     if (!response.ok) throw new Error("The butterfly manifest could not be loaded.");
     const manifest = await response.json();
-    files = new Map();
+    const files = new Map();
     const parts = await Promise.all(manifest.parts.map(async part => {
-        if (!["forewing", "hindwing", "body"].includes(part.id) || !/^butterfly-[a-z]+\.iprop$/.test(part.file))
+        if (!["forewing", "hindwing", "body"].includes(part.id) || !/^butterfly-[a-z]+(-128)?\.iprop$/.test(part.file))
             throw new Error("Invalid butterfly part.");
         const response = await fetch(new URL("showcase/" + part.file, here));
         if (!response.ok) throw new Error("Could not load " + part.file);
@@ -87,6 +91,13 @@ async function initialise() {
         return { id: part.id, bytes: data.byteLength };
     }));
     if (parts.length !== 3 || files.size !== 3) throw new Error("Three butterfly parts are required.");
+    return { files, parts };
+}
+
+async function initialise() {
+    importScripts(new URL("iprop.js", here).href);
+    const module = self.createIpropModule({ locateFile: () => new URL("iprop.wasm", here).href });
+    const { parts } = await (models.benchmark ??= loadModel("benchmark"));
     interpreter = await module;
     self.postMessage({ type: "ready", parts });
 }
@@ -110,6 +121,8 @@ self.onmessage = async event => {
         if (request.type !== "generate") return;
         if (!ready) throw new Error("The butterfly interpreter has not started.");
         await ready;
+        const name = request.model ?? "benchmark";
+        ({ files } = await (models[name] ??= loadModel(name)));
         const seed = request.seed >>> 0;
         const start = performance.now();
         const forewing = generatePart("forewing", seed, { shadow: 0 });

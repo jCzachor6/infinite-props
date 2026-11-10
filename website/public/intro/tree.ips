@@ -27,7 +27,7 @@ asset Tree {
         for i in 0..n {
           a = turn + float(i) * 6.2832 / float(n)
           a = a + (-0.25 to 0.25)
-          bulge = 1.0 + wobble * noise(cos(a) * 1.5, sin(a) * 1.5, hash(start ^ rimKey))
+          bulge = 1.0 + wobble * noise.value(cos(a) * 1.5, sin(a) * 1.5, hash(start ^ rimKey))
           d = R * (0.6 - float(ring) * 0.3) * (0.8 to 1.15) * bulge
           r = R * (0.44 - float(ring) * 0.06) * (0.8 to 1.15)
           clump.draw(hash(start ^ (ring * 16 + i)),

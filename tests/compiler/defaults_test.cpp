@@ -60,7 +60,7 @@ TEST_CASE("signed input defaults check mathematical range in checker and planner
         CHECK_NOTHROW(compileProgram(program, {}));
     }
     for (const std::string text : {"2147483648", "-2147483649", "0xffffffff",
-                                  "4294967296", "-0xffffffff"}) {
+                                  "4294967295", "-0xffffffff"}) {
         INFO(text);
         const auto source = "asset t { size 8x8 input i32 n=" + text + " draw{} }";
         const auto program = ips::parse(source);
@@ -192,7 +192,7 @@ TEST_CASE("resolved constants retain mathematical integers without changing wrap
         {"0xffffffff", 4294967295LL, -1},
         {"-0xffffffff", -4294967295LL, 1},
         {"-2147483648", -2147483648LL, -2147483647 - 1},
-        {"4294967296", 4294967296LL, 0},
+        {"4294967295", 4294967295LL, -1},
     };
     for (const auto& test : cases) {
         const auto program = ips::parse(std::string("asset t { size 8x8 palette p = [") +
@@ -201,11 +201,18 @@ TEST_CASE("resolved constants retain mathematical integers without changing wrap
         CHECK(value.mathematicalInteger == test.mathematical);
         CHECK(std::get<i32>(value.value) == test.wrapped);
     }
-    const auto source = "asset t { size 8x8 output point p draw { p = {-0xffffffff, 4294967296} } }";
+    const auto source = "asset t { size 8x8 output point p draw { p = {-0xffffffff, 4294967295} } }";
     for (const bool optimize : {false, true}) {
         const auto result = execute(compileProgram(ips::parse(source), {}, optimize));
         CHECK(result.outputs[0].points[0].x == 1.f);
-        CHECK(result.outputs[0].points[0].y == 0.f);
+        CHECK(result.outputs[0].points[0].y == -1.f);
+    }
+    // A literal wider than 32 bits is rejected instead of wrapping to zero,
+    // and a leading zero is rejected instead of selecting octal.
+    for (const std::string text : {"4294967296", "9223372036854775808", "010"}) {
+        INFO(text);
+        CHECK_THROWS_AS(ips::parse("asset t { size 8x8 draw { x = " + text + " } }"), ips::SourceError);
+        CHECK_THROWS_AS(ips::parse("asset t { size 8x8 input f32 x = " + text + " draw {} }"), ips::SourceError);
     }
 }
 
@@ -307,8 +314,8 @@ TEST_CASE("float literal acceptance does not depend on the C library's ERANGE co
     }
 }
 
-TEST_CASE("integer-spelled f32 defaults preserve released conversions in roots and parts") {
-    for (const std::string literal : {"2", "010", "0xffffffff", "4294967296", "9223372036854775808"}) {
+TEST_CASE("integer-spelled f32 defaults convert directly to binary32 in roots and parts") {
+    for (const std::string literal : {"2", "10", "0xffffffff", "4294967295", "16777217"}) {
         INFO(literal);
         u32 expectedBits = 0;
         REQUIRE(ips::parseFloatBits(literal, expectedBits));

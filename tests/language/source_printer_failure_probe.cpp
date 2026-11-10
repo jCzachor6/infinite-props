@@ -17,10 +17,8 @@ int main() {
         "asset t { size 8x8 draw { rect(color=#fff,h=range(1,2),x=0,w=1,y=0) "
             + longComment + " } }",
         longComment + "\nimport tile from \"tile.ips\"; " + longComment + "\n"
-            "asset t { size 4x4; " + longComment + " size 8x8\n"
-            "origin 1,2; " + longComment + " origin (0),(0)\n"
-            "size 1x1; " + longComment + " size 2x2\n"
-            "origin 1,1; " + longComment + " origin 2,2\n"
+            "asset t { size 8x8; " + longComment + "\n"
+            "origin (0),(0); " + longComment + "\n"
             "input color c=(#fff " + longComment + ")\n"
             "output point p; " + longComment + "\n"
             "palette colors=[#fff, " + longComment + " #000]\n"

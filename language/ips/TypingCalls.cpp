@@ -14,68 +14,100 @@ std::vector<std::string> builtinNames() {
 }
 }
 
+bool Typer::namesValue(const std::string& name) const {
+    if (name == "seed" || locals_.contains(name)) return true;
+    const auto named = [&](const auto& declarations) {
+        return std::any_of(declarations.begin(), declarations.end(),
+                           [&](const auto& declaration) { return declaration.name == name; });
+    };
+    return named(owner_->asset.constants) || named(owner_->asset.palettes) ||
+           (isDraw_ && named(owner_->asset.inputs));
+}
+
+// The namespace whose functions take a value of this type first.
+std::string Typer::methodNamespace(ValueType type) {
+    if (type == ValueType::Vec2) return "vec2";
+    if (type == ValueType::Color) return "color";
+    if (type == ValueType::Mask) return "mask";
+    if (type == ValueType::Layer) return "surface";
+    if (type == ValueType::Regions2d) return "regions";
+    if (type == ValueType::Diagram2d) return "diagram";
+    if (type == ValueType::Part2d) return "part";
+    if (type == ValueType::Parts2d) return "parts";
+    if (type.isList()) return "list";
+    return {};
+}
+
+// A helper call recurses through here into the helper's body, so only the
+// plain-name dispatch stays in this function.
 ValueType Typer::typeCall(const Call& call) {
     if (const auto* name = std::get_if<Identifier>(call.callee.get())) {
         if (name->name == "ramp") {
             return typeRamp(*name, call);
         }
+        // A helper cannot share a builtin's name, so the name alone decides.
         const auto builtin = builtinSpecs().find(name->name);
-        if (builtin != builtinSpecs().end() && (call.builtinOnly || !yieldsToHelper(name->name))) {
+        if (builtin != builtinSpecs().end()) {
             return typeBuiltinCall(*name, call, builtin->second);
         }
         return typeUserCall(*name, call);
     }
-    if (std::holds_alternative<Member>(*call.callee)) {
-        // The dotted builtin names (dist.circle, noise.fbm, ...): the
-        // bases dist/noise/cell are the reserved namespaces; anything
-        // else is a part call.
-        const Path path = flatten(*call.callee);
-        if (!path.segments.empty()) {
-            std::string full = path.base;
-            for (const std::string& segment : path.segments) {
-                full += "." + segment;
-            }
-            // Recognized static imports precede builtin spelling suggestions
-            // (e.g. pot.draw resembles the new part.draw). An import aliased
-            // `part` uses seed/at; dynamic part.draw has exactly one p.
-            if(path.segments.size()==1&&path.segments[0]=="draw"&&findPart(path.base)&&
-                (path.base!="part"||call.args.size()!=1))return typePartCall(call);
-            const bool reserved = path.base == "dist" || path.base == "noise" ||
-                path.base == "cell" || path.base == "color" || path.base == "vec2" ||
-                path.base == "surface" || path.base == "mask" || full == "list.len" ||
-                full == "diagram.count" || full == "diagram.site" || full == "diagram.neighbors" ||
-                full == "regions.count" || full == "regions.id" || full == "regions.area" ||
-                full == "regions.center" || full == "regions.neighbors" ||
-                full == "part.create" || full == "parts.from_regions" || full == "parts.count" ||
-                full == "parts.get" || full == "part.id" || full == "part.source_id" ||
-                full == "part.center" || full == "part.bounds_origin" || full == "part.bounds_size" ||
-                full == "part.place" || full == "part.fill" || full == "part.texture" ||
-                full == "part.draw" || full == "part.mask" ||
-                full == "regions.points" || full == "regions.mask" || full == "regions.gap" || full == "regions.bevel";
-            const auto builtin = builtinSpecs().find(full);
-            if (reserved && builtin != builtinSpecs().end()) {
-                Identifier synthetic{full, path.location};
-                return typeBuiltinCall(synthetic, call, builtin->second);
-            }
-            const auto hint = didYouMean(full, builtinNames());
-            if (reserved || !hint.empty()) error(path.location, "undefined builtin '" + full + "'" + hint);
-        }
-        return typePartCall(call);
-    }
+    if (std::holds_alternative<Member>(*call.callee)) return typeMemberCall(call);
     error(call.location, "cannot call this expression");
+}
+
+ValueType Typer::typeMemberCall(const Call& call) {
+    // A dotted name is a builtin when the builtin table has it. An
+    // import alias cannot be a builtin namespace, so the first segment
+    // tells a namespace member from a part call.
+    const Path path = flatten(*call.callee);
+    if (!path.segments.empty()) {
+        std::string full = path.base;
+        for (const std::string& segment : path.segments) {
+            full += "." + segment;
+        }
+        // Recognized static imports precede builtin spelling suggestions
+        // (e.g. pot.draw resembles part.draw).
+        if (path.segments.size() == 1 && path.segments[0] == "draw" && findPart(path.base))
+            return typePartCall(call);
+        const auto builtin = builtinSpecs().find(full);
+        if (builtin != builtinSpecs().end()) {
+            Identifier synthetic{full, path.location};
+            return typeBuiltinCall(synthetic, call, builtin->second);
+        }
+        const auto former = formerBuiltinHint(full);
+        const auto hint = former.empty() ? didYouMean(full, builtinNames()) : former;
+        if (isBuiltinNamespace(path.base) || (!hint.empty() && !namesValue(path.base)))
+            error(path.location, "undefined builtin '" + full + "'" + hint);
+    }
+    // A call on a value: the language has only the statically resolved
+    // methods the parser recognizes, so name the function to use instead.
+    const auto& member = std::get<Member>(*call.callee);
+    if (!findPart(path.base) && (path.base.empty() || namesValue(path.base))) {
+        const auto receiver = typeOf(*member.object);
+        const auto space = methodNamespace(receiver);
+        std::string hint;
+        if (!space.empty() && builtinSpecs().contains(space + "." + member.name))
+            hint = "; write " + space + "." + member.name + "(...) with the value as its first argument";
+        else if (builtinSpecs().contains(member.name))
+            hint = "; write " + member.name + "(...) with the value as an argument";
+        error(member.location, std::string(typeName(receiver)) + " has no method '" + member.name + "'" + hint);
+    }
+    return typePartCall(call);
 }
 
 ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
                                  const BuiltinSpec& signature) {
     auto callSignature = builtinCallSignature(signature, call, name.name);
     if (signature.lowering == BuiltinLowering::SurfacePaint) {
-        const Arg* image = nullptr;
-        for (const auto& arg : call.args) if (arg.name && *arg.name == "image") { image = &arg; break; }
-        if (!image) for (const auto& arg : call.args) if (!arg.name) { image = &arg; break; }
-        if (image) {
-            const auto type = typeOf(*image->value);
+        // The source's type selects the layer or the mask overloads.
+        const Arg* source = nullptr;
+        for (const auto& arg : call.args) if (arg.name && *arg.name == "source") { source = &arg; break; }
+        if (!source) for (const auto& arg : call.args) if (!arg.name) { source = &arg; break; }
+        if (source) {
+            const auto type = typeOf(*source->value);
             if (type != ValueType::Layer && type != ValueType::Mask)
-                error(locationOf(*image->value), "surface.paint image must be layer or mask, got " + std::string(typeName(type)));
+                error(locationOf(*source->value), "surface.paint source must be a layer or a mask, got " + std::string(typeName(type)));
             callSignature = surfacePaintCallSignature(call, type);
         }
     }
@@ -86,8 +118,7 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
         if (!surfaceMode(*args.back()->value))
             error(locationOf(*args.back()->value), "surface.paint blend must be surface.legacy or surface.source_over");
     }
-    if ((signature.lowering == BuiltinLowering::Pick && args.size() >= 2) ||
-        signature.lowering == BuiltinLowering::Choose) {
+    if (signature.lowering == BuiltinLowering::Pick || signature.lowering == BuiltinLowering::Choose) {
         const std::size_t first = signature.lowering == BuiltinLowering::Choose ? 1 : 0;
         if (first && typeOf(*args[0]->value) != ValueType::I32)
             error(locationOf(*args[0]->value), "choose seed must be i32");
@@ -98,12 +129,17 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
         return *result;
     }
     if (variadicPolygon(signature, call.args.size())) {
+        std::vector<ValueType> types;
+        for (const auto* arg : args) types.push_back(typeOf(*arg->value));
+        // Before 1.0 the color was the first argument.
+        if (types.front() == ValueType::Color && isNumeric(types.back()))
+            error(locationOf(*args.front()->value),
+                  "poly takes its color last, after the vertices: poly(x0, y0, ..., color)");
         for (std::size_t i = 0; i < args.size(); ++i) {
-            const auto expected = i == 0 ? ValueType::Color : ValueType::F32;
-            const auto got = typeOf(*args[i]->value);
-            if (!argFits(expected, got))
+            const auto expected = i + 1 == args.size() ? ValueType::Color : ValueType::F32;
+            if (!argFits(expected, types[i]))
                 error(locationOf(*args[i]->value), "argument " + std::to_string(i + 1) +
-                    " of poly must be " + typeName(expected) + ", got " + typeName(got));
+                    " of poly must be " + typeName(expected) + ", got " + typeName(types[i]));
         }
         return ValueType::Void;
     }
@@ -137,39 +173,38 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
     error(call.location, "no matching overload for '" + name.name + "'");
 }
 
-bool Typer::yieldsToHelper(const std::string& name) const {
-    if (!builtinYieldsToHelper(name)) return false;
-    for (const auto& function : owner_->asset.functions)
-        if (function.name == name) return true;
-    return false;
-}
-
 ValueType Typer::typeUserCall(const Identifier& name, const Call& call) {
     if (name.name == "draw")
         error(call.location, "'draw' is an entry block; call a helper or an imported part instead");
+    // Resolving a helper checks its body on first use, which recurses here
+    // for every call in a chain: the failure messages are built elsewhere.
     const std::optional<FunctionSurface> surface =
         resolveFunction(name.name, call.location, ns_);
-    if (!surface.has_value()) {
-        auto candidates = builtinNames();
-        for (const auto& function : owner_->asset.functions)
-            if (function.name != "draw") candidates.push_back(function.name);
-        const auto hint = name.name == "mix" || name.name == "shade" ?
-            "; did you mean 'color." + name.name + "'?" : didYouMean(name.name, candidates);
-        error(call.location, "undefined function '" + name.name + "'" + hint);
-    }
+    if (!surface.has_value()) failUndefinedFunction(name, call);
     const auto bound = bind(call, helperCallSignature(surface->names), name.name);
     const auto& args = bound.arguments;
     for (std::size_t i = 0; i < args.size(); ++i) {
         const Arg& arg = *args[i];
         const ValueType got = typeOf(*arg.value, surface->params[i]);
-        if (!argFits(surface->params[i], got)) {
-            error(locationOf(*arg.value),
-                  "argument " + std::to_string(i + 1) + " of '" + name.name +
-                      "' must be " + typeName(surface->params[i]) +
-                      ", got " + typeName(got));
-        }
+        if (!argFits(surface->params[i], got)) failArgument(*arg.value, i, name.name, surface->params[i], got);
     }
     return surface->result.value_or(ValueType::Void);
+}
+
+void Typer::failUndefinedFunction(const Identifier& name, const Call& call) const {
+    auto candidates = builtinNames();
+    for (const auto& function : owner_->asset.functions)
+        if (function.name != "draw") candidates.push_back(function.name);
+    const auto former = formerBuiltinHint(name.name);
+    const auto hint = !former.empty() ? former : name.name == "mix" || name.name == "shade" ?
+        "; did you mean 'color." + name.name + "'?" : didYouMean(name.name, candidates);
+    error(call.location, "undefined function '" + name.name + "'" + hint);
+}
+
+void Typer::failArgument(const Expr& argument, std::size_t index, const std::string& function,
+                         ValueType expected, ValueType got) const {
+    error(locationOf(argument), "argument " + std::to_string(index + 1) + " of '" + function +
+                                    "' must be " + typeName(expected) + ", got " + typeName(got));
 }
 
 // `part.draw(seed = seed, at = {x, y}, uniforms...)`

@@ -195,8 +195,18 @@ TEST_CASE("lexical errors carry locations") {
     expectError("\"unterminated", 1, 1, "unterminated string");
     expectError("/* never closed", 1, 1, "unterminated block comment");
     expectError("0x", 1, 1, "hexadecimal");
-    expectError("#12", 1, 1, "colour");
-    expectError("#12345", 1, 1, "colour");
+    expectError("#12", 1, 1, "color");
+    expectError("#12345", 1, 1, "color");
+    // A leading zero is never octal, and an integer keeps all of its 32 bits.
+    expectError("x = 010", 1, 5, "leading zero");
+    expectError("08", 1, 1, "leading zero");
+    expectError("00.5", 1, 1, "leading zero");
+    expectError("4294967296", 1, 1, "does not fit in 32 bits");
+    expectError("99999999999999999999999", 1, 1, "does not fit in 32 bits");
+    expectError("0x100000000", 1, 1, "does not fit in 32 bits");
+    expectError("1e400", 1, 1, "out of range for f32");
+    expectError("1e-400", 1, 1, "out of range for f32");
+    CHECK_NOTHROW(lex("0 0.5 4294967295 0xffffffff 0XFFFFFFFF 1e3 3.4e38"));
     expectError("@", 1, 1, "unexpected character");
     expectError("\"bad\\q\"", 1, 1, "escape");
 }

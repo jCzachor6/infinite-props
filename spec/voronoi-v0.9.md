@@ -146,8 +146,8 @@ Each heapsort prepays `1+4*m*(1+bit_width(m))`; neighbor bitset scans cost
 n per cell. All builder/finalization costs from the core also apply.
 Each Lloyd step charges n to copy centroids and repeats validation and the
 whole construction. Count 256 with four relaxations can require more than
-the default 5M fuel; the `.ipa` meta field `fuel` permits a larger explicit
-budget (the `.ips` compiler keeps its existing 5M default). Quota and
+5M fuel, the default budget before 1.0; it fits the 25M default, and the
+`.ipa` meta field `fuel` sets an explicit budget. Quota and
 fuel exhaustion unwind without a published handle.
 
 ## Verification

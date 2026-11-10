@@ -119,14 +119,44 @@ TEST_CASE("import discovery collects parse failures without exposing damaged pro
 }
 
 TEST_CASE("late validation errors remain structured check diagnostics") {
+    // Only the bytecode validator bounds the operand stack: a polygon of 300
+    // vertices passes the checker and pushes more than its 512 slots.
     const auto result=compileSource("late.ips",[](std::string_view) {
-        return std::string("asset t {size 8x8 incomplete()->i32{} draw{x=incomplete();}}");
+        std::string vertices;
+        for(int vertex=0;vertex<300;++vertex) vertices+="unit(),unit(),";
+        return "asset t {size 8x8 draw{poly("+vertices+"#fff);}}";
     });
     CHECK(result.status==SourceCompilationStatus::InvalidSource);
     REQUIRE(result.diagnostics.size()==1);
     CHECK(result.diagnostics[0].code==ips::DiagnosticCode::CompiledValidation);
     CHECK(result.diagnostics[0].stage==ips::DiagnosticStage::Validation);
     CHECK(result.bytes.empty());
+}
+
+TEST_CASE("a value function that can reach its end is a located typing diagnostic") {
+    for(const std::string helper:{"incomplete()->i32{}","incomplete()->i32{while(1){return 1}}",
+            "incomplete()->i32{if(seed==0){return 1}}",
+            "incomplete()->i32{if(seed==0){return 1}else if(seed==1){return 2}}"}) {
+        INFO(helper);
+        const auto result=compileSource("late.ips",[&](std::string_view) {
+            return "asset t {size 8x8 "+helper+" draw{x=incomplete();}}";
+        });
+        CHECK(result.status==SourceCompilationStatus::InvalidSource);
+        REQUIRE(result.diagnostics.size()==1);
+        CHECK(result.diagnostics[0].stage==ips::DiagnosticStage::Typing);
+        CHECK(result.diagnostics[0].message=="function 'incomplete' must return a value on every path; end it with a return");
+        REQUIRE(result.diagnostics[0].location);
+        CHECK(result.diagnostics[0].location->column==19);
+    }
+    for(const std::string helper:{"complete()->i32{return 1 x=2}","complete()->i32{if(seed==0){return 1}return 2}",
+            "complete()->i32{if(seed==0){return 1}else if(seed==1){return 2}else{return 3}}",
+            "complete()->i32{layer l{return 1}}"}) {
+        INFO(helper);
+        const auto result=compileSource("late.ips",[&](std::string_view) {
+            return "asset t {size 8x8 "+helper+" draw{x=complete();}}";
+        });
+        CHECK(result.status==SourceCompilationStatus::Success);
+    }
 }
 
 TEST_CASE("diagnostic exit classes ignore warnings and keep error identities") {

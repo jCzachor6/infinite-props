@@ -33,26 +33,29 @@ The lower bound is evaluated once, then the upper bound, then the value is
 drawn; RNG used inside a bound stays part of the current stream. Equal bounds
 return that value and still consume a draw. A lower bound greater than the
 upper one traps, as does a NaN or infinite `f32` bound; bounds are never
-swapped. Integer draws discard the few raw values that would favour some
+swapped. When both bounds are constants the compiler reports this where the
+range is written, so `3 to 1` does not compile. Integer draws discard the few raw values that would favour some
 results, so every integer of the range is equally likely for any width, and
 the full `i32` range is allowed. Redraws cost 1 fuel each; the exact algorithms
 are in [random ranges](../../spec/iprop-v0.8.md#18-uniform-random-ranges).
 Floating results never leave the bounds, even after rounding.
 
-`to` binds more loosely than arithmetic and shifts and more tightly than
-comparisons, so `base - 2 to base + 2` draws around `base`, and
+`to` binds more loosely than arithmetic, shifts and bitwise operators and more
+tightly than comparisons, so `base - 2 to base + 2` draws around `base`, and
 `(0 to 100) < 10` compares a draw. Write `c.r + (-5 to 5)` to add a draw to
 an expression. Ranges cannot be chained: `a to b to c` is rejected; use
 `(1 to 3) to (5 to 8)` to draw the bounds themselves. The formatter writes
 every range in parentheses.
 
 <!-- llm: skip -->
-`to` stays a valid name. Where a statement may end, a following `to = ...`,
-`to.draw(...)` or a call of a declared helper `to(...)` starts the next
-statement, as before; inside parentheses or arguments `to` is always the
-operator. `range()` and `index()` keep their own algorithms and results, so
-existing generators keep their draws; switching them to `to` changes the
-stream.
+`to` and `with` are reserved words and cannot name anything. `range()` and
+`index()` keep their own algorithms and results, so switching a draw from one
+of them to `to` changes the stream.
+
+<!-- example: ../../examples/language/errors/reversed-constant-range.ips -->
+
+<!-- llm: skip -->
+This example is intentionally rejected: its constant bounds are reversed.
 
 ### Gradients and segments
 
@@ -128,11 +131,13 @@ the probability of their half intervals.
 Evaluation order is the lower bound, the upper bound, the distribution, then
 one stream step. Parameters are checked when the constructor runs: invalid
 values trap there, even when the description is never used, and an
-unassigned `distribution` local traps when drawn. Draws cost 1 fuel plus 1 per
+unassigned `distribution` local traps when drawn. Constant parameters that a
+constructor always rejects, such as `gaussian(0.0, -1.0)`, are a compile
+error. Draws cost 1 fuel plus 1 per
 iteration of the pinned numerical kernels, typically 20-150; the
 [specification](../../spec/iprop-v0.8.md#19-analytic-distributions) gives the exact
-algorithms. A helper named `gaussian`, `triangular` or `beta` takes
-precedence over the constructor of the same name.
+algorithms. `gaussian`, `triangular` and `beta` are builtins like any other:
+a helper cannot take one of these names.
 
 <!-- example: ../../examples/language/distributions.ips -->
 
@@ -179,8 +184,8 @@ Buffers share the generation's 64 MiB data quota and are charged once.
 Asset `const distribution` and const samplers may use pure weighted literals,
 including forward numeric const references. Invalid static descriptions reject
 before an artifact is written; invalid runtime operands trap at construction,
-even if unused. Only `weighted` followed by `{` starts the literal; a helper
-`weighted(...)` and locals named `weighted` keep their existing meaning.
+even if unused. `weighted` is a reserved word: it only starts this literal
+and cannot name a helper or a local.
 See the [format and numerical contract](../../spec/iprop-v0.8.md#27-point-distributions-and-weighted-draws).
 
 <!-- example: ../../examples/language/weighted.ips -->
@@ -225,9 +230,8 @@ Construction pays base instruction fuel plus one per point; an ordinary draw
 adds two per original segment for clipping/selection, reserved before work.
 Equal-bound support checks use no segment scan. The shared 64 MiB quota counts
 each retained point buffer once. Invalid static data reject before artifacts;
-invalid runtime snapshots trap when constructed, even unused. `density(...)`
-helpers and locals named `density` keep their meaning; the literal starts only
-before `{`. Existing family and weighted kernels stay frozen. See the
+invalid runtime snapshots trap when constructed, even unused. `density` is a
+reserved word, like `weighted`. Existing family and weighted kernels stay frozen. See the
 [pinned density contract](../../spec/iprop-v0.8.md#28-density-distributions-and-pinned-integration).
 
 <!-- example: ../../examples/language/point-distributions.ips -->
@@ -291,11 +295,10 @@ Use a positive bound for ordinary palette/array selection.
 ## pick
 <!-- builtin: pick -->
 
-`pick(n)` is exactly `index(n)`. With two or more arguments it eagerly
-evaluates choices, then consumes one selection draw. Choices must share a
-storable type; mixed numeric choices widen to `f32`. Named choice arguments
-are `value0`, `value1`, etc. A single non-integer choice is rejected because
-the single-argument overload is the index alias.
+Takes two or more choices, evaluates all of them eagerly and then consumes one
+selection draw. Choices must share a storable type; mixed numeric choices
+widen to `f32`. Named choice arguments are `value0`, `value1`, etc. One
+argument is rejected: write `index(n)` to draw an index below `n`.
 
 ## chance
 <!-- builtin: chance -->
@@ -325,15 +328,15 @@ Returns the frozen splitmix32 hash of the argument's bit pattern as `i32`.
 It does not change the current stream. It is useful for deriving independent
 seeds from a saved seed and a coordinate or index.
 
-## stream_push
-<!-- builtin: stream_push -->
+## stream.push
+<!-- builtin: stream.push -->
 
 Saves the current stream and derives a nested stream from the supplied seed
-according to the VM contract. Pair it with `stream_pop` before returning.
+according to the VM contract. Pair it with `stream.pop` before returning.
 This is stream derivation, not the direct seed assignment used by `roll`.
 
-## stream_pop
-<!-- builtin: stream_pop -->
+## stream.pop
+<!-- builtin: stream.pop -->
 
 Restores the most recently pushed stream. An unmatched pop traps. Nesting
 is bounded by the VM's stream-stack limit. Balanced calls isolate a sequence

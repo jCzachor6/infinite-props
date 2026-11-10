@@ -66,7 +66,7 @@ function run(iprop,tool,directory) {
         ["for i in 0..3{layer image{pixel(i,0,#ff0000)if(i==0){continue}if(i==1){break}}}surface.paint(image)pixel(3,0,#0000ff)","pixel(1,0,#ff0000)pixel(3,0,#0000ff)"],
         ["for i in 0..2{layer outer{pixel(i,0,#00ff00)layer inner{pixel(2,0,#fff)continue}}}surface.paint(outer)surface.paint(inner)","pixel(1,0,#00ff00)pixel(2,0,#fff)"],
         ["abandon()pixel(3,0,#0000ff)","pixel(3,0,#0000ff)"],
-        ["surface.paint(blend=surface.legacy,image=makeImage())", "w=1 to 3 p={w,0}pixel(w,0,#929ca8)"],
+        ["surface.paint(blend=surface.legacy,source=makeImage())", "w=1 to 3 p={w,0}pixel(w,0,#929ca8)"],
         ["layer image{rect(0,0,4,4,#929ca8)line(0,0,3,3,1,#343a42)oval(1,1,1,1,#c09060)curve({0,3},{1,0},{3,3},1.0,#fff)poly([{0,0},{1,0},{0,1}],#123456)weather(7,20)}surface.paint(image)",
             "rect(0,0,4,4,#929ca8)line(0,0,3,3,1,#343a42)oval(1,1,1,1,#c09060)curve({0,3},{1,0},{3,3},1.0,#fff)poly([{0,0},{1,0},{0,1}],#123456)weather(7,20)"],
         ["pixel(0,0,#11223380)pixel(1,0,#112233)layer image{pixel(0,0,#ff000080)pixel(1,0,#0000ff00)}surface.paint(image)","pixel(0,0,#11223380)pixel(1,0,#112233)"],
@@ -87,7 +87,7 @@ function run(iprop,tool,directory) {
         assert.throws(()=>iprop.generate(new Uint8Array(fs.readFileSync(binary)),{}),message);++traps;
     }
     for(const opt of [false,true])for(const source of ["asset t{size 1x1 draw{if(false){layer image{}}surface.paint(image)}}",
-        "asset t{input i32 v=0 size 1x1 draw{layer image{x=1/(v-v)}}}","asset t{size 2048x2048 draw{layer image{}surface.paint(image)}}"])
+        "asset t{input i32 v=0 size 1x1 draw{layer image{x=1/(v-v)}}}","asset t{size 2048x2048 draw{for i in 0..5{layer image{}surface.paint(image)}}}"])
         trap(compile(source,opt),/layer is unassigned|divide by zero|fuel exhausted/);
     function assembly(text) {fs.writeFileSync(base+".ipa",text);execFileSync(tool("ipa"),[base+".ipa","-o",base+"-asm.iprop"]);return base+"-asm.iprop";}
     trap(assembly("meta: size=1x1\ntypes: layer\nfn draw (  ) -> ( ):\ncall nested\nreturn\nendfn\nfn nested ( ) -> ( ):\nlocals: layer\nlayer.begin 0\ncall nested\nend\nreturn\nendfn\n"),/surface scope depth exceeds 32/);

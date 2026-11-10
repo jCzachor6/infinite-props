@@ -33,13 +33,13 @@ TEST_CASE("all twenty vec2 overloads preserve scalar pixels and output bits") {
         {"oval(q,r,c)", "oval(q.x,q.y,r.x,r.y,c)"},
         {"oval(q,r.x,r.y,c)", "oval(q.x,q.y,r.x,r.y,c)"},
         {"oval(q.x,q.y,r,c)", "oval(q.x,q.y,r.x,r.y,c)"},
-        {"value={noise(q,seed),0}", "value={noise(q.x,q.y,seed),0}"},
-        {"value={fault(q,seed),0}", "value={fault(q.x,q.y,seed),0}"},
+        {"value={noise.value(q,seed),0}", "value={noise.value(q.x,q.y,seed),0}"},
+        {"value={noise.fault(q,seed),0}", "value={noise.fault(q.x,q.y,seed),0}"},
         {"value={noise.grad(q,seed),0}", "value={noise.grad(q.x,q.y,seed),0}"},
         {"value={noise.fbm(q,4,seed),0}", "value={noise.fbm(q.x,q.y,4,seed),0}"},
         {"value={noise.cell(q,seed),0}", "value={noise.cell(q.x,q.y,seed),0}"},
         {"value={noise.ridge(q,4,seed),0}", "value={noise.ridge(q.x,q.y,4,seed),0}"},
-        {"value={warp(q,0.5,seed),0}", "value={warp(q.x,q.y,0.5,seed),0}"},
+        {"value={noise.warp(q,0.5,seed),0}", "value={noise.warp(q.x,q.y,0.5,seed),0}"},
         {"pixel(q,c)", "pixel(int(q.x),int(q.y),c)"},
         {"value=cell.jitter(q,seed)", "value=cell.jitter(int(q.x),int(q.y),seed)"},
         {"value={dither(0.4,q),0}", "value={dither(0.4,int(q.x),int(q.y)),0}"},
@@ -167,7 +167,7 @@ TEST_CASE("vec2 lerp and atan2 retain scalar boundary bits and support constants
 
 TEST_CASE("vec2 overloads reject invalid types and keep scalar signatures strict") {
     for (const auto* body : {"pixel(1.5,2,#fff)", "line({1,2},{3,4},1.5,#fff)",
-         "noise({1,2},1.0)", "rect({1,2},#fff,#fff)", "rect(position={1,2},size={3,4},x=1,color=#fff)",
+         "noise.value({1,2},1.0)", "rect({1,2},#fff,#fff)", "rect(position={1,2},size={3,4},x=1,color=#fff)",
          "rect(position={1,2},size={3,4})", "atan2(#fff)", "lerp({1,2},2,0.5)",
          "mask.offset({1,2},{3,4})", "dither(0.5,#fff)", "cell.jitter({1,2},0.5)"}) {
         INFO(body);

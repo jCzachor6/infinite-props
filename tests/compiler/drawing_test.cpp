@@ -26,7 +26,7 @@ asset t {
   output point p
 
   cover(q: vec2) -> f32 {
-    return fill(dist.circle(q, {8.0, 8.0}, 3.0), 1.0)
+    return dist.fill(dist.circle(q, {8.0, 8.0}, 3.0), 1.0)
   }
 
   draw {
@@ -150,7 +150,7 @@ asset t {
   draw {
     c = color.hsv(#ff0000, 0.16666667, 1.0, 1.0)
     c2 = color.mul(#ff8040, #4080ff)
-    c3 = color.set.a(c2, 255)
+    c3 = color.set_a(c2, 255)
     pixel(0, 0, c)
     pixel(1, 0, c2)
     pixel(2, 0, c3)
@@ -209,14 +209,14 @@ asset t {
   output point p
 
   draw {
-    f = fold({-3.0, 4.0}, 2)
-    q = polar({3.0, 4.0})
+    f = vec2.fold({-3.0, 4.0}, 2)
+    q = vec2.polar({3.0, 4.0})
     d = dither(0.7, 1, 0)
     p = {f.x + f.y, q.x + d}
   }
 })";
     const auto fromIps = run(compileChecked(source), 0, 0);
-    // fold({-3,4}, 2) -> the first-quadrant reflection at the same radius
+    // vec2.fold({-3,4}, 2) -> the first-quadrant reflection at the same radius
     // (5): the {3, 4} exactly. q.x = 5; dither(0.7, 1, 0) = 1.
     REQUIRE(fromIps.outputs[0].points[0].x == 7.f);  // f.x + f.y = 3 + 4
     REQUIRE(fromIps.outputs[0].points[0].y == 6.f);  // q.x + d = 5 + 1
@@ -340,7 +340,7 @@ asset t {
     pts = {1, 2}
     pts = {3, 4}
     c = {1, 2, 3}
-    poly(#ffffff, 0, 0, 4, 0, 2, 2)
+    poly(0, 0, 4, 0, 2, 2, #ffffff)
   }
 })";
     const RunOutcome outcome = execute(compileChecked(source));

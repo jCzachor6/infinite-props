@@ -1,6 +1,7 @@
 #include "iprop/math/Distribution.hpp"
 #include "ips/Parser.hpp"
 
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -12,15 +13,18 @@ namespace {
 
 std::unique_ptr<Expr> literal(Literal::Kind literalKind, const Token& token,
                              const std::string& text) {
-    return std::make_unique<Expr>(
+    return node(
         Literal{literalKind, text, token.location});
 }
 
+// `at` is the operator. Callers read it before parsing the right operand:
+// argument evaluation order is unspecified, and the location must not
+// depend on the host compiler.
 std::unique_ptr<Expr> binary(Binary::Op op, std::unique_ptr<Expr> left,
                              std::unique_ptr<Expr> right,
                              const SourceLocation& at) {
     const TokenRange range{left->sourceRange.begin, right->sourceRange.end};
-    auto expr = std::make_unique<Expr>(
+    auto expr = node(
         Binary{op, std::move(left), std::move(right), at});
     expr->sourceRange = expr->sourceCoreRange = range;
     return expr;
@@ -31,26 +35,28 @@ std::unique_ptr<Expr> binary(Binary::Op op, std::unique_ptr<Expr> left,
 // ---- expressions -----------------------------------------------------------
 //
 // Precedence, loosest to tightest:
-//   ||  <  &&  <  |  <  ^  <  &  <  ==/!=  <  </<=/>/>=  <  to  <  <</>>
+//   ||  <  &&  <  ==/!=  <  </<=/>/>=  <  to  <  |  <  ^  <  &  <  <</>>
 //   <  +,-  <  *,/,%
 //   <  unary  <  postfix (member access and calls)
+// Bitwise operators bind tighter than comparisons, so `x & 1 == 0` tests the
+// masked value. Equality, ordering and `to` do not chain.
 
 std::unique_ptr<Expr> ParserImpl::parseExpr() { return parseOr(); }
 
 std::unique_ptr<Expr> ParserImpl::parseOr() {
     auto left = parseAnd();
     while (match(TokenKind::OrOr)) {
-        left = binary(Binary::Op::Or, std::move(left), parseAnd(),
-                     tokens_[pos_ - 1].location);
+        const auto at = tokens_[pos_ - 1].location;
+        left = binary(Binary::Op::Or, std::move(left), parseAnd(), at);
     }
     return left;
 }
 
 std::unique_ptr<Expr> ParserImpl::parseAnd() {
-    auto left = parseBitOr();
+    auto left = parseEquality();
     while (match(TokenKind::AndAnd)) {
-        left = binary(Binary::Op::And, std::move(left), parseBitOr(),
-                     tokens_[pos_ - 1].location);
+        const auto at = tokens_[pos_ - 1].location;
+        left = binary(Binary::Op::And, std::move(left), parseEquality(), at);
     }
     return left;
 }
@@ -58,8 +64,8 @@ std::unique_ptr<Expr> ParserImpl::parseAnd() {
 std::unique_ptr<Expr> ParserImpl::parseBitOr() {
     auto left = parseBitXor();
     while (match(TokenKind::Pipe)) {
-        left = binary(Binary::Op::BitOr, std::move(left), parseBitXor(),
-                     tokens_[pos_ - 1].location);
+        const auto at = tokens_[pos_ - 1].location;
+        left = binary(Binary::Op::BitOr, std::move(left), parseBitXor(), at);
     }
     return left;
 }
@@ -67,62 +73,67 @@ std::unique_ptr<Expr> ParserImpl::parseBitOr() {
 std::unique_ptr<Expr> ParserImpl::parseBitXor() {
     auto left = parseBitAnd();
     while (match(TokenKind::Caret)) {
-        left = binary(Binary::Op::Xor, std::move(left), parseBitAnd(),
-                     tokens_[pos_ - 1].location);
+        const auto at = tokens_[pos_ - 1].location;
+        left = binary(Binary::Op::Xor, std::move(left), parseBitAnd(), at);
     }
     return left;
 }
 
 std::unique_ptr<Expr> ParserImpl::parseBitAnd() {
-    auto left = parseEquality();
+    auto left = parseShift();
     while (match(TokenKind::Amp)) {
-        left = binary(Binary::Op::BitAnd, std::move(left), parseEquality(),
-                     tokens_[pos_ - 1].location);
+        const auto at = tokens_[pos_ - 1].location;
+        left = binary(Binary::Op::BitAnd, std::move(left), parseShift(), at);
     }
     return left;
 }
 
+// `a == b == c` would compare a 0/1 result with c. Like `to`, it is rejected.
 std::unique_ptr<Expr> ParserImpl::parseEquality() {
     auto left = parseComparison();
-    for (;;) {
-        if (match(TokenKind::Equal)) {
-            left = binary(Binary::Op::Eq, std::move(left), parseComparison(), tokens_[pos_ - 1].location);
-        } else if (match(TokenKind::NotEqual)) {
-            left = binary(Binary::Op::Ne, std::move(left), parseComparison(), tokens_[pos_ - 1].location);
-        } else {
-            return left;
-        }
-    }
+    const auto op = kind() == TokenKind::Equal ? Binary::Op::Eq : Binary::Op::Ne;
+    if (!match(TokenKind::Equal) && !match(TokenKind::NotEqual)) return left;
+    const auto at = tokens_[pos_ - 1].location;
+    left = binary(op, std::move(left), parseComparison(), at);
+    if (kind() == TokenKind::Equal || kind() == TokenKind::NotEqual)
+        failHere("'==' and '!=' cannot be chained; compare each pair and join them with &&, "
+                 "or parenthesize the comparison whose 0/1 result is compared");
+    return left;
 }
 
+// `a < b < c` would compare the 0/1 result of `a < b` with c.
 std::unique_ptr<Expr> ParserImpl::parseComparison() {
-    auto left = parseRandomRange();
-    for (;;) {
-        if (match(TokenKind::Less)) {
-            left = binary(Binary::Op::Lt, std::move(left), parseRandomRange(), tokens_[pos_ - 1].location);
-        } else if (match(TokenKind::LessEqual)) {
-            left = binary(Binary::Op::Le, std::move(left), parseRandomRange(), tokens_[pos_ - 1].location);
-        } else if (match(TokenKind::Greater)) {
-            left = binary(Binary::Op::Gt, std::move(left), parseRandomRange(), tokens_[pos_ - 1].location);
-        } else if (match(TokenKind::GreaterEqual)) {
-            left = binary(Binary::Op::Ge, std::move(left), parseRandomRange(), tokens_[pos_ - 1].location);
-        } else {
-            return left;
+    const auto ordering = [&]() -> std::optional<Binary::Op> {
+        switch (kind()) {
+        case TokenKind::Less: return Binary::Op::Lt;
+        case TokenKind::LessEqual: return Binary::Op::Le;
+        case TokenKind::Greater: return Binary::Op::Gt;
+        case TokenKind::GreaterEqual: return Binary::Op::Ge;
+        default: return std::nullopt;
         }
-    }
+    };
+    auto left = parseRandomRange();
+    const auto op = ordering();
+    if (!op) return left;
+    const auto at = advance().location;
+    left = binary(*op, std::move(left), parseRandomRange(), at);
+    if (ordering())
+        failHere("comparisons cannot be chained; write a < b && b < c, "
+                 "or parenthesize the comparison whose 0/1 result is compared");
+    return left;
 }
 
 std::unique_ptr<Expr> ParserImpl::parseRandomRange() {
-    auto lower = parseShift();
+    auto lower = parseBitOr();
     if (kind() != TokenKind::KeywordTo) return lower;
     const SourceLocation at = advance().location; // 'to'
-    auto upper = parseShift();
+    auto upper = parseBitOr();
     auto end = upper->sourceRange.end;
     std::unique_ptr<Expr> distribution;
     SourceLocation withAt{};
     if (kind() == TokenKind::KeywordWith) {
         withAt = advance().location; // 'with'
-        distribution = parseShift();
+        distribution = parseBitOr();
         end = distribution->sourceRange.end;
     }
     if (kind() == TokenKind::KeywordTo) {
@@ -130,7 +141,7 @@ std::unique_ptr<Expr> ParserImpl::parseRandomRange() {
                  "for example (a to b) to c");
     }
     const TokenRange range{lower->sourceRange.begin, end};
-    auto expr = std::make_unique<Expr>(
+    auto expr = node(
         RandomRange{std::move(lower), std::move(upper), at, std::move(distribution), withAt});
     expr->sourceRange = expr->sourceCoreRange = range;
     return expr;
@@ -140,11 +151,11 @@ std::unique_ptr<Expr> ParserImpl::parseShift() {
     auto left = parseAdditive();
     for (;;) {
         if (match(TokenKind::Shl)) {
-            left = binary(Binary::Op::Shl, std::move(left), parseAdditive(),
-                          tokens_[pos_ - 1].location);
+            const auto at = tokens_[pos_ - 1].location;
+            left = binary(Binary::Op::Shl, std::move(left), parseAdditive(), at);
         } else if (match(TokenKind::Shr)) {
-            left = binary(Binary::Op::Shr, std::move(left), parseAdditive(),
-                          tokens_[pos_ - 1].location);
+            const auto at = tokens_[pos_ - 1].location;
+            left = binary(Binary::Op::Shr, std::move(left), parseAdditive(), at);
         } else {
             return left;
         }
@@ -155,9 +166,11 @@ std::unique_ptr<Expr> ParserImpl::parseAdditive() {
     auto left = parseMultiplicative();
     for (;;) {
         if (match(TokenKind::Plus)) {
-            left = binary(Binary::Op::Add, std::move(left), parseMultiplicative(), tokens_[pos_ - 1].location);
+            const auto at = tokens_[pos_ - 1].location;
+            left = binary(Binary::Op::Add, std::move(left), parseMultiplicative(), at);
         } else if (match(TokenKind::Minus)) {
-            left = binary(Binary::Op::Sub, std::move(left), parseMultiplicative(), tokens_[pos_ - 1].location);
+            const auto at = tokens_[pos_ - 1].location;
+            left = binary(Binary::Op::Sub, std::move(left), parseMultiplicative(), at);
         } else {
             return left;
         }
@@ -168,11 +181,14 @@ std::unique_ptr<Expr> ParserImpl::parseMultiplicative() {
     auto left = parseUnary();
     for (;;) {
         if (match(TokenKind::Star)) {
-            left = binary(Binary::Op::Mul, std::move(left), parseUnary(), tokens_[pos_ - 1].location);
+            const auto at = tokens_[pos_ - 1].location;
+            left = binary(Binary::Op::Mul, std::move(left), parseUnary(), at);
         } else if (match(TokenKind::Slash)) {
-            left = binary(Binary::Op::Div, std::move(left), parseUnary(), tokens_[pos_ - 1].location);
+            const auto at = tokens_[pos_ - 1].location;
+            left = binary(Binary::Op::Div, std::move(left), parseUnary(), at);
         } else if (match(TokenKind::Percent)) {
-            left = binary(Binary::Op::Mod, std::move(left), parseUnary(), tokens_[pos_ - 1].location);
+            const auto at = tokens_[pos_ - 1].location;
+            left = binary(Binary::Op::Mod, std::move(left), parseUnary(), at);
         } else {
             return left;
         }
@@ -180,22 +196,23 @@ std::unique_ptr<Expr> ParserImpl::parseMultiplicative() {
 }
 
 std::unique_ptr<Expr> ParserImpl::parseUnary() {
+    const Nesting level(*this, expressionNesting_, kExpressionNesting);
     const auto start = pos_;
     if (match(TokenKind::Minus)) {
         const SourceLocation at = tokens_[pos_ - 1].location;
-        auto expr = std::make_unique<Expr>(Unary{Unary::Op::Neg, parseUnary(), at});
+        auto expr = node(Unary{Unary::Op::Neg, parseUnary(), at});
         expr->sourceRange = expr->sourceCoreRange = {start, pos_};
         return expr;
     }
     if (match(TokenKind::Bang)) {
         const SourceLocation at = tokens_[pos_ - 1].location;
-        auto expr = std::make_unique<Expr>(Unary{Unary::Op::Not, parseUnary(), at});
+        auto expr = node(Unary{Unary::Op::Not, parseUnary(), at});
         expr->sourceRange = expr->sourceCoreRange = {start, pos_};
         return expr;
     }
     if (match(TokenKind::Tilde)) {
         const SourceLocation at = tokens_[pos_ - 1].location;
-        auto expr = std::make_unique<Expr>(Unary{Unary::Op::BitNot, parseUnary(), at});
+        auto expr = node(Unary{Unary::Op::BitNot, parseUnary(), at});
         expr->sourceRange = expr->sourceCoreRange = {start, pos_};
         return expr;
     }
@@ -216,7 +233,7 @@ std::unique_ptr<Expr> ParserImpl::parsePostfixAfter(std::unique_ptr<Expr> expr) 
             const Token name = base && ((base->name == "mask" && kind() == TokenKind::KeywordFrom) ||
                 ((base->name == "noise" || base->name == "regions" || base->name == "part") && kind() == TokenKind::KeywordMask)) ?
                 advance() : expectName("a member name after '.'");
-            expr = std::make_unique<Expr>(
+            expr = node(
                 Member{std::move(expr), name.text, name.location});
         } else if (kind() == TokenKind::LParen) {
             const SourceLocation at = locationOf(*expr);
@@ -225,24 +242,24 @@ std::unique_ptr<Expr> ParserImpl::parsePostfixAfter(std::unique_ptr<Expr> expr) 
             if (member && member->name == "pick") {
                 if (args.size() > 1 || (!args.empty() && args[0].name && *args[0].name != "n"))
                     throw SourceError{at, ".pick takes no arguments or one i32 count named 'n'"};
-                expr = std::make_unique<Expr>(SamplerPick{std::move(member->object),
+                expr = node(SamplerPick{std::move(member->object),
                     args.empty() ? nullptr : std::move(args[0].value), at});
             } else if (member && member->name == "blur") {
                 if (args.size() != 1 || (args[0].name && *args[0].name != "sigma"))
                     throw SourceError{at, ".blur takes one f32 sigma, optionally named 'sigma'"};
-                expr = std::make_unique<Expr>(SurfaceBlur{std::move(member->object), std::move(args[0]), at});
+                expr = node(SurfaceBlur{std::move(member->object), std::move(args[0]), at});
             } else if (member && (member->name == "distinct" || member->name == "sort")) {
                 if (!args.empty()) throw SourceError{at, "." + member->name + " takes no arguments"};
-                expr = std::make_unique<Expr>(ListMethod{std::move(member->object), member->name, at});
+                expr = node(ListMethod{std::move(member->object), member->name, at});
             } else {
-                expr = std::make_unique<Expr>(Call{std::move(expr), std::move(args), at});
+                expr = node(Call{std::move(expr), std::move(args), at});
             }
         } else if (kind() == TokenKind::LBracket) {
             const SourceLocation at = locationOf(*expr);
             advance(); // '['
             auto index = parseExpr();
             expect(TokenKind::RBracket, "']' after the index");
-            expr = std::make_unique<Expr>(
+            expr = node(
                 Index{std::move(expr), std::move(index), at});
         } else {
             return expr;
@@ -267,14 +284,14 @@ std::unique_ptr<Expr> ParserImpl::parsePrimary() {
         auto args = parseArgs();
         if (args.size() != 1 || args[0].name)
             throw SourceError{at, std::string(stepper ? "stepper" : "sampler") + " capture takes one positional value or range"};
-        auto expr = std::make_unique<Expr>(SamplerCapture{std::move(args[0].value), at, stepper});
+        auto expr = node(SamplerCapture{std::move(args[0].value), at, stepper});
         expr->sourceRange = expr->sourceCoreRange = {start, pos_};
         return expr;
     }
     case TokenKind::KeywordMask:
     case TokenKind::Identifier: {
         const Token name = advance();
-        auto expr = std::make_unique<Expr>(Identifier{name.text, name.location});
+        auto expr = node(Identifier{name.text, name.location});
         expr->sourceRange = expr->sourceCoreRange = {start, pos_};
         return expr;
     }
@@ -294,7 +311,7 @@ std::unique_ptr<Expr> ParserImpl::parsePrimary() {
         // also appear as expression identifiers.
         if (isNameKind(kind())) {
             const Token name = advance();
-            auto expr = std::make_unique<Expr>(Identifier{name.text, name.location});
+            auto expr = node(Identifier{name.text, name.location});
             expr->sourceRange = expr->sourceCoreRange = {start, pos_};
             return expr;
         }
@@ -312,13 +329,23 @@ std::unique_ptr<Expr> ParserImpl::parseLiteral() {
         expr->sourceRange = expr->sourceCoreRange = {start, pos_};
         return expr;
     };
+    // `3px` lexes as a number and a word; no expression continues that way.
+    const auto rejectSuffix = [&](const Token& number) {
+        const Token& next = peek();
+        const char first = next.text.empty() ? '\0' : next.text[0];
+        const bool word = (first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z') || first == '_';
+        if (word && next.location.byteOffset == number.location.endByteOffset)
+            throw SourceError{next.location, "unexpected '" + next.text + "' directly after a number"};
+    };
     switch (kind()) {
     case TokenKind::Int: {
         const Token token = advance();
+        rejectSuffix(token);
         return rangedLiteral(Literal::Kind::Int, token, token.text);
     }
     case TokenKind::Float: {
         const Token token = advance();
+        rejectSuffix(token);
         return rangedLiteral(Literal::Kind::Float, token, token.text);
     }
     case TokenKind::Color: {
@@ -360,7 +387,7 @@ std::unique_ptr<Expr> ParserImpl::parseVector() {
         }
     }
     expect(TokenKind::RBrace, "'}'");
-    auto expr = std::make_unique<Expr>(VectorLit{std::move(elements), at});
+    auto expr = node(VectorLit{std::move(elements), at});
     expr->sourceRange = expr->sourceCoreRange = {start, pos_};
     return expr;
 }
@@ -375,7 +402,7 @@ std::unique_ptr<Expr> ParserImpl::parseList() {
         if (!match(TokenKind::Comma)) break;
     }
     expect(TokenKind::RBracket, "']' after list elements");
-    auto expr = std::make_unique<Expr>(ListLit{std::move(elements), at});
+    auto expr = node(ListLit{std::move(elements), at});
     expr->sourceRange = expr->sourceCoreRange = {start, pos_};
     return expr;
 }
@@ -396,7 +423,7 @@ std::unique_ptr<Expr> ParserImpl::parsePointDistribution() {
         if (!match(TokenKind::Comma)) break;
     }
     expect(TokenKind::RBrace, "'}' after distribution points");
-    auto expr = std::make_unique<Expr>(std::move(literal));
+    auto expr = node(std::move(literal));
     expr->sourceRange = expr->sourceCoreRange = {start, pos_};
     return expr;
 }

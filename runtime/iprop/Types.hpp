@@ -11,6 +11,16 @@
 #include <variant>
 #include <vector>
 
+// The interpreter loop depends on a few functions being inlined into it;
+// their size makes optimizers decline when merely asked. GCC and Clang are
+// told to. MSVC only gets the request: a __forceinline it declines is warning
+// C4714, an error under /WX.
+#if defined(__GNUC__) || defined(__clang__)
+#define IPROP_ALWAYS_INLINE inline __attribute__((always_inline))
+#else
+#define IPROP_ALWAYS_INLINE inline
+#endif
+
 namespace iprop {
 
 // Fixed-width aliases (spec §3).

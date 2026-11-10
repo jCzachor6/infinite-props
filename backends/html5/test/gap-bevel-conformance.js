@@ -18,9 +18,9 @@ function source(c,record,mode='layer',short=false){
     const input=publicInput(c);if(!input)return null;
     const selected=record.result.regions.flatMap((r,i)=>!r.holes.length&&record.result.rings[r.outer].vertices.length<=256?[i]:[]);
     const points=selected.length?`if(${selected.map(i=>'i=='+i).join('||')}){ps=regions.points(rs,i)trace={list.len(ps),-5}for j in 0..list.len(ps){trace=ps[j]}}`:'';
-    const gap=value=>short?`regions.gap(${value},${numeric(c.width)})`:`regions.gap(seed=${c.seed},variation=${numeric(c.variation)},width=${numeric(c.width)},source=${value})`;
+    const gap=value=>short?`regions.gap(${value},${numeric(c.width)})`:`regions.gap(seed=${c.seed},variation=${numeric(c.variation)},width=${numeric(c.width)},regions=${value})`;
     let operation='regions(src)';for(let i=0;i<c.repeat;i++)operation=gap(operation);
-    const b=c.bevel||{},bevel=short?'regions.bevel(rs,2,{-1,-1})':`regions.bevel(strength=${numeric(b.strength??.5)},shadow=${color(b.shadow||[0,0,0,255])},highlight=${color(b.highlight||[255,255,255,255])},light=${vector(b.light||[-1,-1])},width=${numeric(b.width??2)},source=rs)`;
+    const b=c.bevel||{},bevel=short?'regions.bevel(rs,2,{-1,-1})':`regions.bevel(strength=${numeric(b.strength??.5)},shadow=${color(b.shadow||[0,0,0,255])},highlight=${color(b.highlight||[255,255,255,255])},light=${vector(b.light||[-1,-1])},width=${numeric(b.width??2)},regions=rs)`;
     const resource=c.bevel?`shade=echo_layer(${bevel})`:'m=regions.mask(rs)';
     const capture=mode==='creation-in-clip'?`layer empty{}clip(mask.from(empty)){${resource}}`:resource;
     const paint=c.bevel?'surface.paint(shade,blend=surface.'+(mode.startsWith('legacy')?'legacy':'source_over')+')':'surface.paint(m,#fff,blend=surface.source_over)';

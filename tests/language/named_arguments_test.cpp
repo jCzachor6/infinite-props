@@ -81,21 +81,21 @@ TEST_CASE("variadic polygon choice and palette ramp calls bind named arguments")
     const auto named = compileChecked(R"(asset t { size 8x8 palette colors = [#f00, #0f0]
       output point p
       draw {
-        stream_push(seed = 4)
+        stream.push(seed = 4)
         p = {pick(value2 = 30, value0 = 10, value1 = 20), chance(p = 0.5)}
         poly(y2 = 4, x1 = 4, color = #fff, y0 = 0, x0 = 0, y1 = 0, x2 = 0)
         pixel(color = ramp(t = 0.5, palette = colors), y = 4, x = 4)
-        stream_pop()
+        stream.pop()
       }
     })");
     const auto positional = compileChecked(R"(asset t { size 8x8 palette colors = [#ff0000, #00ff00]
       output point p
       draw {
-        stream_push(4)
+        stream.push(4)
         p = {pick(10, 20, 30), chance(0.5)}
-        poly(#ffffff, 0, 0, 4, 0, 0, 4)
+        poly(0, 0, 4, 0, 0, 4, #ffffff)
         pixel(4, 4, ramp(colors, 0.5))
-        stream_pop()
+        stream.pop()
       }
     })");
     CHECK(named == positional);

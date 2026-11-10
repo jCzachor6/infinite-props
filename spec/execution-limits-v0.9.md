@@ -5,7 +5,8 @@
 Status: the VM, checked C API, CLI and all seven hosts expose the shared
 controls. Calibration and the completed local audit are recorded below and in
 [the verification report](verification/v0.9.json).
-Fuel prices and the default 5,000,000 fuel have not changed.
+Fuel prices have not changed. The default fuel budget was 5,000,000 when these
+controls were calibrated; the compiler writes 25,000,000 from 1.0.
 
 ## Independent deterministic work
 

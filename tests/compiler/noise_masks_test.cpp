@@ -169,7 +169,7 @@ TEST_CASE("noise masks compose with clips algebra blur morphology and preserve g
 TEST_CASE("noise mask arguments bind once in signature order and constants remain scalar", "[noise-mask-v09]") {
     const std::string prefix="asset t{size 1x1 const i32 mode=noise.mode_cell_edge const i32 cmp=noise.below output list point trace "
         "v(n:i32)->vec2{trace={n,0}return {1,1}}i(n:i32)->i32{trace={n,0}return 1}f(n:i32)->f32{trace={n,0}return 0.2}draw{";
-    const std::string call="m=noise.mask(warp_amount=f(10),comparison=i(9),softness=f(8),octaves=i(7),seed=i(6),threshold=f(5),frequency=v(4),kind=i(3),size=v(2),origin=v(1))";
+    const std::string call="m=noise.mask(warp_amount=f(10),comparison=i(9),softness=f(8),octaves=i(7),seed=i(6),threshold=f(5),frequency=v(4),mode=i(3),size=v(2),origin=v(1))";
     for(bool opt:{false,true}){
         const auto file=loadFile(compileChecked(prefix+call+"}}",opt));validate(file);VM vm(file,{});vm.run();const auto result=vm.result();const auto& trace=result.outputs[0].points;
         REQUIRE(trace.size()==10);for(std::size_t j=0;j<10;++j)CHECK(trace[j].x==static_cast<f32>(j+1));

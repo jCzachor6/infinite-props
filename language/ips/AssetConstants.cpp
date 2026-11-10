@@ -132,8 +132,8 @@ public:
                 const auto actual = typer_.typeOf(*current_->value, current_->type);
                 const auto expected = valueTypeOf(current_->type);
                 if (!argFits(expected, actual)) {
-                    SourceError error{locationOf(*current_->value), "const '" + current_->name + "' needs a " +
-                        typeName(expected) + ", got " + typeName(actual), {}, DiagnosticCode::TypeError, DiagnosticStage::Typing};
+                    SourceError error{locationOf(*current_->value), "const '" + current_->name + "' needs " +
+                        typePhrase(expected) + ", got " + typeName(actual), {}, DiagnosticCode::TypeError, DiagnosticStage::Typing};
                     error.expectedType = typeName(expected); error.actualType = typeName(actual);
                     throw error;
                 }
@@ -214,8 +214,7 @@ private:
             current_ = &program_.asset.constants[i];
             const auto& name = current_->name;
             if (!declarations_.emplace(name, i).second) fail(current_->location, "duplicate constant name", DiagnosticCode::TypeError);
-            if (name == "seed" || name == "at" || name == "rot" ||
-                name == "mirror_x" || name == "mirror_y") fail(current_->location, "reserved name", DiagnosticCode::TypeError);
+            if (name == "seed") fail(current_->location, "reserved name", DiagnosticCode::TypeError);
             if (collision(program_.asset.inputs, name) || collision(program_.asset.outputs, name) ||
                 collision(program_.asset.palettes, name) || collision(program_.asset.functions, name) ||
                 std::any_of(program_.imports.begin(), program_.imports.end(), [&](const auto& d) { return d.alias == name; }))
@@ -246,9 +245,7 @@ private:
                 return;
             }
             const auto found = builtinSpecs().find(name);
-            const bool helper = !call->builtinOnly && builtinYieldsToHelper(name) && std::any_of(program_.asset.functions.begin(),
-                program_.asset.functions.end(), [&](const auto& function) { return function.name == name; });
-            if (found == builtinSpecs().end() || helper) fail(call->location, "user helper and part calls are not allowed ('" + name + "')");
+            if (found == builtinSpecs().end()) fail(call->location, "user helper and part calls are not allowed ('" + name + "')");
             const auto& spec = found->second;
             if (std::none_of(spec.overloads.begin(), spec.overloads.end(), [&](const auto& o) { return constantBuiltin(spec, o); }))
                 fail(call->location, "'" + name + "' has RNG or generation effects and is not allowed");

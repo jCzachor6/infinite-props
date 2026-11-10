@@ -5,8 +5,10 @@ the file that contains the import, and an imported asset may import parts
 of its own ([nested parts](#nested-parts)). Duplicate aliases in one asset,
 missing files and import cycles are errors. The compiler links every part
 into one executable; generation does not load source files.
-The alias `surface` is reserved for the [surface namespace](surfaces.md);
-rename an existing import using that alias when recompiling.
+An alias shares the asset's one namespace with its inputs, outputs, palettes,
+constants and helpers, and cannot be the name of a builtin namespace such as
+`surface`, `noise` or `part`: `alias.draw(...)` and the namespace's members
+would share one spelling.
 Parts can share immutable mask/layer snapshots through
 [resource outputs](surfaces.md#export-regions-from-parts). They follow each
 hierarchy level's placement and D4 once; host indices still count geometry only.

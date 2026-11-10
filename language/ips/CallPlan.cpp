@@ -33,10 +33,6 @@ CallSignature builtinCallSignature(const BuiltinSpec& spec, std::size_t arity,
     const SourceLocation& at, std::string_view function) {
     auto result = helperCallSignature(builtinParameterNames(spec, arity, at, function));
     result.effects = builtinEffects(spec, builtinOverload(spec, arity));
-    if (variadicPolygon(spec, arity)) {
-        result.evaluationOrder.erase(result.evaluationOrder.begin());
-        result.evaluationOrder.push_back(0);
-    }
     return result;
 }
 CallSignature rampCallSignature() {
@@ -86,11 +82,6 @@ BoundCallPlan bindCall(const Call& call, CallSignature signature, std::string_vi
 std::optional<BoundCallPlan> sourceCallPlan(const Program& program, const Call& call,
     const std::map<std::string, const Program*>& parts) {
     const auto name = calleeName(*call.callee);
-    const auto declared = [&] {
-        for (const auto& function : program.asset.functions)
-            if (function.name == name) return true;
-        return false;
-    };
     if (name == "surface.paint") {
         // Without imported types, try the layer overloads first: after the
         // image they accept only a static blend mode. Mask painting takes a
@@ -102,9 +93,7 @@ std::optional<BoundCallPlan> sourceCallPlan(const Program& program, const Call& 
         } catch (const SourceError&) { /* no layer overload binds these arguments */ }
         return bindCall(call, surfacePaintCallSignature(call, ValueType::Mask), name);
     }
-    if (const auto found = builtinSpecs().find(name);
-        found != builtinSpecs().end() && !(name=="part.draw"&&call.args.size()!=1) &&
-        (call.builtinOnly || !(builtinYieldsToHelper(name) && declared())))
+    if (const auto found = builtinSpecs().find(name); found != builtinSpecs().end())
         return bindCall(call, builtinCallSignature(found->second, call, name), name);
     if (name == "ramp") return bindCall(call, rampCallSignature(), name);
     for (const auto& function : program.asset.functions) {

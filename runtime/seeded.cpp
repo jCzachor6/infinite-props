@@ -333,7 +333,7 @@ Distribution constructed(Execution& ex, DistributionFamily family, std::size_t c
 void advanceAndPushUnit(Execution& ex) {
     Frame& frame = ex.frame();
     frame.stream += 0x9e3779b9u; // wraps (spec §12.2)
-    ex.push(Value(hashUnit(hash32(frame.stream))));
+    ex.push(hashUnit(hash32(frame.stream)));
     ++frame.ip;
 }
 
@@ -435,7 +435,7 @@ bool stepSeeded(Execution& ex, Instruction ins) {
         Frame& frame = ex.frame();
         frame.stream += 0x9e3779b9u;
         const f32 u = hashUnit(hash32(frame.stream));
-        ex.push(Value(a + (b - a) * u));
+        ex.push(a + (b - a) * u);
         ++frame.ip;
         return true;
     }
@@ -445,10 +445,10 @@ bool stepSeeded(Execution& ex, Instruction ins) {
         frame.stream += 0x9e3779b9u;
         const f32 u = hashUnit(hash32(frame.stream));
         if (n == 0) {
-            ex.push(Value(i32{0}));
+            ex.push(i32{0});
         } else {
-            ex.push(Value(static_cast<i32>(
-                std::min(n - 1, static_cast<u32>(u * static_cast<f32>(n))))));
+            ex.push(static_cast<i32>(
+                std::min(n - 1, static_cast<u32>(u * static_cast<f32>(n)))));
         }
         ++frame.ip;
         return true;
@@ -459,7 +459,7 @@ bool stepSeeded(Execution& ex, Instruction ins) {
         if (lo > hi) {
             ex.trap("random range lower bound exceeds the upper bound", ErrorReason::NumericRange);
         }
-        ex.push(Value(uniformInt(ex, lo, hi)));
+        ex.push(uniformInt(ex, lo, hi));
         ++ex.frame().ip;
         return true;
     }
@@ -472,23 +472,23 @@ bool stepSeeded(Execution& ex, Instruction ins) {
         if (lo > hi) {
             ex.trap("random range lower bound exceeds the upper bound", ErrorReason::NumericRange);
         }
-        ex.push(Value(uniformFloat(ex, lo, hi)));
+        ex.push(uniformFloat(ex, lo, hi));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::DistributionGaussian:
-        ex.push(Value(constructed(ex, DistributionFamily::Gaussian, 2,
-                                  "gaussian needs a finite mean and a finite sigma > 0")));
+        ex.push(constructed(ex, DistributionFamily::Gaussian, 2,
+                                  "gaussian needs a finite mean and a finite sigma > 0"));
         ++ex.frame().ip;
         return true;
     case Opcode::DistributionTriangular:
-        ex.push(Value(constructed(ex, DistributionFamily::Triangular, 3,
-                                  "triangular needs finite min <= peak <= max with min < max")));
+        ex.push(constructed(ex, DistributionFamily::Triangular, 3,
+                                  "triangular needs finite min <= peak <= max with min < max"));
         ++ex.frame().ip;
         return true;
     case Opcode::DistributionBeta:
-        ex.push(Value(constructed(ex, DistributionFamily::Beta, 4,
-                                  "beta needs finite alpha > 0, beta > 0 and min < max")));
+        ex.push(constructed(ex, DistributionFamily::Beta, 4,
+                                  "beta needs finite alpha > 0, beta > 0 and min < max"));
         ++ex.frame().ip;
         return true;
     case Opcode::RngIntWith: {
@@ -499,7 +499,7 @@ bool stepSeeded(Execution& ex, Instruction ins) {
             ex.trap("random range lower bound exceeds the upper bound", ErrorReason::NumericRange);
         }
         const double value = distributionDraw(ex, distribution, lo, hi);
-        ex.push(Value(math::roundRangeInt(value)));
+        ex.push(math::roundRangeInt(value));
         ++ex.frame().ip;
         return true;
     }
@@ -513,16 +513,16 @@ bool stepSeeded(Execution& ex, Instruction ins) {
         if (lo > hi) {
             ex.trap("random range lower bound exceeds the upper bound", ErrorReason::NumericRange);
         }
-        ex.push(Value(distributionFloat(ex, distribution, lo, hi)));
+        ex.push(distributionFloat(ex, distribution, lo, hi));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::Hash:
-        ex.push(Value(static_cast<i32>(hash32(static_cast<u32>(ex.popI32())))));
+        ex.push(static_cast<i32>(hash32(static_cast<u32>(ex.popI32()))));
         ++ex.frame().ip;
         return true;
     case Opcode::StreamState:
-        ex.push(Value(static_cast<i32>(ex.frame().stream)));
+        ex.push(static_cast<i32>(ex.frame().stream));
         ++ex.frame().ip;
         return true;
 
@@ -530,7 +530,7 @@ bool stepSeeded(Execution& ex, Instruction ins) {
         const u32 seed = static_cast<u32>(ex.popI32());
         const f32 y = ex.popF32();
         const f32 x = ex.popF32();
-        ex.push(Value(noise(ex, x, y, seed)));
+        ex.push(noise(ex, x, y, seed));
         ++ex.frame().ip;
         return true;
     }
@@ -538,19 +538,19 @@ bool stepSeeded(Execution& ex, Instruction ins) {
         const u32 seed = static_cast<u32>(ex.popI32());
         const f32 y = ex.popF32();
         const f32 x = ex.popF32();
-        ex.push(Value(fault(ex, x, y, seed)));
+        ex.push(fault(ex, x, y, seed));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::Smooth:
-        ex.push(Value(smoothStep(ex.popF32())));
+        ex.push(smoothStep(ex.popF32()));
         ++ex.frame().ip;
         return true;
     case Opcode::NoiseGrad: {
         const u32 seed = static_cast<u32>(ex.popI32());
         const f32 y = ex.popF32();
         const f32 x = ex.popF32();
-        ex.push(Value(gradNoise(ex, x, y, seed)));
+        ex.push(gradNoise(ex, x, y, seed));
         ++ex.frame().ip;
         return true;
     }
@@ -559,7 +559,7 @@ bool stepSeeded(Execution& ex, Instruction ins) {
         const i32 octaves = ex.popI32();
         const f32 y = ex.popF32();
         const f32 x = ex.popF32();
-        ex.push(Value(fbmNoise(ex, x, y, octaves, seed)));
+        ex.push(fbmNoise(ex, x, y, octaves, seed));
         ++ex.frame().ip;
         return true;
     }
@@ -567,7 +567,7 @@ bool stepSeeded(Execution& ex, Instruction ins) {
         const u32 seed = static_cast<u32>(ex.popI32());
         const f32 y = ex.popF32();
         const f32 x = ex.popF32();
-        ex.push(Value(cellNoise(ex, x, y, seed).first));
+        ex.push(cellNoise(ex, x, y, seed).first);
         ++ex.frame().ip;
         return true;
     }
@@ -578,8 +578,8 @@ bool stepSeeded(Execution& ex, Instruction ins) {
         const f32 x = ex.popF32();
         ex.spend(24); // Dispatch + all 25 Worley feature candidates.
         const auto sample = cellNoise(ex, x, y, seed);
-        if (ins.opcode == Opcode::NoiseCell2) ex.push(Value(sample.second));
-        else ex.push(Value(std::bit_cast<i32>(sample.winner)));
+        if (ins.opcode == Opcode::NoiseCell2) ex.push(sample.second);
+        else ex.push(std::bit_cast<i32>(sample.winner));
         ++ex.frame().ip;
         return true;
     }
@@ -588,7 +588,7 @@ bool stepSeeded(Execution& ex, Instruction ins) {
         const f32 amount = ex.popF32();
         const f32 y = ex.popF32();
         const f32 x = ex.popF32();
-        ex.push(Value(warpVector(ex, x, y, amount, seed)));
+        ex.push(warpVector(ex, x, y, amount, seed));
         ++ex.frame().ip;
         return true;
     }
@@ -599,7 +599,7 @@ bool stepSeeded(Execution& ex, Instruction ins) {
         const i32 octaves = ex.popI32();
         const f32 y = ex.popF32();
         const f32 x = ex.popF32();
-        ex.push(Value(configuredFbm(ex, x, y, octaves, lacunarity, gain, seed)));
+        ex.push(configuredFbm(ex, x, y, octaves, lacunarity, gain, seed));
         ++ex.frame().ip;
         return true;
     }
@@ -608,7 +608,7 @@ bool stepSeeded(Execution& ex, Instruction ins) {
         const f32 amount = ex.popF32();
         const f32 y = ex.popF32();
         const f32 x = ex.popF32();
-        ex.push(Value(warpNoise(ex, x, y, amount, seed)));
+        ex.push(warpNoise(ex, x, y, amount, seed));
         ++ex.frame().ip;
         return true;
     }
@@ -616,7 +616,7 @@ bool stepSeeded(Execution& ex, Instruction ins) {
         const u32 seed = static_cast<u32>(ex.popI32());
         const i32 cy = ex.popI32();
         const i32 cx = ex.popI32();
-        ex.push(Value(cellJitter(ex, cx, cy, seed)));
+        ex.push(cellJitter(ex, cx, cy, seed));
         ++ex.frame().ip;
         return true;
     }
@@ -625,7 +625,7 @@ bool stepSeeded(Execution& ex, Instruction ins) {
         const i32 octaves = ex.popI32();
         const f32 y = ex.popF32();
         const f32 x = ex.popF32();
-        ex.push(Value(ridgeNoise(ex, x, y, octaves, seed)));
+        ex.push(ridgeNoise(ex, x, y, octaves, seed));
         ++ex.frame().ip;
         return true;
     }

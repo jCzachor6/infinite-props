@@ -17,13 +17,13 @@ asset Crystal { input i32 v = 0
 
     // The shape draws from its own stream, so every variant keeps the
     // same silhouette and only the colours change.
-    stream_push(hash(seed ^ 0x51ed2701))
+    stream.push(hash(seed ^ 0x51ed2701))
     distribution typical = gaussian(mean=0.5, sigma=0.18)
     height = lerp(14.0, 26.0, 0.0 to 1.0 with typical)
     width = lerp(7.0, 12.0, 0.0 to 1.0 with typical)
     lean = -2.0 to 2.0 with gaussian(mean=0.0, sigma=0.8)
     facets = pick(2, 3, 4)
-    stream_pop()
+    stream.pop()
 
     // Colours are drawn, not computed: a gradient between two ends,
     // skewed towards the bright end.

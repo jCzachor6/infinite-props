@@ -184,7 +184,7 @@ ips::ValueType Emitter::emitBuiltin(const BuiltinCall& call) {
         ins(Opcode::F32ToI32);
         return VT::I32;
     }
-    // The variadic polygon: vertex pairs, then the colour.
+    // The variadic polygon: vertex pairs, then the color.
     for (const auto& arg : call.arguments) emitArg(arg);
     const u16 vertices = static_cast<u16>((call.arguments.size() - 1) / 2);
     ins(Opcode::Poly, 0, vertices);

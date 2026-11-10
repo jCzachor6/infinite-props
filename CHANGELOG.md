@@ -1,6 +1,114 @@
 # Changelog
 
-## Unreleased
+## v1.0.0 — 2026-11-10
+
+Product/source and editor, website, Unity/Python packages: **1.0.0**.
+C API **0.6**, ABI/SONAME **0.5**; binary format remains unversioned.
+See [0.9 to 1.0 migration](docs/language/migration-v1.0.md) and the
+[frozen contract set](spec/iprop-v1.0.md). Release/tag publication is separate.
+
+### Language 1.0: one spelling and one rule (breaking for sources)
+
+The VM, the binary format and the fuel tariff are unchanged: existing `.iprop`
+files run as before, and a migrated source compiles to the bytecode it produced
+before. Nothing is aliased; an old spelling is a compile error that names its
+replacement. See [0.9 to 1.0 migration](docs/language/migration-v1.0.md).
+
+- **Renamed builtins.** `noise` is `noise.value`, `fault` is `noise.fault`,
+  `warp` is `noise.warp`, `fold` and `polar` are `vec2.fold` and `vec2.polar`,
+  `fill` is `dist.fill`, `color.set.a` is `color.set_a`, and `stream_push` and
+  `stream_pop` are `stream.push` and `stream.pop`. Every builtin is now a bare
+  word or one namespace and one member.
+- **Renamed named arguments.** `noise.mask(mode)`, `vec2.rot(angle)`,
+  `vec2.fold(sectors)`, `dist.fill(distance, width)`, `surface.paint(source)`,
+  and the handle of `part.*`, `regions.*`, `diagram.*` and `parts.*` accessors
+  is `part`, `regions`, `diagram` and `parts`.
+- **Removed duplicates.** `i32trunc(x)` was `int(x)`; `pick(n)` was `index(n)`;
+  the variadic `poly` takes its color last, like every other drawing call.
+- **Names.** A helper cannot take a builtin's name: before, it was silently
+  never called, except for six constructor names where the helper won. Inputs,
+  outputs, palettes, constants, helpers and import aliases share one namespace.
+  An import alias cannot be a builtin namespace. `seed` and `draw` cannot be
+  declared; `at`, `rot`, `mirror_x` and `mirror_y` are reserved for inputs only.
+  A parameter cannot take the name of a palette or an output.
+- **Operators.** Bitwise operators bind more tightly than comparisons, so
+  `flags & 1 == 0` tests the masked value. `a < b < c` and `a == b == c` are
+  rejected instead of comparing a 0/1 result.
+- **Literals.** `010` was octal 8 and `4294967296` wrapped to 0; both are now
+  errors, as are a float literal outside `f32` and a word attached to a number.
+- **Declarations.** `size` and `origin` are declared once. A spare `;` is
+  accepted between declarations, as it was between statements. A `for` counter
+  can take any name a local can.
+- **Earlier and clearer errors.** A value-returning helper that can reach its
+  end, more than 1024 locals, a call on a value (`v.len()`), a read of an
+  output, and a `to` range or distribution constructor whose constant operands
+  always trap are reported where they are written. A binary operator's
+  diagnostic location no longer depends on the host compiler.
+- **No crash on deep nesting.** The compiler overflowed its stack on source
+  nested a few thousand levels deep (a few hundred in a sanitizer build), and
+  on a chain of a few thousand helpers calling one another. Expressions and
+  blocks now nest at most 256 levels, with a located error beyond that; a
+  chain such as `a + b + c` counts one level per operator. The limit of 1024
+  functions is reported before any helper body is checked.
+- The editor grammar highlights every builtin the compiler reports; a test
+  keeps the two in step.
+
+### A larger default fuel budget
+
+- The compiler and assembler default fuel budget rises from 5,000,000 to
+  25,000,000. Recompiled assets record the new budget in `meta.fuel`; existing
+  binaries keep the budget they were built with. Instruction costs, images,
+  outputs and RNG are unchanged. The host's independent work guard keeps its
+  100,000,000-unit default. A program made mostly of discounted kernels can
+  now reach that guard before its fuel: full-canvas four-octave noise masks
+  do at about 16,000,000 fuel. A host that runs such programs passes a larger
+  work limit.
+
+### Performance
+
+- Faster generation with unchanged images, outputs, fuel and work totals;
+  existing `.iprop` files need no recompilation. The interpreter keeps its
+  per-instruction accounting and its stack, control and scalar instructions
+  inline and reuses call frames; polygons, Bézier strokes, blurs, ovals and
+  layer/mask painting do the same pixel tests with less work per pixel.
+  On an Apple M-series Mac the showcase weapons and portraits generate
+  2.0-2.5x faster, the 256x256 butterfly parts of 0.9.0 3.6-5.4x (hindwing
+  58 ms to 11 ms) and thin strokes about 5x. In WebAssembly (Node 26) those
+  three butterfly parts take 23 ms instead of 94 ms; `iprop.wasm` is 7% larger
+  (5% gzipped).
+- The optimizing compiler emits four fewer instructions around every `for`
+  iteration and two fewer around every `while` and `!`: a comparison tested
+  against zero becomes the opposite comparison (never for ordered float
+  comparisons, whose negation is true for NaN), and a `for` body without
+  `continue` loses its unused label. Recompiled loop-heavy programs spend
+  7-20% less fuel and run 3-12% faster with the same images and outputs.
+- The row-wise blur above computed a pointer outside the row for a surface
+  narrower than its kernel. It was never read, and images, fuel and work are
+  the same, but it was undefined behaviour that UBSan reports; it is gone.
+
+### Platforms
+
+- Macs with Intel processors get an SDK of their own. CI builds and tests on
+  an Intel macOS runner beside the Apple silicon one, and a release carries
+  `macos-x86_64` next to `macos-arm64`, Linux and Windows: four native SDKs,
+  fifteen assets. The Apple package and the Unity plugin were already
+  universal, and the Godot extension builds for either processor.
+
+### Website
+
+- The butterfly benchmark and the swarm draw a new butterfly. Every wing is
+  shaded scale by scale from its own polar coordinates, with veins in relief,
+  an anti-aliased outline traced from its silhouette and soft shadows; the
+  body is furred and shaded as bodies of revolution. The thirteen species
+  looks now come in twelve wing forms (classic, rounded, hooked, toothed,
+  tailed, twin-tailed, hairstreak, narrow, birdwing, notched, ribbon-tailed,
+  broad), and wear their natural colours a little under half the time. The three
+  programs are 40 KB together; a 256x256 butterfly takes about 68 ms in
+  WebAssembly on an Apple M-series Mac (113 ms at most over 1000 seeds, a
+  wing spending up to 10 million fuel), a 128x128 one about 23 ms. They are
+  written in the 1.0 language and need the larger default budget above.
+- The README's butterfly collection and the website's social preview are
+  drawn again from the same sixteen seeds, so they show the new butterflies.
 
 ## v0.9.0 — 2026-11-05
 

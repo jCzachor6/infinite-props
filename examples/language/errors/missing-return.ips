@@ -1,0 +1,11 @@
+asset MissingReturn {
+  size 8x8
+  input i32 level = 1
+  draw {
+    pixel(column(level), 0, #fff)
+  }
+  // The else branch is missing: level <= 3 reaches the end without a value.
+  column(level: i32) -> i32 {
+    if (level > 3) { return 7 }
+  }
+}

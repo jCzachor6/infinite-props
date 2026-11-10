@@ -354,6 +354,11 @@ inline constexpr u16 kMaxCallDepth = 256;
 inline constexpr u32 kMaxConstPoolEntries = 65536; // u16 index space
 inline constexpr u32 kMaxCanvasSide = 16384;       // canvas width/height cap
 
+// The fuel budget the compiler and the assembler write into `meta.fuel` when
+// a program names none. A toolchain default, not a format limit: a file may
+// carry any budget of at least 1, and a binary keeps the one it was built with.
+inline constexpr u64 kDefaultFuelBudget = 25'000'000;
+
 // rng.int draws at most this many u32 values (spec v0.5 §3.1). Part of the
 // format semantics: the count fixes both the stream state and the fuel use.
 inline constexpr u32 kRangeDraws = 32;

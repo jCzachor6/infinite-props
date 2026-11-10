@@ -4,7 +4,7 @@ asset NumberHelpers {
   draw {
     x = int(2.8)
     f = float(x)
-    truncated = i32trunc(-2.8)
+    truncated = int(-2.8)
     rounded = round(2.5)
     root = sqrt(f)
     angle = atan2(1, 1)

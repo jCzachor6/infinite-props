@@ -34,8 +34,8 @@ Const sampler types and their list-length overloads use the same resolver and
 catalogue as scalar constants; no parallel signature table is maintained.
 The language export supplies `evaluation_order` on every
 overload and variadic signature. Its entries name signature slots, including
-compile-time palette and transform slots; legacy `poly` lists coordinates before
-color. `call_rules.helper_evaluation_order` is `declaration`. The part rule
+compile-time palette and transform slots; variadic `poly` lists its coordinates
+and then its color, the order in which they are written. `call_rules.helper_evaluation_order` is `declaration`. The part rule
 uses `$uniform` as a template expanded once per imported input, in declaration
 order. Each part parameter records `required`, `positional`, and an optional
 `default`: integer zero for transforms or `input_declaration` for uniforms.
@@ -83,7 +83,7 @@ updated accidentally alongside the current chapters.
 
 Parameterized list types and collection rules are emitted from the shared type
 descriptors. Keep schema-4 readers, editor highlighting, fixed list overloads
-and the legacy polygon variadic template aligned when extending collections.
+and the polygon variadic template aligned when extending collections.
 
 Point distribution capabilities are emitted as `source_rules.point_distributions`,
 separate from global callable signatures. Update their schema, strict readers,

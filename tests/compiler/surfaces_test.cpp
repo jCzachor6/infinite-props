@@ -231,7 +231,7 @@ TEST_CASE("layer descriptors scopes and modes survive tools and reject malformed
 TEST_CASE("layer formatting and illegal handle operations have located diagnostics", "[surfaces]") {
     const std::string source="asset t{size 2x2 input u32 copies=1 count(x:i32)->i32{return x} "
         "draw{for i in 0..copies{layer image(alpha=/* mode */surface.legacy){pixel(0,0,#fff)}} "
-        "layer copy=image;surface.paint(blend=surface.legacy,image=copy);x=count(2)}}";
+        "layer copy=image;surface.paint(blend=surface.legacy,source=copy);x=count(2)}}";
     const auto formatted=ips::formatProgram(ips::parse(source));CHECK(formatted.find("/* mode */")!=std::string::npos);
     CHECK(ips::formatProgram(ips::parse(formatted))==formatted);CHECK(stripDebug(compileChecked(source))==stripDebug(compileChecked(formatted)));
     for(const auto& [body,message]:std::initializer_list<std::pair<const char*,const char*>>{

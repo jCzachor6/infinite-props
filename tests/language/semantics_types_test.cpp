@@ -47,8 +47,8 @@ asset t { input i32 v = 0
     expectCheckError("asset t { size 8x8 palette p = [\"x\"] draw { } }", "string elements");
     expectCheckError("asset t { size 8x8 palette p = [#111111] palette p = [#222222] draw { } }", "duplicate palette 'p'");
     expectCheckError("asset t { size 8x8 palette seed = [#111111] draw { } }", "reserved name");
-    expectCheckError("asset t { size 8x8 input color c = #ffffff palette c = [#111111] draw { } }", "collides with an input or output");
-    expectCheckError("asset t { size 8x8 palette f = [#111111] draw { } f(x: i32) { return x } }", "collides with a function");
+    expectCheckError("asset t { size 8x8 input color c = #ffffff palette c = [#111111] draw { } }", "palette 'c' has the same name as an input");
+    expectCheckError("asset t { size 8x8 palette f = [#111111] draw { } f(x: i32) { return x } }", "palette 'f' has the same name as a function");
 }
 
 TEST_CASE("palette indexing is type checked") {
@@ -146,8 +146,8 @@ TEST_CASE("type mismatches are rejected") {
     expectCheckError(wrap("x = 1 && 2.5"), "integer operation requires i32");
     expectCheckError(wrap("x = 2.5 % 2"), "'%' requires i32");
     expectCheckError(wrap("x = 2.5 << 1"), "integer operation requires i32");
-    expectCheckError(wrap("x = i32trunc(#ffffff)"), "must be f32");
-    CHECK_NOTHROW(checkAsset(parse(wrap("x = 7 >> 1\ny = 1 << 3\nz = i32trunc(2.9)\nr = round(1.5)")), {}));
+    expectCheckError(wrap("x = int(#ffffff)"), "argument 1 of 'int' must be i32, got color");
+    CHECK_NOTHROW(checkAsset(parse(wrap("x = 7 >> 1\ny = 1 << 3\nz = int(2.9)\nr = round(1.5)")), {}));
     CHECK_NOTHROW(checkAsset(parse(wrap("x = 7 % 3")), {}));
     expectCheckError(wrap("x = \"text\""), "string literals");
 }
@@ -198,7 +198,7 @@ TEST_CASE("duplicate declarations and missing requirements") {
     expectCheckError("asset t { size 8x8 output point p output point p "
                      "draw { } }", "duplicate output 'p'");
     expectCheckError("asset t { size 8x8 input color p = #ffffff output point p "
-                     "draw { } }", "collides with an input");
+                     "draw { } }", "output 'p' has the same name as an input");
     expectCheckError("asset t { size 8x8 draw { } helper(x: i32) { return 1 } "
                      "helper(x: i32) { return 2 } }", "duplicate function");
     expectCheckError("import a from \"a.ips\" import a from \"a.ips\" "
@@ -224,12 +224,16 @@ TEST_CASE("builtin arity and argument types are checked") {
 }
 
 TEST_CASE("poly validates its vertex pairs") {
-    expectCheckError(wrap("poly(#ffffff, 0, 0, 1, 1)"), "at least three");
-    expectCheckError(wrap("poly(#ffffff, 0, 0, 1, 1, 2, 2, 3)"), "at least three");
-    expectCheckError(wrap("poly(1, 0, 0, 1, 1, 2, 2)"), "must be color");
-    expectCheckError(wrap("poly(#ffffff, 0, 0, 1, 1, 2, c = 2)"), "has no argument");
+    expectCheckError(wrap("poly(0, 0, 1, 1, #ffffff)"), "at least three (x, y) vertex pairs and then a color");
+    expectCheckError(wrap("poly(0, 0, 1, 1, 2, 2, 3, #ffffff)"), "at least three");
+    expectCheckError(wrap("poly(0, 0, 1, 1, 2, 2, 1)"), "argument 7 of poly must be color, got i32");
+    expectCheckError(wrap("poly(0, 0, 1, 1, 2, #ffffff, 2)"), "argument 6 of poly must be f32, got color");
+    expectCheckError(wrap("poly(0, 0, 1, 1, 2, 2, c = #ffffff)"), "has no argument");
+    // Before 1.0 the color came first.
+    expectCheckError(wrap("poly(#ffffff, 0, 0, 1, 0, 0, 1)"),
+                     "poly takes its color last, after the vertices: poly(x0, y0, ..., color)");
     CHECK_NOTHROW(checkAsset(
-        parse(wrap("poly(#ffffff, 0, 0, 1, 0, 0, 1)")), {}));
+        parse(wrap("poly(0, 0, 1, 0, 0, 1, #ffffff)")), {}));
 }
 
 TEST_CASE("type helpers behave") {

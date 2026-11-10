@@ -37,7 +37,7 @@ python3 scripts/language_docs.py build --compiler build/tools/ipc --output-dir b
 python3 scripts/language_docs.py verify --output-dir build/language-docs --against-source --compiler build/tools/ipc
 ```
 
-The generated package contains expanded chapters, `docs/language-v0.9.0.md`,
+The generated package contains expanded chapters, `docs/language-v1.0.0.md`,
 `LLM_REFERENCE.md`, compiler catalog, schemas, examples and the current format
 specification. Its manifest records independent versions, source identity and
 file hashes. See [maintaining documentation](language/development.md).
@@ -49,6 +49,13 @@ After a full build, install into a fresh prefix:
 ```sh
 cmake --install build --prefix build/sdk
 ```
+
+On a Mac the build targets the host's processor. Releases ship one SDK for
+Apple silicon (`macos-arm64`) and one for Intel processors (`macos-x86_64`).
+To build the Intel one on Apple silicon, configure with
+`-DCMAKE_OSX_ARCHITECTURES=x86_64`; its tools and tests then run under Rosetta.
+The Python binding test loads the library into the interpreter, so it needs
+an x86_64 Python 3.10+ there.
 
 Tools are in `bin/`, C headers in `include/`, libraries and CMake exports in
 `lib/` (or the platform's configured library directory), and documentation and

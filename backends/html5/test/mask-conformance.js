@@ -97,14 +97,14 @@ function run(iprop, tool, directory) {
         "rect(0,0,4,2,#929ca8)clip(region){weather(0,40)}",
         "pixel(3,1,#11223380)clip(region){pixel(3,1,#fff)}surface.paint(mask.offset(region,6,0),#fff,blend=surface.source_over)",
         "layer image(alpha=surface.source_over){clip(region){surface.paint(region,#11223380)}}surface.paint(image,blend=surface.source_over)",
-        "layer image(alpha=surface.source_over){clip(region){rect(0,0,4,2,#123)line(0,0,4,2,1,#abc)oval(2,1,2,1,#def)poly(#cba,0,0,4,0,4,2)}}surface.paint(image,blend=surface.source_over)",
+        "layer image(alpha=surface.source_over){clip(region){rect(0,0,4,2,#123)line(0,0,4,2,1,#abc)oval(2,1,2,1,#def)poly(0,0,4,0,4,2, #cba)}}surface.paint(image,blend=surface.source_over)",
     ];
     for (const opt of [false,true]) for (const sample of cases) for (const seed of seeds)
         generate(compile("asset t{size 4x2 output point stream mark(x:i32){pixel(x,0,#11223380)}early(region:mask){clip(region){layer gone{clip(region){return;}}}}draw{" + body + sample + "stream={seed&65535,seed>>16}}}", opt), seed);
     const ordering="asset t{size 2x1 output list point trace output point state "+
         "make(alpha:i32)->mask{trace={alpha,seed&65535}unused=1 to 2 layer image(alpha=surface.source_over){pixel(0,0,rgba(255,255,255,alpha))}return mask.from(image)}"+
         "tone()->color{trace={-1,seed&65535}unused=1 to 2 return #12345680}"+
-        "draw{surface.paint(color=tone(),blend=surface.source_over,image=make(128))clip(make(64)){unused=1 to 2 pixel(1,0,#fff)}state={seed&65535,seed>>16}}}";
+        "draw{surface.paint(color=tone(),blend=surface.source_over,source=make(128))clip(make(64)){unused=1 to 2 pixel(1,0,#fff)}state={seed&65535,seed>>16}}}";
     for(const opt of [false,true])for(const seed of seeds){
         const actual=generate(compile(ordering,opt),seed),state=draws=>(seed+Math.imul(draws,0x9e3779b9))>>>0;
         assert.deepEqual(actual.outputs[0].values,[{x:bits(128),y:bits(seed&65535)},

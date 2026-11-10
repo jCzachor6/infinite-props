@@ -16,6 +16,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <type_traits>
 #include <variant>
 #include <vector>
 
@@ -67,9 +68,6 @@ struct Call {
     std::unique_ptr<Expr> callee;
     std::vector<Arg> args;
     SourceLocation location;
-    // Set on checked expressions imported from a material file. A builtin
-    // resolved there must not turn into an importing asset's legacy helper.
-    bool builtinOnly = false;
 };
 
 // A vector literal: `{32, 4}` or `{96 - 20, 170 - 23, 40, 23}`.
@@ -162,7 +160,44 @@ struct Expr
                        Binary, Unary, RandomRange, SamplerCapture, SamplerPick, ListMethod, SurfaceBlur, PointDistributionLiteral>::variant;
     TokenRange sourceRange{};
     TokenRange sourceCoreRange{}; // excludes redundant outer parentheses
+    // Nodes on the longest path down from this one, itself included. The
+    // parser records it as it builds the tree and rejects a tree deeper than
+    // kMaxNestingDepth; a node synthesized afterwards keeps the default.
+    std::uint32_t depth = 1;
 };
+
+// The greatest depth among the direct children of `expr`, zero for a leaf.
+inline std::uint32_t childDepth(const Expr& expr) {
+    std::uint32_t deepest = 0;
+    const auto visit = [&](const std::unique_ptr<Expr>& child) {
+        if (child && child->depth > deepest) deepest = child->depth;
+    };
+    std::visit([&](const auto& node) {
+        using T = std::decay_t<decltype(node)>;
+        if constexpr (std::is_same_v<T, Member>) visit(node.object);
+        else if constexpr (std::is_same_v<T, Call>) {
+            visit(node.callee);
+            for (const auto& arg : node.args) visit(arg.value);
+        } else if constexpr (std::is_same_v<T, VectorLit> || std::is_same_v<T, ListLit>) {
+            for (const auto& element : node.elements) visit(element);
+        } else if constexpr (std::is_same_v<T, Index>) { visit(node.object); visit(node.index); }
+        else if constexpr (std::is_same_v<T, Binary>) { visit(node.left); visit(node.right); }
+        else if constexpr (std::is_same_v<T, Unary>) visit(node.operand);
+        else if constexpr (std::is_same_v<T, RandomRange>) {
+            visit(node.lower); visit(node.upper); visit(node.distribution);
+        } else if constexpr (std::is_same_v<T, SamplerCapture>) visit(node.value);
+        else if constexpr (std::is_same_v<T, SamplerPick>) { visit(node.receiver); visit(node.count); }
+        else if constexpr (std::is_same_v<T, ListMethod>) visit(node.receiver);
+        else if constexpr (std::is_same_v<T, SurfaceBlur>) { visit(node.receiver); visit(node.sigma.value); }
+        else if constexpr (std::is_same_v<T, PointDistributionLiteral>) {
+            for (const auto& point : node.points) { visit(point.key); visit(point.value); }
+        } else {
+            static_assert(std::is_same_v<T, Literal> || std::is_same_v<T, Identifier>,
+                          "a new expression node must report its children");
+        }
+    }, expr);
+    return deepest;
+}
 
 // ---- Statements ----------------------------------------------------------
 

@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <span>
 #include <vector>
 
 namespace iprop::detail {
@@ -75,25 +76,45 @@ void strokeCurve(Execution& ex, std::array<Vec2, 4> points, std::size_t count,
     const auto kernel = count == 3
         ? math::BezierKernel::quadratic(points[0], points[1], points[2])
         : math::BezierKernel::cubic(points[0], points[1], points[2], points[3]);
+    // Most of a thin stroke's box is nowhere near the curve. A pixel outside
+    // every covering box cannot be within the radius, so its search is
+    // skipped; its work steps are reserved all the same.
+    std::array<math::BezierKernel::Box, 16> boxes;
+    const std::size_t boxCount = kernel.cover(boxes, radius);
+    std::array<std::array<double, 2>, 16> spans;
     const i32 clipX1 = std::min(x1, static_cast<i32>(ex.canvas().width) - 1);
     const i32 clipY1 = std::min(y1, static_cast<i32>(ex.canvas().height) - 1);
     for (i32 y = std::max(y0, 0); y <= clipY1; ++y) {
         ex.work();
+        std::size_t spanCount = 0;
+        for (std::size_t i = 0; i < boxCount; ++i)
+            if (boxes[i].top <= y && y <= boxes[i].bottom) spans[spanCount++] = {boxes[i].left, boxes[i].right};
         for (i32 x = std::max(x0, 0); x <= clipX1; ++x) {
             ex.work();
             const Vec2 p{static_cast<f32>(x), static_cast<f32>(y)};
             ex.work(25); // Five candidates with at most five Newton evaluations.
-            const f32 distance = kernel.distanceTo(p);
-            if (distance <= radius) {
+            bool near = boxCount == 0;
+            for (std::size_t i = 0; i < spanCount && !near; ++i) near = spans[i][0] <= x && x <= spans[i][1];
+            if (near && kernel.within(p, radius)) {
                 compositePixel(ex, x, y, colour);
             }
         }
     }
 }
 
+// Rows with at most this many edge crossings sort them (at most 496 moves).
+constexpr std::size_t kSortedCrossings = 32;
+
 // §11.2 point-in-polygon fill over scaled (f32) coordinates. Charges the
 // bounding-box visit count up front (spec §8.3/§11.2).
-void fillPolygon(Execution& ex, const std::vector<Vec2>& points, const Color& colour) {
+//
+// The rule is unchanged: a pixel is inside when an odd number of edges that
+// straddle its centre row cross to the right of its centre, each crossing
+// evaluated in the pinned operation order. A crossing depends only on the row,
+// so it is computed once per row and the pixels compare against the sorted
+// values. Work is still one step per row, per pixel visit and per edge of
+// every visit, reserved before the pixel it belongs to.
+void fillPolygon(Execution& ex, std::span<const Vec2> points, const Color& colour) {
     if (points.empty()) {
         return;
     }
@@ -112,27 +133,70 @@ void fillPolygon(Execution& ex, const std::vector<Vec2>& points, const Color& co
     ex.spend(visitCount(static_cast<i64>(x1) - x0 + 1, static_cast<i64>(y1) - y0 + 1));
 
     const std::size_t n = points.size();
-    for (i32 py = y0; py <= y1; ++py) {
-        ex.work();
-        for (i32 px = x0; px <= x1; ++px) {
+    std::array<f32, 16> fixed;
+    std::vector<f32> large;
+    if (n > fixed.size()) large.resize(n);
+    f32* const crossings = n > fixed.size() ? large.data() : fixed.data();
+
+    const u64 pixelSteps = 1u + static_cast<u64>(n); // the visit and its edges
+    const u64 rowSteps = 1u + static_cast<u64>(static_cast<i64>(x1) - x0 + 1) * pixelSteps;
+    const i64 lastColumn = static_cast<i64>(ex.canvas().width) - 1;
+    const i64 lastRow = static_cast<i64>(ex.canvas().height) - 1;
+    for (i64 py = y0; py <= y1; ++py) {
+        // Without clips a pixel cannot trap, so an affordable row is reserved
+        // whole and only its on-canvas pixels are visited. Otherwise every
+        // pixel reserves its own steps first, exactly as a per-edge loop.
+        const bool prepaid = ex.prepayRow(rowSteps);
+        i64 from = x0, to = x1;
+        if (prepaid) {
+            from = std::max<i64>(from, 0);
+            to = std::min(to, lastColumn);
+            if (py < 0 || py > lastRow || from > to) continue;
+        } else {
             ex.work();
-            bool inside = false;
-            const f32 cx = static_cast<f32>(px) + .5f;
-            const f32 cy = static_cast<f32>(py) + .5f;
-            for (std::size_t i = 0; i < n; ++i) {
-                ex.work();
-                const std::size_t j = (i + n - 1) % n;
-                const auto& a = points[i]; // current vertex
-                const auto& d = points[j]; // previous vertex
+        }
+        PrepaidSteps polls{*ex.workBudget};
+        const auto step = [&] { if (prepaid) polls.step(); };
+
+        const f32 cy = static_cast<f32>(py) + .5f;
+        std::size_t count = 0;
+        for (std::size_t i = 0, j = n - 1; i < n; j = i++) {
+            step();
+            const auto& a = points[i]; // current vertex
+            const auto& d = points[j]; // previous vertex
+            if ((a.y > cy) != (d.y > cy)) {
                 // Pixel centres and the QuantSpace operation order, for
                 // bit-compatible edge pixels (spec §11.2).
-                if ((a.y > cy) != (d.y > cy) &&
-                    cx < (d.x - a.x) * (cy - a.y) / (d.y - a.y) + a.x) {
-                    inside = !inside;
-                }
+                const f32 crossing = (d.x - a.x) * (cy - a.y) / (d.y - a.y) + a.x;
+                // No centre is left of a NaN crossing; it never counts.
+                if (crossing == crossing) crossings[count++] = crossing;
+            }
+        }
+        // A few crossings are sorted once: centres only move right, so the
+        // crossings at or left of the centre form a growing prefix and the
+        // rest are the edges it is left of. Many crossings are counted per
+        // pixel instead, which never does more than the reserved edge steps.
+        const bool sorted = count <= kSortedCrossings;
+        for (std::size_t i = 1; sorted && i < count; ++i) {
+            const f32 value = crossings[i];
+            std::size_t at = i;
+            for (; at > 0 && crossings[at - 1] > value; --at) crossings[at] = crossings[at - 1];
+            crossings[at] = value;
+        }
+        std::size_t passed = 0;
+        for (i64 px = from; px <= to; ++px) {
+            if (prepaid) step();
+            else ex.workEach(pixelSteps);
+            const f32 cx = static_cast<f32>(px) + .5f;
+            bool inside = false;
+            if (sorted) {
+                while (passed < count && !(cx < crossings[passed])) ++passed;
+                inside = ((count - passed) & 1u) != 0;
+            } else {
+                for (std::size_t i = 0; i < count; ++i) { step(); inside ^= cx < crossings[i]; }
             }
             if (inside) {
-                compositePixel(ex, px, py, colour);
+                compositePixel(ex, static_cast<i32>(px), static_cast<i32>(py), colour);
             }
         }
     }
@@ -177,7 +241,8 @@ bool stepCanvas(Execution& ex, Instruction ins) {
         const f32 w = ex.popF32() * sX;
         const f32 y = ex.popF32() * sY;
         const f32 x = ex.popF32() * sX;
-        fillPolygon(ex, {{x, y}, {x + w, y}, {x + w, y + h}, {x, y + h}}, colour);
+        const std::array<Vec2, 4> corners{{{x, y}, {x + w, y}, {x + w, y + h}, {x, y + h}}};
+        fillPolygon(ex, corners, colour);
         ++ex.frame().ip;
         return true;
     }
@@ -268,14 +333,28 @@ bool stepCanvas(Execution& ex, Instruction ins) {
         const i32 x0 = coordToInt(ex, std::floor(x - rx), "oval x");
         const i32 x1 = coordToInt(ex, std::ceil(x + rx), "oval x");
         ex.spend(visitCount(static_cast<i64>(x1) - x0 + 1, static_cast<i64>(y1) - y0 + 1));
-        for (i32 py = y0; py <= y1; ++py) {
-            ex.work();
-            for (i32 px = x0; px <= x1; ++px) {
+        const u64 rowSteps = 1u + static_cast<u64>(static_cast<i64>(x1) - x0 + 1);
+        const i64 lastColumn = static_cast<i64>(ex.canvas().width) - 1;
+        const i64 lastRow = static_cast<i64>(ex.canvas().height) - 1;
+        for (i64 py = y0; py <= y1; ++py) {
+            // A prepaid row tests only its on-canvas pixels.
+            const bool prepaid = ex.prepayRow(rowSteps);
+            i64 from = x0, to = x1;
+            if (prepaid) {
+                from = std::max<i64>(from, 0);
+                to = std::min(to, lastColumn);
+                if (py < 0 || py > lastRow) continue;
+            } else {
                 ex.work();
+            }
+            PrepaidSteps polls{*ex.workBudget};
+            const f32 ny = (static_cast<f32>(py) - y) / ry;
+            for (i64 px = from; px <= to; ++px) {
+                if (prepaid) polls.step();
+                else ex.work();
                 const f32 nx = (static_cast<f32>(px) - x) / rx;
-                const f32 ny = (static_cast<f32>(py) - y) / ry;
                 if (nx * nx + ny * ny <= 1.f) {
-                    compositePixel(ex, px, py, colour);
+                    compositePixel(ex, static_cast<i32>(px), static_cast<i32>(py), colour);
                 }
             }
         }

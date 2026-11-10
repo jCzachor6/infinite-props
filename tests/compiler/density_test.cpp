@@ -29,7 +29,7 @@ Distribution density(std::initializer_list<DistributionPoint> points) {
     Distribution d;d.family=data->family;d.points=std::move(data);return d;
 }
 std::string densityAsset(const std::string& declarations,const std::string& body,const std::string& helpers={}) {
-    return "asset t{input i32 v=0 size 16x16 output list point p output point state "+declarations+helpers+
+    return "asset t{input i32 v=0 size 16x16 output list point p output point state "+declarations+" "+helpers+
         " draw{"+body+" state={seed&65535,seed>>16}}}";
 }
 u32 densityHash(u32 x){x^=x>>16;x*=0x7feb352d;x^=x>>15;x*=0x846ca68b;return x^(x>>16);}

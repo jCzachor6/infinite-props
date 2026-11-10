@@ -1,7 +1,7 @@
 #pragma once
 
 // Internal execution machinery shared by the VM and the per-group instruction
-// implementations (stack.cpp, control.cpp, arithmetic.cpp, ...). Not part of
+// implementations (VmScalarSteps.hpp, seeded.cpp, canvas.cpp, ...). Not part of
 // the public API; consumers use VM from iprop/VM.hpp.
 
 #include "iprop/Canvas.hpp"
@@ -131,6 +131,10 @@ struct Execution {
     u32 dynamicPartCreations = 0;
     u32 exportedParts = 0; // all slots/static calls share the append limit
 
+    // Finished call frames, kept for their storage: a helper call reuses the
+    // locals, stack and label buffers of an earlier one.
+    std::vector<Frame> spareFrames;
+
     explicit Execution(const LoadedFile& f) : file(f) { resources.workBudget = workBudget; }
     Canvas& canvas() { return target.canvas(); }
     const Canvas& canvas() const { return target.canvas(); }
@@ -140,22 +144,45 @@ struct Execution {
 
     // Operand stack access with runtime traps (defense in depth: validated
     // files never hit these, unvalidated input must still trap, never UB).
-    Value pop();
-    Value peek();
+    // The checks and the scalar cases are inline; every trap is out of line.
+    IPROP_ALWAYS_INLINE Value pop() {
+        auto& stack = frames.back().stack;
+        if (stack.empty()) [[unlikely]] stackUnderflow();
+        Value value = std::move(stack.back());
+        stack.pop_back();
+        return value;
+    }
+    Value peek() {
+        auto& stack = frames.back().stack;
+        if (stack.empty()) [[unlikely]] stackUnderflow();
+        return stack.back();
+    }
     // Constructs the pushed value in place: scalars never pass through an
     // intermediate Value.
-    template<class T> void push(T&& value) {
+    template<class T> IPROP_ALWAYS_INLINE void push(T&& value) {
         auto& stack = frames.back().stack;
-        if (stack.size() >= kMaxStackDepth) trap("operand stack depth exceeds limit", ErrorReason::StackLimit);
+        if (stack.size() >= kMaxStackDepth) [[unlikely]] stackLimit();
         stack.emplace_back(std::forward<T>(value));
     }
 
-    // Typed pops; trap on an empty stack or a type mismatch.
-    i32 popI32();
-    f32 popF32();
-    Color popColor();
-    Vec2 popVec2();
-    Distribution popDistribution();
+    // Typed pops; trap on an empty stack or a type mismatch. A scalar is read
+    // in place and popped, without moving the whole Value.
+    template<class T> IPROP_ALWAYS_INLINE T popScalar(const char* mismatch) {
+        auto& stack = frames.back().stack;
+        if (stack.empty()) [[unlikely]] stackUnderflow();
+        const auto* value = std::get_if<T>(&stack.back());
+        if (!value) [[unlikely]] stackType(mismatch);
+        const T result = *value;
+        stack.pop_back();
+        return result;
+    }
+    IPROP_ALWAYS_INLINE i32 popI32() { return popScalar<i32>("stack type mismatch: expected i32"); }
+    IPROP_ALWAYS_INLINE f32 popF32() { return popScalar<f32>("stack type mismatch: expected f32"); }
+    IPROP_ALWAYS_INLINE Color popColor() { return popScalar<Color>("stack type mismatch: expected color"); }
+    IPROP_ALWAYS_INLINE Vec2 popVec2() { return popScalar<Vec2>("stack type mismatch: expected vec2"); }
+    Distribution popDistribution() {
+        return popScalar<Distribution>("stack type mismatch: expected distribution");
+    }
     // Every handle shares one rule: another alternative is a stack type
     // error, an unassigned handle a runtime violation.
     template<class H> H popHandle(const char* name) {
@@ -174,26 +201,65 @@ struct Execution {
     MaskValue popMask(bool matchTarget = true);
     void allocateResource(u64 bytes);
 
-    // Fuel accounting (spec §8.3): traps with "fuel exhausted".
-    void spend(u64 cost);
-    void spendRaw(u64 cost);
-    void beginInstruction(Opcode op) { fuelRate = fuelPercent(op); fuelUnits = fuelPaid = 0; }
-    void work(u64 units = 1) const { workBudget->location = activeInstruction; workBudget->spend(units); }
+    // Fuel accounting (spec §8.3): traps with "fuel exhausted". Most opcodes
+    // pay the plain tariff; a discounted one rounds its cumulative units.
+    IPROP_ALWAYS_INLINE void spend(u64 cost) {
+        if (fuelRate != 100) [[unlikely]] cost = scaledCost(cost);
+        spendRaw(cost);
+    }
+    IPROP_ALWAYS_INLINE void spendRaw(u64 cost) {
+        if (cost > fuel) [[unlikely]] fuelExhausted();
+        fuel -= cost;
+    }
+    void beginInstruction(Opcode op) { fuelRate = kFuelPercent[static_cast<u8>(op)]; fuelUnits = fuelPaid = 0; }
+    IPROP_ALWAYS_INLINE void work(u64 units = 1) const { workBudget->location = activeInstruction; workBudget->spend(units); }
+    // `count` unit steps at once, exactly as `count` calls of work().
+    void workEach(u64 count) const { workBudget->location = activeInstruction; workBudget->spendEach(count); }
     void checkpoint() const { workBudget->checkpoint(); }
+    // Reserves all the unit steps of a raster row when nothing in the row can
+    // trap: no clip is active, so compositing spends nothing, and the steps
+    // are affordable. The caller then visits only the pixels it has to. When
+    // this returns false it reserves each step where the per-pixel loop does,
+    // so a limit still stops at the same pixel.
+    bool prepayRow(u64 steps) const {
+        if (!target.clips.empty() || !workBudget->affords(steps)) return false;
+        workEach(steps);
+        return true;
+    }
 
     // Frame lifecycle.
+    // An empty frame, with the buffers of a finished one when there is one.
+    Frame spareFrame();
+    // A callee's frame: its arguments popped from the caller, then every
+    // declared local at its typed zero.
+    void popArguments(Frame& next, const Function& callee);
+    void zeroLocals(Frame& next, const Function& callee);
     void callFunction(u16 functionIndex);
     void callPart(u16 partIndex, u8 transform);
     void leaveFrame();
     void beginLayer(u16 local, u8 mode);
     void beginClip();
-    // Unwind layer and clip scopes together, in reverse entry order.
-    void closeLayers(std::size_t labelDepth);
+    // Unwind layer and clip scopes together, in reverse entry order. Most
+    // label exits have no open capture or clip at all.
+    void closeLayers(std::size_t labelDepth) {
+        if (!layerScopes.empty() && layerScopes.back().frameDepth == frames.size() &&
+            layerScopes.back().labelDepth > labelDepth) [[unlikely]] closeOpenLayers(labelDepth);
+    }
+    void closeOpenLayers(std::size_t labelDepth);
 
     // Precomputes the matching else/end indices of a function's control flow.
-    void ensureControl(u16 functionIndex);
+    void ensureControl(u16 functionIndex) {
+        if (functionIndex >= control.size() || control[functionIndex].empty()) [[unlikely]] scanControl(functionIndex);
+    }
+    void scanControl(u16 functionIndex);
 
     [[noreturn]] void trap(std::string message, ErrorReason reason) const;
+    [[noreturn]] void stackUnderflow() const;
+    [[noreturn]] void stackLimit() const;
+    [[noreturn]] void stackType(const char* mismatch) const;
+    [[noreturn]] void fuelExhausted() const;
+    // The increase of the rounded cumulative cost of a discounted opcode.
+    u64 scaledCost(u64 cost);
 };
 
 // Primitives, part blits and paint use the same rounded RGBA8 kernel.
@@ -209,13 +275,21 @@ MaskBounds validateSurfaceView(Execution& ex, const SurfaceBuffer& buffer, const
                                bool matchTarget);
 void weatherPixel(Execution& ex, i32 x, i32 y, Color proposed);
 
+// A prepaid row has no work call per step; this keeps its polls at most
+// kWorkPollInterval physical steps apart.
+struct PrepaidSteps {
+    WorkBudget& budget;
+    u32 sincePoll = 0;
+    void step() {
+        if (++sincePoll == kWorkPollInterval) { sincePoll = 0; budget.poll(); }
+    }
+};
+
 // Per-domain VM adapters own stack access, traps, results and ip advancement.
 // Mathematical kernels are independent of Execution (iprop/math/*.hpp).
+// stepStack, stepControl and stepArithmetic are inline (VmScalarSteps.hpp).
 bool dispatch(Execution& ex, Instruction ins);
 bool stepCore(Execution& ex, Instruction ins);
-bool stepStack(Execution& ex, Instruction ins);
-bool stepControl(Execution& ex, Instruction ins);
-bool stepArithmetic(Execution& ex, Instruction ins);
 bool stepVector(Execution& ex, Instruction ins);
 bool stepSdf(Execution& ex, Instruction ins);
 bool stepColor(Execution& ex, Instruction ins);
@@ -264,4 +338,30 @@ double checkedTruncatedDraw(Execution& ex, const Distribution& distribution, dou
 bool isConstantOperation(const OpcodeSpec& operation);
 std::optional<Value> evaluateConstantOperation(Opcode op, std::span<const Value> args);
 
+// Moves or copies a value into a slot; plain scalars assign their alternative
+// directly instead of going through the variant's visitor.
+IPROP_ALWAYS_INLINE void moveValue(Value& target, Value& source) {
+    if (const auto* i = std::get_if<i32>(&source)) target = *i;
+    else if (const auto* f = std::get_if<f32>(&source)) target = *f;
+    else if (const auto* c = std::get_if<Color>(&source)) target = *c;
+    else if (const auto* v = std::get_if<Vec2>(&source)) target = *v;
+    else target = std::move(source);
+}
+IPROP_ALWAYS_INLINE void copyValue(Value& target, const Value& source) {
+    if (const auto* i = std::get_if<i32>(&source)) target = *i;
+    else if (const auto* f = std::get_if<f32>(&source)) target = *f;
+    else if (const auto* c = std::get_if<Color>(&source)) target = *c;
+    else if (const auto* v = std::get_if<Vec2>(&source)) target = *v;
+    else target = source;
+}
+inline void appendValue(std::vector<Value>& values, Value& source) {
+    if (const auto* i = std::get_if<i32>(&source)) values.emplace_back(*i);
+    else if (const auto* f = std::get_if<f32>(&source)) values.emplace_back(*f);
+    else if (const auto* c = std::get_if<Color>(&source)) values.emplace_back(*c);
+    else if (const auto* v = std::get_if<Vec2>(&source)) values.emplace_back(*v);
+    else values.push_back(std::move(source));
+}
+
 } // namespace iprop::detail
+
+#include "iprop/VmScalarSteps.hpp"

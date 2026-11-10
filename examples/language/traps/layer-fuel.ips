@@ -1,7 +1,9 @@
 asset layer_fuel {
   size 2048x2048
   draw {
-    layer image {}
-    surface.paint(image)
+    for i in 0..5 {
+      layer image {}
+      surface.paint(image)
+    }
   }
 }

@@ -3,7 +3,7 @@
 namespace iprop {
 
 const char* versionString() noexcept {
-    return "0.9.0";
+    return "1.0.0";
 }
 
 } // namespace iprop

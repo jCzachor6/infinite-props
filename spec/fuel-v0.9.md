@@ -2,7 +2,9 @@
 
 This tariff applies to every program executed by runtime 0.9, including old
 unversioned bytecode. It changes neither opcode IDs nor numeric/image/RNG
-semantics. Default fuel remains 5,000,000; the independent
+semantics. It sets no budget: a program carries its own in `meta.fuel`, and the
+compiler and assembler write 25,000,000 when none is given (5,000,000 before
+1.0). The independent
 [100,000,000-unit work guard, cancellation and deadlines](execution-limits-v0.9.md)
 remain active. Fuel is a price for authoring choices, not a CPU clock.
 

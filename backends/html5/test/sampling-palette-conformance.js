@@ -82,8 +82,9 @@ function run(iprop,tool,directory){
         "select()->i32{pixel(0,0,#f00) return index(5)-1} count()->i32{pixel(1,0,#0f0) return 1 to 3}"));
     const ordered=compile(asset("","pixel(0,0,#f00) k=index(5)-1 pixel(1,0,#0f0) n=1 to 3 for i in 0..n{value=40 if(k==0){value=10 to 15} if(k==1){value=20 to 30 with gaussian(25,2)} values={value,value}}"),false,"-ordered");
     for(const seed of seeds)assert.deepEqual(generate(effectful,seed),generate(ordered,seed),"index before count, each once");
-    const sameNames="copy(widths:list<sampler<i32>>)->list<sampler<i32>>{return widths} "+
-        "selected(widths:list<sampler<i32>>,i:i32)->sampler<i32>{return widths[i]}";
+    // A list parameter has checked indices; the palette beside it keeps its fallback.
+    const sameNames="copy(items:list<sampler<i32>>)->list<sampler<i32>>{return items} "+
+        "selected(items:list<sampler<i32>>,i:i32)->sampler<i32>{return items[i]}";
     for(const optimized of [false,true]){
         const binary=compile(asset(widths,"before=seed items=copy([sampler(7)]) values={selected(items,0).pick(),widths[-1].pick()} values={seed==before,list.len(items)}",sameNames),optimized);
         const reference=compile(asset("","values={7,40} values={1,1}"),false,"-reference");

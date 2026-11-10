@@ -1,34 +1,35 @@
 {
   "name": "Butterfly benchmark",
-  "product_version": "0.9.0",
+  "product_version": "1.0.0",
+  "source_repository": "props",
+  "source_commit": "2228edd1d8612807603b0f8553d06f3f7d607958",
   "width": 256,
   "height": 256,
   "parts": [
     {
       "id": "forewing",
       "file": "butterfly-forewing.iprop",
-      "bytes": 20187,
-      "sha256": "16e7b9e19d7638d0e20b15715cde06b5cdd8d2b52eecb38d6048750bcf9bc24c"
+      "bytes": 18099,
+      "sha256": "95e815fb16a92b65cc9b12cefb7cf25bebb5bdb76a819023b2197ba7ed8e019d"
     },
     {
       "id": "hindwing",
       "file": "butterfly-hindwing.iprop",
-      "bytes": 20187,
-      "sha256": "4da5a546542e081c4cdc7ba02e476b958c60d71d7c73bbaa8c52294b7a4dd3d9"
+      "bytes": 18101,
+      "sha256": "c9342213d005f83765a3820de3dcb77f62c007317dd9677a377f7f02b9452688"
     },
     {
       "id": "body",
       "file": "butterfly-body.iprop",
-      "bytes": 3125,
-      "sha256": "d808a048e8112ec30e537b164bac292d13bac40c86616308c7c421a47f081aff"
+      "bytes": 4491,
+      "sha256": "2494c64c6e9c4d286fff7651919c48294571d229fa0afb0df5ba6e894aa85400"
     }
   ],
   "source_sha256": {
-    "body.ips": "ab69e49639529e3fe0c694d644eb9cf26d75b5792d5989b5e31d31042c28cc12",
-    "butterfly.ips": "16759abb1e10cf2cb328c5160a20299d5b6f6d66e46a35ff031656793e71e183",
-    "forewing.ips": "2f147eed588b80c3450e6cfb96c4e686ae8b08e477f0ce8d829cb9ad3248af36",
-    "hindwing.ips": "7690e6f8536aec5a2b18852584290cfcf790765bddc73be899a61b93f35d1ccc",
-    "scales.ips": "654e811dad06b75fe0350e2cb80e5a27a727be88427776f0fdef9004caaefceb",
-    "wing.ips": "08c7aa63d4e06b865ba71c906eab57da326a61c492d0cf48962d065aac5722a0"
+    "body.ips": "79ad508774ed3d08333fa63b183333651ce1eed07f718658b84a362ab8abf501",
+    "butterfly.ips": "9b7269dc6649bf027adaf864d30d4053ee07f5e8e25949ed10d38cd75c34bb74",
+    "forewing.ips": "51f90bef5acc08837bfc2615576a2cc3d8886f94fcc6209f6086f2b704ed09c8",
+    "hindwing.ips": "6588ef594ffba94ced0f73730e3d2d68619ba83de8efeded77105da58b7eb3aa",
+    "wing.ips": "d7326f98193423febf7d78a5224ddc492b42295da42e1bf9356695358bb62b4b"
   }
 }

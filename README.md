@@ -143,17 +143,18 @@ brings the language into your editor.
 
 | Start here | Go deeper |
 | :--- | :--- |
-| [Language handbook](docs/language/index.md) | [Format and VM specification](spec/iprop-v0.9.md) |
+| [Language handbook](docs/language/index.md) | [Format and VM specification](spec/iprop-v1.0.md) |
 | [Example recipes](examples/recipes/README.md) | [C API and ABI policy](docs/c-api-abi.md) |
 | [Compact LLM reference](docs/llm-reference.md) | [Export contracts](docs/export-contracts.md) |
 | [Building and installation](docs/building.md) | [CI and publication](docs/ci.md) |
 | [Website build](website/README.md) | [Changelog](CHANGELOG.md) |
 
-**Product 0.9.0 · Source language 0.9.0.** Binary format remains unversioned;
-C API 0.6 retains ABI/SONAME 0.5. New direct noise masks, Voronoi/contour regions,
-gaps/bevels and immutable dynamic parts support textures, geometry and typed
-exports. Fuel follows the new tariff; independent work/cancellation/deadline
-controls bound execution. See [0.8 to 0.9 migration](docs/language/migration-v0.9.md).
+**Product 1.0.0 · Source language 1.0.0.** Binary format remains unversioned;
+C API 0.6 retains ABI/SONAME 0.5. Language 1.0 gives every construct one
+spelling and one rule: renamed builtins, one namespace for names, bitwise
+operators that bind tighter than comparisons and earlier errors, with no new
+feature. Existing `.iprop` files run as before; the compiler's default fuel
+budget is 25,000,000. See [0.9 to 1.0 migration](docs/language/migration-v1.0.md).
 
 ## License
 

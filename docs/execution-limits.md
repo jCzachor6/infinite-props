@@ -1,7 +1,7 @@
-# Execution controls in 0.9
+# Execution controls
 
 Fuel prices follow the [runtime tariff](../spec/fuel-v0.9.md). Default fuel is
-5,000,000 from program metadata. An independent default 100,000,000-unit work
+25,000,000 from program metadata. An independent default 100,000,000-unit work
 budget also applies to old entry points. Zero work selects that finite default;
 zero timeout disables the optional monotonic deadline. A cancellation token is
 one-way and cooperative, not a reusable interrupt or a wall-clock guarantee.

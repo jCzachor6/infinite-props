@@ -1,4 +1,5 @@
 #include "Plan.hpp"
+#include "ips/BuiltinSpec.hpp"
 #include "ips/Fold.hpp"
 #include "ips/Imports.hpp"
 #include "ips/Semantics.hpp"
@@ -60,9 +61,16 @@ std::string Plan::sourcePath(const ips::Program* owner) const {
                           ips::DiagnosticStage::Planning};
 }
 
+// Out of prepareFunctionBody, which recurses once for every helper in a chain.
+void Planner::failLocalLimit(const ips::Function& function) {
+    throw ips::SourceError{function.location, "function '" + function.name + "' has more than " +
+        std::to_string(kMaxLocals) + " parameters and locals", {}, ips::DiagnosticCode::ResourceLimit,
+        ips::DiagnosticStage::Planning};
+}
+
 ValueType Planner::storedType(ips::ValueType type, const ips::SourceLocation& at, const std::string& slot) {
     if (!type.isStorable())
-        error(at, "cannot store " + std::string(ips::typeName(type)) + " in " + slot + " (only scalars can be stored)");
+        error(at, "cannot store " + std::string(ips::typeName(type)) + " in " + slot);
     return type;
 }
 
@@ -223,6 +231,19 @@ void Planner::planParts() {
 }
 
 void Planner::planFunctions() {
+    // A call by a builtin's name always reaches the builtin. The checker
+    // reports such a helper first; a program planned without it must not
+    // compile with the helper silently unused.
+    const auto rejectBuiltinNames = [](const ips::Program& owner, const std::string& source) {
+        for (const auto& function : owner.asset.functions)
+            if (ips::isBuiltinFunctionName(function.name))
+                throw ips::SourceError{function.location, "function '" + function.name +
+                    "' has the name of a builtin; choose another name", source,
+                    ips::DiagnosticCode::PlanError, ips::DiagnosticStage::Planning};
+    };
+    rejectBuiltinNames(entry_, {});
+    for (std::size_t i = 0; i < plan_->parts.size(); ++i)
+        rejectBuiltinNames(*plan_->parts[i], plan_->instances[i].source);
     // Table order: draw first, then the entry's other functions in
     // declaration order, then each part's functions.
     std::vector<std::string> planned;
@@ -248,6 +269,11 @@ void Planner::planFunctions() {
             registryDrawLike_.emplace(name, function.name == "draw");
         }
     }
+    // The function table holds the entry asset's functions and every part's.
+    if (planned.size() > kMaxFunctions)
+        throw ips::SourceError{entry_.asset.location, "the asset and its parts declare more than " +
+            std::to_string(kMaxFunctions) + " functions", {}, ips::DiagnosticCode::ResourceLimit,
+            ips::DiagnosticStage::Planning};
     for (const auto& name : planned) {
         plan_->functionIndex.emplace(name,
                                     static_cast<u32>(plan_->functions.size()));
@@ -455,6 +481,8 @@ void Planner::prepareFunctionBody(const std::string& name) {
         }
     };
     walk(walk, ast->body);
+    // Later passes index locals by slot; report the limit where it is named.
+    if (info.params.size() + info.locals.size() > kMaxLocals) failLocalLimit(*ast);
 
     ips::ConstantFolder constants;
     const auto& assetConstants = plan_->assetConstants.at(owner);

@@ -18,6 +18,8 @@ ParseResult ParserImpl::parseRecoveringProgram(std::size_t limit) {
     bool hasAsset = false;
     try {
         while (kind() != TokenKind::End) {
+            // Semicolons are optional separators at every level.
+            if (match(TokenKind::Semi)) continue;
             const auto start = pos_;
             try {
                 if (kind() == TokenKind::KeywordImport && !hasAsset && program.materials.empty()) {
@@ -244,6 +246,9 @@ Asset ParserImpl::parseAsset() {
         if (kind() == TokenKind::End) {
             failHere("unterminated asset block (missing '}')");
         }
+        // Semicolons are optional separators between declarations, as they
+        // are between statements.
+        if (match(TokenKind::Semi)) continue;
         const auto start = pos_;
         try {
             parseDeclaration(asset);
@@ -285,9 +290,13 @@ void ParserImpl::parseDeclaration(Asset& asset) {
     case TokenKind::Identifier: {
         const Token declaration = advance();
         if (declaration.text == "size") {
+            if (asset.sizeX.has_value())
+                throw SourceError{declaration.location, "duplicate 'size' declaration"};
             parseSize(asset);
             asset.metadataSyntax.push_back({MetadataSyntax::Kind::Size, {start, pos_}});
         } else if (declaration.text == "origin") {
+            if (asset.originX)
+                throw SourceError{declaration.location, "duplicate 'origin' declaration"};
             parseOrigin(asset);
             asset.metadataSyntax.push_back({MetadataSyntax::Kind::Origin, {start, pos_}});
         } else if (declaration.text == "palette") {
@@ -325,6 +334,8 @@ void ParserImpl::parseSize(Asset& asset) {
         if (height.text.size() > 1 &&
             (height.text[0] == 'x' || height.text[0] == 'X') &&
             isDigits(std::string_view(height.text).substr(1))) {
+            if (height.text.size() > 2 && height.text[1] == '0')
+                throw SourceError{height.location, "leading zeros are not allowed in the height"};
             asset.sizeY = toU32(
                 Token{TokenKind::Int, height.text.substr(1), height.location},
                 "height");
@@ -367,6 +378,7 @@ InputDecl ParserImpl::parseInput() {
 // Input defaults allow parentheses and one unary minus, but no expression
 // operators/calls. Numeric/type validation belongs to the constant resolver.
 std::unique_ptr<Expr> ParserImpl::parseLiteralValue(bool allowMinus) {
+    const Nesting level(*this, expressionNesting_, kExpressionNesting);
     const auto start = pos_;
     if (match(TokenKind::LParen)) {
         auto value = parseLiteralValue(allowMinus);
@@ -376,7 +388,7 @@ std::unique_ptr<Expr> ParserImpl::parseLiteralValue(bool allowMinus) {
     }
     if (allowMinus && match(TokenKind::Minus)) {
         const auto at = tokens_[pos_ - 1].location;
-        auto value = std::make_unique<Expr>(Unary{Unary::Op::Neg, parseLiteralValue(false), at});
+        auto value = node(Unary{Unary::Op::Neg, parseLiteralValue(false), at});
         value->sourceRange = value->sourceCoreRange = {start, pos_};
         return value;
     }
@@ -520,7 +532,7 @@ ParamType ParserImpl::parseParamType(bool insideList) {
         advance();
         return ParamType::Vec2;
     case TokenKind::TypeU32:
-        failHere("u32 is a uniform-only type; parameters are i32, f32, color, vec2 or distribution");
+        failHere("u32 is only an input type; use i32 here");
     case TokenKind::TypeDistribution:
         advance();
         return ParamType::Distribution;
@@ -538,6 +550,7 @@ ParamType ParserImpl::parseParamType(bool insideList) {
 // ---- statements -------------------------------------------------------------
 
 std::vector<Stmt> ParserImpl::parseBlock() {
+    const Nesting level(*this, blockNesting_, kBlockNesting);
     expect(TokenKind::LBrace, "'{'");
     std::vector<Stmt> body;
     while (kind() != TokenKind::RBrace) {
@@ -644,7 +657,7 @@ Stmt ParserImpl::parseIdentifierStatement() {
         return Stmt{VarDecl{name.text, parseExpr(), name.location}};
     }
     // Otherwise it must be a call (possibly through a member chain).
-    auto primary = std::make_unique<Expr>(Identifier{name.text, name.location});
+    auto primary = node(Identifier{name.text, name.location});
     primary->sourceRange = primary->sourceCoreRange = {start, pos_};
     auto expr = parsePostfixAfter(std::move(primary));
     if (const auto* member = std::get_if<Member>(expr.get()); member && kind() == TokenKind::Assign) {
@@ -695,6 +708,8 @@ Stmt ParserImpl::parseIf() {
     if (match(TokenKind::KeywordElse)) {
         elseRange.begin = pos_ - 1;
         if (kind() == TokenKind::KeywordIf) {
+            // An else-if chain is an if nested in each else: one level per branch.
+            const Nesting level(*this, blockNesting_, kBlockNesting);
             const auto start = pos_;
             auto branch = parseIf();
             branch.sourceRange = {start, pos_};
@@ -718,7 +733,8 @@ Stmt ParserImpl::parseWhile() {
 
 Stmt ParserImpl::parseFor() {
     const SourceLocation at = advance().location; // 'for'
-    if (kind() != TokenKind::Identifier) {
+    // The counter is a local, so it takes any name a local can have.
+    if (!isNameKind(kind())) {
         failExpected("the loop variable after 'for'");
     }
     const std::string variable = advance().text;

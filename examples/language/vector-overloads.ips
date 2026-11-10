@@ -20,10 +20,10 @@ asset vector_overloads {
     line(first, last, 1, #fff)
     pixel(middle, #ffd166)
 
-    samples = {noise(p, seed), fault(p, seed)}
+    samples = {noise.value(p, seed), noise.fault(p, seed)}
     samples = {noise.grad(p, seed), noise.cell(p, seed)}
     samples = {noise.fbm(p, 4, seed), noise.ridge(p, 4, seed)}
-    samples = {warp(p, 0.5, seed), dither(0.5, p)}
+    samples = {noise.warp(p, 0.5, seed), dither(0.5, p)}
     samples = cell.jitter(p, seed)
     samples = {angle, atan2(last - first)}
     midpoint = lerp(first, last, 0.5)

@@ -13,6 +13,7 @@
 
 #include "ips/Ast.hpp"
 #include "ips/Lexer.hpp"
+#include "ips/Literals.hpp"
 #include "ips/Parser.hpp"
 #include "ips/Suggestions.hpp"
 
@@ -22,7 +23,7 @@ namespace detail {
 // Converts a numeric token to a u32, rejecting values out of range.
 inline std::uint32_t toU32(const Token& token, const char* what) {
     char* end = nullptr;
-    const unsigned long long value = std::strtoull(token.text.c_str(), &end, 0);
+    const unsigned long long value = std::strtoull(token.text.c_str(), &end, integerLiteralBase(token.text));
     if (end == token.text.c_str() || *end != '\0' || value > 0xFFFFFFFFull) {
         throw SourceError{token.location,
                           std::string(what) + " out of range: " + token.text};
@@ -40,6 +41,25 @@ inline bool isDigits(std::string_view text) {
         }
     }
     return true;
+}
+
+// Builds an expression node and records its depth. A left-associative chain
+// grows a tree as deep as it is long without any parser recursion, so the
+// limit is checked here, where every node is made.
+[[noreturn]] inline void failNesting(const SourceLocation& at, const char* what) {
+    throw SourceError{at, std::string(what) + " deeper than " + std::to_string(kMaxNestingDepth) + " levels",
+                      {}, DiagnosticCode::ResourceLimit, DiagnosticStage::Parser};
+}
+// A chain such as a + b + c is a tree as deep as it is long.
+inline constexpr const char* kExpressionNesting = "an expression is nested or chained";
+inline constexpr const char* kBlockNesting = "blocks or else-if branches are nested";
+
+template <class Node>
+std::unique_ptr<Expr> node(Node&& value) {
+    auto expr = std::make_unique<Expr>(std::forward<Node>(value));
+    expr->depth = 1 + childDepth(*expr);
+    if (expr->depth > kMaxNestingDepth) failNesting(locationOf(*expr), kExpressionNesting);
+    return expr;
 }
 
 class ParserImpl {
@@ -153,6 +173,23 @@ public:
     std::unique_ptr<Expr> parsePointDistribution();
     std::vector<Arg> parseArgs();
 
+    // One level for each construct the parser enters recursively. Parentheses
+    // add no node, so the tree's depth alone would not stop them. Blocks and
+    // expressions count separately: no expression contains a block.
+    class Nesting {
+    public:
+        Nesting(const ParserImpl& parser, std::uint32_t& levels, const char* what) : levels_(levels) {
+            if (levels_ >= kMaxNestingDepth) failNesting(parser.peek().location, what);
+            ++levels_;
+        }
+        ~Nesting() { --levels_; }
+        Nesting(const Nesting&) = delete;
+        Nesting& operator=(const Nesting&) = delete;
+
+    private:
+        std::uint32_t& levels_;
+    };
+
 private:
     enum class RecoveryScope { Program, Declaration, Statement };
     struct RecoveryHalt {};
@@ -162,6 +199,8 @@ private:
 
     std::vector<Token> tokens_;
     std::size_t pos_ = 0;
+    std::uint32_t expressionNesting_ = 0;
+    std::uint32_t blockNesting_ = 0;
     bool listTypeClosed_ = false;
     ParseResult* recovery_ = nullptr;
     std::size_t diagnosticLimit_ = kMaxParseDiagnostics;

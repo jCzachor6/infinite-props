@@ -11,6 +11,60 @@ struct Operand {
     std::size_t start = 0, end = 0;
 };
 
+// The comparison with the opposite result for every pair of operands. An
+// ordered float comparison has none: it is false for NaN, and so is the
+// comparison that looks like its opposite.
+std::optional<Opcode> oppositeComparison(Opcode op) {
+    switch (op) {
+    case Opcode::I32Eq: return Opcode::I32Ne;
+    case Opcode::I32Ne: return Opcode::I32Eq;
+    case Opcode::I32LtS: return Opcode::I32GeS;
+    case Opcode::I32GeS: return Opcode::I32LtS;
+    case Opcode::I32GtS: return Opcode::I32LeS;
+    case Opcode::I32LeS: return Opcode::I32GtS;
+    case Opcode::I32LtU: return Opcode::I32GeU;
+    case Opcode::I32GeU: return Opcode::I32LtU;
+    case Opcode::I32GtU: return Opcode::I32LeU;
+    case Opcode::I32LeU: return Opcode::I32GtU;
+    case Opcode::F32Eq: return Opcode::F32Ne;
+    case Opcode::F32Ne: return Opcode::F32Eq;
+    default: return std::nullopt;
+    }
+}
+
+// Every comparison leaves 0 or 1.
+bool isComparison(Opcode op) {
+    return (op >= Opcode::I32Eq && op <= Opcode::I32GeU) || (op >= Opcode::F32Eq && op <= Opcode::F32Ge);
+}
+
+// `!condition` and a loop's exit test are emitted as `condition; 0; i32.eq`,
+// and a logical operand as `condition; 0; i32.ne`. After a comparison the
+// first is the opposite comparison and the second is the comparison itself.
+// The three instructions are consecutive and none of them is a label, so no
+// branch lands between them.
+void fuseComparisons(const Plan& plan, PlannedFunction& fn) {
+    std::vector<Instruction> code;
+    std::vector<u32> lines;
+    for (std::size_t i = 0; i < fn.code.size(); ++i) {
+        const auto ins = fn.code[i];
+        const auto size = code.size();
+        const bool afterZero = size >= 2 && code[size - 1].opcode == Opcode::ConstI32 &&
+            plan.pools.intsValue().at(code[size - 1].operand) == 0;
+        if (afterZero && ins.opcode == Opcode::I32Eq) {
+            if (const auto opposite = oppositeComparison(code[size - 2].opcode)) {
+                code.pop_back(); lines.pop_back();
+                code.back().opcode = *opposite;
+                continue;
+            }
+        } else if (afterZero && ins.opcode == Opcode::I32Ne && isComparison(code[size - 2].opcode)) {
+            code.pop_back(); lines.pop_back();
+            continue;
+        }
+        code.push_back(ins); lines.push_back(fn.sourceLines[i]);
+    }
+    fn.code = std::move(code); fn.sourceLines = std::move(lines);
+}
+
 void foldFunction(Plan& plan, PlannedFunction& fn) {
     std::vector<Instruction> code;
     std::vector<u32> lines;
@@ -98,6 +152,7 @@ void foldFunction(Plan& plan, PlannedFunction& fn) {
         }
         fn.code.push_back(ins); fn.sourceLines.push_back(line);
     }
+    fuseComparisons(plan, fn);
 }
 } // namespace
 

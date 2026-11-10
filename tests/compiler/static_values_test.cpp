@@ -90,9 +90,14 @@ TEST_CASE("description constructors reject known parameters without naming a con
                       "s = sampler(0.0 to 1.0 with gaussian(L[3], 1)) } } }").empty());
 }
 
-TEST_CASE("asset parameters shadow palettes in statically known values", "[static-values]") {
+TEST_CASE("a list parameter is not mistaken for a palette in statically known values", "[static-values]") {
+    const auto shadowing = diagnostics("asset t { size 1x1 output point p palette bounds = [9, 8] "
+                                       "first(bounds: list<i32>) -> i32 { return bounds[0] } "
+                                       "draw { p = {first([1, 2]), bounds[1]} } }");
+    REQUIRE(shadowing.size() == 1);
+    CHECK(shadowing[0].message == "parameter 'bounds' has the same name as a palette");
     const std::string source = "asset t { size 1x1 output point p palette bounds = [9, 8] "
-                               "first(bounds: list<i32>) -> i32 { s = sampler(bounds[0] to 5) return s.pick() } "
+                               "first(items: list<i32>) -> i32 { s = sampler(items[0] to 5) return s.pick() } "
                                "draw { p = {first([1, 2]), bounds[1]} } }";
     REQUIRE(diagnostics(source).empty());
     const auto result = execute(compileChecked(source), 3);

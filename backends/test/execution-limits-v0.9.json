@@ -54,7 +54,7 @@
     },
     {
       "name": "polygon",
-      "source": "asset Metered { size 64x64 output point state draw { poly(#abc8,1,1,61,3,59,61,2,59); state = {unit(), unit()} } }",
+      "source": "asset Metered { size 64x64 output point state draw { poly(1,1,61,3,59,61,2,59, #abc8); state = {unit(), unit()} } }",
       "opcode": "Poly"
     },
     {

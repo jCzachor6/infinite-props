@@ -32,6 +32,10 @@ struct ParseResult {
 };
 
 inline constexpr std::size_t kMaxParseDiagnostics = 20;
+// How deep an expression tree and nested blocks may go. The checker, the
+// emitter and the tree's own destructor recurse over what the parser builds,
+// so source beyond this is a located error instead of a stack overflow.
+inline constexpr std::uint32_t kMaxNestingDepth = 256;
 
 // limit is clamped to [1, 20]. limitReached means parsing stopped at the cap,
 // not that another error is known to exist. EOF produces at most one error;

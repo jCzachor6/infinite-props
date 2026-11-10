@@ -119,11 +119,11 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
                 contours ? "layer image{rect(0,0,8,8,#fff)} contoursValue=contour(mask.from(image),0.5) " : diagram ? "diagramValue=voronoi({0,0},{8,8},1,1) " :
                 layer ? "layer image{rect(0,0,8,8,#fff)} " + std::string(mask ? "region=mask.from(image) " : "") : "";
             const auto program = ips::parse("asset t { size 8x8 draw { " + capture +
-                "stream_push(1) " + name + "(" + args + ") } }");
+                "stream.push(1) " + name + "(" + args + ") } }");
             REQUIRE_NOTHROW(ips::checkAsset(program,{}));
             const auto bytes = compileProgram(program,{});
             const auto reordered = ips::parse("asset t { size 8x8 draw { " + capture +
-                "stream_push(1) " + name + "(" + named + ") } }");
+                "stream.push(1) " + name + "(" + named + ") } }");
             REQUIRE_NOTHROW(ips::checkAsset(reordered,{}));
             CHECK(bytes == compileProgram(reordered,{}));
             const auto file = loadFile(bytes);

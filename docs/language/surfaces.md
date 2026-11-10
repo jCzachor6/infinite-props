@@ -34,8 +34,9 @@ destination.
 
 <!-- builtin: surface.paint -->
 
-Paints a captured layer into the current target using its saved mapping. The
-image expression evaluates once, with no intrinsic RNG, rerendering or pixel
+Paints a captured layer into the current target using its saved mapping. Its
+first argument, named `source`, is a layer, or a mask followed by a color. The
+source expression evaluates once, with no intrinsic RNG, rerendering or pixel
 copy. The full source canvas is visited in row order, including transparent and
 off-target pixels; transparent source pixels are skipped by legacy composition.
 `surface.paint` adds no `at`, rotation or mirror arguments: placement and D4
@@ -172,7 +173,8 @@ Capture begin/end costs `2 + ceil(width*height*70/100)`; paint costs
 allocation or scanning. Drawing inside a layer keeps the primitive's usual
 fuel cost. Each surface buffer releases when its last handle is destroyed;
 success or a trap clears the generation's remaining handles. A failed
-generation never publishes a partial image. Default fuel remains 5,000,000.
+generation never publishes a partial image. The default fuel budget is
+25,000,000.
 
 Layers use the file's type descriptor table. They do not add
 public C input/output enums or host layouts. Typed part outputs can retain
@@ -260,7 +262,7 @@ coverage with the same rounding, then use the active legacy/source-over kernel.
 Zero coverage skips the write entirely, preserving hidden RGB in both modes.
 `surface.paint(region, color=...)` first scales color alpha by mask coverage,
 then applies combined clip coverage. A mask requires a color; omitted blend
-inherits the destination mode. Image, color and static blend are evaluated in
+inherits the destination mode. Source, color and static blend are evaluated in
 signature order, regardless of named argument order, without implicit RNG.
 
 Weather runs its usual algorithm; each proposed write interpolates the old and

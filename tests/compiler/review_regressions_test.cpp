@@ -94,9 +94,9 @@ TEST_CASE("optimization keeps every constant pool operand consistent", "[review]
 
 TEST_CASE("surface.paint lowers and formats through its overloads", "[review]") {
     const std::string source = "asset t { size 2x2 draw { layer image { pixel(0, 0, #fff) } region = mask.from(image) "
-        "surface.paint(image) surface.paint(image, surface.source_over) surface.paint(image = image, blend = surface.legacy) "
+        "surface.paint(image) surface.paint(image, surface.source_over) surface.paint(source = image, blend = surface.legacy) "
         "surface.paint(region, #ff0000) surface.paint(region, color = #00ff00, blend = surface.source_over) "
-        "surface.paint(image = region, color = #0000ff) } }";
+        "surface.paint(source = region, color = #0000ff) } }";
     const auto bytes = compileRoot({{"root.ips", source}}, false);
     const auto text = disassemble(bytes);
     std::vector<std::string> paints;
@@ -112,8 +112,8 @@ TEST_CASE("surface.paint lowers and formats through its overloads", "[review]") 
 
 TEST_CASE("part output slots skip resource outputs wherever they are declared", "[review]") {
     const std::map<std::string, std::string> sources{
-        {"root.ips", "import part from \"part.ips\" asset t { size 8x8 output point a output rect r output circle c "
-                     "draw { part.draw(seed, at = {0, 0}) a = part.outputs.a r = part.outputs.r c = part.outputs.c } }"},
+        {"root.ips", "import child from \"part.ips\" asset t { size 8x8 output point a output rect r output circle c "
+                     "draw { child.draw(seed, at = {0, 0}) a = child.outputs.a r = child.outputs.r c = child.outputs.c } }"},
         {"part.ips", "asset t { size 4x4 output mask m output point a output layer l output rect r output mask n "
                      "output circle c draw { layer image { pixel(0, 0, #fff) } l = image m = mask.from(image) n = mask.from(image) "
                      "a = {1, 2} r = {3, 4, 5, 6} c = {7, 8, 9} } }"}};
@@ -165,7 +165,7 @@ TEST_CASE("every pool-indexing operand names its pool", "[review]") {
 
 TEST_CASE("list polygons and variadic polygons lower through their own instruction", "[review]") {
     const auto text = disassemble(compileRoot({{"root.ips", "asset t { size 8x8 draw { "
-        "poly([{0, 0}, {4, 0}, {0, 4}], #ffffff) poly(#ff0000, 0, 0, 4, 0, 0, 4) } }"}}, false));
+        "poly([{0, 0}, {4, 0}, {0, 4}], #ffffff) poly(0, 0, 4, 0, 0, 4, #ff0000) } }"}}, false));
     CHECK(text.find("poly.list\n") != std::string::npos);
     CHECK(text.find("poly 3\n") != std::string::npos);
 }

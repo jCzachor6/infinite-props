@@ -110,7 +110,7 @@ TEST_CASE("list construction evaluates elements once in order and supports 256 e
 
 TEST_CASE("list polygons preserve legacy rasterization and argument order") {
     const auto reference = compileChecked(R"(asset t {size 32x24 output point state draw{
-      poly(#915f34af,3,4,18,2,25,15,8,20) state={seed&65535,seed>>16}
+      poly(3,4,18,2,25,15,8,20, #915f34af) state={seed&65535,seed>>16}
     }})",false);
     const std::string source = R"(asset t {size 32x24 output point state
       const list<vec2> outline=[{3,4},{18,2},{25,15},{8,20}]
@@ -128,7 +128,7 @@ TEST_CASE("list polygons preserve legacy rasterization and argument order") {
           pointValue()->vec2{return {0.0 to 3.0,0.0 to 3.0}}
           tintValue()->color{return #000000 to #ffffff}
           draw{first=pointValue() second=pointValue() third=pointValue() tint=tintValue()
-            poly(tint,first.x,first.y,second.x,second.y,third.x,third.y) state={seed&65535,seed>>16}}})",false);
+            poly(first.x,first.y,second.x,second.y,third.x,third.y, tint) state={seed&65535,seed>>16}}})",false);
         for (const auto seed : {0u,26u,0xffffffffu}) sameOutcome(ordered,sequential,seed);
     }
     const auto tooFew=loadFile(compileChecked("asset t {size 1x1 draw{poly([{0,0},{1,1}],#ffffff)}}"));

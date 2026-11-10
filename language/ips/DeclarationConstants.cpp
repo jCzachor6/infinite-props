@@ -41,7 +41,7 @@ ResolvedConstant resolve(const Expr& expression, bool integerAsFloat) {
             // parseIntBits has checked the same stoll conversion. F32
             // defaults also retain larger accepted integer spellings, for
             // which no int64 mathematical value can be represented.
-            const i64 mathematical = std::stoll(literal->text, nullptr, 0);
+            const i64 mathematical = std::stoll(literal->text, nullptr, integerLiteralBase(literal->text));
             result.mathematicalInteger = negate ? -mathematical : mathematical;
         }
         if (integerAsFloat) {

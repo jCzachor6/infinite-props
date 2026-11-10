@@ -33,9 +33,11 @@ TEST_CASE("shifted comparisons match grouped legacy expressions in both compiler
         {"v > 1 << 2", "v > (1 << 2)", {0,0,0,0,0,1,1,1}},
         {"v >= 1 << 2", "v >= (1 << 2)", {0,0,0,0,1,1,1,1}},
         {"v + 1 << 1 < 8 >> 1", "((v + 1) << 1) < (8 >> 1)", {1,0,0,0,0,0,0,0}},
-        {"v < 3 < 1 << 1", "(v < 3) < (1 << 1)", {1,1,1,1,1,1,1,1}},
-        {"0 < v < 1", "(0 < v) < 1", {1,0,0,0,0,0,0,0}},
-        {"v & 3 < 1 << 1", "v & (3 < (1 << 1))", {0,0,0,0,0,0,0,0}},
+        {"(v < 3) < 1 << 1", "(v < 3) < (1 << 1)", {1,1,1,1,1,1,1,1}},
+        {"v & 3 < 1 << 1", "(v & 3) < (1 << 1)", {1,1,0,0,1,1,0,0}},
+        {"v & 1 == 0", "(v & 1) == 0", {1,0,1,0,1,0,1,0}},
+        {"v | 4 > 5", "(v | 4) > 5", {0,0,1,1,0,0,1,1}},
+        {"v ^ 1 != 1 && v & 6 == 6", "((v ^ 1) != 1) && ((v & 6) == 6)", {0,0,0,0,0,0,1,1}},
     };
     const auto source = [](const char* expression) {
         return std::string("asset comparison { input i32 v=0 size 8x8 output point p ") +
@@ -96,8 +98,8 @@ asset t {
     s = sin(0.5)
     c = cos(1.25)
     p = {s, c}
-    pixel(i32trunc(s * 10.0), 0, #ff0000)
-    pixel(i32trunc(c * 10.0), 1, #00ff00)
+    pixel(int(s * 10.0), 0, #ff0000)
+    pixel(int(c * 10.0), 1, #00ff00)
   }
 })";
     const std::string ipa = R"(
@@ -175,13 +177,13 @@ TEST_CASE("the math builtins emit the pinned opcodes") {
 asset t {
   size 8x8
   draw {
-    pixel(i32trunc(floor(2.7)), 0, #ff0000)
-    pixel(i32trunc(ceil(2.1)), 0, #00ff00)
-    pixel(i32trunc(min(1.5, 2.0)), 0, #0000ff)
-    pixel(i32trunc(max(1.5, 2.0)), 0, #ffff00)
-    pixel(i32trunc(pow(2.0, 3.0)), 0, #ff00ff)
-    pixel(i32trunc(exp(0.0)), 0, #00ffff)
-    pixel(i32trunc(atan2(1.0, 1.0) * 4.0), 0, #ffffff)
+    pixel(int(floor(2.7)), 0, #ff0000)
+    pixel(int(ceil(2.1)), 0, #00ff00)
+    pixel(int(min(1.5, 2.0)), 0, #0000ff)
+    pixel(int(max(1.5, 2.0)), 0, #ffff00)
+    pixel(int(pow(2.0, 3.0)), 0, #ff00ff)
+    pixel(int(exp(0.0)), 0, #00ffff)
+    pixel(int(atan2(1.0, 1.0) * 4.0), 0, #ffffff)
   }
 })";
     const std::string ipa = R"(
@@ -325,7 +327,7 @@ asset t {
     REQUIRE(loaded.code.entry().code.size() == 16);
 }
 
-TEST_CASE("shifts, i32trunc and round execute with VM semantics") {
+TEST_CASE("shifts, int and round execute with VM semantics") {
     const std::string source = R"(
 asset t {
   size 8x8
@@ -335,7 +337,7 @@ asset t {
     // u32 semantics: 0x80000000 >> 1 = 0x40000000
     a1 = 1 << 3
     b1 = 64 >> 2
-    c1 = i32trunc(2.9)
+    c1 = int(2.9)
     p = {round(1.3), round(-1.3)}
   }
 })";

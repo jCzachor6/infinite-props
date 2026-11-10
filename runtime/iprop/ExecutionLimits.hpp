@@ -55,32 +55,43 @@ public:
     ErrorLocation location;
     ErrorStage stage = ErrorStage::Execute;
 
+    // The counters stay inline; exhaustion, cancellation and the clock are
+    // out of line so every per-step call is a few register operations.
     void spend(u64 units = 1) {
-        if (units > remaining_)
-            throw Trap("native work limit exhausted", ErrorReason::WorkExhausted, stage, location);
-        if (units >= untilPoll_) {
+        if (units > remaining_) [[unlikely]] exhausted();
+        if (units >= untilPoll_) [[unlikely]] {
             poll();
             untilPoll_ = units >= kWorkPollInterval ? 1 : kWorkPollInterval - units;
         } else untilPoll_ -= units;
         remaining_ -= units;
     }
+    // Exactly `count` consecutive spend(1) calls: the same totals, the same
+    // polls and the same counters when it fails part-way. A bounded kernel
+    // reserves the steps of one pixel or row here instead of once per step.
+    void spendEach(u64 count) {
+        if (count < untilPoll_ && count <= remaining_) [[likely]] {
+            untilPoll_ -= count;
+            remaining_ -= count;
+            return;
+        }
+        spendEachSlow(count);
+    }
+    // Whether `count` further unit steps fit in the budget.
+    bool affords(u64 count) const noexcept { return count <= remaining_; }
     // Use in a prepaid loop or a bounded copy. Polling has no effect on work
     // totals and is safe even on paths whose memory layout differs by host.
     void checkpoint() {
-        if (--untilPoll_ == 0) { poll(); untilPoll_ = kWorkPollInterval; }
+        if (--untilPoll_ == 0) [[unlikely]] { poll(); untilPoll_ = kWorkPollInterval; }
     }
-    void poll() const {
-        if ((limits_.cancellation && limits_.cancellation->cancelled()) ||
-            (limits_.cancelled && limits_.cancelled(limits_.context)))
-            throw Trap("generation cancelled", ErrorReason::Cancelled, stage, location);
-        if (limits_.deadline && ExecutionLimits::Clock::now() >= *limits_.deadline)
-            throw Trap("generation deadline exceeded", ErrorReason::DeadlineExceeded, stage, location);
-    }
+    void poll() const;
     u64 budget() const noexcept { return budget_; }
     u64 remaining() const noexcept { return remaining_; }
     u64 used() const noexcept { return budget_ - remaining_; }
 
 private:
+    [[noreturn]] void exhausted() const;
+    void spendEachSlow(u64 count);
+
     ExecutionLimits limits_;
     u64 budget_, remaining_;
     u64 untilPoll_ = 1;

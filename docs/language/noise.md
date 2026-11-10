@@ -5,9 +5,9 @@ Keep coordinates modest unless testing the documented domains. All derived
 coordinates are checked too; a finite starting coordinate can leave a valid
 domain after octave scaling or warping.
 
-`noise`, `fault`, `noise.grad`, `noise.fbm`, `noise.cell`, `noise.ridge` and
-`warp` also accept one `p: vec2` instead of `x, y`. The point evaluates once,
-before the remaining arguments, and uses the same coordinate checks and bits.
+Every sampling function in the `noise` namespace also accepts one `p: vec2`
+instead of `x, y`. The point evaluates once, before the remaining arguments,
+and uses the same coordinate checks and bits.
 `cell.jitter(cell, seed)` and `dither(t, p)` convert vector components with
 `int()` (truncation toward zero, saturation, NaN to zero); their scalar
 signatures still require i32 coordinates. Keep scalar cell indices when exact
@@ -15,14 +15,14 @@ integers beyond f32 precision are needed.
 
 <!-- example: ../../examples/language/noise.ips -->
 
-## noise
-<!-- builtin: noise -->
+## noise.value
+<!-- builtin: noise.value -->
 
 Frozen value noise over the lattice, with interpolation defined by
 [the original noise contract](../../spec/iprop-v0.8.md#124-noisex-y-seed).
 
-## fault
-<!-- builtin: fault -->
+## noise.fault
+<!-- builtin: noise.fault -->
 
 Frozen triangular noise/fault primitive with explicit coordinates and seed;
 its exact hashing and interpolation are in the adjacent fault specification.
@@ -69,20 +69,26 @@ its bits interpreted as i32. Equal binary32 distances choose the first cell
 in ascending `(cy,cx)` order. Hash collisions are possible; this is not an
 ID for the separate geometric Voronoi API.
 
+## noise.warp
+<!-- builtin: noise.warp -->
+
+Domain-warped noise using the fixed inner/outer four-octave fbms. Amount must
+be finite; all offset and warped samples must meet the gradient domains.
+
 ## noise.warp_vec
 <!-- builtin: noise.warp_vec -->
 
 Returns warped coordinates rather than a noise value. Uses the same two
-inner four-octave fields as `warp`: `qx=fbm(x,y,4,seed)` and
+inner four-octave fields as `noise.warp`: `qx=fbm(x,y,4,seed)` and
 `qy=fbm(x+3.7,y+9.1,4,seed)`, then `{x+amount*qx,y+amount*qy}`.
 Amount must be finite. Input and result coordinates must be in the gradient
 domain; every inner sample is checked after scaling. It does not evaluate
-the outer fBm of `warp`.
+the outer fBm of `noise.warp`.
 
 For either sign of zero amount, input validation is followed by returning
 the input bits directly, including negative zero. Offset fields are not
-sampled on that path. The existing `warp()` continues to sample them even
-with zero amount, so its historical traps remain unchanged.
+sampled on that path. `noise.warp` samples them even with zero amount, so a
+coordinate outside their domain traps there.
 
 `noise.cell2`, `noise.cell_id` and `noise.warp_vec` also accept `p: vec2`.
 All new overloads are available in asset constants. Their exact arithmetic,
@@ -126,12 +132,6 @@ The [mask contract](../../spec/noise-mask-v0.9.md) fixes rounding, domains,
 resource charging and reference vectors.
 
 <!-- example: ../../examples/language/noise-mask.ips -->
-
-## warp
-<!-- builtin: warp -->
-
-Domain-warped noise using the fixed inner/outer four-octave fbms. Amount must
-be finite; all offset and warped samples must meet the gradient domains.
 
 ## cell.jitter
 <!-- builtin: cell.jitter -->

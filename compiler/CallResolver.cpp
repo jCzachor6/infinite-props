@@ -34,14 +34,11 @@ ResolvedCall CallResolver::resolve(const ips::Call& call) const {
         return {call.location, std::move(result)};
     }
     const auto ns = functionNamespace(function_.name);
-    if (const auto found = ips::builtinSpecs().find(name); found != ips::builtinSpecs().end() &&
-        !(name=="part.draw"&&call.args.size()!=1) &&
-        (call.builtinOnly || !(ips::builtinYieldsToHelper(name) && plan_.functionId(name, ns)))) {
+    if (const auto found = ips::builtinSpecs().find(name); found != ips::builtinSpecs().end()) {
         const auto& spec = found->second;
         std::vector<T> types;
         for (const auto* arg : args) types.push_back(function_.typeOf(*arg->value));
-        if ((spec.lowering == ips::BuiltinLowering::Pick && args.size() >= 2) ||
-            spec.lowering == ips::BuiltinLowering::Choose) {
+        if (spec.lowering == ips::BuiltinLowering::Pick || spec.lowering == ips::BuiltinLowering::Choose) {
             const std::size_t first = spec.lowering == ips::BuiltinLowering::Choose ? 1 : 0;
             const auto type = ips::selectionType(std::span(types).subspan(first));
             if (!type) throw ips::SourceError{call.location, "invalid choices"};
@@ -55,7 +52,7 @@ ResolvedCall CallResolver::resolve(const ips::Call& call) const {
         BuiltinCall result{&spec, ips::builtinOverload(spec, types), {}};
         if (ips::variadicPolygon(spec, args.size())) {
             for (const auto i : bound.signature.evaluationOrder)
-                result.arguments.push_back(argument(*args[i]->value, i == 0 ? T::Color : T::F32));
+                result.arguments.push_back(argument(*args[i]->value, i + 1 == args.size() ? T::Color : T::F32));
         } else {
             if (!result.overload) throw ips::SourceError{call.location,"invalid builtin overload"};
             for (const auto i : bound.signature.evaluationOrder)

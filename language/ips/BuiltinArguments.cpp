@@ -32,8 +32,11 @@ std::vector<const Arg*> bindArguments(const Call& call,
         std::size_t index = 0;
         if (arg.name) {
             const auto found = std::find(names.begin(), names.end(), *arg.name);
-            if (found == names.end())
-                fail(arg.location, prefix + "has no argument '" + *arg.name + "'" + didYouMean(*arg.name, names));
+            if (found == names.end()) {
+                const auto former = formerArgumentHint(function, *arg.name);
+                fail(arg.location, prefix + "has no argument '" + *arg.name + "'" +
+                                       (former.empty() ? didYouMean(*arg.name, names) : former));
+            }
             index = static_cast<std::size_t>(found - names.begin());
         } else {
             if (positional >= positionalSlots.size())
@@ -55,16 +58,19 @@ std::vector<std::string> builtinParameterNames(const BuiltinSpec& spec, std::siz
     std::vector<std::string> names;
     if (variadicPolygon(spec, arity)) {
         if (arity < 7 || arity % 2 == 0)
-            throw SourceError{at, "poly expects a colour and at least three (x, y) vertex pairs"};
+            throw SourceError{at, "poly expects at least three (x, y) vertex pairs and then a color"};
+        // Like every drawing call, the vertices come first and the color last.
+        for (std::size_t i = 0; i + 1 < arity; ++i)
+            names.push_back(std::string(i % 2 ? "y" : "x") + std::to_string(i / 2));
         names.push_back("color");
-        for (std::size_t i = 1; i < arity; ++i)
-            names.push_back(std::string(i % 2 ? "x" : "y") + std::to_string((i - 1) / 2));
-    } else if ((spec.lowering == BuiltinLowering::Pick && arity >= 2) ||
-               spec.lowering == BuiltinLowering::Choose) {
+    } else if (spec.lowering == BuiltinLowering::Pick || spec.lowering == BuiltinLowering::Choose) {
         const std::size_t first = spec.lowering == BuiltinLowering::Choose ? 1 : 0;
         if (first) {
             if (arity < 2) throw SourceError{at, "choose expects a seed and at least one choice"};
             names.push_back("seed");
+        } else if (arity < 2) {
+            // pick(n) used to be another spelling of index(n).
+            throw SourceError{at, "pick expects at least two choices; use index(n) to draw an index below n"};
         }
         for (std::size_t i = first; i < arity; ++i) names.push_back("value" + std::to_string(i - first));
     } else {

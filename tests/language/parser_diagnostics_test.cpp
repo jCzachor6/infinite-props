@@ -45,7 +45,7 @@ TEST_CASE("u32 parameters are rejected") {
         (void)parse("asset u { helper(v: u32, a: i32) { } }");
     } catch (const SourceError& error) {
         threw = true;
-        REQUIRE(std::string(error.message).find("uniform-only") !=
+        REQUIRE(std::string(error.message).find("u32 is only an input type") !=
                 std::string::npos);
     }
     REQUIRE(threw);
@@ -111,7 +111,7 @@ TEST_CASE("size values out of range are rejected") {
         (void)parse("asset big { size 99999999999x1 }");
     } catch (const SourceError& error) {
         threw = true;
-        REQUIRE(std::string(error.message).find("width out of range") !=
+        REQUIRE(std::string(error.message).find("does not fit in 32 bits") !=
                 std::string::npos);
     }
     REQUIRE(threw);

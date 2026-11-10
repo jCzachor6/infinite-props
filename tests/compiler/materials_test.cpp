@@ -450,7 +450,7 @@ TEST_CASE("material expansion preserves independent part streams outputs and hel
             m=mat.Coat();old=m;m=mat.Coat(base=m.base,width=m.width+1)
             paint(m);pixel(0,1,old.base);p={float(m.width),float(m.base.r)}
         } paint(m:mat.Coat){line(0,0,m.width,0,1,m.base)}
-          gaussian(mean:f32,sigma:f32)->f32{return mean+sigma} })"},
+          spread(mean:f32,sigma:f32)->f32{return mean+sigma} })"},
         {"scalar-part.ips", R"(asset child {size 4x2 output point p draw {
             base=#000000 to #ffffff with gaussian(0.5,0.18);width=1 to 3
             old=base;width=width+1
@@ -465,7 +465,7 @@ TEST_CASE("material expansion preserves independent part streams outputs and hel
     });
 }
 
-TEST_CASE("material defaults retain builtin bindings while overrides use the caller") {
+TEST_CASE("material defaults use builtins while overrides call the importing asset's helpers") {
     sameMaterialExecution({
         {"mat.ips", R"(const distribution shape=gaussian(0.5,0.18)
             palette P=[#000000 to #ffffff with beta(2.0,3.0)]
@@ -476,13 +476,11 @@ TEST_CASE("material defaults retain builtin bindings while overrides use the cal
                 taper=0.0 to 1.0 with shape
             })"},
         {"entry.ips", R"(import mat from "mat.ips"; asset t {size 5x1 output point p draw {
-            m=mat.Coat(); n=mat.Coat(taper=gaussian(1.0,2.0))
+            m=mat.Coat(); n=mat.Coat(taper=spread(1.0,2.0))
             pixel(0,0,m.base);pixel(1,0,m.shade);pixel(2,0,rgba(m.width,int(m.taper*255.0),0,255))
-            pixel(3,0,n.shade);pixel(4,0,#000000 to #ffffff);p={n.taper,gaussian(3.0,4.0)}
+            pixel(3,0,n.shade);pixel(4,0,#000000 to #ffffff);p={n.taper,spread(3.0,4.0)}
         }
-        gaussian(mean:f32,sigma:f32)->f32{return mean+sigma}
-        beta(a:f32,b:f32)->f32{return 100.0}
-        triangular(a:f32,b:f32,c:f32)->f32{return 100.0}
+        spread(mean:f32,sigma:f32)->f32{return mean+sigma}
         })"},
         {"plain.ips", R"(asset t {size 5x1 const distribution shape=gaussian(0.5,0.18)
             palette P=[#000000 to #ffffff with beta(2.0,3.0)] output point p draw {

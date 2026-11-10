@@ -34,7 +34,7 @@ TEST_CASE("balanced ramp selection matches an explicit linear reference at every
         std::string reference = "reference(t:f32) -> f32 { ";
         if (count > 1) {
             reference += "position = min(max(t,0),1) * " + std::to_string(count-1) +
-                " i = i32trunc(position) f = position - i ";
+                " i = int(position) f = position - i ";
             for (std::size_t k = 0; k + 1 < count; ++k) {
                 reference += "if (i == " + std::to_string(k) + ") { return lerp(levels[" +
                     std::to_string(k) + "],levels[" + std::to_string(k+1) + "],f) } ";

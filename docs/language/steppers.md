@@ -28,7 +28,7 @@ An unassigned description traps even for zero results.
 Repeated picks return identical values, independently of the seed. There is
 no cursor. A constant description repeats its captured value. With no
 distribution and n ≥ 2, the unit positions are `i / (n - 1)`, including both
-exact captured endpoints. `pick(0)` returns an empty list; `pick(1)` returns
+exact captured endpoints. `.pick(0)` returns an empty list; `.pick(1)` returns
 the first step. Integer interpolation uses binary64 without first converting
 the endpoints to f32, then rounds to the nearest integer with halves away
 from zero. For example, `stepper(0 to 5).pick(10)` returns
@@ -55,7 +55,7 @@ of the first and last segments with positive area; zero-area gaps are skipped.
 At a cumulative boundary, weighted and density quantiles select the next
 positive atom or segment, using the same strict cumulative test as sampling.
 Weights can repeat values; quantiles do not guarantee exact count proportions
-for a small list. `pick(0)` does not require probability mass in the range.
+for a small list. `.pick(0)` does not require probability mass in the range.
 
 Reversed numeric ranges, nonfinite endpoints, invalid distribution parameters,
 equal bounds and missing probability mass follow the sampler rules. Known

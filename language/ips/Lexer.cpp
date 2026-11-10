@@ -1,4 +1,5 @@
 #include "ips/Lexer.hpp"
+#include "ips/Literals.hpp"
 #include "ips/SourceText.hpp"
 #include "ips/Suggestions.hpp"
 
@@ -200,7 +201,7 @@ std::vector<Token> lex(std::string_view source) {
                 text.push_back(advance());
             }
             if (text.size() != 3 && text.size() != 4 && text.size() != 6 && text.size() != 8) {
-                throw error(at, "invalid colour literal (expected #RGB, #RGBA, #RRGGBB or #RRGGBBAA)");
+                throw error(at, "invalid color literal (expected #RGB, #RGBA, #RRGGBB or #RRGGBBAA)");
             }
             emit(TokenKind::Color, "#" + text, at);
             continue;
@@ -219,12 +220,21 @@ std::vector<Token> lex(std::string_view source) {
                 if (text.empty()) {
                     throw error(at, "invalid hexadecimal literal");
                 }
+                if (text.size() > 8) {
+                    throw error(at, "hexadecimal literal does not fit in 32 bits (at most 8 digits)");
+                }
                 emit(TokenKind::Int, "0x" + text, at);
                 continue;
             }
             while (isDigit(peek(0))) {
                 text.push_back(advance());
             }
+            // A leading zero never selects octal: 010 is not 8 and not 10.
+            if (text.size() > 1 && text[0] == '0') {
+                throw error(at, "a number cannot start with a leading zero; remove it, "
+                                "or write 0x... for hexadecimal");
+            }
+            const std::size_t integerDigits = text.size();
             if (peek(0) == '.' && isDigit(peek(1))) {
                 isFloat = true;
                 text.push_back(advance()); // .
@@ -244,6 +254,14 @@ std::vector<Token> lex(std::string_view source) {
                 while (isDigit(peek(0))) {
                     text.push_back(advance());
                 }
+            }
+            if (isFloat) {
+                u32 bits = 0;
+                if (!parseFloatBits(text, bits)) {
+                    throw error(at, "float literal is out of range for f32");
+                }
+            } else if (integerDigits > 10 || std::stoull(text) > 0xFFFFFFFFull) {
+                throw error(at, "integer literal does not fit in 32 bits");
             }
             emit(isFloat ? TokenKind::Float : TokenKind::Int, std::move(text), at);
             continue;
@@ -401,7 +419,7 @@ const char* tokenName(TokenKind kind) {
     case TokenKind::KindCircle: return "circle";
     case TokenKind::Int: return "integer literal";
     case TokenKind::Float: return "float literal";
-    case TokenKind::Color: return "colour literal";
+    case TokenKind::Color: return "color literal";
     case TokenKind::String: return "string literal";
     case TokenKind::LBrace: return "{";
     case TokenKind::RBrace: return "}";

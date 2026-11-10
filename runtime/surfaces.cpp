@@ -68,7 +68,26 @@ void paintSurface(Execution& ex, const LayerValue& image, CompositionMode mode) 
     const auto& source = image.buffer->raster;
     const auto& destination = ex.canvas();
     const RasterPoint extent{static_cast<i32>(source.width), static_cast<i32>(source.height)};
+    const u64 rowSteps = 1u + static_cast<u64>(source.width);
     for (u32 sy = 0; sy < source.height; ++sy) {
+        if (ex.prepayRow(rowSteps)) {
+            // No clip: each written pixel is one composition into the target.
+            PrepaidSteps polls{*ex.workBudget};
+            Canvas& target = ex.canvas();
+            for (u32 sx = 0; sx < source.width; ++sx) {
+                polls.step();
+                const Color pixel = source.at(sx, sy);
+                if (pixel.a == 0 && mode == CompositionMode::Legacy) continue;
+                const auto mapped = image.mapping.transform.mapPixel(
+                    {static_cast<i32>(sx), static_cast<i32>(sy)}, extent);
+                const i64 x = static_cast<i64>(image.mapping.origin.x) + mapped.x;
+                const i64 y = static_cast<i64>(image.mapping.origin.y) + mapped.y;
+                if (x < 0 || y < 0 || x >= target.width || y >= target.height) continue;
+                Color& into = target.at(static_cast<u32>(x), static_cast<u32>(y));
+                into = composePixel(into, pixel, mode);
+            }
+            continue;
+        }
         ex.work();
         for (u32 sx = 0; sx < source.width; ++sx) {
             ex.work();
@@ -104,7 +123,7 @@ void Execution::beginLayer(u16 local, u8 mode) {
     target = std::move(next);
 }
 
-void Execution::closeLayers(std::size_t labelDepth) {
+void Execution::closeOpenLayers(std::size_t labelDepth) {
     while (!layerScopes.empty() && layerScopes.back().frameDepth == frames.size() &&
            layerScopes.back().labelDepth > labelDepth) {
         auto scope = std::move(layerScopes.back());

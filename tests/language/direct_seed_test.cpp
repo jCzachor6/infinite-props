@@ -27,17 +27,17 @@ TEST_CASE("seed-direct draws match manual isolation and preserve the outer strea
       draw {
         for i in 0..32 {
           before = unit()
-          stream_push(123) r = range(-2, 8) stream_pop()
+          stream.push(123) r = range(-2, 8) stream.pop()
           trace = {before, r}
-          stream_push(123) r = range(-2, 8) stream_pop()
+          stream.push(123) r = range(-2, 8) stream.pop()
           trace = {r, unit()}
-          stream_push(7) n = index(3) stream_pop()
+          stream.push(7) n = index(3) stream.pop()
           trace = {numbers[n], unit()}
-          stream_push(-1) n = index(3) stream_pop()
+          stream.push(-1) n = index(3) stream.pop()
           pixel(i % 8, i / 8, colors[n])
-          stream_push(99) n = index(2) stream_pop()
+          stream.push(99) n = index(2) stream.pop()
           if (n == 0) { trace = {1, -0.0} } else { trace = {2, 3} }
-          stream_push(0) index(1) stream_pop()
+          stream.push(0) index(1) stream.pop()
           trace = {42, unit()}
         }
       }
@@ -59,10 +59,10 @@ TEST_CASE("seed and choices evaluate before isolation in signature order") {
     const auto reference = compileChecked(R"(asset effects { size 8x8 output list point trace
       draw {
         s = note(1) low = note(2) high = note(3)
-        stream_push(s) value = range(low, high) stream_pop()
+        stream.push(s) value = range(low, high) stream.pop()
         trace = {value, unit()}
         s = note(4) first = note(5) second = note(6)
-        stream_push(s) n = index(2) stream_pop()
+        stream.push(s) n = index(2) stream.pop()
         picked = first
         if (n == 1) { picked = second }
         trace = {picked, unit()}
@@ -76,19 +76,19 @@ TEST_CASE("seed and choices evaluate before isolation in signature order") {
 TEST_CASE("seed-direct draws nest and accept numeric mixed choices") {
     const std::string named = R"(asset nesting { size 8x8 output list point trace
       draw {
-        stream_push(77)
+        stream.push(77)
         trace = {roll(b = roll(9, 2, 3), seed = choose(7, 10, 20), a = roll(5, -1, 1)), unit()}
         trace = {choose(value1 = 2.5, seed = seed, value0 = 1), unit()}
-        stream_pop()
+        stream.pop()
         trace = {unit(), choose(value0 = 8, seed = 3)}
       }
     })";
     const std::string positional = R"(asset nesting { size 8x8 output list point trace
       draw {
-        stream_push(77)
+        stream.push(77)
         trace = {roll(choose(7, 10, 20), roll(5, -1, 1), roll(9, 2, 3)), unit()}
         trace = {choose(seed, 1, 2.5), unit()}
-        stream_pop()
+        stream.pop()
         trace = {unit(), choose(3, 8)}
       }
     })";

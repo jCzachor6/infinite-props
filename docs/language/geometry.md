@@ -5,7 +5,7 @@ normalization uses scaled binary64 intermediates before rounding its result.
 Signed distances are
 negative inside closed shapes, zero on their boundary and positive outside.
 Segment/Bézier distances are unsigned. Distance queries do not paint pixels;
-combine them with `fill` and a color operation to author coverage.
+combine them with `dist.fill` and a color operation to author coverage.
 A random point of a segment is `a to b` between two `vec2` values; see
 [segments](random.md#gradients-and-segments).
 
@@ -264,10 +264,10 @@ fills and textures do not change it.
 <!-- builtin: part.draw -->
 
 Draw one runtime instance in the current composition mode and clip. Region and
-mask sources need `fill` or `texture`; a captured layer keeps its original RGBA
+mask sources need `part.fill` or `part.texture`; a captured layer keeps its original RGBA
 appearance by default, applying alpha once. Drawing does not create another ID
-or export a snapshot. A static import aliased `part` continues to use
-`part.draw(seed, at=...)`; a single argument selects the dynamic operation.
+or export a snapshot. `part` is a builtin namespace, so an import cannot use
+it as its alias.
 
 <!-- example: ../../examples/language/dynamic-tiles.ips -->
 
@@ -347,6 +347,19 @@ Rotates a vector by a floating angle in radians using pinned sine/cosine.
 Positive angles are counterclockwise in the downward-y plane. This continuous
 vector rotation is distinct from the exact discrete part transforms.
 
+## vec2.fold
+<!-- builtin: vec2.fold -->
+
+Folds a vector into a kaleidoscope domain of `sectors` sectors, returning a
+`vec2`. The sector count is an integer. Valid counts and angular folding follow
+[fold and polar](../../spec/iprop-v0.8.md#1213-the-dither-the-fold-and-the-polar).
+
+## vec2.polar
+<!-- builtin: vec2.polar -->
+
+Returns `{radius, angle}` for a vector; angle is in radians under the same
+downward-y convention as vector rotation. Signed-zero behavior is pinned.
+
 ## dist.circle
 <!-- builtin: dist.circle -->
 
@@ -377,24 +390,11 @@ Distance estimate to a quadratic/cubic Bézier curve on `[0, 1]`, selected by
 the control-point count. The kernel performs a fixed bounded search rather
 than an arbitrary host-library approximation. Nonfinite geometry traps.
 
-## fill
-<!-- builtin: fill -->
+## dist.fill
+<!-- builtin: dist.fill -->
 
-Converts signed distance and a transition width to floating coverage.
+Converts a signed `distance` and a transition `width` to floating coverage.
 The exact zero/nonpositive width and NaN rules are in the distance-field spec.
-
-## fold
-<!-- builtin: fold -->
-
-Folds a vector into an n-sector kaleidoscope domain, returning a `vec2`.
-The sector count is an integer. Valid counts and angular folding follow
-[fold and polar](../../spec/iprop-v0.8.md#1213-the-dither-the-fold-and-the-polar).
-
-## polar
-<!-- builtin: polar -->
-
-Returns `{radius, angle}` for a vector; angle is in radians under the same
-downward-y convention as vector rotation. Signed-zero behavior is pinned.
 
 ## Procedural workflows
 

@@ -12,12 +12,12 @@ bool stepCurves(Execution& ex, Instruction ins) {
     case Opcode::Gain: {
         const f32 k = ex.popF32();
         const f32 t = ex.popF32();
-        ex.push(Value(math::gainCurve(t, k)));
+        ex.push(math::gainCurve(t, k));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::Quintic: {
-        ex.push(Value(math::quinticCurve(ex.popF32())));
+        ex.push(math::quinticCurve(ex.popF32()));
         ++ex.frame().ip;
         return true;
     }
@@ -25,7 +25,7 @@ bool stepCurves(Execution& ex, Instruction ins) {
         const f32 t = ex.popF32();
         const f32 b = ex.popF32();
         const f32 a = ex.popF32();
-        ex.push(Value(math::smoothstepEdge(a, b, t)));
+        ex.push(math::smoothstepEdge(a, b, t));
         ++ex.frame().ip;
         return true;
     }
@@ -35,7 +35,7 @@ bool stepCurves(Execution& ex, Instruction ins) {
         const f32 b = ex.popF32();
         const f32 a = ex.popF32();
         const f32 t = ex.popF32();
-        ex.push(Value(math::remapValue(t, a, b, c, d)));
+        ex.push(math::remapValue(t, a, b, c, d));
         ++ex.frame().ip;
         return true;
     }
@@ -43,7 +43,7 @@ bool stepCurves(Execution& ex, Instruction ins) {
         const f32 b = ex.popF32();
         const f32 a = ex.popF32();
         const f32 t = ex.popF32();
-        ex.push(Value(math::clampValue(t, a, b)));
+        ex.push(math::clampValue(t, a, b));
         ++ex.frame().ip;
         return true;
     }
@@ -52,7 +52,7 @@ bool stepCurves(Execution& ex, Instruction ins) {
         const f32 t = ex.popF32();
         const f32 b = ex.popF32();
         const f32 a = ex.popF32();
-        ex.push(Value(math::lerp(a, b, t)));
+        ex.push(math::lerp(a, b, t));
         ++ex.frame().ip;
         return true;
     }

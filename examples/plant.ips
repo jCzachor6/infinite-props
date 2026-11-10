@@ -23,12 +23,12 @@ asset plant { size 64x64
     potIndex = index(8)
 
     // ===== the derived detail stream =====
-    stream_push(hash(seed ^ 0x6b1d4f27))
+    stream.push(hash(seed ^ 0x6b1d4f27))
     potShade = index(9) - 4
     tag = unit() < 0.35
     drops = unit() < 0.45
     dSaved = seed
-    stream_pop()
+    stream.pop()
 
     // ===== main stream: the shape =====
     species = index(6)

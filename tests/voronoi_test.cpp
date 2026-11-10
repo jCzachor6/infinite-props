@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
 #include "iprop/Voronoi.hpp"
 #include "iprop/VmInternals.hpp"
 #include "iprop/VM.hpp"
@@ -215,10 +216,9 @@ TEST_CASE("Voronoi fuel and shared arena boundaries include every Lloyd iteratio
 }
 
 TEST_CASE("Voronoi language overloads queries helpers and format round trips execute","[voronoi-v09]") {
-    {
-        const auto file=loadFile(compile("asset t{size 1x1 voronoi(v:i32)->i32{return v+1}draw{n=voronoi(4) pixel(0,0,choose(n,#123,#456))}}"));
-        VM vm(file,{});CHECK_NOTHROW(vm.run());
-    }
+    // The constructor is a builtin like any other: a helper cannot take its name.
+    CHECK_THROWS_WITH(compile("asset t{size 1x1 voronoi(v:i32)->i32{return v+1}draw{}}"),
+        "function 'voronoi' has the name of a builtin; choose another name");
     for(const std::string call:{
         "voronoi({0,0},{8,8},4,seed)","voronoi({0,0},{8,8},4,seed,voronoi.grid,0,0)",
         "voronoi({0,0},{8,8},4,seed,voronoi.random,1,1,2,{3,4})",

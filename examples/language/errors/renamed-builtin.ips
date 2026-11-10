@@ -1,0 +1,8 @@
+asset RenamedBuiltin {
+  size 8x8
+  draw {
+    // 1.0: noise.value(x, y, seed)
+    shade = noise(1.5, 2.5, 7)
+    pixel(0, 0, rgb(int(shade * 255.0), 0, 0))
+  }
+}

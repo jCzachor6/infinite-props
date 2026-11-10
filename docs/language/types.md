@@ -64,29 +64,37 @@ the ordinary i32-to-f32 widening; later assignment or shadowing is rejected.
 
 ## Operators
 
-Binary operators associate leftward. The precedence below goes from lowest
-to highest; parentheses explicitly select grouping.
+Binary operators associate leftward, except comparisons and `to`, which take
+one operator per level. The precedence below goes from lowest to highest;
+parentheses explicitly select grouping.
 
 | Precedence | Operators | Operands |
 | --- | --- | --- |
 | 1 | `\|\|` | `i32`, short-circuit |
 | 2 | `&&` | `i32`, short-circuit |
-| 3–5 | `\|`, `^`, `&` | `i32` |
-| 6 | `==`, `!=` | numeric |
-| 7 | `<`, `<=`, `>`, `>=` | numeric |
-| 8 | `to` (random range, not chainable) | numbers, two colors or two vec2 values; see [random ranges](random.md#random-ranges-with-to) |
+| 3 | `==`, `!=` (not chainable) | numeric |
+| 4 | `<`, `<=`, `>`, `>=` (not chainable) | numeric |
+| 5 | `to` (random range, not chainable) | numbers, two colors or two vec2 values; see [random ranges](random.md#random-ranges-with-to) |
+| 6–8 | `\|`, `^`, `&` | `i32` |
 | 9 | `<<`, `>>` | `i32` |
 | 10 | `+`, `-` | numeric or vector/vector |
 | 11 | `*`, `/`, `%` | numeric; `%` only `i32`; vector forms below |
 | 12 | unary `-`, `!`, `~` | numeric/vector minus; `i32` logical/bitwise not |
 | 13 | call, member access, palette index | postfix expressions |
 
-Shifts bind more tightly than comparisons on either side:
-`value < 1 << bits` means `value < (1 << bits)`, while
-`value << bits < limit` means `(value << bits) < limit`. Comparison chains
-are left-associative: `a < b < c` compares the normalized 0/1 result of
-`a < b` with `c`. Write `a < b && b < c` when both comparisons must hold.
-The [grammar](grammar.md) records these rules.
+Bitwise operators and shifts bind more tightly than comparisons:
+`flags & 1 == 0` tests the masked value, and `value < 1 << bits` means
+`value < (1 << bits)`. Comparisons do not chain. `a < b < c` and
+`a == b == c` are rejected, because they would compare the 0/1 result of the
+first comparison with `c`; write `a < b && b < c`. An equality of two
+orderings, `a < b == c < d`, needs no parentheses; parenthesize any other
+comparison whose 0/1 result is compared again. The [grammar](grammar.md)
+records these rules.
+
+<!-- example: ../../examples/language/errors/comparison-chain.ips -->
+
+<!-- llm: skip -->
+This example is intentionally rejected: comparisons do not chain.
 
 Comparisons and logical operations return normalized `i32` 0/1. `&&` and
 `||` skip the right operand when its value cannot affect the result, including

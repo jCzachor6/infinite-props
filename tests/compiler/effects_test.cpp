@@ -129,7 +129,7 @@ TEST_CASE("seeded choices and roll restore the parent after eager effectful argu
 
 TEST_CASE("stream controls and helper summaries preserve their advertised observable effects", "[effects]") {
     const auto actual = execute(compileChecked(R"(asset t {size 8x8 output list point trace output point last
-        draw{trace={0,unit()}; stream_push(7); unit(); stream_pop(); helper(); last={9,9};}
+        draw{trace={0,unit()}; stream.push(7); unit(); stream.pop(); helper(); last={9,9};}
         helper(){trace={1,unit()};last={1,2};pixel(2,3,#abc);}
     })"), 42);
     const auto expected = execute(compileChecked(R"(asset t {size 8x8 output list point trace output point last
@@ -144,7 +144,7 @@ TEST_CASE("stream controls and helper summaries preserve their advertised observ
     CHECK(actual.outputs[1].points[0].y == 9);
     CHECK(actual.canvas.pixels == expected.canvas.pixels);
     CHECK(actual.canvas.at(2,3) == Color{170,187,204,255});
-    expectTrap(compileChecked("asset t {input i32 v=0 size 8x8 draw{stream_pop();}}"), ErrorReason::StackUnderflow);
+    expectTrap(compileChecked("asset t {input i32 v=0 size 8x8 draw{stream.pop();}}"), ErrorReason::StackUnderflow);
 }
 
 TEST_CASE("every builtin numeric-range effect has an executable accepted-source trap", "[effects]") {
@@ -178,6 +178,10 @@ TEST_CASE("every builtin numeric-range effect has an executable accepted-source 
             continue;
         }
         std::string setup, args=arguments(overload,true);
+        // Constant parameters a distribution constructor always rejects are a
+        // compile error, so the trap needs a value only known when it runs.
+        if (overload.result == ips::ValueType::Distribution)
+            args.replace(args.find("1.0/0.0"), 7, "float(v)/float(v)");
         if(name=="part.place"){
             setup="p=part.create(regions(voronoi({0,0},{8,8},1,0)),0) ";args="p,{float(v)/float(v),0},0,0,0";
         }
@@ -220,7 +224,7 @@ TEST_CASE("every builtin numeric-range effect has an executable accepted-source 
             expectTrap(compileProgram(program, {}, optimize), ErrorReason::NumericRange);
     }
     for (const bool optimize : {false,true}) {
-        const auto polygon = ips::parse("asset t {input i32 v=0 size 8x8 draw{poly(#fff,1.0/0.0,0,1,0,0,1);}}");
+        const auto polygon = ips::parse("asset t {input i32 v=0 size 8x8 draw{poly(1.0/0.0,0,1,0,0,1, #fff);}}");
         expectTrap(compileProgram(polygon, {}, optimize), ErrorReason::NumericRange);
     }
 }

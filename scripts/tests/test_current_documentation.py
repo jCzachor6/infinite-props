@@ -75,11 +75,11 @@ class CurrentDocumentationTest(unittest.TestCase):
 
     def test_current_release_metadata_is_ready_without_creating_a_tag(self):
         release = metadata(ROOT, "v" + self.product, publishing=True)
-        self.assertEqual(release["product_version"], "0.9.0")
-        self.assertEqual(release["language_version"], "0.9.0")
+        self.assertEqual(release["product_version"], "1.0.0")
+        self.assertEqual(release["language_version"], "1.0.0")
         self.assertEqual(release["c_api_version"], "0.6")
         self.assertEqual(release["c_abi_soversion"], "0.5")
-        self.assertIn("migration-v0.9.md", release["notes"])
+        self.assertIn("migration-v1.0.md", release["notes"])
 
     def test_authored_documentation_links_and_fragments_resolve(self):
         paths = [ROOT / "README.md", ROOT / "CHANGELOG.md", *ROOT.glob("docs/**/*.md"),

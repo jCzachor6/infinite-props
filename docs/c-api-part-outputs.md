@@ -9,7 +9,7 @@ This protects API 0.4 callers that use checked generation followed by an old
 image accessor. The flag is accepted for older programs too; unknown bits are
 `E_ARGUMENT`. Existing public
 structures, enums and ABI layouts are unchanged; the API feature version is
-0.5, while the ABI/install line remains 0.5. The current bundled API is 0.6; product/source are 0.9.0.
+0.5, while the ABI/install line remains 0.5. The current bundled API is 0.6; product/source are 1.0.0.
 
 `iprop_result_output_count` and `iprop_result_output_find` cover every declared
 slot, including empty part lists and uncalled static instances. Query

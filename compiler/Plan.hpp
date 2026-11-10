@@ -161,6 +161,7 @@ private:
 
     [[noreturn]] void error(const ips::SourceLocation& at, std::string message);
     // The runtime type of a function slot; compound values have no slot.
+    [[noreturn]] void failLocalLimit(const ips::Function& function);
     ValueType storedType(ips::ValueType type, const ips::SourceLocation& at, const std::string& slot);
 
     void planParts();

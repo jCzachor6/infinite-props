@@ -150,7 +150,8 @@ def main():
             ('asset t {size 8x8 draw{x=; y=;}}', 2, 'parse'),
             ('asset t {size 8x8 const i32 first=; const f32 second=; draw{}}', 2, 'parse'),
             ('asset t {size 8x8 draw{x=missing; y=x+1; z=another;}}', 2, 'typing'),
-            ('asset t {size 8x8 incomplete()->i32{} draw{x=incomplete();}}', 1, 'validation'),
+            ('asset t {size 8x8 incomplete()->i32{} draw{x=incomplete();}}', 1, 'typing'),
+            ('asset t {size 8x8 draw{poly(' + 'unit(),unit(),' * 300 + '#fff);}}', 1, 'validation'),
             ('asset t {size 8x8 draw{paint(tint=#fff);} paint(x:i32,tint:color){pixel(x,0,tint);}}', 1, 'typing'),
             ('asset t {size 8x8 draw{' + ''.join(f'x{i}=missing{i};' for i in range(100)) + '}}', 20, 'typing'),
         ]:

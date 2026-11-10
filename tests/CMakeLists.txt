@@ -32,6 +32,7 @@ add_executable(iprop_tests
     language/semantics_types_test.cpp
     language/semantics_functions_test.cpp
     language/semantics_parts_test.cpp
+    language/consistency_test.cpp
     compiler/basics_test.cpp
     compiler/optimizer_test.cpp
     compiler/scalar_test.cpp
@@ -267,6 +268,9 @@ if(IPROP_NODE_EXECUTABLE)
     add_test(NAME editor_formatting COMMAND ${CMAKE_COMMAND} -E env
         "IPROP_COMPILER=$<TARGET_FILE:ipc>"
         ${IPROP_NODE_EXECUTABLE} --test "${CMAKE_SOURCE_DIR}/editor/test/formatting.test.js")
+    add_test(NAME editor_authoring COMMAND ${CMAKE_COMMAND} -E env
+        "IPROP_COMPILER=$<TARGET_FILE:ipc>"
+        ${IPROP_NODE_EXECUTABLE} --test "${CMAKE_SOURCE_DIR}/editor/test/authoring.test.js")
 endif()
 
 if(Python3_Interpreter_FOUND)

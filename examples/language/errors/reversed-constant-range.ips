@@ -1,0 +1,8 @@
+asset ReversedConstantRange {
+  size 8x8
+  draw {
+    // Both bounds are known here, so the reversed range is reported at once.
+    x = 6 to 2
+    pixel(x, 0, #fff)
+  }
+}

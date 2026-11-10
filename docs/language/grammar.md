@@ -8,14 +8,14 @@ types, restricted declaration constants, required declarations and acyclic calls
 apply after parsing. Strings are only valid as import paths after typing.
 
 ```ebnf
-program       = { import }, (asset | material_file), EOF ;
+program       = { import }, (asset | material_file), EOF ;  (* ";" may separate items at every level *)
 import        = "import", name, "from", string, [ ";" ] ;
 material_file = material_item, { material_item } ; (* must contain at least one material *)
 material_item = material | palette | asset_constant ;
 material      = "material", identifier, "{", { ";" | material_field }, "}" ;
 material_field = name, "=", expression, [ ";" ] ;
 material_type = name, ".", identifier ;
-asset         = "asset", identifier, "{", { declaration }, "}" ;
+asset         = "asset", identifier, "{", { ";" | declaration }, "}" ;
 declaration   = size | origin | input | output
               | palette | asset_constant | draw | helper ;
 size          = "size", integer, (integer | xdigits), [ ";" ] ;
@@ -44,17 +44,17 @@ call_statement = (name | "mask" | "sampler" | "stepper"), { postfix_suffix } ;  
 if            = "if", "(", expression, ")", block,
                 [ "else", (if | block) ] ;
 while         = "while", "(", expression, ")", block ;
-for           = "for", identifier, "in", expression, "..", expression, block ;
+for           = "for", name, "in", expression, "..", expression, block ;
 return        = "return", [ expression ] ;
 expression    = logical_or ;
 logical_or    = logical_and, { "||", logical_and } ;
-logical_and   = bit_or, { "&&", bit_or } ;
+logical_and   = equality, { "&&", equality } ;
+equality      = comparison, [ ("==" | "!="), comparison ] ;  (* no chaining *)
+comparison    = random_range, [ ("<" | "<=" | ">" | ">="), random_range ] ;  (* no chaining *)
+random_range  = bit_or, [ "to", bit_or, [ "with", bit_or ] ] ;  (* reserved "to"/"with"; no chaining *)
 bit_or        = bit_xor, { "|", bit_xor } ;
 bit_xor       = bit_and, { "^", bit_and } ;
-bit_and       = equality, { "&", equality } ;
-equality      = comparison, { ("==" | "!="), comparison } ;
-comparison    = random_range, { ("<" | "<=" | ">" | ">="), random_range } ;
-random_range  = shift, [ "to", shift, [ "with", shift ] ] ;  (* reserved "to"/"with"; no chaining *)
+bit_and       = shift, { "&", shift } ;
 shift         = additive, { ("<<" | ">>"), additive } ;
 additive      = multiplicative, { ("+" | "-"), multiplicative } ;
 multiplicative = unary, { ("*" | "/" | "%"), unary } ;
@@ -84,9 +84,10 @@ constant_atom = literal | "(", constant_atom, ")" ;
 surface_mode = "surface.legacy" | "surface.source_over" ;
 layer_capture = "layer", name, [ "(", "alpha", "=", surface_mode, ")" ], block ;
 identifier    = (letter | "_"), { letter | digit | "_" } ;
-xdigits       = ("x" | "X"), digit, { digit } ;
-integer       = digit, { digit } | "0", ("x" | "X"), hex, { hex } ;
-floating      = digits, ".", digits, [ exponent ] | digits, exponent ;
+xdigits       = ("x" | "X"), decimal ;
+integer       = decimal | "0", ("x" | "X"), hex, { hex } ;  (* at most 4294967295 or 8 hex digits *)
+decimal       = "0" | nonzero, { digit } ;  (* no leading zero *)
+floating      = decimal, ".", digits, [ exponent ] | decimal, exponent ;  (* within f32 *)
 exponent      = ("e" | "E"), [ "+" | "-" ], digits ;
 color         = "#", (3 hex | 4 hex | 6 hex | 8 hex) ;
 ```
@@ -104,11 +105,15 @@ palette element.
 
 Asset `const` declarations use the general expression grammar with the
 [compile-time restrictions](assets.md#asset-constants). Their graph permits
-forward references and rejects cycles. `const(...)` still introduces a helper.
+forward references and rejects cycles.
 
-Shifts bind more tightly than comparisons on both sides: `value < 1 << bits`
-means `value < (1 << bits)`. Comparison chains associate leftward, so
-`a < b < c` means `(a < b) < c`, not two comparisons joined by `&&`.
+Bitwise operators and shifts bind more tightly than comparisons:
+`flags & 1 == 0` means `(flags & 1) == 0` and `value < 1 << bits` means
+`value < (1 << bits)`. `==`, `<` and `to` take one operator per level, so
+`a < b < c`, `a == b == c` and `a to b to c` are rejected; `a < b == c < d`
+is an equality of two orderings. A number is one token: a word may not follow
+it directly, apart from the `x` of `size 16x16`. Expressions and blocks nest
+at most 256 levels; see [source syntax](syntax.md#literals).
 
 ## Declaration effects
 

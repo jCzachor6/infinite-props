@@ -1,0 +1,35 @@
+{
+  "name": "Butterfly swarm",
+  "product_version": "1.0.0",
+  "source_repository": "props",
+  "source_commit": "2228edd1d8612807603b0f8553d06f3f7d607958",
+  "width": 128,
+  "height": 128,
+  "parts": [
+    {
+      "id": "forewing",
+      "file": "butterfly-forewing-128.iprop",
+      "bytes": 18094,
+      "sha256": "59b1132f32a8c34a81062e45ca8ecaa1ec5cb2c915435777a20cae57a76aa4b7"
+    },
+    {
+      "id": "hindwing",
+      "file": "butterfly-hindwing-128.iprop",
+      "bytes": 18095,
+      "sha256": "b2197d4c36f091047f23700fa22b2222639ab8fd044ab833dfde0966b51c4f96"
+    },
+    {
+      "id": "body",
+      "file": "butterfly-body-128.iprop",
+      "bytes": 4610,
+      "sha256": "7fcce87d682600fd8a18e1a8a1c947dcb62d317feb1cf520a69b1a12ea8b4533"
+    }
+  ],
+  "source_sha256": {
+    "body.ips": "79ad508774ed3d08333fa63b183333651ce1eed07f718658b84a362ab8abf501",
+    "body128.ips": "de57b90e064c24527e4778c345c53bc330a74aa60552bbc5d22eab0ea501aa59",
+    "forewing128.ips": "9b8d1a18fe3b89da2721f572586e8f91546f2fce3b196e4f01ddaeb4964ea108",
+    "hindwing128.ips": "73f2ce1c1530295f87392431ce267e5b2aa564465497111781c6bab969a18bc7",
+    "wing.ips": "d7326f98193423febf7d78a5224ddc492b42295da42e1bf9356695358bb62b4b"
+  }
+}

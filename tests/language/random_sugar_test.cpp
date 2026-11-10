@@ -23,20 +23,24 @@ void samePoints(const RunOutcome& actual, const RunOutcome& expected) {
 }
 }
 
-TEST_CASE("pick(n) is the exact index alias including zero and unsigned bounds") {
-    const std::string source = R"(asset indices { size 8x8 output list point trace
+TEST_CASE("pick chooses among values; a lone count is spelled index(n)") {
+    // pick(n) used to be a second spelling of index(n).
+    for (const std::string call : {"x = pick(3)", "x = pick(#ffffff)", "x = pick()", "x = pick(value0 = 3)"}) {
+        INFO(call);
+        semantic_test::expectCheckError(semantic_test::wrap(call),
+            "pick expects at least two choices; use index(n) to draw an index below n");
+    }
+    const auto bytes = compileChecked(R"(asset indices { size 8x8 output list point trace
       draw {
-        trace = {pick(3), unit()}
-        trace = {pick(0), unit()}
-        trace = {pick(-1), unit()}
+        trace = {index(3), unit()}
+        trace = {index(0), unit()}
+        trace = {index(-1), unit()}
       }
-    })";
-    auto reference = source;
-    while (reference.find("pick(") != std::string::npos)
-        reference.replace(reference.find("pick("), 5, "index(");
-    const auto bytes = compileChecked(source);
-    CHECK(bytes == compileChecked(reference));
-    samePoints(execute(bytes), execute(compileChecked(reference)));
+    })");
+    const auto points = execute(bytes).outputs[0].points;
+    REQUIRE(points.size() == 3);
+    CHECK(points[0].x < 3.f);
+    CHECK(points[1].x == 0.f);
 }
 
 TEST_CASE("pick selects integers floats colors and vectors with one draw") {
@@ -76,8 +80,7 @@ TEST_CASE("pick selects integers floats colors and vectors with one draw") {
         samePoints(a, b);
         CHECK(a.canvas.pixels == b.canvas.pixels);
     }
-    semantic_test::expectCheckError(semantic_test::wrap("pick()"), "expects 1 arguments");
-    semantic_test::expectCheckError(semantic_test::wrap("pick(#ffffff)"), "must be i32");
+    semantic_test::expectCheckError(semantic_test::wrap("index(#ffffff)"), "must be i32");
     semantic_test::expectCheckError(semantic_test::wrap("pick(1, #ffffff)"), "matching storable types");
     semantic_test::expectCheckError(semantic_test::wrap("pick({1, 2, 3}, {4, 5, 6})"), "matching storable types");
 }

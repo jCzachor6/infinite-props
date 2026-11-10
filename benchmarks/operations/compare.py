@@ -18,9 +18,13 @@ def compare(before, after):
     rows = []
     for name, a in old.items():
         b = new[name]
-        for key in ("source_sha256", "operation", "operation_calls", "size", "parameters"):
+        for key in ("operation", "operation_calls", "size", "parameters"):
             if a[key] != b[key]:
                 raise ValueError(f"{name}: {key} changed; workloads are not comparable")
+        # The same compiled program is the same workload: a builtin the
+        # language renamed changes the source text and nothing else.
+        if a["source_sha256"] != b["source_sha256"] and a["binary_sha256"] != b["binary_sha256"]:
+            raise ValueError(f"{name}: source and compiled program changed; workloads are not comparable")
         for key in ("seed", "generations_per_sample", "warmup"):
             if a["measurement"][key] != b["measurement"][key]:
                 raise ValueError(f"{name}: {key} differs")

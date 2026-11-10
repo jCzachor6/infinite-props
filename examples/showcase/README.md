@@ -3,13 +3,23 @@
 The compiled props rendered live on the website's home page: four weapon
 packs (`sword`, `axe`, `spear`, `staff`, 96×96) and three portrait packs
 (`portraits_rpg`, `portraits_scifi`, `portraits_civilian`, 64×64), plus three
-butterfly parts (`butterfly-forewing`, `butterfly-hindwing`, `butterfly-body`).
+butterfly parts (`butterfly-forewing`, `butterfly-hindwing`, `butterfly-body`)
+and the three parts of the smaller 128×128 butterfly released by the swarm
+(`butterfly-forewing-128`, `butterfly-hindwing-128`, `butterfly-body-128`).
 
 The `.ips` sources are kept outside this repository; the programs here are
-compiled binaries. They are compiled by product 0.9.0, in the unversioned format,
-from the props working tree at commit `855ba99`. The compiler's default fuel budget is
-5,000,000. `showcase-manifest.json` records the full source commit, every
-binary's byte size and SHA-256, and the hashes of all imported sources. Selection is implemented by ordinary inputs named after what they choose:
+compiled binaries, in the unversioned format. The weapon and portrait packs
+are compiled by product 0.9.0 from the props working tree at commit `855ba99`,
+with its default fuel budget of 5,000,000. `showcase-manifest.json` records
+the full source commit, every binary's byte size and SHA-256, and the hashes
+of all imported sources.
+`butterfly-benchmark.json` and `butterfly-swarm.json` record the same for the
+two butterflies. Their six programs are written in the 1.0 language and
+compiled by product 1.0.0, whose default budget of 25,000,000 they need
+(a 256×256 wing spends up to about 10 million fuel), from the `butterfly`
+folder of the props repository at commit `2228edd`; the source hashes in the
+manifests identify the exact files. The 128×128 parts are the
+same sources drawn at half the scale. Selection is implemented by ordinary inputs named after what they choose:
 `enchant` and `quality` (plus `bladeStyle`, `bladeSteel`, `headStyle` and
 `coating` where declared) for weapons, `sex` and `role` for portraits;
 default 0 rolls from the seed. Weapons use `renderPass` for color/emission selection and `bloom` for

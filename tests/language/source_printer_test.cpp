@@ -413,8 +413,8 @@ TEST_CASE("independent review corpus preserves exact trivia ownership and contex
         {"leading_removed_separator", "asset t { size 8x8 draw { x=1\n// M\n; } }"},
         {"empty_else_line", "asset t { size 8x8 draw { if(true) {} else {\n// else body\n} } }"},
         {"empty_else_block", "asset t { size 8x8 draw { if(true) {} else { /* else body */ } } }"},
-        {"duplicate_size", "asset t { size 4x4 /* first size */ size 8x8 /* final size */ draw {} }"},
-        {"duplicate_origin", "asset t { size 8x8 origin 1,1 /* first origin */ origin 0,0 /* final origin */ draw {} }"},
+        {"duplicate_size", "asset t { /* first size */ size 8x8 /* final size */ draw {} }"},
+        {"duplicate_origin", "asset t { size 8x8 /* first origin */ origin 0,0 /* final origin */ draw {} }"},
         {"duplicate_variants", "asset t { size 8x8 /* first variants */ /* final variants */ draw {} }"},
         {"duplicate_archetypes", "asset t { size 8x8 /* first archetypes */ /* final archetypes */ draw {} }"}
     };
@@ -456,8 +456,8 @@ TEST_CASE("combined delimiter and metadata trivia remains stable after repeated 
         "asset t { size 8x8 draw { x=(1 /* multi\nline */ + 2); /* separator */ pixel(0,0,#fff) } }",
         "asset t { size 8x8 draw { x=1;\n// M\n; /* spare separator */ } }",
         "asset t { size 8x8 draw { if(true) {} else { /* inline\nbody */\n// closing body\n} /* after else */ } }",
-        "asset t { size 4x4; // first size\n origin {1,2}, 3 /* superseded */ size 8x8; /* final */ origin 0,0 draw {} }",
-        "asset t { size 8x8 origin \"discarded string\", 0 /* superseded */ origin 0,0  /* old variants */ draw {} }"
+        "asset t { // first size\n /* superseded */ size 8x8; /* final */ origin 0,0 draw {} }",
+        "asset t { size 8x8 /* superseded */ origin 0,0  /* old variants */ draw {} }"
     };
     for (const auto& source : corpus) {
         INFO(source);

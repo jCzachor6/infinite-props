@@ -4,10 +4,12 @@
 #include "ips/AssetConstants.hpp"
 
 #include <algorithm>
+#include <map>
 #include <optional>
 #include <set>
 #include <utility>
 
+#include "ips/BuiltinSpec.hpp"
 #include "ips/Typing.hpp"
 #include "iprop/Surface.hpp"
 
@@ -136,8 +138,12 @@ private:
     void checkImports() {
         std::set<std::string> seen;
         for (const auto& import : program_.imports) {
-            if (import.alias == "surface")
-                error(import.location, "import alias 'surface' conflicts with the surface namespace; rename the alias");
+            if (import.alias == "seed")
+                error(import.location, "'seed' is a reserved name");
+            // `noise.fbm(...)` and `noise.draw(...)` would share one spelling.
+            if (isBuiltinNamespace(import.alias))
+                error(import.location, "import alias '" + import.alias + "' conflicts with the " +
+                                           import.alias + " namespace; rename the alias");
             if (!seen.insert(import.alias).second) {
                 error(import.location,
                       "duplicate import alias '" + import.alias + "'");
@@ -149,6 +155,9 @@ private:
         }
     }
 
+    // Everything an asset declares shares one namespace: an input, output,
+    // palette, constant, helper and import alias cannot have the same name.
+    // Constants check themselves against the others when they are resolved.
     bool checkAssetDecls() {
         recover([&] {
             if (!program_.asset.sizeX.has_value())
@@ -156,47 +165,63 @@ private:
         });
         bool namespaceValid = true;
 
-        std::set<std::string> inputNames;
+        // The name and what declared it, for the message of a later clash.
+        std::map<std::string, std::string> declared;
+        for (const auto& import : program_.imports) declared.emplace(import.alias, "an import alias");
+        const auto declare = [&](const std::string& kind, const std::string& name,
+                                 const SourceLocation& at, const std::string& phrase) {
+            // `seed` reads the stream and `draw` is the entry block.
+            if (name == "seed" || (name == "draw" && kind != "function"))
+                error(at, "'" + name + "' is a reserved name");
+            const auto [existing, fresh] = declared.emplace(name, phrase);
+            if (fresh) return;
+            if (existing->second == phrase) error(at, "duplicate " + kind + " '" + name + "'");
+            error(at, kind + " '" + name + "' has the same name as " + existing->second);
+        };
+
         for (const auto& input : program_.asset.inputs) {
             if (atLimit()) return false;
             const bool valid = recover([&] {
-                if (input.name == "seed" || input.name == "at" ||
-                    input.name == "rot" ||
+                // A part call binds these names to its placement arguments.
+                if (input.name == "at" || input.name == "rot" ||
                     input.name == "mirror_x" || input.name == "mirror_y") {
                     error(input.location, "'" + input.name + "' is a reserved name");
                 }
-                if (!inputNames.insert(input.name).second) {
-                    error(input.location, "duplicate input '" + input.name + "'");
-                }
+                declare("input", input.name, input.location, "an input");
             });
             namespaceValid = valid && namespaceValid;
             recover([&] { checkInputDefault(input); });
         }
 
-        std::set<std::string> outputNames;
         for (const auto& output : program_.asset.outputs) {
             if (atLimit()) return false;
             const bool valid = recover([&] {
-                if (!outputNames.insert(output.name).second) {
-                    error(output.location, "duplicate output '" + output.name + "'");
-                }
-                if (inputNames.count(output.name) != 0) {
-                    error(output.location, "output '" + output.name +
-                                               "' collides with an input of the same name");
-                }
+                declare("output", output.name, output.location, "an output");
             });
             namespaceValid = valid && namespaceValid;
         }
 
+        // Helpers are checked on first use, one nested check for each call in
+        // a chain, so the table limit is enforced before any body is read.
+        if (program_.asset.functions.size() > kMaxFunctions) {
+            recover([&] {
+                throw SourceError{program_.asset.functions[kMaxFunctions].location, "an asset declares more than " +
+                    std::to_string(kMaxFunctions) + " functions", {}, DiagnosticCode::ResourceLimit, DiagnosticStage::Typing};
+            });
+            return false;
+        }
         for (const auto& function : program_.asset.functions) {
             if (atLimit()) return false;
             const bool valid = recover([&] {
-                if (!functions_.emplace(function.name, &function).second) {
-                    error(function.location,
-                          "duplicate function '" + function.name + "'");
-                }
+                // A call by that name always reaches the builtin.
+                if (isBuiltinFunctionName(function.name))
+                    error(function.location, "function '" + function.name +
+                                                 "' has the name of a builtin; choose another name");
+                declare("function", function.name, function.location, "a function");
+                functions_.emplace(function.name, &function);
                 std::set<std::string> parameters;
                 for (const auto& param : function.params) {
+                    if (param.name == "seed") error(param.location, "'seed' is a reserved name");
                     if (!parameters.insert(param.name).second)
                         error(param.location, "duplicate parameter '" + param.name + "'");
                 }
@@ -204,28 +229,31 @@ private:
             namespaceValid = valid && namespaceValid;
         }
 
-        std::set<std::string> paletteNames;
         bool paletteDeclarationsValid = true;
         for (const auto& palette : program_.asset.palettes) {
             if (atLimit()) return false;
             const bool valid = recover([&] {
-                if (!paletteNames.insert(palette.name).second) {
-                    error(palette.location, "duplicate palette '" + palette.name + "'");
-                }
-                if (inputNames.count(palette.name) != 0 ||
-                    outputNames.count(palette.name) != 0) {
-                    error(palette.location,
-                          "palette '" + palette.name +
-                              "' collides with an input or output of the same name");
-                }
-                if (functions_.count(palette.name) != 0) {
-                    error(palette.location,
-                          "palette '" + palette.name +
-                              "' collides with a function of the same name");
-                }
+                declare("palette", palette.name, palette.location, "a palette");
             });
             namespaceValid = valid && namespaceValid;
             if (valid) paletteDeclarationsValid = recover([&] { checkPaletteDecl(palette); }) && paletteDeclarationsValid;
+        }
+
+        // A helper sees the asset's palettes and writes its outputs by name, so
+        // a parameter with such a name would hide one use and not another:
+        // `ramp(name, t)` and `name = value` would still mean the declaration.
+        // An input's name is free: helpers do not see inputs. Constants make
+        // the same check when they are resolved.
+        for (const auto& function : program_.asset.functions) {
+            for (const auto& param : function.params) {
+                if (atLimit()) return false;
+                const bool valid = recover([&] {
+                    const auto found = declared.find(param.name);
+                    if (found != declared.end() && (found->second == "a palette" || found->second == "an output"))
+                        error(param.location, "parameter '" + param.name + "' has the same name as " + found->second);
+                });
+                namespaceValid = valid && namespaceValid;
+            }
         }
         // Do not report the same invalid legacy palette again when resolving
         // the shared declaration graph. Recovery already recorded its error.
@@ -239,9 +267,6 @@ private:
     }
 
     void checkPaletteDecl(const PaletteDecl& palette) {
-        if (palette.name == "seed" || palette.name == "at") {
-            error(palette.location, "'" + palette.name + "' is a reserved name");
-        }
         if (!extendedPalette(palette)) (void)resolvePalette(palette);
     }
 
@@ -291,6 +316,7 @@ private:
                 if (atLimit()) break;
                 checkRecoveringStmt(stmt);
             }
+            if (function.returnType.has_value() && !alwaysReturns(function.body)) reportMissingReturn(function);
             returnTypes_[function.name] = function.returnType.has_value()
                                               ? std::optional<ValueType>(valueTypeOf(
                                                     *function.returnType))
@@ -307,6 +333,34 @@ private:
         loopDepth_ = savedLoopDepth;
         surfaceDepth_ = savedSurfaceDepth;
         typer_.restoreScope(std::move(savedScope));
+    }
+
+    // The bytecode validator rejects a value function whose end is reachable;
+    // report it here, where the function can be named. Kept out of
+    // checkFunction, which recurses once for every helper in a call chain.
+    void reportMissingReturn(const Function& function) {
+        recover([&] {
+            error(function.location, "function '" + function.name +
+                "' must return a value on every path; end it with a return");
+        });
+    }
+
+    // Statements after one that always returns are unreachable, so any such
+    // statement in the list is enough. A loop never counts: its body may not run.
+    static bool alwaysReturns(const std::vector<Stmt>& body) {
+        for (const auto& stmt : body) {
+            if (const auto* ret = std::get_if<ReturnStmt>(&stmt)) {
+                if (ret->value) return true;
+            } else if (const auto* branch = std::get_if<IfStmt>(&stmt)) {
+                if (!branch->elseBranch.empty() && alwaysReturns(branch->thenBranch) &&
+                    alwaysReturns(branch->elseBranch)) return true;
+            } else if (const auto* capture = std::get_if<LayerStmt>(&stmt)) {
+                if (alwaysReturns(capture->body)) return true;
+            } else if (const auto* clip = std::get_if<ClipStmt>(&stmt)) {
+                if (alwaysReturns(clip->body)) return true;
+            }
+        }
+        return false;
     }
 
     // ---- statements ---------------------------------------------------------
@@ -440,12 +494,12 @@ private:
         if (!isStorable(type)) {
             error(ret.location,
                   "cannot return " + std::string(typeName(type)) +
-                      " (only scalars can be returned)");
+                      "; it is not a value a function can return");
         }
         if (!current_->returnType.has_value()) {
             error(ret.location, "function '" + current_->name +
                                     "' returns a value but declares no return "
-                                    "type ('-> i32', '-> f32' or '-> color')");
+                                    "type; add '-> " + typeName(type) + "' after its parameters");
         }
         const ValueType declared = valueTypeOf(*current_->returnType);
         if (!argFits(declared, type)) {
@@ -492,7 +546,7 @@ private:
         if (decl.declaredType && type != valueTypeOf(*decl.declaredType)) {
             const auto* declared = typeName(valueTypeOf(*decl.declaredType));
             SourceError diagnostic{locationOf(*decl.value), std::string(declared) + " '" + decl.name +
-                "' needs a " + declared + ", got " + typeName(type), {},
+                "' needs " + typePhrase(valueTypeOf(*decl.declaredType)) + ", got " + typeName(type), {},
                 DiagnosticCode::TypeError, DiagnosticStage::Typing};
             diagnostic.expectedType = declared;
             diagnostic.actualType = typeName(type);
@@ -500,8 +554,9 @@ private:
         }
         if (!isStorable(type)) {
             error(decl.location, "cannot store " + std::string(typeName(type)) +
-                                     " in local '" + decl.name +
-                                     "' (only scalars can be stored)");
+                                     " in local '" + decl.name + "'" +
+                                     (type == ValueType::Void ? "; the call returns no value" :
+                                      "; it can only be assigned to an output"));
         }
         const auto& locals = typer_.locals();
         const auto existing = locals.find(decl.name);

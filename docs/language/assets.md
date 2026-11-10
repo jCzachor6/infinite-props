@@ -5,7 +5,16 @@ An asset requires `size` and one `draw` entry. It may declare an origin,
 inputs, outputs, palettes, constants and helpers. Metadata
 declarations are outside function bodies. `size 16x16` and `size 16 16` are
 accepted. Origin coordinates are constant numeric expressions; an omitted
-origin is `(0, 0)`.
+origin is `(0, 0)`. `size` and `origin` are each declared at most once.
+
+Everything an asset declares shares one namespace: an input, output, palette,
+constant, helper and import alias all need different names, whatever their
+kind. `seed` and `draw` cannot be declared.
+
+<!-- example: ../../examples/language/errors/shared-name.ips -->
+
+<!-- llm: skip -->
+This example is intentionally rejected: an input and a helper share a name.
 
 The host supplies a seed, optional target dimensions and ordinary declared
 input values. `draw` declares no source parameters or return type. There are
@@ -49,9 +58,8 @@ Copying or reading a constant distribution performs no draw. Each `to/with`
 still samples through the existing runtime kernel and stream.
 
 Constant names cannot collide with asset declarations, imported aliases or
-helper parameters, or use the reserved controls/placement names. Constants
-cannot be assigned or used as loop counters. `const` is reserved; rename
-existing helpers, locals and inputs with that spelling. Use descriptive names.
+helper parameters, and cannot be `seed`. Constants
+cannot be assigned or used as loop counters. `const` is a reserved word.
 
 <!-- llm: skip -->
 Const samplers and steppers capture endpoints and distribution parameters without RNG.
@@ -129,9 +137,9 @@ the signed range and non-literal declaration expressions are also rejected:
 
 <!-- example: ../../examples/language/errors/declaration-constant.ips -->
 
-Input names `seed`, `at`, `rot`, `mirror_x` and `mirror_y` are
-reserved. Inputs and outputs cannot share a name; declarations of the same
-kind must have unique names. Inputs cannot be assigned or used as loop counters.
+Input names `at`, `rot`, `mirror_x` and `mirror_y` are reserved, because a
+[part call](composition.md) binds them to its placement arguments; other
+declarations may use them. Inputs cannot be assigned or used as loop counters.
 
 ## Structured outputs
 
