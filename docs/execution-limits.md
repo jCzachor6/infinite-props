@@ -1,4 +1,4 @@
-# Execution controls in 0.9
+# Execution controls
 
 Fuel prices follow the [runtime tariff](../spec/fuel-v0.9.md). Default fuel is
 25,000,000 from program metadata. An independent default 100,000,000-unit work

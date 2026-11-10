@@ -15,10 +15,10 @@ the full source commit, every binary's byte size and SHA-256, and the hashes
 of all imported sources.
 `butterfly-benchmark.json` and `butterfly-swarm.json` record the same for the
 two butterflies. Their six programs are written in the 1.0 language and
-compiled by this repository's compiler, whose default budget of 25,000,000
-they need (a 256×256 wing spends up to about 10 million fuel), from the
-`butterfly` folder of the props repository at commit `2228edd`; the source
-hashes in the manifests identify the exact files. The 128×128 parts are the
+compiled by product 1.0.0, whose default budget of 25,000,000 they need
+(a 256×256 wing spends up to about 10 million fuel), from the `butterfly`
+folder of the props repository at commit `2228edd`; the source hashes in the
+manifests identify the exact files. The 128×128 parts are the
 same sources drawn at half the scale. Selection is implemented by ordinary inputs named after what they choose:
 `enchant` and `quality` (plus `bladeStyle`, `bladeSteel`, `headStyle` and
 `coating` where declared) for weapons, `sex` and `role` for portraits;

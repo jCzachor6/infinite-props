@@ -5,7 +5,7 @@ programs generate deterministic raster images and structured geometry. The
 compiler produces a self-contained `.iprop` file; hosts execute it with a
 seed and optional declared input uniforms.
 
-This handbook describes source language **0.9.0** and product **0.9.0**.
+This handbook describes source language **1.0.0** and product **1.0.0**.
 Product, source, C API and ABI versions are independent, and the binary format
 is unversioned: `ipc --describe-language` reports the compiler's contracts.
 C API 0.6 uses ABI 0.5.

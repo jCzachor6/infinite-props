@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## v1.0.0 — 2026-11-10
+
+Product/source and editor, website, Unity/Python packages: **1.0.0**.
+C API **0.6**, ABI/SONAME **0.5**; binary format remains unversioned.
+See [0.9 to 1.0 migration](docs/language/migration-v1.0.md) and the
+[frozen contract set](spec/iprop-v1.0.md). Release/tag publication is separate.
 
 ### Language 1.0: one spelling and one rule (breaking for sources)
 
@@ -95,9 +100,9 @@ replacement. See [0.9 to 1.0 migration](docs/language/migration-v1.0.md).
   shaded scale by scale from its own polar coordinates, with veins in relief,
   an anti-aliased outline traced from its silhouette and soft shadows; the
   body is furred and shaded as bodies of revolution. The thirteen species
-  looks now come in twelve wing forms (rounded, hooked, toothed, tailed,
-  twin-tailed, hairstreak, narrow, birdwing, notched, ribbon-tailed, broad),
-  and wear their natural colours a little under half the time. The three
+  looks now come in twelve wing forms (classic, rounded, hooked, toothed,
+  tailed, twin-tailed, hairstreak, narrow, birdwing, notched, ribbon-tailed,
+  broad), and wear their natural colours a little under half the time. The three
   programs are 40 KB together; a 256x256 butterfly takes about 68 ms in
   WebAssembly on an Apple M-series Mac (113 ms at most over 1000 seeds, a
   wing spending up to 10 million fuel), a 128x128 one about 23 ms. They are

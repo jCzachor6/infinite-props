@@ -22,7 +22,7 @@ The binary format is unversioned, so operations carry no minimum format version.
 | `abi_version.major`, `.minor` | C ABI compatibility line configured in `cmake/CAbi.cmake`; the structured form of `c_abi_soversion`. |
 | `c_abi_soversion` | Optional additive alias since schema 1: the runtime C library's SOVERSION string from `cmake/CAbi.cmake`, equal to `abi_version` as `major.minor`. Producers emit it; readers validate consistency when present. |
 
-The current values are product `0.9.0`, source language `0.9.0`,
+The current values are product `1.0.0`, source language `1.0.0`,
 C header API `0.6` and ABI line/SOVERSION `0.5`. These values are
 independent: signed source inputs do not introduce a new binary input type.
 The C versions describe the bundled contract without loading the C library;
@@ -49,8 +49,8 @@ Release preflight and package manifests (`release.json`) use the same names as
 strings: `product_version`, `language_version`, `c_api_version` and
 `c_abi_soversion`. Packaging and documentation builds reject a compiler whose
 export differs from the versions in the source tree. A release requires the
-frozen format specification of its product line (`spec/iprop-v0.9.md` for
-0.9.x, frozen with product 0.9.0).
+frozen format specification of its product line (`spec/iprop-v1.0.md` for
+1.0.x, frozen with product 1.0.0).
 
 Schema 5 consumers also update the closed fuel formula strings and resource-trap
 enum; see [the schema-6 migration](language/migration-v0.9.md#programs-and-generated-results).
