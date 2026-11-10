@@ -47,8 +47,6 @@ image hashes.
 The renderer runs the original website WASM worker and follows the resting
 snapshot assembly in `website/src/butterfly.ts`. It adds the collector frame,
 velvet background, shadows and labels around those generated specimens.
-The images on file show the butterflies of the earlier programs, whose hashes
-the manifest records; regenerating draws the current ones.
 
 To regenerate both images from a built WASM runtime, install `puppeteer-core`
 in a temporary tools directory, then run from the repository root:

@@ -107,6 +107,8 @@ replacement. See [0.9 to 1.0 migration](docs/language/migration-v1.0.md).
   WebAssembly on an Apple M-series Mac (113 ms at most over 1000 seeds, a
   wing spending up to 10 million fuel), a 128x128 one about 23 ms. They are
   written in the 1.0 language and need the larger default budget above.
+- The README's butterfly collection and the website's social preview are
+  drawn again from the same sixteen seeds, so they show the new butterflies.
 
 ## v0.9.0 — 2026-11-05
 

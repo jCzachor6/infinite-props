@@ -1,7 +1,7 @@
 {
   "description": "Sixteen original website butterflies in a 4x4 collector display",
   "generator": "scripts/render_readme_collection.cjs",
-  "worker_sha256": "edb3617aa0977b37141ef6db9ca089cf1ab75133146cb047a8156a3632f31d3e",
+  "worker_sha256": "51a9bdce883e36cc38957f727ceb3b87559d172c2e454607c70fa545848c6866",
   "assembly_source": "website/src/butterfly.ts:makeButterfly",
   "rows": 4,
   "columns": 4,
@@ -9,404 +9,404 @@
     {
       "id": "forewing",
       "file": "butterfly-forewing.iprop",
-      "bytes": 20186,
-      "sha256": "a0ec6313d5cb7e0fc7885b17098752bfb532c6bd1ed467f8eb5707c5589fefd5"
+      "bytes": 18099,
+      "sha256": "95e815fb16a92b65cc9b12cefb7cf25bebb5bdb76a819023b2197ba7ed8e019d"
     },
     {
       "id": "hindwing",
       "file": "butterfly-hindwing.iprop",
-      "bytes": 20186,
-      "sha256": "3b79b71daf3bef496539529daa038d5a465c08095139f42f01b6c9071beea5b6"
+      "bytes": 18101,
+      "sha256": "c9342213d005f83765a3820de3dcb77f62c007317dd9677a377f7f02b9452688"
     },
     {
       "id": "body",
       "file": "butterfly-body.iprop",
-      "bytes": 3119,
-      "sha256": "6776856a337184b513517612d4bf52ed7f8b30b12b0f95f57be4d12f8f6d04e6"
+      "bytes": 4491,
+      "sha256": "2494c64c6e9c4d286fff7651919c48294571d229fa0afb0df5ba6e894aa85400"
     }
   ],
   "specimens": [
     {
       "seed": 7,
       "style": 2,
-      "scheme": 4,
-      "rootY": 117.3711929321289,
+      "scheme": 1,
+      "rootY": 124.68452453613281,
       "parts": {
         "forewing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "c6332631e2dcf30fdd9c8c9879f33ce45df063c44c59afa54a6f3b673d8c1fce"
+          "rgba_sha256": "bb85d88dbcd07498240b453d20a15f0f8035fe022095fab1018c364941b0de30"
         },
         "hindwing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "10a54e566b0119f0656660727f761c59ccf89f8d0b92badcdd638517de9c9ef4"
+          "rgba_sha256": "964a73193a2cd7b6a0e997c9ad3602e25dfa41dda5c53080a831a57993a746a5"
         },
         "body": {
           "width": 40,
           "height": 150,
-          "rgba_sha256": "b2f8ca0f9b01ba79c6d5f8e3747226f2e3b5550d5b011e757559bd11f2eabda7"
+          "rgba_sha256": "dab5a0485e217093ac80b7fd2cf35a4501046804a5932f187fea5df4a91c6a5e"
         }
       }
     },
     {
       "seed": 26,
       "style": 3,
-      "scheme": 13,
-      "rootY": 122.29804229736328,
+      "scheme": 11,
+      "rootY": 118.10025787353516,
       "parts": {
         "forewing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "dc2efd6de0f4b29794b217908c6bdc632d69dfcaa753f7311f7aa103ad6e6267"
+          "rgba_sha256": "2c5ddf24fac1c5ce3abe02360644f9850a9517ef9c45a3e1db3e9a8e7b9a9a6a"
         },
         "hindwing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "546bfa8bd027bc6584e1730e6f854787104714a1657fc750f0f0f2cb7405f919"
+          "rgba_sha256": "ad425cf3e182b292e817947d75a8c019d9bf3c19c46543e08c9f90f2e4720b5d"
         },
         "body": {
           "width": 40,
           "height": 150,
-          "rgba_sha256": "d38a2d6b5ad09f273ebd03ad91865a3153218dfc971809da52ec2cbb3bede62e"
+          "rgba_sha256": "08340c91f446d18910cd2862536a6c2e2eab61c596f295b0388cb4f43a156d00"
         }
       }
     },
     {
       "seed": 42,
       "style": 8,
-      "scheme": 4,
-      "rootY": 131.8359832763672,
+      "scheme": 1,
+      "rootY": 129.41830444335938,
       "parts": {
         "forewing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "32d39f979fe00d3a99734f037c1a324147a9e8330625a01c45ca0c4a917c6735"
+          "rgba_sha256": "80c21c73f0ed986cf735e97444990e2c986de6ae18277b559396b2e5ea5f0ae6"
         },
         "hindwing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "ed397dc2a142d55cbce22e5807275f3e643794727e5f9503a9ddcd935239ad39"
+          "rgba_sha256": "dd5caf89a699ea29045dec83768330739872186e44f1606eacf4a55e465d30af"
         },
         "body": {
           "width": 40,
           "height": 150,
-          "rgba_sha256": "1c9df25f76f61842342c95120a3ce1f147535ccfe8c8eb1888a65f345bf85ab7"
+          "rgba_sha256": "b8d95d1a9fc72ea416b9594c0fa27ce39e1ccfa60ca5b693271f9949a28b6198"
         }
       }
     },
     {
       "seed": 101,
       "style": 8,
-      "scheme": 6,
-      "rootY": 124.9441909790039,
+      "scheme": 1,
+      "rootY": 125.52664947509766,
       "parts": {
         "forewing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "3f6512f616ad2d46145c0df5779492255b8ed5753e21065f5b279c37cc15317a"
+          "rgba_sha256": "87d48460e774338a52fe31203ee821f8baa52193e8d5c47454e3eabb800703ce"
         },
         "hindwing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "ba3760c94177fc5852a9b441b5f65553b72d3be64854b04f95905adc7e4fbadb"
+          "rgba_sha256": "13df7f6e3d1a8ab6ded672d6eab6f4c7f1d221ce7cd981ee849e73eac121549e"
         },
         "body": {
           "width": 40,
           "height": 150,
-          "rgba_sha256": "a4839c164f7f8dcfad05eff7d4f37b7054365fb311aaa82790ca191e9f5bf2db"
+          "rgba_sha256": "c3939e2cf6bb1ef21137843c5a1593b0b6abf8118b7e52e63058b1a08f5d8ea5"
         }
       }
     },
     {
       "seed": 256,
       "style": 6,
-      "scheme": 9,
-      "rootY": 117.86885070800781,
+      "scheme": 7,
+      "rootY": 112.67476654052734,
       "parts": {
         "forewing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "9f19d4e543a653366f1c3fe4a24898460506e6853e6cee16a048d566c909205f"
+          "rgba_sha256": "bbce2b2ecb2c854e78d6385daefbb47aefdf728d88d4fd30329471ad28b52eda"
         },
         "hindwing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "c5acae50d74157f6121dcff2e4d24dd1ff41c877da49ac1193eca733413d5506"
+          "rgba_sha256": "09e3f18ec801538e456dbd9167d26ae7c1653fd7b8926497705d83f3f8804987"
         },
         "body": {
           "width": 40,
           "height": 150,
-          "rgba_sha256": "737fe42cabd53a51444f2ddfa1bd5775db2e8e1b77dfe58fc010f8f22add937a"
+          "rgba_sha256": "489d3fcc77d762911e81337489d37fd245d6816459b39c8783cc52e53376d434"
         }
       }
     },
     {
       "seed": 512,
       "style": 13,
-      "scheme": 2,
-      "rootY": 113.67955017089844,
+      "scheme": 1,
+      "rootY": 119.05638885498047,
       "parts": {
         "forewing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "c61f5198e57cf84715fd4c4571538110a4674f0dc4a85b6be1c08e44dc169074"
+          "rgba_sha256": "bb454cd3638d58a813e307dd407f3809b9c2b83b6b16570a199c013b71cf1e80"
         },
         "hindwing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "25029bf0ca600c9c708fc511b9ac5acf0732b6983a120a000b661a2adb4257fd"
+          "rgba_sha256": "ddb313f2260fce745f6e279f6b8e049eb6fa13ca3d2596d8537607c64d0f69f7"
         },
         "body": {
           "width": 40,
           "height": 150,
-          "rgba_sha256": "7a02ccb8b64bd1cc43e5c77a1dac911e0dc5dcac036920885660a67cba4f8960"
+          "rgba_sha256": "bcd8d2ef0db05fac193cb20d4a3be925807b64262366dd3632ef1a0ccdfdca71"
         }
       }
     },
     {
       "seed": 1024,
       "style": 13,
-      "scheme": 9,
-      "rootY": 118.841552734375,
+      "scheme": 6,
+      "rootY": 109.03410339355469,
       "parts": {
         "forewing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "834dacabac3eded516c15220a186260070fca54d581a90e7b78365d9e834fbba"
+          "rgba_sha256": "872b776cd1431833b964f294ec18d97ad8b4fce93415437bab7d696c3fa754c0"
         },
         "hindwing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "25a0413880878a9f6565f532c34405525447a74c96d393ceccfa357866373424"
+          "rgba_sha256": "4f1888890d08affef25f9c4c0a1d0b76d3fe0e43844447b58a9f468f38227851"
         },
         "body": {
           "width": 40,
           "height": 150,
-          "rgba_sha256": "e5a11a601c06a41b489d03d834f33fe060d2e9d04f8160693c4d650638f21a36"
+          "rgba_sha256": "bba1fc03af6cf02fd3fd20a081f283a999390dfd1b40263d7a177366bbb73b87"
         }
       }
     },
     {
       "seed": 5555,
       "style": 2,
-      "scheme": 3,
-      "rootY": 107.95401000976562,
+      "scheme": 1,
+      "rootY": 116.51522827148438,
       "parts": {
         "forewing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "1aa7694b4caf651388b556564362f9942aa448419c4fe904adf975a16124ea06"
+          "rgba_sha256": "ffbd8b1d25f3ab4561e45aa19b5800378d923c4bea48354702caadfe8436f9b3"
         },
         "hindwing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "57a25278c5b917af993cf4ba4fefcdb948dd88d355fb922429d1f42d60ff5a78"
+          "rgba_sha256": "af24efa2be555c419a6fda0579cb1c7ed08b9c3de562f0f419ae45d572f1efd6"
         },
         "body": {
           "width": 40,
           "height": 150,
-          "rgba_sha256": "211e7c68293d5f8cee250aab1c032b8d25fc346de867a9abade21d6b5c25ae14"
+          "rgba_sha256": "072bf6d99b51dc49848bcf0ee2d6dd586e6af9b14a7c84a563bcb1e24cd06338"
         }
       }
     },
     {
       "seed": 2026,
       "style": 4,
-      "scheme": 8,
-      "rootY": 116.81208038330078,
+      "scheme": 4,
+      "rootY": 121.32653045654297,
       "parts": {
         "forewing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "92040a21ab12e53da506f572f9998498ff9d0e4bfed2777fc26e5accb6338188"
+          "rgba_sha256": "9a9c9b01abce462305b39efbb24a5678f3a6badc7bdae6c5a8981bc1c289787b"
         },
         "hindwing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "b9b714504ca1ef0219d10eca576c4fdfd69bd4ecb92b484d79e3341d9b9b94b6"
+          "rgba_sha256": "90067558d9ac5811b2f23768242442faff3fac68ea4ebf31ba5d080fdc77fc19"
         },
         "body": {
           "width": 40,
           "height": 150,
-          "rgba_sha256": "51831305573b50a1a09083b45ffb026331d00a305e0610497291da51d7d3887b"
+          "rgba_sha256": "e9aa66279eaea8decf5b87935df5127efe520839e1e82a243272d96b82701586"
         }
       }
     },
     {
       "seed": 4096,
       "style": 5,
-      "scheme": 4,
-      "rootY": 128.2271728515625,
+      "scheme": 1,
+      "rootY": 121.91664123535156,
       "parts": {
         "forewing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "898b7f03f88edf32419d41739e70d799caa884d23353f81304a1bceb0c539acb"
+          "rgba_sha256": "66a961b994bb2eaec5f282feec1bcd6068dc84f50c56ed0d284708879d94362e"
         },
         "hindwing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "fa6e67720b385fe9c7f077d3b732b8afb8bd3394118844378bae2d236563ab2b"
+          "rgba_sha256": "19d15e8d4d6d454aaf872cf5e3851b2d93abbb1da803399b6f2ed2ac543fa262"
         },
         "body": {
           "width": 40,
           "height": 150,
-          "rgba_sha256": "692733847231a4598f8f3d4e7ff9a0db59992b2d3988c75c2e9b87f3f6743bcd"
+          "rgba_sha256": "e7ba8bd49f8128131224e0cc1985300e008694d14e7f349e7728ac50212db502"
         }
       }
     },
     {
       "seed": 54321,
       "style": 2,
-      "scheme": 6,
-      "rootY": 117.1398696899414,
+      "scheme": 1,
+      "rootY": 112.07807159423828,
       "parts": {
         "forewing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "c74caf2f4b2f5e3666d3ba29a4550b93386b3119b895d4c8c1a41debb7cb0dda"
+          "rgba_sha256": "14c4461af51de20d1608796a0bb80515c2d826686256b7f48789bd5657cc8319"
         },
         "hindwing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "03cf5d4def04249350ad44e5e582802d8a59d0b63084ba216aaddde5f274bb91"
+          "rgba_sha256": "160c3b18d0f7d74cc995e811dc13e891f5a3c6e07b1c54473d7503f1a966f919"
         },
         "body": {
           "width": 40,
           "height": 150,
-          "rgba_sha256": "b1418d35431146d4390937bd81e3f2419602eefcc52a247edfd967337b25d917"
+          "rgba_sha256": "df394545e080efaef4165a528de28c03fcb5fd6db3ecb706cfcc0d0ed867c377"
         }
       }
     },
     {
       "seed": 16384,
       "style": 11,
-      "scheme": 6,
-      "rootY": 126.45548248291016,
+      "scheme": 1,
+      "rootY": 121.30818939208984,
       "parts": {
         "forewing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "3eb04f2e3778c7758c89e4af461e5ab4fd5726bd858de432f4b77e8b1077fe07"
+          "rgba_sha256": "5d653bb212a8e4d182faa9f9d12231be0cfcadf6f8815bd35ce3d7b6ad6c21e5"
         },
         "hindwing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "677397bba8073eb25a953e1a7d2d1315c857a465a1c030bfebce6ec1718444ad"
+          "rgba_sha256": "d77bbc6e89f9bfe5f8282270ae25d4fd5463f154b43b5b45baecb94b3f2c6d84"
         },
         "body": {
           "width": 40,
           "height": 150,
-          "rgba_sha256": "a43ccdb9b39399f4845dd6b60c262510ae3ca2723253c6dd4dca0ad192df9409"
+          "rgba_sha256": "0f660ca0e19fe38509a4c88776386d42a48e2ca8297e9a9bdcc3f6349d9e3b0e"
         }
       }
     },
     {
       "seed": 32768,
       "style": 9,
-      "scheme": 7,
-      "rootY": 125.82477569580078,
+      "scheme": 2,
+      "rootY": 123.4647445678711,
       "parts": {
         "forewing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "f1e7faf9f3173e5f82cc97f5efbc7e01e872a2fb56e64a5379dc90142377fa19"
+          "rgba_sha256": "88abe1a0a2feff7f4216279ce14dffb0b5a0c64ea2166ee6f8b72f2208aa827b"
         },
         "hindwing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "084cb91322b7c0cc701d13482d66b5b733a5c8215be5a0f7b1d552dd4949bbec"
+          "rgba_sha256": "805390a0f29aed2cc239e17b3ff6255d7c0bf546c2a760c050a8e1ec8eec0d06"
         },
         "body": {
           "width": 40,
           "height": 150,
-          "rgba_sha256": "8f4b446a3267b46c8c9b18ee697fcdf3335ae29197d3696e47216e04e516ba72"
+          "rgba_sha256": "35f41eb36cc19daa424598640f176b25075d97ae9ee401a09423817703a29a33"
         }
       }
     },
     {
       "seed": 65535,
       "style": 1,
-      "scheme": 9,
-      "rootY": 133.22854614257812,
+      "scheme": 6,
+      "rootY": 115.33380889892578,
       "parts": {
         "forewing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "ef89525cba41a8a56d220aa21e3c512d307e8a9c1dfe61cd538c31c738db4306"
+          "rgba_sha256": "4980677d7d064d30d523fdf13c61647e30e50f0cd8624a2a6daee773a0ee6c31"
         },
         "hindwing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "6ded6032f206b6025b44de60eff78b5a84a98973b3ea7207648466f3c53f5131"
+          "rgba_sha256": "881f81eb0db07c6a92ed3a58e7fbbca0b481b0674c2323f8ffa1c35cbf335784"
         },
         "body": {
           "width": 40,
           "height": 150,
-          "rgba_sha256": "3f56f25369ac078312f89b93fcbe625e386632618fb98c55be934657960ca13c"
+          "rgba_sha256": "d3989b52dc2c66141000c9aaca14e97c0cab57126cd066c068c96d53cb472915"
         }
       }
     },
     {
       "seed": 131072,
       "style": 3,
-      "scheme": 14,
-      "rootY": 111.34172821044922,
+      "scheme": 13,
+      "rootY": 118.94196319580078,
       "parts": {
         "forewing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "7c2b83e7b88a3e97a125cb3c14f63aa3c682c8164ad74679021d78d35f66dca0"
+          "rgba_sha256": "c8f8db23e90723579d0f941d8d8baa1a2250f3ccde6c9ba2028a52ba22e4d8bb"
         },
         "hindwing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "8467937b77e75811479d70d25e2ec9e2163e4260375a71d28a364f6a325b9356"
+          "rgba_sha256": "edcd1102d63f792602ad2afff03b01eb21f600c862a859f33ea44fdce5cf7b02"
         },
         "body": {
           "width": 40,
           "height": 150,
-          "rgba_sha256": "bb5c65d2184165eceb7bd9c869a60b5e0950d5146b4d7df983425d0db118394f"
+          "rgba_sha256": "cf221b3523bd0ecfcd1d131948a30fc37e9eb96a052fc0074abde2e25571b00f"
         }
       }
     },
     {
       "seed": 4294967295,
       "style": 3,
-      "scheme": 6,
-      "rootY": 126.6534652709961,
+      "scheme": 1,
+      "rootY": 108.32426452636719,
       "parts": {
         "forewing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "73467ff956b1827d7853051e4231b576108c626339d362a887b83abc2e2a1ef0"
+          "rgba_sha256": "c5f7ac47e4e64636202d6f01eb9b4eb75b668f3ab282aa479384ce80c847b8d2"
         },
         "hindwing": {
           "width": 128,
           "height": 256,
-          "rgba_sha256": "ce83def6c2724176c73d4346c1ef00f57d21a829d43b501c0b065f7695176a63"
+          "rgba_sha256": "f81a6edccd86cf0fa297f32bfbb7ecfb221fc27e53daef78821f243bb36fce21"
         },
         "body": {
           "width": 40,
           "height": 150,
-          "rgba_sha256": "65c44720f06bd358f4a7325cd06ce9a219758723a92a14dd47e1ab87ec1288fb"
+          "rgba_sha256": "4de97849a72509dbd63618a647ddf71d84a93658de33eb6c89b181903212aee4"
         }
       }
     }
   ],
-  "svg_sha256": "b4fdef0fff0e1268deea8652fbcefa9aa32ea79af309f1a8265025d35956dbac",
+  "svg_sha256": "b551b33647685774582e21f992477effdef030d221208b301191adbd536ae433",
   "preview": {
     "file": "readme-collection.png",
     "width": 1600,
     "height": 1800,
-    "sha256": "dd4c1ecbe3cd75bd37d1c7ae1755ac7b4ef1273deefb86fb0a05f7947df929f5"
+    "sha256": "2bdee4283a2b0196f2a175c8d5f36dfd21e878b1b2b1a5ce1905b190d5c561e2"
   },
   "social_preview": {
     "file": "website/public/social-preview.png",
     "width": 1200,
     "height": 630,
-    "sha256": "8804e832f2e7f46faaccce3774639f15342b89dc8a1b3454db6ad44b20cf0828"
+    "sha256": "9cfbb3c6c2b79edfe97c2873e6bdd8b8bdb7631204beea56ca72e1f5e163f328"
   },
   "license": "All rights reserved; examples/showcase/LICENSE.md"
 }
