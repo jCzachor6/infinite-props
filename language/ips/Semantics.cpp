@@ -201,6 +201,15 @@ private:
             namespaceValid = valid && namespaceValid;
         }
 
+        // Helpers are checked on first use, one nested check for each call in
+        // a chain, so the table limit is enforced before any body is read.
+        if (program_.asset.functions.size() > kMaxFunctions) {
+            recover([&] {
+                throw SourceError{program_.asset.functions[kMaxFunctions].location, "an asset declares more than " +
+                    std::to_string(kMaxFunctions) + " functions", {}, DiagnosticCode::ResourceLimit, DiagnosticStage::Typing};
+            });
+            return false;
+        }
         for (const auto& function : program_.asset.functions) {
             if (atLimit()) return false;
             const bool valid = recover([&] {
@@ -307,13 +316,7 @@ private:
                 if (atLimit()) break;
                 checkRecoveringStmt(stmt);
             }
-            // The bytecode validator rejects a value function whose end is
-            // reachable; report it here, where the function can be named.
-            if (function.returnType.has_value() && !alwaysReturns(function.body) && !atLimit())
-                recover([&] {
-                    error(function.location, "function '" + function.name +
-                        "' must return a value on every path; end it with a return");
-                });
+            if (function.returnType.has_value() && !alwaysReturns(function.body)) reportMissingReturn(function);
             returnTypes_[function.name] = function.returnType.has_value()
                                               ? std::optional<ValueType>(valueTypeOf(
                                                     *function.returnType))
@@ -330,6 +333,16 @@ private:
         loopDepth_ = savedLoopDepth;
         surfaceDepth_ = savedSurfaceDepth;
         typer_.restoreScope(std::move(savedScope));
+    }
+
+    // The bytecode validator rejects a value function whose end is reachable;
+    // report it here, where the function can be named. Kept out of
+    // checkFunction, which recurses once for every helper in a call chain.
+    void reportMissingReturn(const Function& function) {
+        recover([&] {
+            error(function.location, "function '" + function.name +
+                "' must return a value on every path; end it with a return");
+        });
     }
 
     // Statements after one that always returns are unreachable, so any such

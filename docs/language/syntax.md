@@ -75,6 +75,13 @@ integer semantics.
 <!-- llm: skip -->
 This example is intentionally rejected: a leading zero does not select octal.
 
+<!-- llm: skip -->
+An expression may be nested or chained up to 256 levels, counting each pair
+of parentheses, call, index and operator on the way down; a sum of 256 terms
+is at the limit. Blocks, including the branches of an `else if` chain, may
+nest 256 deep. Deeper source is a compile error: compute part of the
+expression in a local, or move inner blocks into a helper.
+
 Trailing commas are accepted in call arguments, helper parameters, palette
 elements, list literals and compound literals. Syntax is ASCII: Unicode text may appear only
 in comments and string literals.

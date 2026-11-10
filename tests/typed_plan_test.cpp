@@ -7,7 +7,8 @@ using namespace iprop;
 
 TEST_CASE("expression typing resolves each call once even when every subtree is queried") {
     std::string expression = "value()";
-    constexpr int count = 512;
+    // The longest chain of calls one expression may hold: a call is two levels.
+    constexpr int count = ips::kMaxNestingDepth - 1;
     for (int i = 1; i < count; ++i) expression += " + value()";
     const auto program = ips::parse("asset t { size 8x8 draw { x = " + expression + " } }");
     const auto& function = program.asset.functions[0];

@@ -119,12 +119,12 @@ TEST_CASE("import discovery collects parse failures without exposing damaged pro
 }
 
 TEST_CASE("late validation errors remain structured check diagnostics") {
-    // Only the bytecode validator bounds the operand stack: 600 pending
-    // operands pass the checker and exceed its 512 slots.
+    // Only the bytecode validator bounds the operand stack: a polygon of 300
+    // vertices passes the checker and pushes more than its 512 slots.
     const auto result=compileSource("late.ips",[](std::string_view) {
-        std::string nested="unit()";
-        for(int depth=0;depth<600;++depth) nested="unit()+("+nested+")";
-        return "asset t {size 8x8 draw{x="+nested+";}}";
+        std::string vertices;
+        for(int vertex=0;vertex<300;++vertex) vertices+="unit(),unit(),";
+        return "asset t {size 8x8 draw{poly("+vertices+"#fff);}}";
     });
     CHECK(result.status==SourceCompilationStatus::InvalidSource);
     REQUIRE(result.diagnostics.size()==1);

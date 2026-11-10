@@ -378,6 +378,7 @@ InputDecl ParserImpl::parseInput() {
 // Input defaults allow parentheses and one unary minus, but no expression
 // operators/calls. Numeric/type validation belongs to the constant resolver.
 std::unique_ptr<Expr> ParserImpl::parseLiteralValue(bool allowMinus) {
+    const Nesting level(*this, expressionNesting_, kExpressionNesting);
     const auto start = pos_;
     if (match(TokenKind::LParen)) {
         auto value = parseLiteralValue(allowMinus);
@@ -387,7 +388,7 @@ std::unique_ptr<Expr> ParserImpl::parseLiteralValue(bool allowMinus) {
     }
     if (allowMinus && match(TokenKind::Minus)) {
         const auto at = tokens_[pos_ - 1].location;
-        auto value = std::make_unique<Expr>(Unary{Unary::Op::Neg, parseLiteralValue(false), at});
+        auto value = node(Unary{Unary::Op::Neg, parseLiteralValue(false), at});
         value->sourceRange = value->sourceCoreRange = {start, pos_};
         return value;
     }
@@ -549,6 +550,7 @@ ParamType ParserImpl::parseParamType(bool insideList) {
 // ---- statements -------------------------------------------------------------
 
 std::vector<Stmt> ParserImpl::parseBlock() {
+    const Nesting level(*this, blockNesting_, kBlockNesting);
     expect(TokenKind::LBrace, "'{'");
     std::vector<Stmt> body;
     while (kind() != TokenKind::RBrace) {
@@ -655,7 +657,7 @@ Stmt ParserImpl::parseIdentifierStatement() {
         return Stmt{VarDecl{name.text, parseExpr(), name.location}};
     }
     // Otherwise it must be a call (possibly through a member chain).
-    auto primary = std::make_unique<Expr>(Identifier{name.text, name.location});
+    auto primary = node(Identifier{name.text, name.location});
     primary->sourceRange = primary->sourceCoreRange = {start, pos_};
     auto expr = parsePostfixAfter(std::move(primary));
     if (const auto* member = std::get_if<Member>(expr.get()); member && kind() == TokenKind::Assign) {
@@ -706,6 +708,8 @@ Stmt ParserImpl::parseIf() {
     if (match(TokenKind::KeywordElse)) {
         elseRange.begin = pos_ - 1;
         if (kind() == TokenKind::KeywordIf) {
+            // An else-if chain is an if nested in each else: one level per branch.
+            const Nesting level(*this, blockNesting_, kBlockNesting);
             const auto start = pos_;
             auto branch = parseIf();
             branch.sourceRange = {start, pos_};

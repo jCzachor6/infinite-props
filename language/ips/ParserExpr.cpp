@@ -13,7 +13,7 @@ namespace {
 
 std::unique_ptr<Expr> literal(Literal::Kind literalKind, const Token& token,
                              const std::string& text) {
-    return std::make_unique<Expr>(
+    return node(
         Literal{literalKind, text, token.location});
 }
 
@@ -24,7 +24,7 @@ std::unique_ptr<Expr> binary(Binary::Op op, std::unique_ptr<Expr> left,
                              std::unique_ptr<Expr> right,
                              const SourceLocation& at) {
     const TokenRange range{left->sourceRange.begin, right->sourceRange.end};
-    auto expr = std::make_unique<Expr>(
+    auto expr = node(
         Binary{op, std::move(left), std::move(right), at});
     expr->sourceRange = expr->sourceCoreRange = range;
     return expr;
@@ -141,7 +141,7 @@ std::unique_ptr<Expr> ParserImpl::parseRandomRange() {
                  "for example (a to b) to c");
     }
     const TokenRange range{lower->sourceRange.begin, end};
-    auto expr = std::make_unique<Expr>(
+    auto expr = node(
         RandomRange{std::move(lower), std::move(upper), at, std::move(distribution), withAt});
     expr->sourceRange = expr->sourceCoreRange = range;
     return expr;
@@ -196,22 +196,23 @@ std::unique_ptr<Expr> ParserImpl::parseMultiplicative() {
 }
 
 std::unique_ptr<Expr> ParserImpl::parseUnary() {
+    const Nesting level(*this, expressionNesting_, kExpressionNesting);
     const auto start = pos_;
     if (match(TokenKind::Minus)) {
         const SourceLocation at = tokens_[pos_ - 1].location;
-        auto expr = std::make_unique<Expr>(Unary{Unary::Op::Neg, parseUnary(), at});
+        auto expr = node(Unary{Unary::Op::Neg, parseUnary(), at});
         expr->sourceRange = expr->sourceCoreRange = {start, pos_};
         return expr;
     }
     if (match(TokenKind::Bang)) {
         const SourceLocation at = tokens_[pos_ - 1].location;
-        auto expr = std::make_unique<Expr>(Unary{Unary::Op::Not, parseUnary(), at});
+        auto expr = node(Unary{Unary::Op::Not, parseUnary(), at});
         expr->sourceRange = expr->sourceCoreRange = {start, pos_};
         return expr;
     }
     if (match(TokenKind::Tilde)) {
         const SourceLocation at = tokens_[pos_ - 1].location;
-        auto expr = std::make_unique<Expr>(Unary{Unary::Op::BitNot, parseUnary(), at});
+        auto expr = node(Unary{Unary::Op::BitNot, parseUnary(), at});
         expr->sourceRange = expr->sourceCoreRange = {start, pos_};
         return expr;
     }
@@ -232,7 +233,7 @@ std::unique_ptr<Expr> ParserImpl::parsePostfixAfter(std::unique_ptr<Expr> expr) 
             const Token name = base && ((base->name == "mask" && kind() == TokenKind::KeywordFrom) ||
                 ((base->name == "noise" || base->name == "regions" || base->name == "part") && kind() == TokenKind::KeywordMask)) ?
                 advance() : expectName("a member name after '.'");
-            expr = std::make_unique<Expr>(
+            expr = node(
                 Member{std::move(expr), name.text, name.location});
         } else if (kind() == TokenKind::LParen) {
             const SourceLocation at = locationOf(*expr);
@@ -241,24 +242,24 @@ std::unique_ptr<Expr> ParserImpl::parsePostfixAfter(std::unique_ptr<Expr> expr) 
             if (member && member->name == "pick") {
                 if (args.size() > 1 || (!args.empty() && args[0].name && *args[0].name != "n"))
                     throw SourceError{at, ".pick takes no arguments or one i32 count named 'n'"};
-                expr = std::make_unique<Expr>(SamplerPick{std::move(member->object),
+                expr = node(SamplerPick{std::move(member->object),
                     args.empty() ? nullptr : std::move(args[0].value), at});
             } else if (member && member->name == "blur") {
                 if (args.size() != 1 || (args[0].name && *args[0].name != "sigma"))
                     throw SourceError{at, ".blur takes one f32 sigma, optionally named 'sigma'"};
-                expr = std::make_unique<Expr>(SurfaceBlur{std::move(member->object), std::move(args[0]), at});
+                expr = node(SurfaceBlur{std::move(member->object), std::move(args[0]), at});
             } else if (member && (member->name == "distinct" || member->name == "sort")) {
                 if (!args.empty()) throw SourceError{at, "." + member->name + " takes no arguments"};
-                expr = std::make_unique<Expr>(ListMethod{std::move(member->object), member->name, at});
+                expr = node(ListMethod{std::move(member->object), member->name, at});
             } else {
-                expr = std::make_unique<Expr>(Call{std::move(expr), std::move(args), at});
+                expr = node(Call{std::move(expr), std::move(args), at});
             }
         } else if (kind() == TokenKind::LBracket) {
             const SourceLocation at = locationOf(*expr);
             advance(); // '['
             auto index = parseExpr();
             expect(TokenKind::RBracket, "']' after the index");
-            expr = std::make_unique<Expr>(
+            expr = node(
                 Index{std::move(expr), std::move(index), at});
         } else {
             return expr;
@@ -283,14 +284,14 @@ std::unique_ptr<Expr> ParserImpl::parsePrimary() {
         auto args = parseArgs();
         if (args.size() != 1 || args[0].name)
             throw SourceError{at, std::string(stepper ? "stepper" : "sampler") + " capture takes one positional value or range"};
-        auto expr = std::make_unique<Expr>(SamplerCapture{std::move(args[0].value), at, stepper});
+        auto expr = node(SamplerCapture{std::move(args[0].value), at, stepper});
         expr->sourceRange = expr->sourceCoreRange = {start, pos_};
         return expr;
     }
     case TokenKind::KeywordMask:
     case TokenKind::Identifier: {
         const Token name = advance();
-        auto expr = std::make_unique<Expr>(Identifier{name.text, name.location});
+        auto expr = node(Identifier{name.text, name.location});
         expr->sourceRange = expr->sourceCoreRange = {start, pos_};
         return expr;
     }
@@ -310,7 +311,7 @@ std::unique_ptr<Expr> ParserImpl::parsePrimary() {
         // also appear as expression identifiers.
         if (isNameKind(kind())) {
             const Token name = advance();
-            auto expr = std::make_unique<Expr>(Identifier{name.text, name.location});
+            auto expr = node(Identifier{name.text, name.location});
             expr->sourceRange = expr->sourceCoreRange = {start, pos_};
             return expr;
         }
@@ -386,7 +387,7 @@ std::unique_ptr<Expr> ParserImpl::parseVector() {
         }
     }
     expect(TokenKind::RBrace, "'}'");
-    auto expr = std::make_unique<Expr>(VectorLit{std::move(elements), at});
+    auto expr = node(VectorLit{std::move(elements), at});
     expr->sourceRange = expr->sourceCoreRange = {start, pos_};
     return expr;
 }
@@ -401,7 +402,7 @@ std::unique_ptr<Expr> ParserImpl::parseList() {
         if (!match(TokenKind::Comma)) break;
     }
     expect(TokenKind::RBracket, "']' after list elements");
-    auto expr = std::make_unique<Expr>(ListLit{std::move(elements), at});
+    auto expr = node(ListLit{std::move(elements), at});
     expr->sourceRange = expr->sourceCoreRange = {start, pos_};
     return expr;
 }
@@ -422,7 +423,7 @@ std::unique_ptr<Expr> ParserImpl::parsePointDistribution() {
         if (!match(TokenKind::Comma)) break;
     }
     expect(TokenKind::RBrace, "'}' after distribution points");
-    auto expr = std::make_unique<Expr>(std::move(literal));
+    auto expr = node(std::move(literal));
     expr->sourceRange = expr->sourceCoreRange = {start, pos_};
     return expr;
 }

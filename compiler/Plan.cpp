@@ -61,6 +61,13 @@ std::string Plan::sourcePath(const ips::Program* owner) const {
                           ips::DiagnosticStage::Planning};
 }
 
+// Out of prepareFunctionBody, which recurses once for every helper in a chain.
+void Planner::failLocalLimit(const ips::Function& function) {
+    throw ips::SourceError{function.location, "function '" + function.name + "' has more than " +
+        std::to_string(kMaxLocals) + " parameters and locals", {}, ips::DiagnosticCode::ResourceLimit,
+        ips::DiagnosticStage::Planning};
+}
+
 ValueType Planner::storedType(ips::ValueType type, const ips::SourceLocation& at, const std::string& slot) {
     if (!type.isStorable())
         error(at, "cannot store " + std::string(ips::typeName(type)) + " in " + slot);
@@ -262,6 +269,11 @@ void Planner::planFunctions() {
             registryDrawLike_.emplace(name, function.name == "draw");
         }
     }
+    // The function table holds the entry asset's functions and every part's.
+    if (planned.size() > kMaxFunctions)
+        throw ips::SourceError{entry_.asset.location, "the asset and its parts declare more than " +
+            std::to_string(kMaxFunctions) + " functions", {}, ips::DiagnosticCode::ResourceLimit,
+            ips::DiagnosticStage::Planning};
     for (const auto& name : planned) {
         plan_->functionIndex.emplace(name,
                                     static_cast<u32>(plan_->functions.size()));
@@ -470,10 +482,7 @@ void Planner::prepareFunctionBody(const std::string& name) {
     };
     walk(walk, ast->body);
     // Later passes index locals by slot; report the limit where it is named.
-    if (info.params.size() + info.locals.size() > kMaxLocals)
-        throw ips::SourceError{ast->location, "function '" + ast->name + "' has more than " +
-            std::to_string(kMaxLocals) + " parameters and locals", {}, ips::DiagnosticCode::ResourceLimit,
-            ips::DiagnosticStage::Planning};
+    if (info.params.size() + info.locals.size() > kMaxLocals) failLocalLimit(*ast);
 
     ips::ConstantFolder constants;
     const auto& assetConstants = plan_->assetConstants.at(owner);

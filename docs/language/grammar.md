@@ -112,7 +112,8 @@ Bitwise operators and shifts bind more tightly than comparisons:
 `value < (1 << bits)`. `==`, `<` and `to` take one operator per level, so
 `a < b < c`, `a == b == c` and `a to b to c` are rejected; `a < b == c < d`
 is an equality of two orderings. A number is one token: a word may not follow
-it directly, apart from the `x` of `size 16x16`.
+it directly, apart from the `x` of `size 16x16`. Expressions and blocks nest
+at most 256 levels; see [source syntax](syntax.md#literals).
 
 ## Declaration effects
 

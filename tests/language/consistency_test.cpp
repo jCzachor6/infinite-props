@@ -266,3 +266,56 @@ TEST_CASE("builtin names follow one convention") {
         }
     }
 }
+
+TEST_CASE("source nested beyond the limit is a located error, not a stack overflow") {
+    const auto repeat = [](const std::string& text, std::size_t count) {
+        std::string result;
+        for (std::size_t i = 0; i < count; ++i) result += text;
+        return result;
+    };
+    const auto expression = [&](const std::string& value) {
+        return "asset t { input f32 v = 1 size 8x8 draw { x = " + value + " } }";
+    };
+    const std::string tooDeep = "an expression is nested or chained deeper than 256 levels";
+    // Far past the limit, where the recursive checker used to exhaust the stack.
+    for (const std::size_t depth : {std::size_t{300}, std::size_t{20000}}) {
+        INFO(depth);
+        CHECK(parseError(expression(repeat("(", depth) + "v" + repeat(")", depth))) == tooDeep);
+        CHECK(parseError(expression(repeat("abs(", depth) + "v" + repeat(")", depth))) == tooDeep);
+        CHECK(parseError(expression(repeat("-", depth) + "v")) == tooDeep);
+        CHECK(parseError(expression("v" + repeat(" + (v", depth) + repeat(")", depth))) == tooDeep);
+        // A chain is as deep as it is long, although the parser reads it in a loop.
+        CHECK(parseError(expression("v" + repeat(" + v", depth))) == tooDeep);
+        CHECK(parseError(expression("[1]" + repeat("[0]", depth))) == tooDeep);
+        CHECK(parseError("asset t { size 8x8 input i32 v = " + repeat("(", depth) + "1" + repeat(")", depth) + " draw { } }") == tooDeep);
+        CHECK(parseError("asset t { input i32 v = 1 size 8x8 draw { " + repeat("if (v) {", depth) + repeat("}", depth) + " } }") ==
+              "blocks or else-if branches are nested deeper than 256 levels");
+        CHECK(parseError("asset t { input i32 v = 1 size 8x8 draw { if (v) { } " + repeat("else if (v) { } ", depth) + "} }") ==
+              "blocks or else-if branches are nested deeper than 256 levels");
+    }
+    // At the limit everything still compiles and runs: blocks and expressions count separately.
+    const std::size_t most = kMaxNestingDepth - 1;
+    const auto deepest = "asset t { input f32 v = 1 size 8x8 output point p draw { " + repeat("if (1) {", most) +
+        " x = " + repeat("abs(", most) + "v" + repeat(")", most) + " y = v" + repeat(" + v", most) +
+        " p = {x, y} " + repeat("}", most) + " } }";
+    const auto result = compiler_test::execute(compiler_test::compileChecked(deepest));
+    REQUIRE(result.outputs[0].points.size() == 1);
+    CHECK(result.outputs[0].points[0].x == 1.f);
+    CHECK(result.outputs[0].points[0].y == static_cast<float>(most + 1));
+}
+
+TEST_CASE("the function limit is reported before a long call chain is followed") {
+    const auto helpers = [](std::size_t count, bool chained) {
+        std::string source = "asset t { size 8x8 draw { f0() } ";
+        for (std::size_t i = 0; i < count; ++i)
+            source += "f" + std::to_string(i) + "() { " + (chained && i + 1 < count ? "f" + std::to_string(i + 1) + "() " : "") + "} ";
+        return source + "}";
+    };
+    // draw and 1023 helpers fill the table of 1024.
+    CHECK_NOTHROW(checkAsset(parse(helpers(1023, false)), {}));
+    expectCheckError(helpers(1024, false), "an asset declares more than 1024 functions");
+    // Helpers are checked on first use, so a chain is followed call by call:
+    // one far past the limit used to exhaust the stack before it was counted.
+    expectCheckError(helpers(20000, true), "an asset declares more than 1024 functions");
+    CHECK_NOTHROW(checkAsset(parse(helpers(200, true)), {}));
+}

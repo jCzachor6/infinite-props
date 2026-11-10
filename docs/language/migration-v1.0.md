@@ -108,4 +108,8 @@ comparison whose result you compare.
 - `3 to 1` and `gaussian(0.0, -1.0)` are compile errors. A range or a
   distribution constructor whose constant operands always trap used to compile
   and trap on every run. Operands only known when the program runs still trap.
-- A function with more than 1024 parameters and locals is a located error.
+- A function with more than 1024 parameters and locals, and an asset with
+  more than 1024 functions, are located errors.
+- An expression nested or chained deeper than 256 levels, or blocks nested
+  deeper than 256, are a located error. Deeper source used to overflow the
+  compiler's stack and crash it.

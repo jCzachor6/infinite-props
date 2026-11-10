@@ -39,6 +39,12 @@ replacement. See [0.9 to 1.0 migration](docs/language/migration-v1.0.md).
   output, and a `to` range or distribution constructor whose constant operands
   always trap are reported where they are written. A binary operator's
   diagnostic location no longer depends on the host compiler.
+- **No crash on deep nesting.** The compiler overflowed its stack on source
+  nested a few thousand levels deep (a few hundred in a sanitizer build), and
+  on a chain of a few thousand helpers calling one another. Expressions and
+  blocks now nest at most 256 levels, with a located error beyond that; a
+  chain such as `a + b + c` counts one level per operator. The limit of 1024
+  functions is reported before any helper body is checked.
 - The editor grammar highlights every builtin the compiler reports; a test
   keeps the two in step.
 
