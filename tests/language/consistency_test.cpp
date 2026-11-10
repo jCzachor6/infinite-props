@@ -221,6 +221,10 @@ TEST_CASE("a spelling from before 1.0 names its replacement") {
         INFO(body);
         expectCheckError(wrap(setup + body), message);
     }
+    // A name that was never an argument gets no rename hint.
+    expectCheckError(wrap(setup + "other = part.create(p = tiles, index = 0)"), "function 'part.create' has no argument 'p'");
+    CHECK(compiler_test::checkErrorMessage(wrap(setup + "other = part.create(p = tiles, index = 0)")).find("renamed") ==
+          std::string::npos);
     // The current spellings of every case above.
     CHECK_NOTHROW(checkAsset(parse(wrap(setup +
         "a = noise.value(1.0, 2.0, 3) + noise.fault({1, 2}, 3) + noise.warp(1.0, 2.0, 0.5, 3) "

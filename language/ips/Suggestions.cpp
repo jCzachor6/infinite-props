@@ -64,7 +64,8 @@ std::string formerArgumentHint(std::string_view function, std::string_view argum
         if (function == "dist.fill" && argument == "d") return "distance";
         if (function == "dist.fill" && argument == "w") return "width";
         if (function == "surface.paint" && argument == "image") return "source";
-        if (function.starts_with("part.") && argument == "p") return "part";
+        // The constructors part.create and parts.from_regions take a `source`.
+        if (function.starts_with("part.") && function != "part.create" && argument == "p") return "part";
         if (function.starts_with("regions.") && (argument == "rs" || argument == "source")) return "regions";
         if (function.starts_with("diagram.") && argument == "d") return "diagram";
         if ((function == "parts.count" || function == "parts.get") && argument == "source") return "parts";
