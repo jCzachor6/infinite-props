@@ -8,14 +8,18 @@ and the three parts of the smaller 128×128 butterfly released by the swarm
 (`butterfly-forewing-128`, `butterfly-hindwing-128`, `butterfly-body-128`).
 
 The `.ips` sources are kept outside this repository; the programs here are
-compiled binaries. They are compiled by product 0.9.0, in the unversioned format,
-from the props working tree at commit `855ba99`. The compiler's default fuel budget is
-5,000,000. `showcase-manifest.json` records the full source commit, every
-binary's byte size and SHA-256, and the hashes of all imported sources.
+compiled binaries, in the unversioned format. The weapon and portrait packs
+are compiled by product 0.9.0 from the props working tree at commit `855ba99`,
+with its default fuel budget of 5,000,000. `showcase-manifest.json` records
+the full source commit, every binary's byte size and SHA-256, and the hashes
+of all imported sources.
 `butterfly-benchmark.json` and `butterfly-swarm.json` record the same for the
-two butterflies, also compiled by product 0.9.0: the 256×256 parts from
-`examples/butterfly` of the iprop-asset-skill repository at commit `0c01506`,
-the 128×128 parts from props commit `489f337`. Selection is implemented by ordinary inputs named after what they choose:
+two butterflies. Their six programs are written in the 1.0 language and
+compiled by this repository's compiler, whose default budget of 25,000,000
+they need (a 256×256 wing spends up to about 10 million fuel), from the
+`butterfly` folder of the props repository at commit `2228edd`; the source
+hashes in the manifests identify the exact files. The 128×128 parts are the
+same sources drawn at half the scale. Selection is implemented by ordinary inputs named after what they choose:
 `enchant` and `quality` (plus `bladeStyle`, `bladeSteel`, `headStyle` and
 `coating` where declared) for weapons, `sex` and `role` for portraits;
 default 0 rolls from the seed. Weapons use `renderPass` for color/emission selection and `bloom` for
@@ -43,6 +47,8 @@ image hashes.
 The renderer runs the original website WASM worker and follows the resting
 snapshot assembly in `website/src/butterfly.ts`. It adds the collector frame,
 velvet background, shadows and labels around those generated specimens.
+The images on file show the butterflies of the earlier programs, whose hashes
+the manifest records; regenerating draws the current ones.
 
 To regenerate both images from a built WASM runtime, install `puppeteer-core`
 in a temporary tools directory, then run from the repository root:

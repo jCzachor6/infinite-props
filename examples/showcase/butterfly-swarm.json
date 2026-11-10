@@ -2,34 +2,34 @@
   "name": "Butterfly swarm",
   "product_version": "0.9.0",
   "source_repository": "props",
-  "source_commit": "489f3375cfeb2bc1f6af77af43b49d5ae71793f4",
+  "source_commit": "2228edd1d8612807603b0f8553d06f3f7d607958",
   "width": 128,
   "height": 128,
   "parts": [
     {
       "id": "forewing",
       "file": "butterfly-forewing-128.iprop",
-      "bytes": 20406,
-      "sha256": "a872c83cece070293524ef394afaf37811a4ea5fadaa9f1a5d070271ef4412be"
+      "bytes": 18094,
+      "sha256": "59b1132f32a8c34a81062e45ca8ecaa1ec5cb2c915435777a20cae57a76aa4b7"
     },
     {
       "id": "hindwing",
       "file": "butterfly-hindwing-128.iprop",
-      "bytes": 20400,
-      "sha256": "58efb3f1969bbe1d42f15eb9ea71f18708dd344ffc2912a657574520e8c4702f"
+      "bytes": 18095,
+      "sha256": "b2197d4c36f091047f23700fa22b2222639ab8fd044ab833dfde0966b51c4f96"
     },
     {
       "id": "body",
       "file": "butterfly-body-128.iprop",
-      "bytes": 4360,
-      "sha256": "c2dd94cae53a18172f3291ef8c0f2d643cd744ec0e506116c3164b487bc14d9a"
+      "bytes": 4610,
+      "sha256": "7fcce87d682600fd8a18e1a8a1c947dcb62d317feb1cf520a69b1a12ea8b4533"
     }
   ],
   "source_sha256": {
-    "body128.ips": "e1309d12266963c36f7fc5700aa9d97a253f0d521e9f8ba63597f0a65278539c",
-    "forewing128.ips": "e5d90888784f42cfc740bd662cabe76807370821bc6e6c41e02d5fcbc0c75164",
-    "hindwing128.ips": "24629198128e28e001e28444f52ef3a4c67577b46596ae6116c0ae7bfa9578a0",
-    "scales.ips": "654e811dad06b75fe0350e2cb80e5a27a727be88427776f0fdef9004caaefceb",
-    "wing.ips": "4b1b8c7d1e3f845b263f575e61259ce352fe556ec8637eff2a75e08b114f04e8"
+    "body.ips": "79ad508774ed3d08333fa63b183333651ce1eed07f718658b84a362ab8abf501",
+    "body128.ips": "de57b90e064c24527e4778c345c53bc330a74aa60552bbc5d22eab0ea501aa59",
+    "forewing128.ips": "9b8d1a18fe3b89da2721f572586e8f91546f2fce3b196e4f01ddaeb4964ea108",
+    "hindwing128.ips": "73f2ce1c1530295f87392431ce267e5b2aa564465497111781c6bab969a18bc7",
+    "wing.ips": "d7326f98193423febf7d78a5224ddc492b42295da42e1bf9356695358bb62b4b"
   }
 }

@@ -67,9 +67,9 @@ replacement. See [0.9 to 1.0 migration](docs/language/migration-v1.0.md).
   inline and reuses call frames; polygons, Bézier strokes, blurs, ovals and
   layer/mask painting do the same pixel tests with less work per pixel.
   On an Apple M-series Mac the showcase weapons and portraits generate
-  2.0-2.5x faster, the 256x256 butterfly parts 3.6-5.4x (hindwing 58 ms to
-  11 ms) and thin strokes about 5x. In WebAssembly (Node 26) the three
-  butterfly parts take 23 ms instead of 94 ms; `iprop.wasm` is 7% larger
+  2.0-2.5x faster, the 256x256 butterfly parts of 0.9.0 3.6-5.4x (hindwing
+  58 ms to 11 ms) and thin strokes about 5x. In WebAssembly (Node 26) those
+  three butterfly parts take 23 ms instead of 94 ms; `iprop.wasm` is 7% larger
   (5% gzipped).
 - The optimizing compiler emits four fewer instructions around every `for`
   iteration and two fewer around every `while` and `!`: a comparison tested
@@ -80,6 +80,20 @@ replacement. See [0.9 to 1.0 migration](docs/language/migration-v1.0.md).
 - The row-wise blur above computed a pointer outside the row for a surface
   narrower than its kernel. It was never read, and images, fuel and work are
   the same, but it was undefined behaviour that UBSan reports; it is gone.
+
+### Website
+
+- The butterfly benchmark and the swarm draw a new butterfly. Every wing is
+  shaded scale by scale from its own polar coordinates, with veins in relief,
+  an anti-aliased outline traced from its silhouette and soft shadows; the
+  body is furred and shaded as bodies of revolution. The thirteen species
+  looks now come in twelve wing forms (rounded, hooked, toothed, tailed,
+  twin-tailed, hairstreak, narrow, birdwing, notched, ribbon-tailed, broad),
+  and wear their natural colours a little under half the time. The three
+  programs are 40 KB together; a 256x256 butterfly takes about 68 ms in
+  WebAssembly on an Apple M-series Mac (113 ms at most over 1000 seeds, a
+  wing spending up to 10 million fuel), a 128x128 one about 23 ms. They are
+  written in the 1.0 language and need the larger default budget above.
 
 ## v0.9.0 — 2026-11-05
 
