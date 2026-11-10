@@ -729,7 +729,8 @@ Stmt ParserImpl::parseWhile() {
 
 Stmt ParserImpl::parseFor() {
     const SourceLocation at = advance().location; // 'for'
-    if (kind() != TokenKind::Identifier) {
+    // The counter is a local, so it takes any name a local can have.
+    if (!isNameKind(kind())) {
         failExpected("the loop variable after 'for'");
     }
     const std::string variable = advance().text;

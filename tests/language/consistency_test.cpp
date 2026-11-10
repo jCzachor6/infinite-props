@@ -35,6 +35,12 @@ TEST_CASE("a word cannot be attached to a number") {
     CHECK_NOTHROW(parse("asset t { size 16x16 draw { for i in 0..3 { } x = 1 to 3 } }"));
 }
 
+TEST_CASE("a for counter takes any name a local can have") {
+    CHECK_NOTHROW(checkAsset(parse(wrap("for at in 0..2 { pixel(at, 0, #fff) } for color in 1..3 { } x = at + color")), {}));
+    CHECK(parseError(wrap("for in in 0..2 { }")) == "expected the loop variable after 'for', got in");
+    expectCheckError(wrap("for seed in 0..2 { }"), "'seed' is a reserved name");
+}
+
 TEST_CASE("a call on a value names the function to use instead") {
     expectCheckError(wrap("v = {3, 4} x = v.len()"),
         "vec2 has no method 'len'; write vec2.len(...) with the value as its first argument");
