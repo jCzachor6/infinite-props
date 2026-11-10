@@ -28,7 +28,7 @@ function run(iprop, tool, directory) {
             [`samples={${name}(p,seed),0}`, `samples={${name}(p.x,p.y,seed),0}`]),
         ...["noise.fbm","noise.ridge"].map(name =>
             [`samples={${name}(p,4,seed),0}`, `samples={${name}(p.x,p.y,4,seed),0}`]),
-        ["samples={warp(p,0.5,seed),0}", "samples={warp(p.x,p.y,0.5,seed),0}"],
+        ["samples={noise.warp(p,0.5,seed),0}", "samples={noise.warp(p.x,p.y,0.5,seed),0}"],
         ["samples={noise.cell2(p,seed),0}", "samples={noise.cell2(p.x,p.y,seed),0}"],
         ["id=noise.cell_id(p,seed) samples={id&65535,id>>16}",
          "id=noise.cell_id(p.x,p.y,seed) samples={id&65535,id>>16}"],

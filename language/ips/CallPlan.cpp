@@ -33,10 +33,6 @@ CallSignature builtinCallSignature(const BuiltinSpec& spec, std::size_t arity,
     const SourceLocation& at, std::string_view function) {
     auto result = helperCallSignature(builtinParameterNames(spec, arity, at, function));
     result.effects = builtinEffects(spec, builtinOverload(spec, arity));
-    if (variadicPolygon(spec, arity)) {
-        result.evaluationOrder.erase(result.evaluationOrder.begin());
-        result.evaluationOrder.push_back(0);
-    }
     return result;
 }
 CallSignature rampCallSignature() {

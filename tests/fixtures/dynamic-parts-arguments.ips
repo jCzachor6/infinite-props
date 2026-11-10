@@ -19,11 +19,11 @@ asset argument_order {
         b = part.create(ml(4, image))
         ps = parts.from_regions(mr(5, rs))
         n = parts.count(ms(6, ps))
-        original = parts.get(index=mi(8, 0), source=ms(7, ps))
+        original = parts.get(index=mi(8, 0), parts=ms(7, ps))
         q = part.place(mirror_y=mi(13, 0), mirror_x=mi(12, 1), rot=mi(11, 90),
-                       at=mv(10, {3.25, -0.5}), p=mp(9, p))
-        q = part.fill(tint=mc(15, #11223380), p=mp(14, q))
-        q = part.texture(image=ml(17, image), p=mp(16, q))
+                       at=mv(10, {3.25, -0.5}), part=mp(9, p))
+        q = part.fill(tint=mc(15, #11223380), part=mp(14, q))
+        q = part.texture(image=ml(17, image), part=mp(16, q))
         part.draw(mp(18, q))
         mask transformed = part.mask(mp(19, q))
         metrics = {part.id(mp(20, q)), part.source_id(mp(21, q))}

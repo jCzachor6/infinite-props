@@ -291,11 +291,10 @@ Use a positive bound for ordinary palette/array selection.
 ## pick
 <!-- builtin: pick -->
 
-`pick(n)` is exactly `index(n)`. With two or more arguments it eagerly
-evaluates choices, then consumes one selection draw. Choices must share a
-storable type; mixed numeric choices widen to `f32`. Named choice arguments
-are `value0`, `value1`, etc. A single non-integer choice is rejected because
-the single-argument overload is the index alias.
+Takes two or more choices, evaluates all of them eagerly and then consumes one
+selection draw. Choices must share a storable type; mixed numeric choices
+widen to `f32`. Named choice arguments are `value0`, `value1`, etc. One
+argument is rejected: write `index(n)` to draw an index below `n`.
 
 ## chance
 <!-- builtin: chance -->
@@ -325,15 +324,15 @@ Returns the frozen splitmix32 hash of the argument's bit pattern as `i32`.
 It does not change the current stream. It is useful for deriving independent
 seeds from a saved seed and a coordinate or index.
 
-## stream_push
-<!-- builtin: stream_push -->
+## stream.push
+<!-- builtin: stream.push -->
 
 Saves the current stream and derives a nested stream from the supplied seed
-according to the VM contract. Pair it with `stream_pop` before returning.
+according to the VM contract. Pair it with `stream.pop` before returning.
 This is stream derivation, not the direct seed assignment used by `roll`.
 
-## stream_pop
-<!-- builtin: stream_pop -->
+## stream.pop
+<!-- builtin: stream.pop -->
 
 Restores the most recently pushed stream. An unmatched pop traps. Nesting
 is bounded by the VM's stream-stack limit. Balanced calls isolate a sequence

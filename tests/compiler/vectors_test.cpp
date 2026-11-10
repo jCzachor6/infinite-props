@@ -64,7 +64,7 @@ asset t {
     q = -u
     r = helper(u, 2.0)
     p = r
-    pixel(i32trunc(d), 0, #ff0000)
+    pixel(int(d), 0, #ff0000)
   }
 })";
     const auto fromIps = run(compileChecked(source), 0, 0);
@@ -320,7 +320,7 @@ asset t {
     metrics = {vec2.len({3,4}), vec2.dot({2,3},{4,5})}
     positive = vec2.rot({2,3}, 1.57079632679)
     negative = vec2.rot({2,3}, -1.57079632679)
-    angle = polar({0,-1})
+    angle = vec2.polar({0,-1})
     integerAngle = vec2.rot({2,3}, 0)
   }
 })"),0,0);

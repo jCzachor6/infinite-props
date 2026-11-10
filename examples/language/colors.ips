@@ -6,7 +6,7 @@ asset ColorHelpers {
     mixed = color.mix(base, #9dc, 0.5)
     alias = lerp(base, #9dc, 0.5)
     shaded = color.shade(mixed, 10)
-    opaque = color.set.a(glaze, 255)
+    opaque = color.set_a(glaze, 255)
     multiplied = color.mul(opaque, #ccc)
     scaled = color.scale(multiplied, 0.8)
     adjusted = color.hsv(scaled, 0.25, 1.0, 1.0)

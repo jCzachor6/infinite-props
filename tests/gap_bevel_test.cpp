@@ -63,7 +63,7 @@ TEST_CASE("gap frontend binds named arguments roundtrips and keeps dead-result v
     const std::string text=R"(asset t{size 8x4 output list point trace
         pass(rs:regions2d)->regions2d{return rs}
         draw{rs=regions(voronoi({0,0},{8,4},[{2,2},{6,2}]))
-            next=pass(regions.gap(width=1,source=rs))
+            next=pass(regions.gap(width=1,regions=rs))
             trace={regions.area(next,0),regions.area(next,1)}
             trace={regions.area(rs,0),regions.area(regions.gap(next,1),0)}
         }})";
@@ -183,8 +183,8 @@ TEST_CASE("gap and bevel arguments evaluate once in signature order despite reve
         c(tag:i32,value:color)->color{trace={tag,unit()}return value}
         r(tag:i32,value:regions2d)->regions2d{trace={tag,unit()}return value}
         draw{trace={0,unit()}rs=regions(voronoi({0,0},{8,6},1,7))
-            next=regions.gap(seed=i(4,7),variation=f(3,0.5),width=f(2,1),source=r(1,rs))
-            shade=regions.bevel(strength=f(10,0.5),shadow=c(9,#000),highlight=c(8,#fff),light=v(7,{-1,-1}),width=f(6,2),source=r(5,next))
+            next=regions.gap(seed=i(4,7),variation=f(3,0.5),width=f(2,1),regions=r(1,rs))
+            shade=regions.bevel(strength=f(10,0.5),shadow=c(9,#000),highlight=c(8,#fff),light=v(7,{-1,-1}),width=f(6,2),regions=r(5,next))
             trace={11,unit()}
         }})";
     const auto control=loadFile(compile("asset t{size 8x6 output list point trace draw{for j in 0..12{trace={j,unit()}}}}"));

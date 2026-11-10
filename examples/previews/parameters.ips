@@ -12,7 +12,7 @@ asset Parameters {
     for row in 0..3 {
       y = 3 + row * 19
       for i in 0..10 {
-        stream_push(hash(i))
+        stream.push(hash(i))
         width = 0.0
         shift = 0
         if (row == 0) {
@@ -25,7 +25,7 @@ asset Parameters {
           width = 1.0 to 4.0 with leaning
           shift = -40 to 40 with triangular(min=-40.0, peak=40.0, max=40.0)
         }
-        stream_pop()
+        stream.pop()
         x = 6.0 + float(i) * 9.0
         rect(x - width / 2.0, float(y), width, 12.0, color.shade(base, shift))
       }

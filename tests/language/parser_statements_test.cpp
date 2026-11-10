@@ -333,7 +333,7 @@ asset typed {
     n = ageFromUnit(u)
   }
   ageFromUnit(u: f32) -> i32 {
-    return i32trunc(u * 10)
+    return int(u * 10)
   }
   leaf(x: f32, y: f32, rx: f32, ry: f32, lean: f32, c: color) -> color {
     return color.shade(c, 1)

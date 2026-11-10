@@ -133,7 +133,7 @@ TEST_CASE("CSE reuses stored pure values with versioned mutable locals") {
 
 TEST_CASE("small constant loops unroll with final counters and side effects preserved") {
     const std::string source = R"(asset t { size 8x8 output point p
-      draw { for i in 0..3 { pixel(i,0,color.shade(#f00,pick(20))) } for j in 5..2 { pixel(0,1,#fff) } p={i,j} } })";
+      draw { for i in 0..3 { pixel(i,0,color.shade(#f00,index(20))) } for j in 5..2 { pixel(0,1,#fff) } p={i,j} } })";
     const auto actual = compile(source,true), reference = compile(source,false);
     compare(actual,reference);
     const auto loaded = loadFile(actual);

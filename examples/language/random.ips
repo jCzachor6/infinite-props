@@ -7,14 +7,14 @@ asset RandomChoices {
     u = unit()
     x = int(range(0, 8))
     y = index(8)
-    indexAlias = pick(8)
+    spare = index(8)
     c = pick(value1 = #fc9, value0 = #9dc)
     if (chance(0.75)) { pixel(x, y, c) }
     isolated = roll(hash(saved), 0, 8)
     nested = choose(saved, choose(saved ^ 1, 1, 2), 3)
-    stream_push(saved ^ 2)
+    stream.push(saved ^ 2)
     pixel(int(isolated), nested, #fff)
     rect(4 + offset, 0, width, 1, #fc9)
-    stream_pop()
+    stream.pop()
   }
 }

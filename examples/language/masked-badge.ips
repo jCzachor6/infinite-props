@@ -16,7 +16,7 @@ asset maskedBadge {
     draw {
         width = 18 to 23
         layer shape {
-            poly(#ffffff, 5, 4, width + 5, 4, width + 2, 19, 8, 19)
+            poly(5, 4, width + 5, 4, width + 2, 19, 8, 19, #ffffff)
             panel = {5, 4, width, 15}
         }
         region = mask.from(shape)

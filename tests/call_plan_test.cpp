@@ -80,12 +80,12 @@ TEST_CASE("source-only formatting preserves unknown imports and orders known hel
     const auto root = ips::parse(R"(import child from "child.ips" asset t {size 8x8 draw {
       sink(y=2,x=1)
       child.draw(b=unit(),z=unit(),at={0,0},seed=seed)
-      poly(#fff,0,0,4,0,0,4)
+      poly(0,0,4,0,0,4, #fff)
     } sink(x:f32,y:f32) {} })");
     const auto unknown = ips::formatProgram(root);
     CHECK(unknown.find("child.draw(b = unit(), z = unit(), at = {0, 0}, seed = seed)") != std::string::npos);
     CHECK(unknown.find("sink(x = 1, y = 2)") != std::string::npos);
-    CHECK(unknown.find("poly(x0 = 0, y0 = 0, x1 = 4, y1 = 0, x2 = 0, y2 = 4, #ffffff)") != std::string::npos);
+    CHECK(unknown.find("poly(0, 0, 4, 0, 0, 4, #ffffff)") != std::string::npos);
     const auto known = ips::formatProgram(root, {{"child",&part}});
     CHECK(known.find("child.draw(z = unit(), b = unit(), seed = seed, at = {0, 0})") != std::string::npos);
     const auto reparsed = ips::parse(known);

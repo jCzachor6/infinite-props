@@ -143,7 +143,7 @@ TEST_CASE("clip combines coverage before alpha and zero never changes hidden RGB
         layer coverageImage(alpha=surface.source_over){rect(0,0,3,1,#ffffff80)}
         mask region=echo(mask.from(coverageImage))
         layer image(alpha=surface.source_over){clip(region){mark(0)clip(region){mark(1)}
-          surface.paint(image=region,color=#11223380)}}
+          surface.paint(source=region,color=#11223380)}}
         surface.paint(image,blend=surface.source_over)
         pixel(4,0,#11223380)clip(region){pixel(4,0,#fff)}
         surface.paint(mask.offset(region,6,0),#fff,blend=surface.source_over)
@@ -269,7 +269,7 @@ TEST_CASE("mask paint signature order and clip operand execute once in the calle
       make(alpha:i32)->mask{trace={alpha,seed&65535}unused=1 to 2
         layer image(alpha=surface.source_over){pixel(0,0,rgba(255,255,255,alpha))}return mask.from(image)}
       tone()->color{trace={-1,seed&65535}unused=1 to 2 return #12345680}
-      draw{surface.paint(color=tone(),blend=surface.source_over,image=make(128))
+      draw{surface.paint(color=tone(),blend=surface.source_over,source=make(128))
         clip(make(64)){unused=1 to 2 pixel(1,0,#fff)}state={seed&65535,seed>>16}}
     })";
     for(const bool optimize:{false,true}){

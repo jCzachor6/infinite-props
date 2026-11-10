@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <numeric>
+#include <utility>
 #include <vector>
 
 namespace iprop::ips {
@@ -41,6 +42,35 @@ std::string didYouMean(std::string_view misspelled, std::span<const std::string>
         }
     }
     return best <= limit ? "; did you mean '" + candidate + "'?" : "";
+}
+
+std::string formerBuiltinHint(std::string_view function) {
+    constexpr std::pair<std::string_view, std::string_view> renamed[] = {
+        {"noise", "noise.value"}, {"fault", "noise.fault"}, {"warp", "noise.warp"},
+        {"fold", "vec2.fold"}, {"polar", "vec2.polar"}, {"fill", "dist.fill"},
+        {"color.set.a", "color.set_a"}, {"stream_push", "stream.push"}, {"stream_pop", "stream.pop"},
+    };
+    for (const auto& [old, current] : renamed)
+        if (function == old) return "; it was renamed to '" + std::string(current) + "'";
+    if (function == "i32trunc") return "; it was removed, use int(x)";
+    return {};
+}
+
+std::string formerArgumentHint(std::string_view function, std::string_view argument) {
+    const auto renamed = [&]() -> std::string_view {
+        if (function == "noise.mask" && argument == "kind") return "mode";
+        if (function == "vec2.rot" && argument == "a") return "angle";
+        if (function == "vec2.fold" && argument == "n") return "sectors";
+        if (function == "dist.fill" && argument == "d") return "distance";
+        if (function == "dist.fill" && argument == "w") return "width";
+        if (function == "surface.paint" && argument == "image") return "source";
+        if (function.starts_with("part.") && argument == "p") return "part";
+        if (function.starts_with("regions.") && (argument == "rs" || argument == "source")) return "regions";
+        if (function.starts_with("diagram.") && argument == "d") return "diagram";
+        if ((function == "parts.count" || function == "parts.get") && argument == "source") return "parts";
+        return {};
+    }();
+    return renamed.empty() ? std::string() : "; it was renamed to '" + std::string(renamed) + "'";
 }
 
 } // namespace iprop::ips

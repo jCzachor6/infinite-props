@@ -81,7 +81,7 @@ visibly different result. Variety must never depend on inputs:
 ## Keep one silhouette across styles
 
 Styles of one seed should read as the same object. Roll the shape inside
-its own stream, `stream_push(hash(seed ^ 0x51ed2701))` ... `stream_pop()`,
+its own stream, `stream.push(hash(seed ^ 0x51ed2701))` ... `stream.pop()`,
 before any style-dependent choice. Make every roll unconditionally, even
 when a style does not use it, so a style never shifts the draws that come
 after it.

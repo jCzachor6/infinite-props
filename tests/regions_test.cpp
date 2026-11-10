@@ -73,7 +73,7 @@ TEST_CASE("region metadata frontend roundtrips sharing helper names and checked 
         pass(rs:regions2d)->regions2d{return rs}
         draw{d=voronoi({0,0},{8,4},[{2,2},{6,2}]) rs=pass(regions(source=d))
             trace={regions.count(rs),regions.id(rs,1)} trace=regions.center(rs,0)
-            trace={regions.area(index=0,rs=rs),list.len(regions.neighbors(rs,0))}
+            trace={regions.area(index=0,regions=rs),list.len(regions.neighbors(rs,0))}
             layer image{rect(0,0,8,4,#fff)} c=contour(mask.from(image),0.5)
             cr=regions(c) trace={regions.count(cr),regions.area(cr,0)}
         }})";

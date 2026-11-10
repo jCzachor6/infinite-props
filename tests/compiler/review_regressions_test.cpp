@@ -94,9 +94,9 @@ TEST_CASE("optimization keeps every constant pool operand consistent", "[review]
 
 TEST_CASE("surface.paint lowers and formats through its overloads", "[review]") {
     const std::string source = "asset t { size 2x2 draw { layer image { pixel(0, 0, #fff) } region = mask.from(image) "
-        "surface.paint(image) surface.paint(image, surface.source_over) surface.paint(image = image, blend = surface.legacy) "
+        "surface.paint(image) surface.paint(image, surface.source_over) surface.paint(source = image, blend = surface.legacy) "
         "surface.paint(region, #ff0000) surface.paint(region, color = #00ff00, blend = surface.source_over) "
-        "surface.paint(image = region, color = #0000ff) } }";
+        "surface.paint(source = region, color = #0000ff) } }";
     const auto bytes = compileRoot({{"root.ips", source}}, false);
     const auto text = disassemble(bytes);
     std::vector<std::string> paints;
@@ -165,7 +165,7 @@ TEST_CASE("every pool-indexing operand names its pool", "[review]") {
 
 TEST_CASE("list polygons and variadic polygons lower through their own instruction", "[review]") {
     const auto text = disassemble(compileRoot({{"root.ips", "asset t { size 8x8 draw { "
-        "poly([{0, 0}, {4, 0}, {0, 4}], #ffffff) poly(#ff0000, 0, 0, 4, 0, 0, 4) } }"}}, false));
+        "poly([{0, 0}, {4, 0}, {0, 4}], #ffffff) poly(0, 0, 4, 0, 0, 4, #ff0000) } }"}}, false));
     CHECK(text.find("poly.list\n") != std::string::npos);
     CHECK(text.find("poly 3\n") != std::string::npos);
 }

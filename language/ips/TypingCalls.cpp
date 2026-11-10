@@ -69,7 +69,8 @@ ValueType Typer::typeCall(const Call& call) {
                 Identifier synthetic{full, path.location};
                 return typeBuiltinCall(synthetic, call, builtin->second);
             }
-            const auto hint = didYouMean(full, builtinNames());
+            const auto former = formerBuiltinHint(full);
+            const auto hint = former.empty() ? didYouMean(full, builtinNames()) : former;
             if (isBuiltinNamespace(path.base) || (!hint.empty() && !namesValue(path.base)))
                 error(path.location, "undefined builtin '" + full + "'" + hint);
         }
@@ -95,13 +96,14 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
                                  const BuiltinSpec& signature) {
     auto callSignature = builtinCallSignature(signature, call, name.name);
     if (signature.lowering == BuiltinLowering::SurfacePaint) {
-        const Arg* image = nullptr;
-        for (const auto& arg : call.args) if (arg.name && *arg.name == "image") { image = &arg; break; }
-        if (!image) for (const auto& arg : call.args) if (!arg.name) { image = &arg; break; }
-        if (image) {
-            const auto type = typeOf(*image->value);
+        // The source's type selects the layer or the mask overloads.
+        const Arg* source = nullptr;
+        for (const auto& arg : call.args) if (arg.name && *arg.name == "source") { source = &arg; break; }
+        if (!source) for (const auto& arg : call.args) if (!arg.name) { source = &arg; break; }
+        if (source) {
+            const auto type = typeOf(*source->value);
             if (type != ValueType::Layer && type != ValueType::Mask)
-                error(locationOf(*image->value), "surface.paint image must be layer or mask, got " + std::string(typeName(type)));
+                error(locationOf(*source->value), "surface.paint source must be a layer or a mask, got " + std::string(typeName(type)));
             callSignature = surfacePaintCallSignature(call, type);
         }
     }
@@ -112,8 +114,7 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
         if (!surfaceMode(*args.back()->value))
             error(locationOf(*args.back()->value), "surface.paint blend must be surface.legacy or surface.source_over");
     }
-    if ((signature.lowering == BuiltinLowering::Pick && args.size() >= 2) ||
-        signature.lowering == BuiltinLowering::Choose) {
+    if (signature.lowering == BuiltinLowering::Pick || signature.lowering == BuiltinLowering::Choose) {
         const std::size_t first = signature.lowering == BuiltinLowering::Choose ? 1 : 0;
         if (first && typeOf(*args[0]->value) != ValueType::I32)
             error(locationOf(*args[0]->value), "choose seed must be i32");
@@ -124,12 +125,17 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
         return *result;
     }
     if (variadicPolygon(signature, call.args.size())) {
+        std::vector<ValueType> types;
+        for (const auto* arg : args) types.push_back(typeOf(*arg->value));
+        // Before 1.0 the color was the first argument.
+        if (types.front() == ValueType::Color && isNumeric(types.back()))
+            error(locationOf(*args.front()->value),
+                  "poly takes its color last, after the vertices: poly(x0, y0, ..., color)");
         for (std::size_t i = 0; i < args.size(); ++i) {
-            const auto expected = i == 0 ? ValueType::Color : ValueType::F32;
-            const auto got = typeOf(*args[i]->value);
-            if (!argFits(expected, got))
+            const auto expected = i + 1 == args.size() ? ValueType::Color : ValueType::F32;
+            if (!argFits(expected, types[i]))
                 error(locationOf(*args[i]->value), "argument " + std::to_string(i + 1) +
-                    " of poly must be " + typeName(expected) + ", got " + typeName(got));
+                    " of poly must be " + typeName(expected) + ", got " + typeName(types[i]));
         }
         return ValueType::Void;
     }
@@ -172,7 +178,8 @@ ValueType Typer::typeUserCall(const Identifier& name, const Call& call) {
         auto candidates = builtinNames();
         for (const auto& function : owner_->asset.functions)
             if (function.name != "draw") candidates.push_back(function.name);
-        const auto hint = name.name == "mix" || name.name == "shade" ?
+        const auto former = formerBuiltinHint(name.name);
+        const auto hint = !former.empty() ? former : name.name == "mix" || name.name == "shade" ?
             "; did you mean 'color." + name.name + "'?" : didYouMean(name.name, candidates);
         error(call.location, "undefined function '" + name.name + "'" + hint);
     }

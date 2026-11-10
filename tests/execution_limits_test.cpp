@@ -39,7 +39,7 @@ constexpr std::array pipelines{
     Pipeline{"mask blur", "layer image(alpha=surface.source_over) { rect(8,8,40,40,#abc8) }; surface.paint(mask.from(image).blur(2.0),#abc)", Opcode::MaskBlur},
     Pipeline{"layer paint", "layer image(alpha=surface.source_over) { rect(8,8,40,40,#abc8) }; surface.paint(image)", Opcode::SurfacePaint},
     Pipeline{"mask paint", "layer image(alpha=surface.source_over) { rect(8,8,40,40,#abc8) }; surface.paint(mask.from(image),#abc)", Opcode::SurfacePaintMask},
-    Pipeline{"polygon", "poly(#abc8,1,1,61,3,59,61,2,59)", Opcode::Poly},
+    Pipeline{"polygon", "poly(1,1,61,3,59,61,2,59, #abc8)", Opcode::Poly},
     Pipeline{"curve", "curve({1,1},{32,1},{60,60},2,#abc8)", Opcode::Curve},
     Pipeline{"oval", "oval(1,1,62,62,#abc8)", Opcode::Oval},
     Pipeline{"voronoi", "d=voronoi({0,0},{64,64},36,seed); state=diagram.site(d,0)", Opcode::Voronoi},
@@ -334,8 +334,8 @@ TEST_CASE("a run of unit steps is indistinguishable from spending them one at a 
 TEST_CASE("a clip that covers everything leaves each raster kernel's pixels unchanged", "[execution-limits]") {
     // Under a clip every pixel reserves its own steps; without one a row is
     // reserved whole. Both must draw the same pixels.
-    for (const char* shape : {"poly(#c08040c0,3,5,60,9,31,58,9,40)", "rect(-4,7,40,70,#40c08090)",
-                              "poly(#c08040c0,2,2,61,60,61,2,2,60,31,-9)", "oval(30,28,25,14,#2060c0a0)",
+    for (const char* shape : {"poly(3,5,60,9,31,58,9,40, #c08040c0)", "rect(-4,7,40,70,#40c08090)",
+                              "poly(2,2,61,60,61,2,2,60,31,-9, #c08040c0)", "oval(30,28,25,14,#2060c0a0)",
                               "oval(-6,58,25,14,#2060c0a0)", "curve({1,1},{32,70},{60,6},5,#c0c02080)",
                               "layer image(alpha=surface.source_over) { oval(20,20,30,12,#40a080c0) }; surface.paint(image)",
                               "layer image(alpha=surface.source_over) { oval(20,20,30,12,#40a080c0) }; "

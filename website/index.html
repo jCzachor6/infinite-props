@@ -183,7 +183,7 @@
         <span class="tok-k">for</span> i <span class="tok-k">in</span> <span class="tok-n">0</span>..n {
           a = turn + float(i) * <span class="tok-n">6.2832</span> / float(n)
           a = a + (-<span class="tok-n">0.25</span> <span class="tok-k">to</span> <span class="tok-n">0.25</span>)
-          bulge = <span class="tok-n">1.0</span> + wobble * noise(cos(a) * <span class="tok-n">1.5</span>, sin(a) * <span class="tok-n">1.5</span>, hash(start ^ rimKey))
+          bulge = <span class="tok-n">1.0</span> + wobble * noise.value(cos(a) * <span class="tok-n">1.5</span>, sin(a) * <span class="tok-n">1.5</span>, hash(start ^ rimKey))
           d = R * (<span class="tok-n">0.6</span> - float(ring) * <span class="tok-n">0.3</span>) * (<span class="tok-n">0.8</span> <span class="tok-k">to</span> <span class="tok-n">1.15</span>) * bulge
           r = R * (<span class="tok-n">0.44</span> - float(ring) * <span class="tok-n">0.06</span>) * (<span class="tok-n">0.8</span> <span class="tok-k">to</span> <span class="tok-n">1.15</span>)
           clump.draw(hash(start ^ (ring * <span class="tok-n">16</span> + i)),

@@ -39,11 +39,11 @@ TEST_CASE("named selection ramp range and polygon permutations preserve absolute
             {"mark(1)", "mark(2)", "mark(3)"}, {1, 2, 3}, "value=values[index(3)];"},
         {"choose", {"seed", "value0", "value1", "value2"},
             {"mark(0)", "mark(1)", "mark(2)", "mark(3)"}, {0, 1, 2, 3},
-            "stream_push(0); value=values[index(3)]; stream_pop();"},
+            "stream.push(0); value=values[index(3)]; stream.pop();"},
         {"ramp", {"palette", "t"}, {"values", "mark(1)"}, {1}, "value=ramp(values,1);"},
-        {"poly", {"color", "x0", "y0", "x1", "y1", "x2", "y2"},
-            {"tint()", "mark(1)", "mark(2)", "mark(3)", "mark(4)", "mark(5)", "mark(6)"},
-            {1, 2, 3, 4, 5, 6, 70}, "poly(#abc,1,2,3,4,5,6);", false}
+        {"poly", {"x0", "y0", "x1", "y1", "x2", "y2", "color"},
+            {"mark(1)", "mark(2)", "mark(3)", "mark(4)", "mark(5)", "mark(6)", "tint()"},
+            {1, 2, 3, 4, 5, 6, 70}, "poly(1,2,3,4,5,6,#abc);", false}
     };
     const auto source = [](const std::string& body) {
         return "asset t {size 8x8 output list point trace palette values=[1.0,2.0,3.0] "
@@ -79,8 +79,8 @@ TEST_CASE("named selection ramp range and polygon permutations preserve absolute
             do { permutations.push_back(permutation); }
             while (std::next_permutation(permutation.begin(), permutation.end()));
         } else {
-            // Both directions and every cyclic position cover polygon's
-            // exceptional coordinates-before-colour order without 7! builds.
+            // Both directions and every cyclic position cover a polygon's
+            // seven named slots without 7! builds.
             for (std::size_t rotation = 0; rotation < permutation.size(); ++rotation) {
                 permutations.push_back(permutation);
                 auto reverse = permutation;
@@ -141,7 +141,7 @@ TEST_CASE("resolved calls preserve argument evaluation order and the RNG stream"
           sink(note(1), note(2))
           lerp(note(3), note(4), note(5))
           round(note(6))
-          poly(tint(), note(7), note(8), note(9), note(10), note(11), note(12))
+          poly(note(7), note(8), note(9), note(10), note(11), note(12), tint())
           child.draw(note(15), at={note(18),note(19)},
                      second=note(14), first=note(13))
           ramp(p, note(20))

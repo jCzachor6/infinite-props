@@ -58,7 +58,7 @@ def workloads():
         add(f"direct-rect-{size}", "capture drawing control",
             f"rect(1,1,{size-2},{size-2},#397da981)", size=size)
         for op, body in (
-            ("poly", f"poly(#397da981,1,1,{size-2},2,{size-4},{size-2},3,{size-4})"),
+            ("poly", f"poly(1,1,{size-2},2,{size-4},{size-2},3,{size-4}, #397da981)"),
             ("curve", f"curve({{1,1}},{{{size/2},0}},{{{size-2},{size-2}}},2,#397da981)"),
             ("oval", f"oval({size/2},{size/2},{size/3},{size/4},#397da981)"),
         ):

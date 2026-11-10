@@ -19,7 +19,7 @@ struct PlannedArgument {
 struct BuiltinCall {
     const ips::BuiltinSpec* spec;
     const ips::BuiltinOverload* overload; // null only for variadic polygon
-    // In evaluation/VM push order, including polygon's vertices before colour.
+    // In evaluation/VM push order: a polygon's vertices, then its color.
     std::vector<PlannedArgument> arguments;
 };
 struct UserCall {

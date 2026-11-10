@@ -27,7 +27,7 @@ function publicSource(input){
         c.appearance===3?'part.fill(p,#070b0d00)':c.appearance===4?'part.fill(part.texture(p,texture),#29619940)':
         c.appearance===5?'part.texture(part.fill(p,#1159cb80),texture)':'part.fill(p,#0d1d2fff)';
     if(c.place===2)appearance=`part.place(${appearance},{7.25,9.5},0,0,0)`;
-    const placed=c.place?`part.place(mirror_y=${c.my},mirror_x=${c.mx},rot=${c.rot},at=${point(c.at)},p=${appearance})`:appearance;
+    const placed=c.place?`part.place(mirror_y=${c.my},mirror_x=${c.mx},rot=${c.rot},at=${point(c.at)},part=${appearance})`:appearance;
     const clip=c.clip===3?Array.from({length:1024},(_,i)=>`pixel(${i%32},${Math.floor(i/32)},${color([255,255,255,(i%32*19+Math.floor(i/32)*31)%256])})`).join(' '):
         c.clip===1?'rect(0,0,32,32,#ffffff80)':'';
     const background=c.background?'layer bg(alpha=surface.source_over){rect(0,0,32,32,#c904ac80)}surface.paint(bg,blend=surface.source_over)':'';

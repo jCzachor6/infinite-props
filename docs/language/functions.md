@@ -36,8 +36,8 @@ typed defaults. Variadic builtin names are derived from the selected arity
 Ordinary builtin arguments evaluate once, in signature order, independent
 of written name order. `rect(color = #fff, h = 2, x = 1, w = 2, y = 1)` has
 the same argument evaluation order as `rect(1, 1, 2, 2, #fff)`.
-`poly` evaluates coordinate pairs before its color, although its positional
-color argument comes first. Helpers evaluate every argument once in declaration
+`poly` evaluates its coordinate pairs and then its color, in the order they
+are written. Helpers evaluate every argument once in declaration
 order, including named calls: `measure(y=unit(), x=unit())` evaluates `x`
 before `y` when declared as `measure(x: f32, y: f32)`. Positional calls retain
 their left-to-right order. Part calls have their [own order](composition.md#part-call-order).

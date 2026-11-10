@@ -66,7 +66,7 @@ function run(iprop,tool,directory) {
         ["for i in 0..3{layer image{pixel(i,0,#ff0000)if(i==0){continue}if(i==1){break}}}surface.paint(image)pixel(3,0,#0000ff)","pixel(1,0,#ff0000)pixel(3,0,#0000ff)"],
         ["for i in 0..2{layer outer{pixel(i,0,#00ff00)layer inner{pixel(2,0,#fff)continue}}}surface.paint(outer)surface.paint(inner)","pixel(1,0,#00ff00)pixel(2,0,#fff)"],
         ["abandon()pixel(3,0,#0000ff)","pixel(3,0,#0000ff)"],
-        ["surface.paint(blend=surface.legacy,image=makeImage())", "w=1 to 3 p={w,0}pixel(w,0,#929ca8)"],
+        ["surface.paint(blend=surface.legacy,source=makeImage())", "w=1 to 3 p={w,0}pixel(w,0,#929ca8)"],
         ["layer image{rect(0,0,4,4,#929ca8)line(0,0,3,3,1,#343a42)oval(1,1,1,1,#c09060)curve({0,3},{1,0},{3,3},1.0,#fff)poly([{0,0},{1,0},{0,1}],#123456)weather(7,20)}surface.paint(image)",
             "rect(0,0,4,4,#929ca8)line(0,0,3,3,1,#343a42)oval(1,1,1,1,#c09060)curve({0,3},{1,0},{3,3},1.0,#fff)poly([{0,0},{1,0},{0,1}],#123456)weather(7,20)"],
         ["pixel(0,0,#11223380)pixel(1,0,#112233)layer image{pixel(0,0,#ff000080)pixel(1,0,#0000ff00)}surface.paint(image)","pixel(0,0,#11223380)pixel(1,0,#112233)"],

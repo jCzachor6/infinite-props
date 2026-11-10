@@ -80,7 +80,7 @@ function run(iprop,tool,directory) {
         generate(compile("asset t{size 4x2 output point state mark(x:i32){pixel(x,0,#11223380)} early(){layer gone(alpha=surface.legacy){pixel(3,0,#fff)return;}}draw{"+body+"}}",opt),seed);
     // Mode selection has no RNG or extra fuel. Primitives continue to share
     // rasterization; fully opaque source writes match the frozen legacy path.
-    const shapes="rect(0,0,2,2,#929ca8)line(2,0,4,2,1,#fff)oval(3,3,1,1,#c09060)poly(#929ca8,0,2,2,2,2,4)";
+    const shapes="rect(0,0,2,2,#929ca8)line(2,0,4,2,1,#fff)oval(3,3,1,1,#c09060)poly(0,2,2,2,2,4, #929ca8)";
     for(const opt of [false,true]) {
         const legacy=generate(compile("asset t{size 5x5 draw{layer image(alpha=surface.legacy){"+shapes+"}surface.paint(image,blend=surface.legacy)}}",opt));
         const over=generate(compile("asset t{size 5x5 draw{layer image(alpha=surface.source_over){"+shapes+"}surface.paint(image,blend=surface.source_over)}}",opt));

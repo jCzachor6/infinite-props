@@ -26,7 +26,7 @@ asset bezier {
     basicSdf = {dist.circle({3,4}, {0,0}, 3), dist.rect({5,5}, {0,0}, {2,3})}
     rounded = {dist.roundrect({0,0}, {0,0}, {2,3}, 1),
                dist.roundrect({5,5}, {0,0}, {3,4}, 1)}
-    edge = {dist.line({3,4}, {0,0}, {2,0}), fill(-0.5, 2)}
+    edge = {dist.line({3,4}, {0,0}, {2,0}), dist.fill(-0.5, 2)}
     curve({1,5}, {3,1}, {5,5}, 0.25, #0000ff)
     curve({1,5}, {1,1}, {5,1}, {5,5}, 0.25, #ff0000)
     curve({1,7}, {3,7}, {5,7}, 1, #00ff00)

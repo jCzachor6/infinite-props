@@ -32,6 +32,35 @@ function noiseSource(vectors, form) {
       draw { before=seed ${body} state={seed==before,unit()} } }\n`;
 }
 
+// Language 1.0 renamed these builtins and named parameters, moved the variadic
+// polygon's color to the end and dropped two duplicate spellings. This table
+// is the whole difference: under its 1.0 name every 0.8 overload must keep its
+// types, evaluation order, effects and opcode.
+const renamedBuiltins = {noise: "noise.value", fault: "noise.fault", warp: "noise.warp",
+    fold: "vec2.fold", polar: "vec2.polar", fill: "dist.fill", "color.set.a": "color.set_a",
+    stream_push: "stream.push", stream_pop: "stream.pop"};
+const renamedParameters = {"vec2.fold": {n: "sectors"}, "dist.fill": {d: "distance", w: "width"},
+    "vec2.rot": {a: "angle"}, "surface.paint": {image: "source"}};
+
+function language10(builtin) {
+    if (builtin.name === "i32trunc") return null; // int(x)
+    const name = renamedBuiltins[builtin.name] || builtin.name;
+    const names = renamedParameters[name] || {};
+    const rename = parameter => names[parameter] || parameter;
+    // pick(n) was index(n); pick now only chooses among values.
+    const overloads = builtin.overloads.filter(o => !(name === "pick" && o.parameters.length === 1)).map(o => ({...o,
+        parameters: o.parameters.map(p => ({...p, name: rename(p.name)})),
+        evaluation_order: o.evaluation_order.map(rename),
+        ...(o.expansion ? {expansion: o.expansion.map(step =>
+            step.argument ? {argument: rename(step.argument)} : step)} : {})}));
+    const result = {...builtin, name, overloads};
+    if (name === "poly") {
+        const [color, ...vertices] = builtin.variadic.parameters;
+        result.variadic = {...builtin.variadic, parameters: [...vertices, color]};
+    }
+    return result;
+}
+
 function native(tool, file, options, directory) {
     const png = path.join(directory, "compat.png");
     const args = [file, "--float-bits", "--seed", String(options.seed), "-o", png];
@@ -140,9 +169,17 @@ function run(iprop, tool, directory) {
         }
     }
     const contracts = JSON.parse(execFileSync(tool("ipc"), ["--describe-language"], {encoding: "utf8"}));
-    for (const builtin of fixture.builtin_contracts) {
+    for (const recorded of fixture.builtin_contracts) {
+        const builtin = language10(recorded);
+        if (!builtin) {
+            assert(!contracts.builtins.some(b => b.name === recorded.name), "removed spelling " + recorded.name);
+            continue;
+        }
+        if (builtin.name !== recorded.name)
+            assert(!contracts.builtins.some(b => b.name === recorded.name), "renamed spelling " + recorded.name);
         const actual = contracts.builtins.find(b => b.name === builtin.name);
         assert(actual, "removed builtin " + builtin.name);
+        if (builtin.name === "pick") assert.deepEqual(actual.overloads, [], "pick(n) is index(n)");
         for (const overload of builtin.overloads) {
             const match = actual.overloads.find(o => JSON.stringify(o.parameters) === JSON.stringify(overload.parameters));
             assert.deepEqual(match, overload, "changed 0.8 overload " + builtin.name);

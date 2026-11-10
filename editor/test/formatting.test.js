@@ -42,13 +42,13 @@ test("editor formatting retains mask comments and orders mask paint arguments", 
     const source="asset t{size 3x2 echo(region:mask)->mask{return region}draw{"+
         "layer image(alpha=surface.source_over){pixel(0,0,#ffffff80)}"+
         "mask region=echo(mask.from(image))clip(/* region */region){"+
-        "surface.paint(blend=surface.source_over,color=#123,image=region)}}}";
+        "surface.paint(blend=surface.source_over,color=#123,source=region)}}}";
     const dir=workspace(source),h=editorHarness(dir,execFile);h.settings.compilerPath=compiler;
     try {
         const edits=await format(h);assert.equal(edits.length,1,h.warnings.join("\n"));
         const text=edits[0].newText;assert.ok(text.includes("/* region */"));
         assert.match(text,/mask region = echo\(mask\.from\(image\)\)/);
-        assert.match(text,/surface\.paint\(image = region, color = #112233, blend = surface\.source_over\)/);
+        assert.match(text,/surface\.paint\(source = region, color = #112233, blend = surface\.source_over\)/);
         const output=path.join(dir,"formatted.ips");fs.writeFileSync(output,text);
         const check=spawnSync(compiler,[output,"--check"],{encoding:"utf8"});assert.equal(check.status,0,check.stderr);
         clean(dir);
@@ -456,13 +456,13 @@ test("density literals preserve helper calls and numeric loop bounds", async () 
 test("layer captures preserve mode comments and helper transfer", async () => {
     const source="asset t{size 2x2 input u32 copies=1 echo(image:layer)->layer{return image} "+
         "draw{for i in 0..copies{layer image(alpha=/* mode */surface.source_over){pixel(0,0,#fff)}} "+
-        "layer copy=echo(image);surface.paint(blend=surface.source_over,image=copy)}}";
+        "layer copy=echo(image);surface.paint(blend=surface.source_over,source=copy)}}";
     const dir=workspace(source),h=editorHarness(dir,execFile);h.settings.compilerPath=compiler;
     try {
         const edits=await format(h);assert.equal(edits.length,1,h.warnings.join("\n"));
         const formatted=edits[0].newText;assert.ok(formatted.includes("/* mode */"));
         assert.ok(formatted.includes("0..copies {"));assert.ok(formatted.includes("layer copy = echo(image)"));
-        assert.ok(formatted.includes("surface.paint(image = copy, blend = surface.source_over)"));
+        assert.ok(formatted.includes("surface.paint(source = copy, blend = surface.source_over)"));
         fs.writeFileSync(path.join(dir,"formatted.ips"),formatted);
         const checked=spawnSync(compiler,[path.join(dir,"formatted.ips"),"--check"],{encoding:"utf8"});
         assert.equal(checked.status,0,checked.stderr);clean(dir);

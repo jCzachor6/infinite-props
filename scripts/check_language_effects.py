@@ -106,7 +106,7 @@ def main():
     normalize = by_name['vec2.normalize']['overloads'][0]
     assert normalize['result'] == 'vec2'
     assert normalize['effects']['rng'] == 'none' and normalize['effects']['may_trap'] == ['numeric_range']
-    assert by_name['stream_pop']['overloads'][0]['effects']['may_trap'] == ['stream_stack_underflow']
+    assert by_name['stream.pop']['overloads'][0]['effects']['may_trap'] == ['stream_stack_underflow']
     print(f'Language effects: {len(by_name)} builtins, {signatures} signatures and shared effect rules passed')
 
 

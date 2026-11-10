@@ -11,7 +11,7 @@ asset namedArguments {
     pixel(color = c, y = 6, x = 6)
     trace = {pick(value2 = 30, value0 = 10, value1 = 20), chance(p = 0.5)}
     trace = {noise.fbm(seed = seed, octaves = 4, y = 0.5, x = 0.5), float(x = int(x = -2.9))}
-    trace = vec2.rot(a = 0.25, v = {1, 2})
+    trace = vec2.rot(angle = 0.25, v = {1, 2})
   }
   note(tag: i32) -> i32 { trace = {tag, unit()} return 1 }
   tint() -> color { trace = {5, unit()} return rgba(a = 255, b = 255, g = 128, r = 0) }

@@ -67,11 +67,12 @@ contract. Use valid positive radii for ordinary ellipses.
 ## poly
 <!-- builtin: poly -->
 
-Paints a filled polygon with at least three `(x, y)` pairs. Positional color
-comes first. Named coordinates are `x0`, `y0`, `x1`, `y1`, etc., with `color`.
-`poly(points, color)` also accepts an immutable `list<vec2>` of at least
-three vertices. Its named argument is `points`; points evaluate before color.
-Coordinates evaluate first in vertex order, then color, even for reordered
+Paints a filled polygon with at least three `(x, y)` pairs followed by its
+color: `poly(x0, y0, x1, y1, x2, y2, color)`. Like every drawing call, the
+color comes last. Named coordinates are `x0`, `y0`, `x1`, `y1`, etc., with
+`color`. `poly(points, color)` also accepts an immutable `list<vec2>` of at
+least three vertices; its named arguments are `points` and `color`.
+Coordinates evaluate first in vertex order, then the color, even for reordered
 named arguments. The point-in-polygon rule is specified in the canvas contract.
 
 ## weather
@@ -135,8 +136,8 @@ alpha. The color overload of `lerp` is equivalent.
 Offsets RGB brightness by the integer amount with channel clamping. Alpha
 is preserved. Bare `shade`/`mix` names are not builtins in the current language.
 
-### color.set.a
-<!-- builtin: color.set.a -->
+### color.set_a
+<!-- builtin: color.set_a -->
 
 Replaces alpha with a clamped integer channel while retaining RGB.
 

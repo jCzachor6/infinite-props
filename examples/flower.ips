@@ -23,8 +23,8 @@ asset flower {
   // The pointed leaf of the reference PaPlant::draw: a leaning diamond with
   // a lit inner face and a midrib. Takes absolute canvas coordinates.
   leaf(x: f32, y: f32, rx: f32, ry: f32, lean: f32, c: color) {
-    poly(c, x - rx, y, x + lean, y - ry, x + rx, y, x + lean, y + ry)
-    poly(color.shade(c, 26), x - rx * 0.5, y - 0.4, x + lean * 0.45, y - ry * 0.55, x + rx * 0.35, y - 0.4, x + lean * 0.45, y + ry * 0.55)
+    poly(x - rx, y, x + lean, y - ry, x + rx, y, x + lean, y + ry, c)
+    poly(x - rx * 0.5, y - 0.4, x + lean * 0.45, y - ry * 0.55, x + rx * 0.35, y - 0.4, x + lean * 0.45, y + ry * 0.55, color.shade(c, 26))
     line(x - rx * 0.7, y + ry * 0.3, x + rx * 0.7, y - ry * 0.3, 1, color.shade(c, -32))
   }
 
@@ -55,7 +55,7 @@ asset flower {
       blades = 5 + index(5)
       blade = 0
       while (blade < blades) {
-        stream_push(dState)
+        stream.push(dState)
         lean = range(-1.0, 1.0)
         tallN = index(5)
         tall = height * (0.6 + 0.4 * tallN / 4.0)
@@ -63,16 +63,16 @@ asset flower {
         bladeColor = leafMid
         if (blade % 3 == 0) { bladeColor = color.shade(leafDark, 10) }
         dState = seed
-        stream_pop()
-        steps = i32trunc(tall)
+        stream.pop()
+        steps = int(tall)
         step = 0
         while (step < steps) {
           t = step / tall
           x = tipX * t
           y = rim - 2.0 - step
-          pixel(round(x) + 32, i32trunc(y) + 56, color.shade(bladeColor, i32trunc(18.0 * t)))
+          pixel(round(x) + 32, int(y) + 56, color.shade(bladeColor, int(18.0 * t)))
           if (step % 2 == 1) {
-            pixel(round(x) + 33, i32trunc(y) + 56, color.shade(bladeColor, -14))
+            pixel(round(x) + 33, int(y) + 56, color.shade(bladeColor, -14))
           }
           step = step + 1
         }
@@ -95,11 +95,11 @@ asset flower {
       oval(32.0, centre - 0.5 + 56, 1.6, 1.2, leafLight)
       petal = 0
       while (petal < 8) {
-        stream_push(dState)
+        stream.push(dState)
         angle = petal * 3.14159265359 / 4.0
         if (unit() >= 0.5) { angle = angle + 0.2 }
         dState = seed
-        stream_pop()
+        stream.pop()
         petalY = centre + sin(angle) * radius * 0.72
         pixel(32 + round(cos(angle) * radius), round(petalY) + 56, color.shade(leafDark, -18))
         petal = petal + 1
@@ -110,13 +110,13 @@ asset flower {
       rect(31.0, crown + 56, 2.0, rim - crown - 4, color.shade(leafDark, 12))
       clump = 0
       while (clump < clumps) {
-        stream_push(dState)
+        stream.push(dState)
         y = crown + 2.0 + index(11 + heightN)
         x = range(-1.0, 1.0) * (2.0 + (y - rim) * -0.35)
         r = 2.4 + index(3)
         lean = range(-1.4, 1.4)
         dState = seed
-        stream_pop()
+        stream.pop()
         lc = leafMid
         if (clump % 3 == 0) { lc = color.shade(leafLight, -10) }
         leaf(32 + x, y + 56, r, r * 0.9, lean, lc)
@@ -138,11 +138,11 @@ asset flower {
       flowers = 2 + index(3)
       flower = 0
       while (flower < flowers) {
-        stream_push(dState)
+        stream.push(dState)
         fx = range(-4.0, 4.0)
         fy = crown + range(0.0, 4.0)
         dState = seed
-        stream_pop()
+        stream.pop()
         // five petals at the constant angles 2*pi*k/5
         pixel(32 + round(fx + 1.8), round(fy + 0.0) + 56, bloom)
         pixel(32 + round(fx + 0.55623059), round(fy + 1.71190173) + 56, bloom)
@@ -158,23 +158,23 @@ asset flower {
       fronds = 4 + index(3)
       frond = 0
       while (frond < fronds) {
-        stream_push(dState)
+        stream.push(dState)
         lean = range(-1.0, 1.0)
         arc = height * (0.5 + 0.5 * index(4) / 3.0)
         dState = seed
-        stream_pop()
+        stream.pop()
         frondColor = leafMid
         if (frond % 2 == 0) { frondColor = color.shade(leafDark, 10) }
-        steps = i32trunc(arc)
+        steps = int(arc)
         step = 0
         while (step < steps) {
           t = step / arc
           x = lean * arc * 0.5 * sin(t * 3.14159265359 * 0.85)
           y = rim - 2.0 - step
-          pixel(32 + round(x), i32trunc(y) + 56, color.shade(frondColor, i32trunc(20.0 * t)))
+          pixel(32 + round(x), int(y) + 56, color.shade(frondColor, int(20.0 * t)))
           if (step > 2 && step % 3 != 1) {
-            pixel(32 + round(x) - 1, i32trunc(y) - 1 + 56, color.shade(frondColor, -12))
-            pixel(32 + round(x) + 1, i32trunc(y) + 56, color.shade(frondColor, 10))
+            pixel(32 + round(x) - 1, int(y) - 1 + 56, color.shade(frondColor, -12))
+            pixel(32 + round(x) + 1, int(y) + 56, color.shade(frondColor, 10))
           }
           step = step + 1
         }

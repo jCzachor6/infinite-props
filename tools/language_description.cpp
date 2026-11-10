@@ -475,7 +475,7 @@ Json variadic(const std::string& name, const ips::BuiltinSpec& spec) {
     const bool polygon = spec.lowering == L::Polygon;
     Json parameters = Json::array();
     for (std::size_t i = 0; i < signature.parameters.size(); ++i) {
-        const std::string type = polygon ? (i == 0 ? "color" : "f32")
+        const std::string type = polygon ? (i + 1 == signature.parameters.size() ? "color" : "f32")
             : (spec.lowering == L::Choose && i == 0 ? "i32" : "T");
         parameters.push_back(parameter(signature.parameters[i].name, type));
     }

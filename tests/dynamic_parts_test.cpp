@@ -68,7 +68,7 @@ TEST_CASE("dynamic creation frontend transfers handles and roundtrips without dr
         many(ps:parts2d)->parts2d{return ps}
         draw{rs=regions(voronoi({0,0},{8,4},[{2,2},{6,2}]))
             p=pass(part.create(index=1,source=rs)) ps=many(parts.from_regions(rs))
-            trace={part.id(p),part.source_id(p)} trace={parts.count(ps),part.id(parts.get(index=1,source=ps))}
+            trace={part.id(p),part.source_id(p)} trace={parts.count(ps),part.id(parts.get(index=1,parts=ps))}
             layer image(alpha=surface.source_over){pixel(3,1,#ff000080)}
             trace={part.id(part.create(mask.from(image))),part.id(part.create(image))}
             trace={seed,seed}
@@ -159,7 +159,7 @@ TEST_CASE("dynamic view builtins compile roundtrip and expose effective cached m
         pass(p:part2d)->part2d{return p}
         draw{rs=regions(voronoi({0,0},{8,4},[{2,2},{6,2}])) p=part.create(rs,0)
             layer image{rect(0,0,8,4,#abc)}
-            q=pass(part.place(mirror_y=0,at={-0.5,0.5},p=part.texture(part.fill(p,#fff),image),mirror_x=0,rot=90))
+            q=pass(part.place(mirror_y=0,at={-0.5,0.5},part=part.texture(part.fill(p,#fff),image),mirror_x=0,rot=90))
             trace=part.center(p)trace=part.center(q)trace=part.bounds_origin(q)trace=part.bounds_size(q)
             trace={part.id(q),part.source_id(q)} trace={part.id(part.create(rs,0)),seed}
         }})";

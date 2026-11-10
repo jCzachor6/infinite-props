@@ -3,8 +3,10 @@
 
 #include <map>
 #include <string>
+#include <utility>
 
 #include "Compiler.hpp"
+#include "ips/BuiltinSpec.hpp"
 #include "ips/Parser.hpp"
 #include "ips/Semantics.hpp"
 #include "ips/SourceError.hpp"
@@ -173,4 +175,84 @@ TEST_CASE("a range or constructor that constant operands always trap is rejected
         CHECK_NOTHROW(checkAsset(parse(wrap(valid)), {}));
     }
     CHECK_NOTHROW(checkAsset(parse("asset t { size 8x8 input i32 v = 9 draw { x = v to 1 d = gaussian(0, v) } }"), {}));
+}
+
+TEST_CASE("a spelling from before 1.0 names its replacement") {
+    const std::pair<const char*, const char*> functions[] = {
+        {"x = noise(1.0, 2.0, 3)", "undefined function 'noise'; it was renamed to 'noise.value'"},
+        {"x = fault(1.0, 2.0, 3)", "undefined function 'fault'; it was renamed to 'noise.fault'"},
+        {"x = warp(1.0, 2.0, 0.5, 3)", "undefined function 'warp'; it was renamed to 'noise.warp'"},
+        {"v = fold({1, 2}, 3)", "undefined function 'fold'; it was renamed to 'vec2.fold'"},
+        {"v = polar({1, 2})", "undefined function 'polar'; it was renamed to 'vec2.polar'"},
+        {"x = fill(1.0, 2.0)", "undefined function 'fill'; it was renamed to 'dist.fill'"},
+        {"stream_push(1)", "undefined function 'stream_push'; it was renamed to 'stream.push'"},
+        {"stream_pop()", "undefined function 'stream_pop'; it was renamed to 'stream.pop'"},
+        {"c = color.set.a(#fff, 3)", "undefined builtin 'color.set.a'; it was renamed to 'color.set_a'"},
+        {"x = i32trunc(1.5)", "undefined function 'i32trunc'; it was removed, use int(x)"},
+        {"x = pick(3)", "pick expects at least two choices; use index(n) to draw an index below n"},
+        {"poly(#fff, 0, 0, 4, 0, 4, 4)", "poly takes its color last, after the vertices: poly(x0, y0, ..., color)"},
+    };
+    for (const auto& [body, message] : functions) {
+        INFO(body);
+        expectCheckError(wrap(body), message);
+    }
+    const std::string setup = "layer image { } region = mask.from(image) cells = voronoi({0, 0}, {8, 8}, 3, 1) "
+                              "tiles = regions(cells) one = part.create(tiles, 0) all = parts.from_regions(tiles) ";
+    const std::pair<const char*, const char*> arguments[] = {
+        {"m = noise.mask({0, 0}, {8, 8}, kind = 0, frequency = {1, 1}, threshold = 0.5, seed = 1)",
+            "function 'noise.mask' has no argument 'kind'; it was renamed to 'mode'"},
+        {"v = vec2.rot({1, 0}, a = 1.0)", "function 'vec2.rot' has no argument 'a'; it was renamed to 'angle'"},
+        {"v = vec2.fold({1, 0}, n = 3)", "function 'vec2.fold' has no argument 'n'; it was renamed to 'sectors'"},
+        {"x = dist.fill(d = 1.0, w = 2.0)", "function 'dist.fill' has no argument 'd'; it was renamed to 'distance'"},
+        {"surface.paint(image = image)", "function 'surface.paint' has no argument 'image'; it was renamed to 'source'"},
+        {"n = part.id(p = one)", "function 'part.id' has no argument 'p'; it was renamed to 'part'"},
+        {"n = regions.count(rs = tiles)", "function 'regions.count' has no argument 'rs'; it was renamed to 'regions'"},
+        {"gap = regions.gap(source = tiles, width = 1)", "function 'regions.gap' has no argument 'source'; it was renamed to 'regions'"},
+        {"n = diagram.count(d = cells)", "function 'diagram.count' has no argument 'd'; it was renamed to 'diagram'"},
+        {"n = parts.count(source = all)", "function 'parts.count' has no argument 'source'; it was renamed to 'parts'"},
+    };
+    for (const auto& [body, message] : arguments) {
+        INFO(body);
+        expectCheckError(wrap(setup + body), message);
+    }
+    // The current spellings of every case above.
+    CHECK_NOTHROW(checkAsset(parse(wrap(setup +
+        "a = noise.value(1.0, 2.0, 3) + noise.fault({1, 2}, 3) + noise.warp(1.0, 2.0, 0.5, 3) "
+        "v = vec2.polar(vec2.fold({1, 2}, sectors = 3)) w = vec2.rot(v, angle = 1.0) "
+        "x = dist.fill(distance = 1.0, width = 2.0) stream.push(1) stream.pop() "
+        "c = color.set_a(#fff, 3) i = int(1.5) k = index(3) choice = pick(1, 2) "
+        "poly(0, 0, 4, 0, 4, 4, #fff) poly(color = c, x0 = 0, y0 = 0, x1 = 4, y1 = 0, x2 = 4, y2 = 4) "
+        "m = noise.mask({0, 0}, {8, 8}, mode = noise.mode_value, frequency = {1, 1}, threshold = 0.5, seed = 1) "
+        "surface.paint(source = image) surface.paint(source = region, color = c) "
+        "n = part.id(part = one) + regions.count(regions = tiles) + diagram.count(diagram = cells) + "
+        "parts.count(parts = all) gap = regions.gap(regions = tiles, width = 1)")), {}));
+}
+
+TEST_CASE("builtin names follow one convention") {
+    // A builtin is a bare word or one namespace and one member. A helper can
+    // use neither form's namespace, so a later builtin never takes its name.
+    for (const auto& [name, spec] : builtinSpecs()) {
+        (void)spec;
+        INFO(name);
+        const auto dot = name.find('.');
+        CHECK(name.find('.', dot == std::string::npos ? 0 : dot + 1) == std::string::npos);
+        if (dot == std::string::npos) {
+            CHECK(name.find('_') == std::string::npos);
+            CHECK(isBuiltinFunctionName(name));
+        } else {
+            CHECK(isBuiltinNamespace(name.substr(0, dot)));
+            CHECK_FALSE(isBuiltinFunctionName(name));
+        }
+    }
+    for (const std::string former : {"noise", "fault", "warp", "fold", "polar", "fill", "i32trunc",
+                                     "stream_push", "stream_pop", "color.set.a"})
+        CHECK_FALSE(builtinSpecs().contains(former));
+    // The handle a namespace works on is named after it.
+    for (const auto& [name, spec] : builtinSpecs()) {
+        for (const std::string space : {"part", "regions", "diagram", "parts"}) {
+            if (!name.starts_with(space + ".") || name == "part.create" || name == "parts.from_regions") continue;
+            INFO(name);
+            for (const auto& overload : spec.overloads) CHECK(overload.params.front().name == space);
+        }
+    }
 }

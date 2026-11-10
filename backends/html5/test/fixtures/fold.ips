@@ -13,14 +13,14 @@ asset foldProbe {
   draw {
     nan = pow(-2, 0.5)
     inf = exp(100)
-    positive_nan = fold({nan, 1.0}, 4)
-    negative_nan = fold({-nan, 1.0}, 4)
-    nan_y = fold({1.0, -nan}, 4)
-    both_nan = fold({nan, -nan}, 4)
-    infinite_radius = fold({inf, 0.0}, 4)
-    finite_radius_overflow = fold({100000000000000000000.0, 0.0}, 4)
-    diagonal_infinities = fold({inf, inf}, 4)
-    identity = fold({1.0, 0.0}, 4)
-    zero = fold({0.0, 0.0}, 4)
+    positive_nan = vec2.fold({nan, 1.0}, 4)
+    negative_nan = vec2.fold({-nan, 1.0}, 4)
+    nan_y = vec2.fold({1.0, -nan}, 4)
+    both_nan = vec2.fold({nan, -nan}, 4)
+    infinite_radius = vec2.fold({inf, 0.0}, 4)
+    finite_radius_overflow = vec2.fold({100000000000000000000.0, 0.0}, 4)
+    diagonal_infinities = vec2.fold({inf, inf}, 4)
+    identity = vec2.fold({1.0, 0.0}, 4)
+    zero = vec2.fold({0.0, 0.0}, 4)
   }
 }

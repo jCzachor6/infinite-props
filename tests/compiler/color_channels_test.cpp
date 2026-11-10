@@ -130,7 +130,7 @@ TEST_CASE("channel reads accept every color base and fold constant literals") {
     p = {metals[1].a, metals[v].b}
     p = {make(7).g, make(7).a}
     p = {color.mix(#000000, #ffffff, 0.5).r, rgba(300, -4, 9, 128).g}
-    p = {color.set.a(local, 77).a, float(c(#fedcba).b) / 255.0}
+    p = {color.set_a(local, 77).a, float(c(#fedcba).b) / 255.0}
   }
   c(value: color) -> color {
     return value
