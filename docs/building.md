@@ -50,6 +50,13 @@ After a full build, install into a fresh prefix:
 cmake --install build --prefix build/sdk
 ```
 
+On a Mac the build targets the host's processor. Releases ship one SDK for
+Apple silicon (`macos-arm64`) and one for Intel processors (`macos-x86_64`).
+To build the Intel one on Apple silicon, configure with
+`-DCMAKE_OSX_ARCHITECTURES=x86_64`; its tools and tests then run under Rosetta.
+The Python binding test loads the library into the interpreter, so it needs
+an x86_64 Python 3.10+ there.
+
 Tools are in `bin/`, C headers in `include/`, libraries and CMake exports in
 `lib/` (or the platform's configured library directory), and documentation and
 examples in `share/iprop/`. The generated chapters replace authored directives

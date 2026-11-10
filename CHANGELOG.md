@@ -81,6 +81,14 @@ replacement. See [0.9 to 1.0 migration](docs/language/migration-v1.0.md).
   narrower than its kernel. It was never read, and images, fuel and work are
   the same, but it was undefined behaviour that UBSan reports; it is gone.
 
+### Platforms
+
+- Macs with Intel processors get an SDK of their own. CI builds and tests on
+  an Intel macOS runner beside the Apple silicon one, and a release carries
+  `macos-x86_64` next to `macos-arm64`, Linux and Windows: four native SDKs,
+  fifteen assets. The Apple package and the Unity plugin were already
+  universal, and the Godot extension builds for either processor.
+
 ### Website
 
 - The butterfly benchmark and the swarm draw a new butterfly. Every wing is

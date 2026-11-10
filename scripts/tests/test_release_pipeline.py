@@ -4,6 +4,7 @@ import hashlib
 import io
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -25,8 +26,8 @@ from language_fixture import LANGUAGE, VERSION_FILES, fixture as language_fixtur
 VERSION = "0.4.0"
 HEADER = VERSION_FILES["backends/capi/iprop.h"].encode()
 FROZEN_SPEC = "# `.iprop` Format and Virtual Machine — Specification v{0}\n\n**Status:** Frozen v{0} contract.\n"
-REPORTS = ["reports-native-Linux-X64", "reports-native-macOS-ARM64", "reports-native-Windows-X64",
-           "reports-wasm", "reports-native-backends", "reports-sanitizers"]
+REPORTS = ["reports-native-Linux-X64", "reports-native-macOS-ARM64", "reports-native-macOS-X64",
+           "reports-native-Windows-X64", "reports-wasm", "reports-native-backends", "reports-sanitizers"]
 
 
 def git(root, *args):
@@ -80,7 +81,8 @@ def inputs(directory, root, commit):
     documentation = directory / "documentation"
     with patch.object(language_docs, "contracts", return_value=LANGUAGE), reference_stub():
         language_docs.build(Path("unused"), documentation, root)
-    for system, runner, arch in (("linux", "Linux", "x86_64"), ("macos", "macOS", "arm64"), ("windows", "Windows", "x86_64")):
+    for system, runner, arch in (("linux", "Linux", "x86_64"), ("macos", "macOS", "arm64"), ("macos", "macOS", "x86_64"),
+                                 ("windows", "Windows", "x86_64")):
         sdk = directory / ("sdk-" + runner + "-" + arch)
         sdk.mkdir()
         manifest = {**versions(root), "source_commit": commit, "system": system, "architecture": arch,
@@ -270,15 +272,39 @@ class ReleaseGatesTest(unittest.TestCase):
             commit = repository(root)
             source = directory / "inputs"
             inputs(source, root, commit)
-            # Retry leftovers are not part of the six required check reports.
+            # Retry leftovers are not part of the seven required check reports.
             (source / "reports-publication").mkdir()
             output = directory / "release"
             collect(source, output, VERSION, commit, root)
-            self.assertEqual(len(verify_bundle(output, VERSION, commit, root)), 13)
+            self.assertEqual(len(verify_bundle(output, VERSION, commit, root)), 15)
+            self.assertEqual(sorted(file.name for file in output.glob("iprop-*-macos-*.tar.gz")),
+                             ["iprop-0.4.0-macos-arm64.tar.gz", "iprop-0.4.0-macos-x86_64.tar.gz"])
             with (output / "iprop-0.4.0-wasm.tar.gz").open("ab") as file:
                 file.write(b"changed")
             with self.assertRaisesRegex(RuntimeError, "Release asset changed"):
                 verify_bundle(output, VERSION, commit, root)
+
+    def test_release_requires_the_apple_silicon_and_the_intel_macos_sdk(self):
+        for missing in ("arm64", "x86_64"):
+            with self.subTest(missing=missing), tempfile.TemporaryDirectory() as temporary:
+                directory = Path(temporary)
+                root = directory / "repo"
+                commit = repository(root)
+                source = directory / "inputs"
+                inputs(source, root, commit)
+                shutil.rmtree(source / ("sdk-macOS-" + missing))
+                with self.assertRaisesRegex(RuntimeError, "macOS arm64 and macOS x86_64 SDKs"):
+                    collect(source, directory / "release", VERSION, commit, root)
+        # Each macOS runner must also report: one cannot stand in for the other.
+        release = versions(release_assets.ROOT)
+        jobs = {name: {**release, "source_commit": "a" * 40, "passed": True,
+                       "steps": [{"passed": True, "returncode": 0}], "report_errors": [],
+                       "test_reports": [{"tests": 1, "failures": 0, "skipped": 0}]} for name in REPORTS}
+        for runner in ("ARM64", "X64"):
+            bad = copy.deepcopy(jobs)
+            bad["reports-native-macOS-" + runner + "-again"] = bad.pop("reports-native-macOS-" + runner)
+            with self.subTest(runner=runner), self.assertRaisesRegex(RuntimeError, "Missing or duplicate required CI job"):
+                verify_jobs(bad, release["product_version"], "a" * 40)
 
     def test_source_archive_must_contain_every_git_blob(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -304,7 +330,7 @@ class ReleaseGatesTest(unittest.TestCase):
             commit = repository(root)
             source = directory / "inputs"
             inputs(source, root, commit)
-            sdk = next(source.glob("sdk-macOS-*"))
+            sdk = source / "sdk-macOS-arm64"
             file = next(sdk.glob("*.tar.gz"))
             validation_file = next(sdk.glob("*-validation.json"))
             validation = json.loads(validation_file.read_text())

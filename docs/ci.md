@@ -23,8 +23,10 @@ Native/WASM/sanitizer jobs retain a `reports-*` artifact for 14 days, including 
 
 Successful jobs also retain downloadable builds for 14 days:
 
-- `sdk-macOS-*` and `sdk-Windows-*`: native toolchain/C API SDK archive,
-  manifest and SHA256 checksums.
+- `sdk-macOS-ARM64`, `sdk-macOS-X64` and `sdk-Windows-*`: native toolchain/C
+  API SDK archive, manifest and SHA256 checksums. macOS has two runners and
+  two SDKs: `macos-arm64` for Apple silicon and `macos-x86_64` for Macs with
+  Intel processors.
 - `sdk-Linux-*`: the native SDK also includes the tested SFML and Godot
   integrations. macOS/Windows CI packages contain the toolchain and C API;
   included backends are explicit in each SDK's `release.json`. Linux also
@@ -36,8 +38,9 @@ Successful jobs also retain downloadable builds for 14 days:
   and runs the production JNI/Bitmap paths on an API 35 emulator.
 
 The native matrix installs/tests the Python image package and exercises the
-production Unity C# binding against the built C library. macOS additionally
-builds the Apple XCFramework and runs Swift/CGImage/SpriteKit/Metal tests.
+production Unity C# binding against the built C library. Both macOS runners
+additionally build the Apple XCFramework and run Swift/CGImage/SpriteKit/Metal
+tests, each on its own architecture.
 Unity Editor does not run in CI. Its local Gamma/Linear texture and GPU checks
 require an installed, licensed Editor; see the
 [Unity guide](../backends/unity/README.md#verify). Restoring that automation after
@@ -99,14 +102,15 @@ Historical release documentation stays tied to its original Git tag and archives
 These are build artifacts for the recorded commit; uploading them does not
 create a GitHub Release or release tag. Caches are not used as release inputs.
 
-The `release-assets` job waits for the six native/WASM/sanitizer check jobs
+The `release-assets` job waits for the seven native/WASM/sanitizer check jobs
 and the Android binding job, downloads only this
 run's artifacts, verifies every tracked source file against Git, verifies
 platform/archive manifests and extraction reports, and requires successful
-JUnit results from the six canonical job reports. Android package/device
+JUnit results from the seven canonical job reports. Android package/device
 validation additionally gates collection through its job status. The release
-artifact contains 13 files: the source,
-three native SDKs, WASM and website archives, four extraction reports, combined
+artifact contains 15 files: the source,
+four native SDKs (Linux, Windows, macOS arm64 and macOS x86_64), WASM and
+website archives, five extraction reports, combined
 CI validation, a release manifest and one complete SHA256 checksum list.
 All archive/report identities must match the checkout's product version and
 commit. Every manual CI run exercises this collection gate as well.
@@ -123,7 +127,7 @@ commit. Every manual CI run exercises this collection gate as well.
 It then calls the complete CI workflow on that exact tagged commit. After
 the build, tests, archive extraction and collection succeed, the publish job
 downloads `release-assets` from the same run and repeats verification. The
-publisher creates a draft, uploads the 13 assets, checks GitHub's SHA256
+publisher creates a draft, uploads the 15 assets, checks GitHub's SHA256
 digests/sizes, rechecks the remote tag and publishes only the complete draft.
 It reads back the published release and assets before reporting success.
 There is no merge, version bump or tag creation step in this workflow.

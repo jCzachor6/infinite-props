@@ -71,9 +71,9 @@ def verify_source(file, version, commit, root=ROOT):
 
 
 def verify_jobs(jobs, version, commit, run_id=None, root=ROOT):
-    patterns = [r"reports-native-Linux-.+", r"reports-native-macOS-.+", r"reports-native-Windows-.+",
-                r"reports-wasm", r"reports-native-backends", r"reports-sanitizers"]
-    require(len(jobs) == 6, "Require exactly six CI job reports")
+    patterns = [r"reports-native-Linux-.+", r"reports-native-macOS-ARM64", r"reports-native-macOS-X64",
+                r"reports-native-Windows-.+", r"reports-wasm", r"reports-native-backends", r"reports-sanitizers"]
+    require(len(jobs) == 7, "Require exactly seven CI job reports")
     for pattern in patterns:
         require(sum(re.fullmatch(pattern, name) is not None for name in jobs) == 1,
                 "Missing or duplicate required CI job: " + pattern)
@@ -101,8 +101,9 @@ def verify_packages(directory, version, commit, root=ROOT):
         if not match:
             continue
         system, architecture = match.groups()
-        require(system not in natives, "Duplicate native platform: " + system)
-        natives[system] = file
+        require(architecture not in natives.setdefault(system, {}),
+                "Duplicate native platform: " + system + "-" + architecture)
+        natives[system][architecture] = file
         manifest = archive_manifest(file)
         identity(manifest, version, commit, root)
         require(manifest.get("system") == system and manifest.get("architecture") == architecture,
@@ -127,7 +128,10 @@ def verify_packages(directory, version, commit, root=ROOT):
             require(name in (file.name, source.name) and sha256(directory / name) == digest,
                     "SDK validation digest mismatch: " + name)
         require(file.name in validation.get("artifacts", {}), "SDK validation omits its archive")
-    require(set(natives) == {"linux", "macos", "windows"}, "Require Linux, macOS and Windows SDKs")
+    # One SDK each for Linux and Windows; macOS ships Apple silicon and Intel.
+    require(set(natives) == {"linux", "macos", "windows"} and len(natives["linux"]) == 1 and
+            len(natives["windows"]) == 1 and set(natives["macos"]) == {"arm64", "x86_64"},
+            "Require the Linux, Windows, macOS arm64 and macOS x86_64 SDKs")
     web = json.loads((directory / (prefix + "-web-validation.json")).read_text(encoding="utf-8"))
     identity(web, version, commit, root)
     require(web.get("passed") is True and all(web.get("checks", {}).get(key) is True
@@ -169,7 +173,7 @@ def collect(inputs, destination, version, commit, root=ROOT):
     ci = destination / f"iprop-{version}-ci-validation.json"
     write_json(ci, {**versions(root), "source_commit": commit, "passed": True, "jobs": jobs})
     files = sorted(destination.iterdir())
-    expected = 6 + 4 + 1  # source + three SDKs + two web archives, four validation reports, CI report
+    expected = 7 + 5 + 1  # source + four SDKs + two web archives, five validation reports, CI report
     require(len(files) == expected, "Unexpected release asset count")
     release = destination / f"iprop-{version}-release.json"
     write_json(release, {**versions(root), "source_commit": commit, "passed": True,
@@ -183,7 +187,7 @@ def verify_bundle(directory, version, commit, root=ROOT):
     release = directory / (prefix + "-release.json")
     ledger = json.loads(release.read_text(encoding="utf-8"))
     identity(ledger, version, commit, root)
-    require(ledger.get("passed") is True and len(ledger.get("artifacts", {})) == 11, "Incomplete release manifest")
+    require(ledger.get("passed") is True and len(ledger.get("artifacts", {})) == 13, "Incomplete release manifest")
     files = []
     for name, record in ledger["artifacts"].items():
         require(re.fullmatch(r"[a-zA-Z0-9_.-]+", name) is not None and name.startswith(prefix), "Invalid release asset name")

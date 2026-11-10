@@ -44,11 +44,13 @@ desktop texture import formats required by Godot's export validation.
 `cmake --install` also copies the project to `<prefix>/share/iprop/godot/`
 with its extension, demo assets and an export preset without build-machine
 template paths. Open that project with Godot. Set `custom_template/release`
-in its preset to your matching local template. For macOS arm64, prepare it
-from the official archive using the installed helper:
+in its preset to your matching local template. For macOS, prepare it from the
+official archive using the installed helper, with `arm64` on Apple silicon or
+`x86_64` on a Mac with an Intel processor:
 
 ```sh
 python3 prepare_macos_template.py /path/to/macos.zip arm64 /path/to/macos-arm64.zip
+python3 prepare_macos_template.py /path/to/macos.zip x86_64 /path/to/macos-x86_64.zip
 ```
 
 Use the resulting archive in the preset. The Godot engine and export
