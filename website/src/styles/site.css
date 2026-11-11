@@ -536,7 +536,7 @@ code, kbd, pre { font-family: var(--font-mono); }
 }
 
 /* Keep the halo behind its own sprite and above the surrounding stage. */
-.tile__canvas, .drop__sprite, .game-slot__sprite, .reel__sprite { isolation: isolate; }
+.tile__canvas, .game-slot__sprite { isolation: isolate; }
 
 /* The bloom, painted by home.ts on a canvas with 48 native pixels of room on
    each side of the 96x96 sprite, shines out from underneath it. */
@@ -1246,15 +1246,6 @@ canvas.glow[hidden] { display: none; }
 .prose th, .prose td { padding: 0.5rem 0.8rem; border: 1px solid var(--line); text-align: left; vertical-align: top; }
 .prose th { background: var(--surface); color: var(--text-dim); font-weight: 600; }
 .prose a { color: var(--accent); }
-.prose .note {
-  margin: 1.25rem 0;
-  padding: 0.85rem 1.1rem;
-  border-left: 3px solid var(--accent);
-  border-radius: 0 8px 8px 0;
-  background: var(--surface);
-  color: var(--text-dim);
-  font-size: 0.95rem;
-}
 .prose h2, .prose h3, .prose h4 { scroll-margin-top: calc(var(--header-h) + 1rem); }
 
 /* The generated handbook keeps its own title and table of contents. */
@@ -1269,32 +1260,6 @@ canvas.glow[hidden] { display: none; }
 .handbook > ol:first-of-type li { break-inside: avoid; }
 .handbook { overflow-wrap: anywhere; }
 .handbook th, .handbook td { overflow-wrap: normal; }
-
-/* Download cards on the guide. */
-.downloads {
-  display: grid;
-  gap: 0.75rem;
-  margin: 1.25rem 0;
-}
-@media (min-width: 36rem) { .downloads { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.download {
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
-  padding: 0.95rem 1rem;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
-  text-decoration: none;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
-}
-.prose a.download { color: var(--text); text-decoration: none; }
-.download:hover { border-color: var(--accent); background: var(--surface-2); }
-.download .icon { flex: none; width: 1.9rem; height: 1.9rem; }
-.download strong { display: block; font-size: 0.98rem; font-weight: 600; line-height: 1.35; }
-.download small { display: block; overflow: hidden; color: var(--text-mute); font: 0.74rem/1.45 var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
-.download > span { min-width: 0; }
 
 /* Cards on the source page. */
 .cards {

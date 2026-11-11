@@ -40,9 +40,41 @@ function versions() {
     };
 }
 
-// Expands `<!-- @header home -->`-style markers into the shared page chrome
-// from templates/partials, marks the current page in the navigation and
-// fills the {{BASE}} and version placeholders, so pages work without JS.
+// An .ips source as highlighted HTML: comments, strings, colour literals with a
+// swatch, numbers, keywords and types. A name after a dot is left plain.
+const KEYWORDS = new Set("import from asset size origin const distribution draw to with layer for in input stepper return palette weighted material".split(" "));
+const TYPES = new Set(["i32", "f32", "color", "list"]);
+function highlight(source: string) {
+    const token = /(\/\/[^\n]*)|("[^"\n]*")|(#[0-9a-fA-F]{3,8}\b)|(\b0x[0-9a-fA-F]+\b|\b\d+x\d+\b|\b\d+(?:\.\d+)?\b)|(?<![.\w])[A-Za-z_]\w*\b/g;
+    const span = (kind: string, text: string, style = "") => `<span class="tok-${kind}"${style}>${text}</span>`;
+    return source.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(token, (text, comment, quoted, colour, number) =>
+        comment ? span("c", text) : quoted ? span("q", text) : colour ? span("s", text, ` style="--swatch:${text}"`) : number ? span("n", text)
+            : KEYWORDS.has(text) ? span("k", text) : TYPES.has(text) ? span("t", text) : text);
+}
+
+// Expands the markers of a page from templates/partials, partials within
+// partials included:
+//   <!-- @header home -->        the partial, its `home` link marked as the current page
+//   <!-- @weapon-tile a; b -->   the partial with {{1}} and {{2}} filled in
+//   <!-- @forest-tree *36 -->    the partial 36 times
+//   <!-- @code intro/tree.ips --> that file from public/, highlighted
+function expand(html: string, page: string): string {
+    return html.replace(/<!--\s*@([\w-]+)(?:\s+(.*?))?\s*-->/g, (_, name: string, rest = "") => {
+        if (name === "code") return highlight(fs.readFileSync(resolve(__dirname, "public", rest), "utf8").trimEnd());
+        let partial = fs.readFileSync(resolve(__dirname, "templates/partials", name + ".html"), "utf8").replace(/\n$/, "");
+        const times = /^\*(\d+)$/.exec(rest);
+        if (times) return Array(Number(times[1])).fill(partial).join("\n");
+        if (partial.includes("{{1}}")) rest.split(";").forEach((value: string, n: number) => { partial = partial.replaceAll(`{{${n + 1}}}`, value.trim()); });
+        else if (rest) {
+            if (!partial.includes(`data-page="${rest}"`)) throw new Error(`${page}: the ${name} partial has no page '${rest}'`);
+            partial = partial.replaceAll(`data-page="${rest}"`, `data-page="${rest}" aria-current="page"`);
+        }
+        return expand(partial, page);
+    });
+}
+
+// Expands the markers above and fills the {{BASE}} and version placeholders,
+// so pages work without JS.
 function sitePartials(): Plugin {
     return {
         name: "iprop-site-partials",
@@ -54,16 +86,7 @@ function sitePartials(): Plugin {
                     BASE: "../".repeat(page.split("/").length - 1),
                     ...versions(),
                 };
-                const expanded = html.replace(/<!--\s*@([\w-]+)(?:\s+([\w-]+))?\s*-->/g, (_, name: string, current?: string) => {
-                    let partial = fs.readFileSync(resolve(__dirname, "templates/partials", name + ".html"), "utf8");
-                    if (current) {
-                        if (!partial.includes(`data-page="${current}"`))
-                            throw new Error(`${page}: the ${name} partial has no page '${current}'`);
-                        partial = partial.replaceAll(`data-page="${current}"`, `data-page="${current}" aria-current="page"`);
-                    }
-                    return partial;
-                });
-                return expanded.replace(/\{\{([A-Z_]+)\}\}/g, (match, key: string) => values[key] ?? match);
+                return expand(html, page).replace(/\{\{([A-Z_]+)\}\}/g, (match, key: string) => values[key] ?? match);
             },
         },
     };

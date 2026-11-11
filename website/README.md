@@ -14,7 +14,7 @@ getting-started guide with the documentation, and the source page.
   bulges its rim with smooth noise and opens gaps with a 0.9 `noise.mask`; shown and
   downloadable beside a forest of 36 seeds (18 on a phone) with a re-roll
   button; recompile `public/intro/tree.iprop` with `ipc tree.ips -o tree.iprop`
-  after editing them, and paste the new source into the tabs in `index.html`), the games
+  after editing them: the tabs take the three sources at build time), the games
   showcase and the main features. The examples are the
   four weapons and three portrait packs under
   `examples/showcase/`, compiled binaries whose
@@ -107,14 +107,20 @@ second copy under `reference/`.
 
 ## Shared chrome
 
-The header, the footer and the docs sidebar live in `templates/partials/`.
-A small Vite plugin (`vite.config.ts`) expands markers such as
-`<!-- @header home -->` at build time, marks the current page in the
-navigation and fills `{{BASE}}` and the version placeholders
+The shared lines of every `<head>`, the header, the footer, the docs sidebar
+and the repeated pieces of the home page (a tile, a forest cell) live in
+`templates/partials/`. A small Vite plugin (`vite.config.ts`) expands their
+markers at build time, partials within partials included:
+`<!-- @header home -->` marks the current page in the navigation,
+`<!-- @weapon-tile sword; Sword; sword -->` fills `{{1}}`, `{{2}}` and `{{3}}`,
+`<!-- @forest-tree *36 -->` repeats a partial, and
+`<!-- @code intro/tree.ips -->` includes that file from `public/`, highlighted.
+The plugin also fills `{{BASE}}` and the version placeholders
 (`{{PRODUCT_VERSION}}` from `package.json`, the rest from
-`public/docs/language-manifest.json`), so the navigation works without JS.
-All styles are in `src/styles/site.css`; `src/site.ts` makes the header
-opaque past the home hero and opens the mobile menu.
+`public/docs/language-manifest.json`), so the pages work without JS.
+The styles are in `src/styles/`; `src/site.ts` makes the header opaque past
+the home hero and opens the mobile menu, and `src/runtime.ts` starts the
+interpreter for the pages that draw props.
 
 ## Search and link previews
 

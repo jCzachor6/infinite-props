@@ -16,48 +16,20 @@
 import "./site";
 import "./butterfly";
 import "./lightning";
-
-interface Output {
-    name: string;
-    points: { x: number; y: number }[];
-    rects: { x: number; y: number; w: number; h: number }[];
-}
-
-interface Result {
-    width: number;
-    height: number;
-    data: Uint8Array;
-    outputs: Output[];
-}
-
-type Uniforms = Record<string, number | string>;
-
-interface IpropModule {
-    generate(fileBytes: Uint8Array, seed: number, sizeX: number, sizeY: number, uniforms?: Uniforms): Result;
-}
-
-declare global {
-    interface Window {
-        createIpropModule(options: { locateFile(): string }): Promise<IpropModule>;
-    }
-}
+import { render as renderWith, startRuntime, type Output, type Runtime, type Uniforms } from "./runtime";
 
 const SEED_LIMIT = 0xffffffff;
 const files = new Map<string, Uint8Array>();
 const WEAPON_ASSETS = new Set(["sword", "axe", "spear", "staff"]);
-let iprop: IpropModule | null = null;
+let iprop: Runtime | null = null;
 
 function randomSeed() {
     return 1 + Math.floor(Math.random() * 99999);
 }
 
-// Renders one asset; the RGBA view into the module heap is copied at once.
+// Renders one asset. The browser composites weapon bloom from a separate emission pass.
 function render(asset: string, seed: number, uniforms: Uniforms = {}) {
-    // The browser composites weapon bloom from a separate emission pass.
-    const inputs = WEAPON_ASSETS.has(asset) ? { bloom: 0, ...uniforms } : uniforms;
-    const result = iprop!.generate(files.get(asset)!, seed >>> 0, 0, 0, inputs);
-    const image = new ImageData(new Uint8ClampedArray(result.data), result.width, result.height);
-    return { image, outputs: result.outputs };
+    return renderWith(iprop!, files.get(asset)!, seed, WEAPON_ASSETS.has(asset) ? { bloom: 0, ...uniforms } : uniforms);
 }
 
 // A weapon's look for a seed, the same every time the seed comes back. The
@@ -423,7 +395,7 @@ async function main() {
             if (!response.ok) throw new Error(`showcase/${name}.iprop: HTTP ${response.status}`);
             files.set(name, new Uint8Array(await response.arrayBuffer()));
         }));
-        iprop = await window.createIpropModule({ locateFile: () => "iprop.wasm" });
+        iprop = await startRuntime();
         for (const tile of tiles) tile.draw();
         drawSilhouettes();
         for (const tile of tiles) {

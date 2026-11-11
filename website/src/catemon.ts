@@ -7,15 +7,11 @@
 // ?name=Jakub, or ?seed=123 for a plain seed.
 
 import "./site";
+import { render, startRuntime, type Runtime, type Uniforms } from "./runtime";
 
 type Tier = "common" | "uncommon" | "rare" | "legendary";
 interface Kind { id: number; name: string; rarity: Tier; weight: number; blurb: string }
 interface Manifest { season: number; seed_prefix: string; file: string; kinds: Kind[]; poses: string[]; coats: string[]; fruits: string[] }
-interface Runtime {
-    generate(file: Uint8Array, seed: number, width: number, height: number, uniforms?: Record<string, number>): {
-        width: number; height: number; data: Uint8Array; outputs: { name: string; rects: { x: number; w: number; h: number }[] }[];
-    };
-}
 interface Cat { query: string; owner: string; file: string; image: ImageData; kind: Kind; label: string; odds: number; look: string }
 
 const ROOT = document.body.dataset.root ?? "../";
@@ -57,11 +53,10 @@ function seedOf(name: string) {
     return hash >>> 0;
 }
 
-// One render; the RGBA view into the module heap is copied at once.
-function generate(seed: number, uniforms: Record<string, number> = {}) {
-    const result = runtime.generate(program, seed, 0, 0, uniforms);
-    const traits = result.outputs.find((output) => output.name === "traits")!.rects[0];
-    return { image: new ImageData(new Uint8ClampedArray(result.data), result.width, result.height), traits };
+// One render and what its `traits` output says came out.
+function generate(seed: number, uniforms: Uniforms = {}) {
+    const { image, outputs } = render(runtime, program, seed, uniforms);
+    return { image, traits: outputs.find((output) => output.name === "traits")!.rects[0] };
 }
 
 // The catemon a query string names, or null when it names none.
@@ -230,8 +225,7 @@ async function main() {
         manifest = await (await fetch(`${ROOT}showcase/catemon.json`)).json();
         totalWeight = manifest.kinds.reduce((sum, kind) => sum + kind.weight, 0);
         program = new Uint8Array(await (await fetch(`${ROOT}showcase/${manifest.file}`)).arrayBuffer());
-        runtime = await (window as unknown as { createIpropModule(options: { locateFile(): string }): Promise<Runtime> })
-            .createIpropModule({ locateFile: () => `${ROOT}iprop.wasm` });
+        runtime = await startRuntime(ROOT);
     } catch (error) {
         say("The catemons could not wake up in this browser: " + (error as Error).message, true);
         return;
