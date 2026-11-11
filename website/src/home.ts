@@ -12,9 +12,6 @@
 //
 // Each weapon also shows its loot rarity: common (plain), rare (soldier), epic
 // (ornate) or legendary (ornate, enchanted and at full power, glow power 4).
-// "Roll a legendary" searches seeds for one and opens it as a drop with a
-// share link, #roll/<weapon>/<seed>: the look follows from the seed alone, so
-// the same link shows the same pixels to everyone.
 
 import "./site";
 import "./butterfly";
@@ -107,7 +104,7 @@ const emission = document.createElement("canvas");
 // raise alpha as well as colour, so thin glowing lines still make a visible
 // halo), plus a wider, softer pass.
 function paintGlow(canvas: HTMLCanvasElement, asset: string, seed: number,
-    uniforms: Uniforms, outputs: Output[], intensity = 1) {
+    uniforms: Uniforms, outputs: Output[]) {
     const glow = glowOf(outputs);
     canvas.hidden = !glow || glow.y <= 0;
     if (!glow || canvas.hidden) return;
@@ -122,7 +119,7 @@ function paintGlow(canvas: HTMLCanvasElement, asset: string, seed: number,
     for (const [sigma, count, alpha] of [[glow.w, passes, 0.84], [glow.w * 3, 3, 0.6]]) {
         context.filter = `blur(${sigma}px)`;
         // Split the exposure into passes so alpha never exceeds its 0..1 range.
-        for (let exposure = count * alpha * intensity; exposure > 0; --exposure) {
+        for (let exposure = count * alpha; exposure > 0; --exposure) {
             context.globalAlpha = Math.min(1, exposure);
             context.drawImage(emission, GLOW_PAD, GLOW_PAD);
         }
@@ -277,210 +274,6 @@ function drawSilhouettes() {
         const glow = canvas.parentElement!.querySelector<HTMLCanvasElement>("canvas.glow");
         if (glow) paintGlow(glow, asset, seed, LEGENDARY, outputs);
     }
-}
-
-// ---- the legendary drop: a weapon case -------------------------------------------
-//
-// "Roll a legendary" opens a case: a strip of real rolled weapons runs under
-// a marker, slows down and stops on a legendary one, then the win shows it
-// big. The next case is prepared in idle time, so a click starts at once.
-
-const WEAPONS: Record<string, string> = { sword: "Sword", axe: "Axe", spear: "Spear", staff: "Staff" };
-const drop = document.querySelector<HTMLDialogElement>("[data-drop]");
-const dropCanvas = document.querySelector<HTMLCanvasElement>("[data-drop-canvas]");
-const track = document.querySelector<HTMLElement>("[data-reel]");
-const ROLL_LINK = /^#roll\/(sword|axe|spear|staff)\/(\d{1,10})$/;
-const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-
-interface Item { asset: string; seed: number; rarity: Rarity; image: ImageData; glow: HTMLCanvasElement }
-interface Case { items: Item[]; winner: Item }
-
-const REEL_LENGTH = 40;
-const WIN_INDEX = 34;
-// The fillers come the way a case shows its loot: mostly common.
-const FILLER_ODDS: [Rarity, number][] = [["common", 0.45], ["rare", 0.33], ["epic", 0.22]];
-const QUALITY: Record<Rarity, number> = { common: 1, rare: 3, epic: 2, legendary: 2 };
-
-let nextCase: Promise<Case> | null = null;
-let spin: Animation | null = null;
-
-function idle() {
-    return new Promise<void>((resolve) => {
-        if ("requestIdleCallback" in window) requestIdleCallback(() => resolve(), { timeout: 250 });
-        else setTimeout(resolve, 16);
-    });
-}
-
-// Searches seeds from a random start for a weapon of the wanted rarity. The
-// look is a cheap hash; only matching candidates are rendered.
-function rollItem(wanted: Rarity): Item {
-    const names = Object.keys(WEAPONS);
-    const asset = names[Math.floor(Math.random() * names.length)];
-    for (let seed = randomSeed(), tries = 0; ; ++seed, ++tries) {
-        const look = weaponLook(seed);
-        if (look.quality !== QUALITY[wanted] || (wanted === "legendary" && look.enchantment !== 2)) continue;
-        const { image, outputs } = render(asset, seed, look.uniforms);
-        const rarity = rarityOf(look.quality, look.enchantment, outputs);
-        if (rarity === wanted || tries > 50000) {
-            // Prepare the halo with the case, keeping WASM and blur work off the spin.
-            const glow = document.createElement("canvas");
-            glow.className = "glow";
-            glow.setAttribute("aria-hidden", "true");
-            paintGlow(glow, asset, seed, look.uniforms, outputs);
-            return { asset, seed, rarity, image, glow };
-        }
-    }
-}
-
-async function prepareCase(): Promise<Case> {
-    const items: Item[] = [];
-    for (let i = 0; i < REEL_LENGTH; ++i) {
-        let roll = Math.random();
-        let tier: Rarity = "epic";
-        for (const [name, odds] of FILLER_ODDS) {
-            if (roll < odds) { tier = name; break; }
-            roll -= odds;
-        }
-        items.push(rollItem(i === WIN_INDEX ? "legendary" : tier));
-        if (i % 4 === 3) await idle();
-    }
-    return { items, winner: items[WIN_INDEX] };
-}
-
-// Focus the dialog itself, not its first button, so nothing shows a focus ring.
-function openModal() {
-    if (!drop || drop.open) return;
-    drop.showModal();
-    drop.focus();
-}
-
-function makeSparks() {
-    const box = drop?.querySelector("[data-sparks]");
-    if (!box || box.childElementCount) return;
-    for (let i = 0; i < 16; ++i) {
-        const spark = document.createElement("span");
-        spark.className = "spark";
-        spark.style.left = `${6 + Math.random() * 88}%`;
-        spark.style.top = `${6 + Math.random() * 88}%`;
-        spark.style.animationDelay = `${(Math.random() * 2.4).toFixed(2)}s`;
-        box.append(spark);
-    }
-}
-
-// The win: the weapon big, with its rarity, its data and its share link.
-function showWin(asset: string, seed: number) {
-    if (!drop || !dropCanvas) return;
-    const look = weaponLook(seed);
-    const { image, outputs } = render(asset, seed, look.uniforms);
-    paint(dropCanvas, image);
-    const halo = drop.querySelector<HTMLCanvasElement>(".win canvas.glow:not(.glow--front)")!;
-    paintGlow(halo, asset, seed, look.uniforms, outputs, 1.2);
-    const overlay = drop.querySelector<HTMLCanvasElement>(".win canvas.glow--front")!;
-    overlay.hidden = halo.hidden;
-    overlay.width = halo.width;
-    overlay.height = halo.height;
-    if (!halo.hidden) {
-        // Reuse the halo, clipped to the weapon; CSS applies one third of its intensity.
-        const context = overlay.getContext("2d")!;
-        context.putImageData(image, GLOW_PAD, GLOW_PAD);
-        context.globalCompositeOperation = "source-in";
-        context.drawImage(halo, 0, 0);
-    }
-    const rarity = rarityOf(look.quality, look.enchantment, outputs);
-    showRarity(drop.querySelector<HTMLElement>("[data-drop-rarity]")!, rarity);
-    drop.querySelector("[data-drop-title]")!.textContent = `${WEAPONS[asset]} #${seed}`;
-    dropCanvas.setAttribute("aria-label", `A ${rarity} ${asset}, seed ${seed}`);
-    const glow = glowOf(outputs);
-    const tip = outputs.find((output) => output.name === "tip")?.points[0];
-    const rows: [string, string][] = [
-        ["file", `${asset}.iprop · ${formatSize(files.get(asset)!.byteLength)}`],
-        ["inputs", `seed ${seed} · enchantment ${look.enchantment} · quality ${look.quality}`],
-        ["glow", glow && glow.y > 0 ? `power ${glow.y} · sigma ${+glow.w.toFixed(2)} · bloom ${+glow.h.toFixed(2)}` : "none"],
-        ["tip", tip ? `${Math.round(tip.x)}, ${Math.round(tip.y)}` : "none"],
-    ];
-    drop.querySelector("[data-drop-data]")!.replaceChildren(...rows.flatMap(([term, value]) => {
-        const dt = document.createElement("dt");
-        const dd = document.createElement("dd");
-        dt.textContent = term;
-        dd.textContent = value;
-        return [dt, dd];
-    }));
-    drop.querySelector("[data-drop-status]")!.textContent = "";
-    makeSparks();
-    drop.classList.remove("is-spinning");
-    history.replaceState(null, "", `#roll/${asset}/${seed}`);
-    openModal();
-}
-
-async function openCase() {
-    if (!drop || !track) return;
-    const strip = track.parentElement!;
-    spin?.cancel();
-    strip.classList.remove("is-done");
-    track.replaceChildren();
-    if (reducedMotion.matches) {
-        const current = await (nextCase ?? prepareCase());
-        nextCase = prepareCase();
-        showWin(current.winner.asset, current.winner.seed);
-        return;
-    }
-    drop.classList.add("is-spinning");
-    openModal();
-    const current = await (nextCase ?? prepareCase());
-    nextCase = prepareCase();
-    if (!drop.open) return;
-    track.replaceChildren(...current.items.map((item) => {
-        const card = document.createElement("div");
-        card.className = "reel__item";
-        card.dataset.tier = item.rarity;
-        const sprite = document.createElement("div");
-        sprite.className = "reel__sprite";
-        const canvas = document.createElement("canvas");
-        paint(canvas, item.image);
-        sprite.append(canvas, item.glow);
-        card.append(sprite);
-        return card;
-    }));
-    // Stop with the marker somewhere on the winner, never quite centred.
-    const winner = track.children[WIN_INDEX] as HTMLElement;
-    const stop = winner.offsetLeft + winner.offsetWidth * (0.5 + (Math.random() - 0.5) * 0.7);
-    spin = track.animate(
-        [{ transform: "translateX(0)" }, { transform: `translateX(${strip.clientWidth / 2 - stop}px)` }],
-        { duration: 6500, easing: "cubic-bezier(0.12, 0.72, 0.1, 1)", fill: "forwards" });
-    try {
-        await spin.finished;
-    } catch {
-        return; // closed mid-spin
-    }
-    winner.classList.add("is-winner");
-    strip.classList.add("is-done");
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-    if (drop.open && drop.classList.contains("is-spinning")) showWin(current.winner.asset, current.winner.seed);
-}
-
-function openRollLink() {
-    const match = ROLL_LINK.exec(location.hash);
-    if (match && Number(match[2]) <= SEED_LIMIT) showWin(match[1], Number(match[2]));
-}
-
-if (drop) {
-    drop.querySelector("[data-drop-close]")!.addEventListener("click", () => drop.close());
-    drop.querySelector("[data-drop-again]")!.addEventListener("click", openCase);
-    drop.querySelector("[data-drop-copy]")!.addEventListener("click", async () => {
-        const status = drop.querySelector("[data-drop-status]")!;
-        try {
-            await navigator.clipboard.writeText(location.href);
-            status.textContent = "Link copied. Anyone who opens it gets this exact weapon.";
-        } catch {
-            status.textContent = location.href;
-        }
-    });
-    // A click on the backdrop closes the drop.
-    drop.addEventListener("click", (event) => { if (event.target === drop) drop.close(); });
-    drop.addEventListener("close", () => {
-        spin?.cancel();
-        if (ROLL_LINK.test(location.hash)) history.replaceState(null, "", location.pathname + location.search);
-    });
 }
 
 // Touch screens have no hover: a tap (or Enter) reveals a slot's weapon.
@@ -648,13 +441,6 @@ async function main() {
         }
         return;
     }
-
-    const rollBox = document.querySelector<HTMLElement>("[data-roll-box]");
-    if (rollBox) rollBox.hidden = false;
-    document.querySelector("[data-roll]")?.addEventListener("click", openCase);
-    window.addEventListener("hashchange", openRollLink);
-    openRollLink();
-    nextCase = prepareCase();
 
     setAuto(autoOn);
     autoroll?.addEventListener("click", () => setAuto(!autoOn));

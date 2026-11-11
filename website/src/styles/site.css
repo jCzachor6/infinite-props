@@ -553,7 +553,6 @@ canvas.glow {
   pointer-events: none;
 }
 canvas.glow[hidden] { display: none; }
-.drop__sprite canvas.glow--front { z-index: 1; opacity: calc(1 / 3); }
 
 /* Loot rarity, as an ARPG colours it: what the weapon actually rolled. */
 .rarity {
@@ -572,6 +571,7 @@ canvas.glow[hidden] { display: none; }
 .rarity[data-tier="rare"] { --tier: #4da3ff; }
 .rarity[data-tier="epic"] { --tier: #b77bff; }
 .rarity[data-tier="legendary"] { --tier: #ff9f1a; }
+.rarity--big { padding: 0.15rem 0.6rem; font-size: 0.78rem; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tier) 60%, transparent), 0 0 18px color-mix(in srgb, var(--tier) 35%, transparent); }
 .tile .rarity { position: absolute; left: 0.5rem; bottom: 0.45rem; pointer-events: none; }
 .tile[data-rarity="legendary"] {
   border-color: rgba(255, 159, 26, 0.8);
@@ -712,18 +712,7 @@ canvas.glow[hidden] { display: none; }
   gap: 0.75rem 1.25rem;
   margin-top: 2rem;
 }
-/* The case opening: the one loud thing under the tiles. */
-.showcase__roll {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  margin-top: 3rem;
-  text-align: center;
-}
-.showcase__roll[hidden] { display: none; }
-.showcase__roll p { margin: 0; color: var(--text-dim); font-size: 1.05rem; }
-.showcase__roll strong { color: #ffb02e; font-weight: 600; }
+/* The loud button of the butterfly benchmark. */
 .btn--legendary {
   min-height: 3.6rem;
   padding: 0 2.4rem;
@@ -740,7 +729,6 @@ canvas.glow[hidden] { display: none; }
   box-shadow: 0 0 0 1px rgba(255, 190, 80, 0.8), 0 12px 42px rgba(255, 150, 40, 0.5);
 }
 .btn--legendary svg { width: 1.3rem; height: 1.3rem; }
-.showcase__roll + .showcase__footer { margin-top: 2.5rem; padding-top: 2rem; border-top: 1px solid rgba(255, 255, 255, 0.06); }
 
 .showcase__divider { width: 1px; height: 1.8rem; background: var(--line); }
 .showcase__more { margin: 0; color: var(--text-dim); font-size: 0.95rem; text-align: center; }
@@ -752,175 +740,6 @@ canvas.glow[hidden] { display: none; }
 .showcase__status { flex-basis: 100%; margin: 0; color: var(--text-mute); font-size: 0.85rem; text-align: center; }
 .showcase__status:empty { display: none; }
 .showcase__status.is-error { color: #ffb86b; }
-
-/* ---- the legendary drop: a case opening, then the win -------------------------- */
-
-.drop {
-  width: min(100% - 2rem, 50rem);
-  max-height: calc(100vh - 2rem);
-  padding: 0;
-  overflow: auto;
-  border: 1px solid var(--line-strong);
-  border-radius: 14px;
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.65);
-}
-.drop::backdrop { background: rgba(5, 7, 10, 0.78); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
-.drop.is-spinning .win, .drop:not(.is-spinning) .case { display: none; }
-.drop.is-spinning { width: min(100% - 2rem, 66rem); }
-.drop:focus { outline: none; }
-.drop:not(.is-spinning) {
-  border-color: rgba(255, 179, 46, 0.85);
-  box-shadow: 0 0 0 1px rgba(255, 179, 46, 0.35), 0 0 70px rgba(255, 159, 26, 0.35), 0 30px 90px rgba(0, 0, 0, 0.65);
-}
-
-/* The case: a strip of items running under a fixed marker. */
-.case { padding: 1.5rem 0 1.4rem; text-align: center; }
-.case__title { margin: 0 3rem 1.1rem; font-size: 1.15rem; font-weight: 600; }
-.case__title .pill { margin-left: 0.4rem; }
-.case__odds { margin: 1.1rem 1.5rem 0; color: var(--text-mute); font-size: 0.85rem; }
-.case__odds strong { color: #ffb02e; }
-.reel {
-  position: relative;
-  overflow: hidden;
-  padding-block: 0.9rem;
-  background: linear-gradient(#11151a, #171c22);
-  border-block: 1px solid var(--line);
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
-  mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
-}
-.reel__track { display: flex; gap: 0.5rem; width: max-content; will-change: transform; }
-.reel__item {
-  --tier: #9aa5b1;
-  position: relative;
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 8.5rem;
-  aspect-ratio: 1;
-  overflow: hidden;
-  border-radius: 6px;
-  border-bottom: 4px solid var(--tier);
-  background:
-    linear-gradient(to top, color-mix(in srgb, var(--tier) 34%, transparent), transparent 70%),
-    #1c2229;
-  transition: opacity 0.4s ease, transform 0.4s ease, box-shadow 0.4s ease;
-}
-.reel__item[data-tier="rare"] { --tier: #4da3ff; }
-.reel__item[data-tier="epic"] { --tier: #b77bff; }
-.reel__item[data-tier="legendary"] { --tier: #ff9f1a; }
-.reel__sprite { position: relative; width: 86%; aspect-ratio: 1; }
-.reel__sprite canvas:not(.glow) { display: block; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
-.reel__marker {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 3px;
-  margin-left: -1.5px;
-  background: var(--accent);
-  box-shadow: 0 0 12px rgba(245, 217, 10, 0.8);
-}
-.reel__marker::before, .reel__marker::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  border: 8px solid transparent;
-  transform: translateX(-50%);
-}
-.reel__marker::before { top: 0; border-top-color: var(--accent); }
-.reel__marker::after { bottom: 0; border-bottom-color: var(--accent); }
-.reel.is-done .reel__item { opacity: 0.3; }
-.reel.is-done .reel__item.is-winner {
-  opacity: 1;
-  transform: scale(1.08);
-  box-shadow: 0 0 0 2px #ffb02e, 0 0 34px rgba(255, 159, 26, 0.75);
-}
-
-/* The win. */
-.win { display: grid; }
-@media (min-width: 44rem) { .win { grid-template-columns: 1.1fr 1fr; } }
-.drop__art {
-  position: relative;
-  isolation: isolate;
-  display: grid;
-  place-items: center;
-  min-height: 16rem;
-  padding: 1.5rem;
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 50% 50%, rgba(255, 176, 46, 0.44), rgba(255, 120, 20, 0.1) 38%, transparent 62%),
-    linear-gradient(160deg, #241305, #100902 70%);
-}
-/* Slowly turning golden rays behind the weapon. */
-.drop__rays {
-  position: absolute;
-  inset: -60%;
-  z-index: -1;
-  background: repeating-conic-gradient(from 0deg, rgba(255, 196, 80, 0.18) 0deg 7deg, transparent 7deg 18deg);
-  -webkit-mask-image: radial-gradient(circle, #000 18%, transparent 55%);
-  mask-image: radial-gradient(circle, #000 18%, transparent 55%);
-  animation: rays 24s linear infinite;
-}
-@keyframes rays { to { transform: rotate(1turn); } }
-.drop__sparks { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
-.spark {
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  background: #ffd780;
-  box-shadow: 0 0 8px 2px rgba(255, 190, 70, 0.75);
-  animation: spark 2.4s ease-in-out infinite;
-}
-@keyframes spark { 0%, 100% { opacity: 0; transform: scale(0.4); } 50% { opacity: 1; transform: scale(1); } }
-.drop__sprite { position: relative; width: min(100%, 20rem); aspect-ratio: 1; }
-.drop:not(.is-spinning) .drop__sprite { animation: reveal 0.6s cubic-bezier(0.2, 0.9, 0.25, 1.2); }
-@keyframes reveal { from { opacity: 0; transform: scale(0.7) rotate(-6deg); } }
-.drop__sprite canvas:not(.glow) {
-  width: 100%;
-  height: 100%;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
-  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5));
-}
-.drop__body { display: flex; flex-direction: column; gap: 0.8rem; padding: 1.6rem 1.6rem 1.4rem; }
-.rarity--big { padding: 0.15rem 0.6rem; font-size: 0.78rem; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tier) 60%, transparent), 0 0 18px color-mix(in srgb, var(--tier) 35%, transparent); }
-.drop__title { margin: 0; font-size: 1.8rem; font-weight: 300; line-height: 1.2; }
-.drop__lead { margin: 0; color: var(--text-dim); font-size: 0.95rem; }
-.drop__data {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.3rem 1rem;
-  margin: 0.2rem 0;
-  padding: 0.85rem 1rem;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--code-bg);
-  font: 0.8rem/1.45 var(--font-mono);
-}
-.drop__data dt { color: var(--text-mute); }
-.drop__data dd { margin: 0; color: var(--text); }
-.drop .buttons { margin-top: 0.3rem; }
-.drop__status { min-height: 1.3em; margin: 0; color: var(--text-dim); font-size: 0.85rem; }
-.drop__close {
-  position: absolute;
-  top: 0.6rem;
-  right: 0.6rem;
-  z-index: 2;
-  display: grid;
-  place-items: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: rgba(19, 22, 26, 0.65);
-  color: #fff;
-  cursor: pointer;
-}
-.drop__close:hover { background: rgba(19, 22, 26, 0.9); }
-.drop__close svg { width: 1.1rem; height: 1.1rem; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 
 /* ---- main features: plain columns, as on lwjgl.org ---------------------------------- */
 

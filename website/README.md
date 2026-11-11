@@ -35,13 +35,6 @@ getting-started guide with the documentation, and the source page.
   at full power, as silhouettes until hovered or tapped.
   Every weapon tile carries its loot rarity: common (plain), rare (soldier),
   epic (ornate) or legendary (ornate, enchanted and at glow power 4).
-  "Roll a legendary" in the hero opens a weapon case: a strip of 40 real
-  rolled weapons (fillers 45% common, 33% rare, 22% epic) runs under a
-  marker for 6.5 s and stops on a legendary one, then the win shows it big
-  with golden rays, its inputs, glow and tip. The next case is prepared in
-  idle time; with reduced motion the strip is skipped. The share link
-  `#roll/<weapon>/<seed>` reopens the same win, because the look follows from
-  the seed alone.
   First, right after "What is Infinite Props?" and before the tree example,
   **Butterfly benchmark** (its live results on the left of the model; above it on a
   phone) composes a 256×256

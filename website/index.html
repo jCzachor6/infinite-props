@@ -538,13 +538,6 @@
           </div>
         </div>
       </div>
-      <div class="showcase__roll" data-roll-box hidden>
-        <p>Feeling lucky? Every case ends on a <strong>legendary</strong>.</p>
-        <button class="btn btn--legendary" type="button" data-roll>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="9" r="1.4" fill="currentColor"/><circle cx="15" cy="15" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg>
-          Roll a legendary
-        </button>
-      </div>
       <div class="showcase__footer">
         <button class="autoroll" type="button" aria-pressed="true" data-autoroll>
           <span class="autoroll__dot" aria-hidden="true"></span><span data-autoroll-label>Auto-roll on</span>
@@ -661,42 +654,6 @@
       </div>
     </div>
   </section>
-
-  <dialog class="drop" data-drop aria-labelledby="drop-title" tabindex="-1">
-    <div class="case" data-case>
-      <p class="case__title">Weapon case <span class="pill">guaranteed legendary</span></p>
-      <div class="reel">
-        <div class="reel__track" data-reel></div>
-        <span class="reel__marker" aria-hidden="true"></span>
-      </div>
-      <p class="case__odds">common · rare · epic · and one item at the end that is always <strong>legendary</strong></p>
-    </div>
-    <div class="win">
-      <div class="drop__art">
-        <span class="drop__rays" aria-hidden="true"></span>
-        <span class="drop__sparks" aria-hidden="true" data-sparks></span>
-        <div class="drop__sprite">
-          <canvas width="96" height="96" role="img" aria-label="The rolled weapon" data-drop-canvas></canvas>
-          <canvas class="glow" aria-hidden="true" hidden></canvas>
-          <canvas class="glow glow--front" aria-hidden="true" hidden></canvas>
-        </div>
-      </div>
-      <div class="drop__body">
-        <span class="rarity rarity--big" data-drop-rarity></span>
-        <h2 class="drop__title" id="drop-title" data-drop-title>Legendary drop</h2>
-        <p class="drop__lead">Same link, same pixels: everyone who opens it gets exactly this one.</p>
-        <dl class="drop__data" data-drop-data></dl>
-        <div class="buttons">
-          <button class="btn btn--primary" type="button" data-drop-copy>Copy link</button>
-          <button class="btn" type="button" data-drop-again>Open another</button>
-        </div>
-        <p class="drop__status" data-drop-status role="status"></p>
-      </div>
-    </div>
-    <button class="drop__close" type="button" aria-label="Close" data-drop-close>
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
-    </button>
-  </dialog>
 </main>
 
 <!-- @footer -->
