@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>What's your Catemon? A pixel cat monster for every name · Infinite Props</title>
+<meta name="description" content="Type a name and meet its Catemon: one of 27 kinds of pixel-art cat monster, from a house cat to a legendary galaxy. Made in your browser, free to share.">
+<meta name="theme-color" content="#13161a">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/src/styles/site.css">
+<link rel="stylesheet" href="/src/styles/catemon.css">
+</head>
+<body data-root="{{BASE}}">
+<!-- @header catemon -->
+<main id="content" class="cm">
+  <section class="cm-hero">
+    <div class="container">
+      <p class="eyebrow">Catemon · season 1 · 27 kinds</p>
+      <h1 class="cm-title">What's your <b>Catemon?</b></h1>
+      <p class="lead">Every name has one: a cat, or a cat that is also a monster. Type yours and meet it.</p>
+      <form class="cm-form" data-form autocomplete="off">
+        <input name="name" type="text" maxlength="24" placeholder="Your name" aria-label="A name" spellcheck="false" enterkeyhint="go" data-name>
+        <button class="btn btn--primary" type="submit" data-go disabled>Get my Catemon</button>
+        <button class="btn" type="button" data-random disabled>Surprise me</button>
+      </form>
+      <p class="cm-status" role="status" data-status>Waking the catemons…</p>
+      <noscript><p class="cm-status is-error">This page draws every catemon in your browser, so it needs JavaScript and WebAssembly.</p></noscript>
+
+      <article data-result hidden>
+        <div class="cm-stage" data-stage>
+          <canvas width="128" height="128" aria-hidden="true" data-shade></canvas>
+          <canvas width="128" height="128" role="img" aria-label="A catemon" data-cat></canvas>
+        </div>
+        <div class="cm-card" data-card>
+          <h2 data-owner>Your Catemon</h2>
+          <p class="cm-card__kind"><span data-kind>Catemon</span> <span class="rarity rarity--big" data-rarity>common</span></p>
+          <p class="cm-card__odds" data-odds></p>
+          <p data-blurb></p>
+          <div class="buttons">
+            <button class="btn btn--primary" type="button" data-share>Share</button>
+            <button class="btn" type="button" data-download>Download card</button>
+            <button class="btn" type="button" data-copy>Copy link</button>
+          </div>
+          <p class="cm-card__note">The same name always meets the same catemon. It is drawn in your browser: the name never leaves this page.</p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="section cm-dex">
+    <div class="container">
+      <p class="eyebrow">The collection</p>
+      <h2 class="section-title">Twenty-seven <b>kinds</b></h2>
+      <p class="lead">One catemon in four is a house cat. The others are rarer: try your friends, your pets and your favourite snacks. <b class="cm-dex__count" data-found>Found 0 of 27</b></p>
+      <ul class="cm-dex__grid" data-dex></ul>
+    </div>
+  </section>
+
+  <section class="section section--band">
+    <div class="container prose cm-about">
+      <h2>How one small file makes every catemon</h2>
+      <p>There is no list of catemons behind this page. Each one is drawn on the spot by a 23&nbsp;kB program,
+      <code>catemon-1.iprop</code>, running in your browser on the <a href="{{BASE}}index.html">Infinite Props</a>
+      runtime. A name is turned into a number, the number is the program's seed, and the seed decides everything:
+      the kind, the pose, the build, the coat and its blotches, the eyes, the tail and every colour. The same name
+      gives the same catemon on every device, and nothing is uploaded.</p>
+      <table>
+        <thead><tr><th>Rarity</th><th>Kinds</th><th>Chance of each</th></tr></thead>
+        <tbody>
+          <tr><td>Common</td><td>House Cat, in sixteen coats and sixteen colours</td><td>1 in 4</td></tr>
+          <tr><td>Uncommon</td><td>Ember, Koi, Bloom, Static, Frost, Stone, Shroom, Slime, Nimbus, Plush, Bun, Reptile and Fruit (a strawberry, a watermelon, an orange, a pineapple or a blueberry)</td><td>1 in 26</td></tr>
+          <tr><td>Rare</td><td>Bone, Imp, Seraph, Cyclops, Mech, Dragon, Lantern, Ice</td><td>1 in 44</td></tr>
+          <tr><td>Legendary</td><td>Void, Ghost, Galaxy, Unicorn, Golden</td><td>1 in 66 to 1 in 131</td></tr>
+        </tbody>
+      </table>
+      <p>Share your catemon wherever you like, as it is, for personal and non-commercial use; the program and any
+      other use of its images are covered by the <a href="{{BASE}}showcase/LICENSE.md">showcase licence</a>. Catemon
+      is one Infinite Props asset: a recipe compiled to a file that a game can ask for endless variations.</p>
+      <p class="buttons">
+        <a class="btn btn--primary" href="{{BASE}}docs/getting-started.html">Get started</a>
+        <a class="btn" href="https://iprop.store/" rel="noopener external">Asset store</a>
+      </p>
+    </div>
+  </section>
+</main>
+<!-- @footer -->
+<script src="/iprop.js"></script>
+<script type="module" src="/src/catemon.ts"></script>
+</body>
+</html>

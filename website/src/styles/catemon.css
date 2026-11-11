@@ -1,0 +1,116 @@
+/* The Catemon page: one centred column on the dark stage (the name, the
+   catemon, its card), then the collection and the story behind it. */
+
+.cm { --tier: #9aa5b1; text-align: center; }
+.cm [data-tier="uncommon"] { --tier: #4da3ff; }
+.cm [data-tier="rare"] { --tier: #b77bff; }
+.cm [data-tier="legendary"] { --tier: #ff9f1a; }
+.cm .lead { margin-inline: auto; }
+.cm .buttons { justify-content: center; margin-top: 1.4rem; }
+
+.cm-hero {
+  padding-block: clamp(2.5rem, 7vw, 4.5rem);
+  background: radial-gradient(64rem 40rem at 50% 34%, #27333f, #1b2128 56%, var(--bg-deep));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+.cm-title { margin: 0 0 1rem; font-size: clamp(2.3rem, 7.2vw, 4.2rem); font-weight: 300; line-height: 1.08; letter-spacing: -0.02em; }
+.cm-title b { font-weight: 700; }
+
+.cm-form { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.6rem; max-width: 38rem; margin: 1.8rem auto 0; }
+.cm-form input {
+  flex: 1 1 14rem;
+  min-width: 0;
+  padding: 0 1rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--code-bg);
+  color: var(--text);
+  font: 500 1.1rem/1 var(--font-sans);
+  text-align: center;
+}
+.cm-form .btn, .cm-form input { min-height: 3rem; }
+.cm-form .btn:disabled { opacity: 0.5; cursor: progress; }
+.cm-status { min-height: 1.4rem; margin: 0.8rem 0 0; color: var(--text-mute); font: 0.82rem/1.5 var(--font-mono); overflow-wrap: anywhere; }
+.cm-status.is-error { color: #ff9a9a; }
+
+/* The catemon at a whole multiple of its 128 pixels: 2x on a phone, then 3x and 4x. */
+.cm-stage { position: relative; width: 256px; height: 256px; margin: 0.5rem auto 0; }
+@media (min-width: 30rem) { .cm-stage { width: 384px; height: 384px; } }
+@media (min-width: 48rem) { .cm-stage { width: 512px; height: 512px; } }
+.cm-stage canvas, .cm-stage::before, .cm-stage::after { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cm-stage canvas, .cm-dex__tile canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
+/* behind it, a light in the colour of its rarity; over it, the flash of the reveal */
+.cm-stage::before, .cm-stage::after { content: ""; border-radius: 50%; }
+.cm-stage::before { background: radial-gradient(circle, color-mix(in srgb, var(--tier) 34%, transparent), transparent 62%); }
+.cm-stage::after { background: radial-gradient(circle, #fff, var(--tier) 30%, transparent 68%); opacity: 0; pointer-events: none; }
+/* a legendary one sits on slowly turning rays */
+.cm-stage[data-phase="shown"][data-tier="legendary"]::before {
+  inset: -12%;
+  width: auto;
+  height: auto;
+  background: repeating-conic-gradient(color-mix(in srgb, var(--tier) 26%, transparent) 0 8deg, transparent 8deg 20deg);
+  -webkit-mask-image: radial-gradient(circle, #000 18%, transparent 66%);
+  mask-image: radial-gradient(circle, #000 18%, transparent 66%);
+  animation: cm-rays 28s linear infinite;
+}
+/* the reveal: the shape shakes, a flash, the catemon */
+.cm-stage [data-cat], .cm-stage:not([data-phase="shake"]) [data-shade] { opacity: 0; }
+.cm-stage:not([data-phase="shake"]) [data-cat] { opacity: 1; }
+.cm-stage[data-phase="shake"] [data-shade] { animation: cm-shake 0.95s ease-in both; }
+.cm-stage[data-phase="flash"]::after { animation: cm-flash 0.45s ease-out both; }
+@keyframes cm-shake {
+  0%, 20%, 45%, 55% { transform: none; }
+  28%, 64%, 80% { transform: translateX(-5px) rotate(-3deg); }
+  36%, 72%, 88% { transform: translateX(5px) rotate(3deg); }
+  100% { transform: scale(1.06); }
+}
+@keyframes cm-flash { from { opacity: 0.95; transform: scale(0.7); } to { opacity: 0; transform: scale(1.25); } }
+@keyframes cm-rays { to { transform: rotate(1turn); } }
+
+.cm-card { max-width: 36rem; margin-inline: auto; transition: opacity 0.4s ease; }
+.cm-card[data-ready="false"] { opacity: 0; pointer-events: none; }
+.cm-card h2 { margin: 0; color: var(--text-dim); font-size: clamp(1.15rem, 3vw, 1.45rem); font-weight: 300; overflow-wrap: anywhere; }
+.cm-card p { margin: 0.4rem 0 0; font-size: 1.1rem; }
+.cm-card__kind {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem 0.8rem;
+  font-size: clamp(2.3rem, 8vw, 3.6rem) !important;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.cm .rarity { align-self: center; }
+.cm-card .cm-card__odds { color: var(--text-dim); font-size: 1rem; }
+.cm-card .cm-card__note { max-width: 28rem; margin: 1.1rem auto 0; color: var(--text-mute); font-size: 0.82rem; }
+
+.cm-dex__count { padding: 0.05rem 0.65rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font: 600 0.8rem/1.7 var(--font-mono); white-space: nowrap; }
+.cm-dex__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.75rem, 1fr)); gap: 0.75rem; margin: 2.5rem 0 0; padding: 0; list-style: none; }
+.cm-dex__tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  width: 100%;
+  padding: 0.5rem 0.5rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--tier) 50%, var(--line));
+  border-radius: var(--radius);
+  background: radial-gradient(circle at 50% 40%, #26313c, #1b2128 62%, #181d23);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.cm-dex__tile canvas { width: 128px; height: 128px; }
+.cm-dex__tile:hover { border-color: var(--tier); }
+.cm-dex__tile:disabled { border-color: var(--line); color: var(--text-mute); cursor: default; }
+
+.cm-about { max-width: 46rem; text-align: left; }
+.cm-about .btn { color: var(--text); text-decoration: none; }
+.cm-about .btn--primary { color: var(--accent-ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  .cm-stage::before, .cm-stage::after, .cm-stage canvas { animation: none !important; }
+  .cm-card { transition: none; }
+}

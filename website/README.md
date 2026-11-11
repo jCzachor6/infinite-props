@@ -78,6 +78,19 @@ getting-started guide with the documentation, and the source page.
   backends and the FAQ. A client-side section search sits in the docs
   sidebar (press `/`).
 - **Source** (`source.html`): the repository, the build and the layout.
+- **Catemon** (`catemon/index.html`, served as `/catemon/`): "What's your
+  Catemon?". A visitor types a name and meets its catemon, one of 27 kinds
+  drawn in the browser by `public/showcase/catemon-1.iprop` (`src/catemon.ts`,
+  `src/styles/catemon.css`). The seed is the 32-bit FNV-1a hash of the
+  season's prefix and the tidied name in lower case, so `/catemon/?name=Jakub`
+  is the same catemon everywhere and nothing is sent to a server; `?seed=123`
+  opens a plain seed, which is what "Surprise me" picks. The kinds, their
+  odds and their blurbs come from `showcase/catemon.json`. The page reveals
+  the catemon (at once with reduced motion), shares a 1080×1350 card drawn
+  on a canvas through the Web Share API or as a download with the link
+  copied, and keeps the first catemon of each kind in `localStorage`.
+  **Season 1 is frozen**: links name catemons by seed, so `catemon-1.iprop`
+  is never replaced (`examples/showcase/README.md`).
 - **Asset store**: available at [iprop.store](https://iprop.store/), linked from
   the navigation, footer and home-page buttons.
 
@@ -112,9 +125,13 @@ X/Twitter cards, crawl directives and JSON-LD to the static HTML. The home page
 identifies the website and software; documentation pages describe their content
 as technical articles. No client-side JavaScript is needed to read these tags.
 
+A page may have a card of its own (`SOCIAL` in `vite.config.ts`): the Catemon
+page uses `public/catemon/social-preview.png`. Every `?name=` link shares its
+one canonical URL, `/catemon/`, so search engines see a single page.
+
 The production build also emits `robots.txt` and `sitemap.xml`. Sitemap entries
 come from the same `PAGES` inventory as the Vite build; the home page uses `/`
-as its canonical URL. No synthetic modification dates are published.
+as its canonical URL, and a directory's `index.html` its directory. No synthetic modification dates are published.
 
 The shared 1200×630 card is `public/social-preview.png`. Its vector template is
 `templates/social-preview.svg`; regenerate it together with the README

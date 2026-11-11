@@ -31,6 +31,12 @@ The runtime provides no variant/archetype counts or selectors.
 ipgen sword.iprop --seed 7 -o sword.png
 ```
 
+`catemon-1.iprop` (128×128) is the Catemon page's program, season 1, frozen:
+the page's links name catemons by seed, so a changed generator ships as
+`catemon-2.iprop` with a seed prefix of its own. `catemon.json` records its
+SHA-256, the props commit (`c69bd35`), the hashes of its sources and the
+table the page reads: the 27 kinds, their rarity, weights and blurbs.
+
 `website/prepare.sh` copies them into `website/public/showcase/`. The website
 release smoke test checks that the site ships these exact bytes and compares
 their WebAssembly renders with the native tools. The compiled programs are

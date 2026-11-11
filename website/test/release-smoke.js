@@ -37,7 +37,7 @@ function checkLinks(directory) {
 
 async function main() {
     const pages = checkLinks(site);
-    assert.equal(pages, 7);
+    assert.equal(pages, 8);
     const specs = fs.readdirSync(path.join(root, "spec")).filter(name => /^iprop-v.*\.md$/.test(name)).sort();
     const productLine = JSON.parse(fs.readFileSync(path.join(root, "website/package.json"), "utf8"))
         .version.split(".").slice(0, 2).join(".");
@@ -126,6 +126,21 @@ async function main() {
                 assert.deepEqual(Buffer.from(rendered.data), decoded.data, `${asset} seed ${seed} input ${selector} ${choice}`);
                 comparisons++;
             }
+        }
+        // The Catemon page: season 1's frozen program and its table of kinds, and the same pixels natively and in WASM.
+        const catemon = JSON.parse(fs.readFileSync(path.join(site, "showcase/catemon.json"), "utf8"));
+        const catemonFile = path.join(site, "showcase", catemon.file);
+        const catemonBytes = fs.readFileSync(catemonFile);
+        assert.deepEqual(catemonBytes, fs.readFileSync(path.join(root, "examples/showcase", catemon.file)), "stale catemon program");
+        assert.equal(crypto.createHash("sha256").update(catemonBytes).digest("hex"), catemon.sha256);
+        const catemonPage = fs.readFileSync(path.join(site, "catemon/index.html"), "utf8");
+        for (const kind of catemon.kinds) assert.ok(catemonPage.includes(kind.name), `the catemon page does not list ${kind.name}`);
+        for (const [seed, kind] of [[0, 0], [7, 9], [26, 25], [2847561, 17]]) {
+            const png = path.join(temporary, "catemon.png");
+            const native = spawnSync(generator, [catemonFile, "--seed", String(seed), "--uniform", `kind=${kind}`, "-o", png], { encoding: "utf8" });
+            assert.equal(native.status, 0, native.stderr || String(native.error));
+            assert.deepEqual(Buffer.from(Module.generate(catemonBytes, seed, 0, 0, { kind }).data), decodePng(fs.readFileSync(png)).data, `catemon seed ${seed} kind ${kind}`);
+            comparisons++;
         }
     } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
     const butterflies = await checkButterflyWorker(site);
