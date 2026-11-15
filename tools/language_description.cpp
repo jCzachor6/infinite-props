@@ -46,6 +46,7 @@ Json effectRules() {
     rules["helper"] = operationEffects(findOpcode(Opcode::Call)->effects);
     rules["part"] = operationEffects(findOpcode(Opcode::PartDraw)->effects);
     rules["seed_read"] = operationEffects(findOpcode(Opcode::StreamState)->effects);
+    rules["seed_initial"] = operationEffects(findOpcode(Opcode::SeedInitial)->effects);
     rules["output_write"] = operationEffects(findOpcode(Opcode::OutPoint)->effects);
     rules["output_write_policy"] = Json::object({{"singular", "replace"}, {"list", "append"}});
     rules["part_output_read"] = operationEffects(findOpcode(Opcode::PartGetPoint)->effects);
@@ -72,7 +73,8 @@ constexpr ips::ValueType valueTypes[]{ips::ValueType::I32, ips::ValueType::F32,
     ips::ValueType::list(ips::ValueType::stepper(ips::ValueType::F32)),
     ips::ValueType::list(ips::ValueType::stepper(ips::ValueType::Color)),
     ips::ValueType::list(ips::ValueType::stepper(ips::ValueType::Vec2)), ips::ValueType::Layer, ips::ValueType::Mask,
-    ips::ValueType::Diagram2d, ips::ValueType::Contours2d, ips::ValueType::Regions2d, ips::ValueType::Part2d, ips::ValueType::Parts2d};
+    ips::ValueType::Diagram2d, ips::ValueType::Contours2d, ips::ValueType::Regions2d, ips::ValueType::Part2d, ips::ValueType::Parts2d,
+    ips::ValueType::Seed};
 
 Json receiverMethod(const std::string& name, const ips::BuiltinOverload& signature) {
     Json parameters = Json::array();
@@ -142,6 +144,44 @@ Json normalMaps() {
         {"color_constant_errors", Json::array({"zero_or_nonfinite_length", "z_not_positive"})},
         {"asset_constants", Json::object({{"color.normal", true}, {"normal_method", false}})},
         {"effects", operationEffects(kernel->effects)}});
+}
+
+// Named seeds (spec named seeds v1.1).
+Json namedSeeds() {
+    const auto* initial = findOpcode(Opcode::SeedInitial);
+    Json parameters = Json::array();
+    for (const auto& [name, spec] : ips::builtinSpecs()) {
+        bool seeded = false;
+        for (const auto& overload : spec.overloads)
+            for (const auto& parameter : overload.params) seeded |= parameter.role == ips::ParameterRole::Seed;
+        if (seeded) parameters.push_back(name);
+    }
+    return Json::object({
+        {"type", ips::typeName(ips::ValueType::Seed)}, {"type_keyword", "contextual_type_position"},
+        {"representation", "i32_bits_in_i32_slots"}, {"wire_type", false},
+        {"seed_expression", "current_stream_state_i32"},
+        {"initial_syntax", "seed.initial()"}, {"initial_opcode", initial->mnemonic},
+        {"initial_value", Json::object({{"root", "generation_seed"}, {"helper", "caller_value"},
+            {"part", "seed_of_this_part_call"}, {"stream_push", "unchanged"}})},
+        {"initial_effects", operationEffects(initial->effects)}, {"initial_constant", false},
+        {"fork_syntax", "<i32 | seed>.fork(<string literal | i32>)"}, {"fork_named_argument", "key"},
+        {"fork_receivers", Json::array({ips::typeName(ips::ValueType::I32), ips::typeName(ips::ValueType::Seed)})},
+        {"fork_result", ips::typeName(ips::ValueType::Seed)},
+        {"fork_evaluation", "receiver_then_key_once"}, {"fork_rng", "none"},
+        {"fork_lowering", "existing_instructions"}, {"fork_mutates", false}, {"fork_chain", "ordered"},
+        {"label", "string_literal_decoded_utf8_bytes_case_sensitive_no_normalization"},
+        {"label_hash", "fnv1a32"}, {"index_type", ips::typeName(ips::ValueType::I32)},
+        {"text_domain", "iprop.seed.fork/text/v1"}, {"text_tag", ips::kForkTextTag},
+        {"index_domain", "iprop.seed.fork/index/v1"}, {"index_tag", ips::kForkIndexTag},
+        {"text_fork", "hash32(base ^ hash32(text_tag ^ fnv1a32(label)))"},
+        {"index_fork", "hash32(base ^ hash32(index_tag ^ index))"},
+        {"conversion", "int(seed)"}, {"implicit_conversion", false},
+        {"operators", Json::array({"==", "!="})},
+        {"seed_parameters", std::move(parameters)}, {"other_seed_arguments", Json::array({"choose", "part_call"})},
+        {"helper_parameters", true}, {"helper_returns", true}, {"locals", true},
+        {"host_inputs", false}, {"outputs", false}, {"asset_constants", false}, {"materials", false},
+        {"palettes", false}, {"collections", false}, {"samplers", false}, {"steppers", false},
+        {"choices", false}});
 }
 
 Json samplers() {
@@ -444,6 +484,7 @@ Json sourceRules() {
         {"maximum_slots", kMaxConstPoolEntries}, {"slot_bytes", 64}, {"write_read_fuel", 1},
         {"section_id", static_cast<u32>(SectionId::ResourceExports)}});
     rules["normal_maps"] = normalMaps();
+    rules["named_seeds"] = namedSeeds();
     rules["masks"] = Json::object({
         {"from_syntax", "mask.from(image)"}, {"clip_syntax", "clip(mask) { <statements> }"},
         {"keyword", "reserved"}, {"from_storage", "shared_rgba8_alpha_view"},
@@ -519,16 +560,19 @@ Json variadic(const std::string& name, const ips::BuiltinSpec& spec) {
     const bool polygon = spec.lowering == L::Polygon;
     Json parameters = Json::array();
     for (std::size_t i = 0; i < signature.parameters.size(); ++i) {
+        const bool seed = spec.lowering == L::Choose && i == 0;
         const std::string type = polygon ? (i + 1 == signature.parameters.size() ? "color" : "f32")
-            : (spec.lowering == L::Choose && i == 0 ? "i32" : "T");
-        parameters.push_back(parameter(signature.parameters[i].name, type));
+            : (seed ? "i32" : "T");
+        auto entry = parameter(signature.parameters[i].name, type);
+        if (seed) entry["role"] = "seed";
+        parameters.push_back(std::move(entry));
     }
     auto out = Json::object({{"minimum_arguments", minimum},
         {"repeat", polygon ? "coordinate_pairs" : "choices"}, {"result", polygon ? "void" : "T"},
         {"parameters", std::move(parameters)}, {"evaluation_order", evaluationOrder(signature)},
         {"effects", operationEffects(signature.effects)}});
     if (!polygon) {
-        out["choice_types"] = types(ips::isStorable);
+        out["choice_types"] = types([](ips::ValueType type) { return ips::isStorable(type) && type != ips::ValueType::Seed; });
         out["choice_evaluation"] = "eager_once_before_selection_rng";
     }
     return out;
@@ -542,8 +586,11 @@ Json builtins() {
             const ips::BuiltinSpec concrete{spec.lowering, {overload}};
             const auto signature = ips::builtinCallSignature(concrete, overload.params.size(), {1,1}, name);
             Json parameters = Json::array();
-            for (std::size_t i = 0; i < overload.params.size(); ++i)
-                parameters.push_back(parameter(signature.parameters[i].name, ips::typeName(overload.params[i].type)));
+            for (std::size_t i = 0; i < overload.params.size(); ++i) {
+                auto entry = parameter(signature.parameters[i].name, ips::typeName(overload.params[i].type));
+                if (overload.params[i].role == ips::ParameterRole::Seed) entry["role"] = "seed";
+                parameters.push_back(std::move(entry));
+            }
             auto entry = Json::object({{"parameters", std::move(parameters)},
                 {"result", ips::typeName(overload.result)}, {"evaluation_order", evaluationOrder(signature)},
                 {"effects", operationEffects(ips::builtinEffects(spec, &overload))},
@@ -595,6 +642,7 @@ Json callRules() {
     for (std::size_t i = 0; i < part.parameters.size(); ++i) {
         const auto& p = part.parameters[i];
         auto entry = Json::object({{"name", p.name}, {"required", p.required}, {"positional", p.positional}});
+        if (i == ips::kPartSeedSlot) entry["role"] = "seed";
         if (const auto* value = std::get_if<i32>(&part.defaults[i])) entry["default"] = *value;
         else if (std::holds_alternative<const ips::InputDecl*>(part.defaults[i])) entry["default"] = "input_declaration";
         parameters.push_back(std::move(entry));

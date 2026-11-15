@@ -167,6 +167,24 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
         emitExpr(*method->receiver);
         return emitMethod(expr);
     }
+    if (const auto* fork = std::get_if<ips::SeedFork>(&expr)) {
+        // Named seeds v1.1, by existing instructions only. The receiver, then
+        // the key, each once: hash32(base ^ salt), where a string's salt is
+        // known now and an index's is hash32(kForkIndexTag ^ index).
+        emitExpr(*fork->receiver);
+        const auto* label = std::get_if<ips::Literal>(fork->key.value.get());
+        if (label && label->kind == ips::Literal::Kind::String) {
+            emitConst(static_cast<i32>(ips::forkLabelSalt(label->text)));
+        } else {
+            emitExpr(*fork->key.value);
+            emitConst(static_cast<i32>(ips::kForkIndexTag));
+            ins(Opcode::I32Xor);
+            ins(Opcode::Hash);
+        }
+        ins(Opcode::I32Xor);
+        ins(Opcode::Hash);
+        return ips::ValueType::Seed;
+    }
     if (const auto* pick = std::get_if<ips::SamplerPick>(&expr)) {
         emitExpr(*pick->receiver);
         if (pick->count) emitExpr(*pick->count);

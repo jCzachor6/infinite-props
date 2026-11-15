@@ -152,7 +152,8 @@ The same real diagnostic mutation corpus is checked by Python, the editor and
 the formal schema in `compiler_export_contracts`.
 
 Completion and hover signatures come from the selected `ipc --describe-language`
-catalogue (schema 6), including namespace constants and geometry/part handle types.
+catalogue (schema 7), including namespace constants, geometry/part handle types and
+the `seed` type.
 The executable identity invalidates the cache after a compiler change. Preview
 renders use `--omit-part-outputs`: images and ordinary outputs remain visible;
 typed snapshots/resources require a host API and are not serialized by the editor.

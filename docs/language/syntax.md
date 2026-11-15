@@ -28,8 +28,9 @@ A builtin has a bare name (`rect`, `lerp`) or one namespace and member
 constants, as in `voronoi.grid`. Helpers cannot use bare builtin names;
 import aliases cannot use namespace names, `voronoi` or `contour`.
 Asset declarations share one namespace and need distinct names; `seed` and
-`draw` cannot be declared. Locals and parameters may reuse builtin names:
-`rect = 2` does not hide `rect(...)`.
+`draw` cannot be declared. `seed` is also a helper parameter and result type.
+Locals and parameters may reuse builtin names: `rect = 2` does not hide
+`rect(...)`.
 
 <!-- example: ../../examples/language/errors/builtin-helper.ips -->
 

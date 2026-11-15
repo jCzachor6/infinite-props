@@ -4,7 +4,7 @@ const { compilerIdentity } = require("./formatting");
 
 // Signatures and namespace constants come from the selected compiler, never a second catalogue.
 function entries(catalogue) {
-    if (catalogue.schema_version !== 6) throw new Error("unsupported language catalogue");
+    if (catalogue.schema_version !== 7) throw new Error("unsupported language catalogue");
     const result = catalogue.builtins.map(b => ({ name: b.name, signatures: [...b.overloads, ...(b.variadic ? [b.variadic] : [])].map(o =>
         `${b.name}(${o.parameters.map(p => `${p.name}: ${p.type}`).join(", ")}${o === b.variadic ? ", ..." : ""}) -> ${o.result}`) }));
     const constants = new Set(catalogue.source_rules.surfaces?.alpha_modes || []);

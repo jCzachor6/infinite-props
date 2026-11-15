@@ -121,10 +121,14 @@
         },
         {
           "heading": "Distributions"
+        },
+        {
+          "heading": "Named seeds"
         }
       ],
       "examples": [
-        "point-distributions.ips"
+        "point-distributions.ips",
+        "named-seeds.ips"
       ]
     },
     {
@@ -387,7 +391,7 @@
         },
         {
           "before": "if (pattern == 1) {",
-          "after": "kind = pattern\n    if (pattern == 0) { kind = 1 + (hash(seed ^ 0x6d2b79f5) & 1) }\n    if (kind == 1) {"
+          "after": "kind = pattern\n    if (pattern == 0) { kind = choose(seed.initial().fork(\"pattern\"), 1, 2) }\n    if (kind == 1) {"
         }
       ]
     }
@@ -396,6 +400,7 @@
     "range": "Prefer `lower to upper`, which includes both ends; `range` keeps its own draws for existing generators.",
     "unit": "Prefer `0.0 to 1.0`, or `lower to upper` for the value itself.",
     "index": "Use it to select a palette element; for a number in a range write `lower to upper`.",
+    "hash": "To derive a seed from a seed and a name or index, prefer `.fork`: `seed.initial().fork(\"leaves\").fork(i)`.",
     "pixel": "Prefer one `rect` per row for areas; keep `pixel` for single dots.",
     "rgb": "For a random color, prefer a gradient draw (`dark to light with d`) to random channels.",
     "rgba": "For a random color, prefer a gradient draw (`dark to light with d`) to random channels.",

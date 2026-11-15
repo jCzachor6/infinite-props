@@ -1,0 +1,7 @@
+asset SeedArithmetic {
+  size 4x4
+  draw {
+    // A seed has no arithmetic: fork it, or read its bits with int(s).
+    next = seed.initial() + 1
+  }
+}

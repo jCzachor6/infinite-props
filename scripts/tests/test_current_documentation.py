@@ -36,7 +36,7 @@ class CurrentDocumentationTest(unittest.TestCase):
         # Implementation stages land on develop before the product-version
         # bump. Check their authored wire contracts without editing frozen 1.0.
         development = "\n".join((ROOT / file).read_text(encoding="utf-8") for file in
-                                ("spec/normal-maps-v1.1.md",))
+                                ("spec/normal-maps-v1.1.md", "spec/named-seeds-v1.1.md"))
         tables = "\n".join(re.findall(r"^\|.*Mnemonic.*\n(?:^\|.*\n)+", self.contract + "\n" + development, re.M))
         documented = set(re.findall(r"\| (0x[0-9A-Fa-f]+) \| `?([a-z][a-z0-9_.]*)(?=[ `|])", tables))
         self.assertEqual(documented, {(number, names[name]) for name, number in numbers.items()})

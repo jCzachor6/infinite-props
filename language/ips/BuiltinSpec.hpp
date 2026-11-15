@@ -17,10 +17,16 @@ namespace iprop::ips {
 
 enum class BuiltinLowering { Opcode, Round, Polygon, ColorConstructor, Pick, Chance, Roll, Choose, Beta, ListLength, SurfacePaint,
     NormalColor };
+// A seed parameter takes an i32 or a seed (named seeds v1.1); both arrive as
+// the same 32 bits. The role is part of the registry, never read off a name.
+enum class ParameterRole : u8 { Value, Seed };
 struct BuiltinParameter {
     std::string name;
     ValueType type;
+    ParameterRole role = ParameterRole::Value;
 };
+// Whether a parameter takes an argument of this type, widening included.
+bool parameterAccepts(const BuiltinParameter& parameter, ValueType argument);
 enum class BuiltinAdaptation { Direct, Coordinates, IntegerCoordinates, VectorAngle, VectorLerp };
 struct BuiltinOverload {
     std::vector<BuiltinParameter> params;
@@ -72,6 +78,19 @@ bool isBuiltinNamespace(std::string_view name);
 // taken when the squared length is zero or not finite.
 struct NormalColorValue { Color color; bool flat = false; };
 NormalColorValue normalColorValue(f32 x, f32 y, f32 z);
+// Named seeds (spec named seeds v1.1). FNV-1a 32 over bytes, pinned.
+constexpr u32 fnv1a32(std::string_view bytes) {
+    u32 h = 2166136261u;
+    for (const char c : bytes) h = (h ^ static_cast<u8>(c)) * 16777619u;
+    return h;
+}
+// The domain tags keep name keys and index keys apart: fork("12") is not fork(12).
+inline constexpr u32 kForkTextTag = fnv1a32("iprop.seed.fork/text/v1");
+inline constexpr u32 kForkIndexTag = fnv1a32("iprop.seed.fork/index/v1");
+// What x.fork("label") mixes into x: hash32(kForkTextTag ^ fnv1a32(label)),
+// computed while compiling by the VM's own hash instruction. The label is
+// the decoded bytes of the string literal.
+u32 forkLabelSalt(std::string_view label);
 // Choices preserve identical storable types; mixed numeric choices widen to f32.
 std::optional<ValueType> selectionType(std::span<const ValueType> arguments);
 

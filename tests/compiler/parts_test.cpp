@@ -389,7 +389,7 @@ TEST_CASE("named part control binding rejects missing duplicate unknown excessiv
         Case{"seed=0,v=0,a=0,a=1,at={0,0}", "duplicate 'a'"},
         Case{"seed=0,v=0,a=0,at={0,0},at={1,1}", "duplicate 'at'"},
         Case{"seed=0,v=0,a=0,at={0,0},varaint=2", "has no argument 'varaint'"},
-        Case{"seed=0.5,v=0,a=0,at={0,0}", "must be an integer"},
+        Case{"seed=0.5,v=0,a=0,at={0,0}", "seed must be an i32 or a seed, got f32"},
         Case{"seed=0,v=#fff,a=0,at={0,0}", "must be i32"},
         Case{"seed=0,v=0,a={0,0},at={0,0}", "must be i32"},
         Case{"seed=0,v=0,a=0,at=0", "'at' must be a vec2"},

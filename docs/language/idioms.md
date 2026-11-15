@@ -58,9 +58,10 @@ consume one draw.
 
 With all inputs at their defaults, seeds alone must produce visible variety:
 
-- Style 0 rolls from the seed; values from 1 force a look. Hash the seed:
-  `look = style; if (style == 0) { look = 1 + (hash(seed ^ 0x2f6b9a13) & 1) }`, so
-  rolled and explicitly chosen styles render alike.
+- Style 0 rolls from the seed; values from 1 force a look. Choose from a
+  [named seed](random.md#named-seeds), not the stream:
+  `look = style; if (style == 0) { look = choose(seed.initial().fork("look"), 1, 2) }`,
+  so rolled and explicitly chosen styles render alike.
 - Input defaults mean "roll it": `0` for `u32` style switches and a
   transparent color for color inputs, as in `input color tint = #00000000`
   read with `if (tint.a == 0) { base = hues[index(4)] }`.
@@ -69,7 +70,7 @@ With all inputs at their defaults, seeds alone must produce visible variety:
 ## Keep one silhouette across styles
 
 Styles of one seed should share a silhouette. Roll shape in its own stream,
-`stream.push(hash(seed ^ 0x51ed2701))` ... `stream.pop()`, before style choices.
+`stream.push(seed.initial().fork("shape"))` ... `stream.pop()`, before style choices.
 Make even unused rolls so styles do not shift later draws.
 
 ## Pass inputs to helpers
@@ -137,7 +138,7 @@ about 2,200.
 <!-- llm: skip -->
 With only a seed this banner never changes. Make the default `0` mean "roll
 it": `input u32 pattern = 0`, then
-`kind = pattern; if (pattern == 0) { kind = 1 + (hash(seed ^ 0x6d2b79f5) & 1) }`
+`kind = pattern; if (pattern == 0) { kind = choose(seed.initial().fork("pattern"), 1, 2) }`
 and branch on `kind`.
 
 ## Pitfalls

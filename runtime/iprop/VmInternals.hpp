@@ -65,6 +65,10 @@ struct Frame {
     std::vector<Value> locals; // params first, then declared locals
     std::vector<Value> stack;  // operand stack
     u32 stream = 0;            // current stream state
+    // The seed the running asset or part call started with (seed.initial,
+    // named seeds v1.1): the root's input seed or the seed of a part call.
+    // Helper frames inherit it; stream.push and stream.pop leave it alone.
+    u32 initialSeed = 0;
     std::vector<u32> savedStreams;
     std::size_t ip = 0; // instruction index within the function stream
     std::vector<Label> labels;

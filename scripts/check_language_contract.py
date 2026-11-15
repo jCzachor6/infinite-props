@@ -46,6 +46,7 @@ def main():
     storable_types += ['layer', 'mask']
     geometry_types = ['diagram2d', 'contours2d', 'regions2d', 'part2d', 'parts2d']
     storable_types += geometry_types
+    storable_types += ['seed']  # a source type carried in i32 slots (named seeds v1.1)
     assert rules['inputs'] == [
         {'source_type': 'color', 'binary_type': 'color', 'value_type': 'color'},
         {'source_type': 'f32', 'binary_type': 'f32', 'value_type': 'f32'},
@@ -116,6 +117,13 @@ def main():
         m['effects']['rng'] == 'none' and not m['effects']['writes_canvas'] for m in surface_methods)
     assert rules['surfaces']['blur']['maximum_sigma'] == 64
     assert rules['surfaces']['blur']['clip'] == 'paint_only'
+    named = rules['named_seeds']
+    assert not {'seed', 'fork', 'initial', 'key'} & set(rules['reserved_keywords'])
+    assert named['text_tag'] == 0x80d7e5dc and named['index_tag'] == 0x986d7397
+    assert named['initial_opcode'] == 'seed.initial' and named['fork_lowering'] == 'existing_instructions'
+    assert 'seed.initial' in {b['name'] for b in description['builtins']}
+    assert all(p.get('role') != 'seed' or p['type'] == 'i32'
+               for b in description['builtins'] for o in b['overloads'] for p in o['parameters'])
     normal = rules['normal_maps']
     assert not {'normal', 'encoding', 'depth', 'smoothing'} & set(rules['reserved_keywords'])
     assert normal['maximum_smoothing'] == 64 and normal['outputs_per_asset'] == 1 and normal['capture_mode_code'] == 3
@@ -269,6 +277,21 @@ def main():
         ('future vec2 constructor', 'draw{x=vec2(1,2)}', False),
         ('future circle constructor', 'draw{x=circle(1,2,3)}', False),
         ('rect drawing is not a value constructor', 'draw{x=rect(1,2,3,4,#fff)}', False),
+        # Named seeds (v1.1).
+        ('named seeds through helpers and seed arguments', 'draw{s=seed.initial().fork("a");t=wrap(s,2);'
+         'x=noise.value(1.0,2.0,t);y=roll(t,0,1);z=choose(t,1,2);stream.push(t);stream.pop();same=s==t} '
+         'wrap(b:seed,i:i32)->seed{return b.fork(i)}', True),
+        ('fork from an i32 snapshot with a named key', 'draw{start=seed;s=start.fork(key="rim");n=int(s)+1}', True),
+        ('fork and initial stay ordinary names', 'input i32 fork=1 draw{initial=fork} initial(x:i32)->i32{return x}', True),
+        ('seed arithmetic rejected', 'draw{x=seed.initial()+1}', False),
+        ('seed to i32 parameter rejected', 'draw{x=f(seed.initial())} f(v:i32)->i32{return v}', False),
+        ('i32 to seed parameter rejected', 'draw{x=f(1)} f(v:seed)->i32{return int(v)}', False),
+        ('f32 fork key rejected', 'draw{x=seed.fork(1.5)}', False),
+        ('initial of a stored seed rejected', 'draw{s=seed.initial();x=s.initial()}', False),
+        ('seed constant rejected', 'const seed s=1 draw{}', False),
+        ('seed list rejected', 'draw{x=[seed.initial()]}', False),
+        ('seed choices rejected', 'draw{x=pick(seed.initial(),seed.initial())}', False),
+        ('string outside fork rejected', 'draw{x="leaves"}', False),
     ]
     with tempfile.TemporaryDirectory(prefix='iprop-language-contract-') as directory:
         root = Path(directory)

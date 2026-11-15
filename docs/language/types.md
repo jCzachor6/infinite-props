@@ -16,6 +16,7 @@
 | `mask` | immutable [coverage view or A8 result](surfaces.md#masks-from-captured-alpha) | yes; same surface restrictions |
 | `diagram2d`, `contours2d`, `regions2d` | immutable [geometry handles](geometry.md#geometry-handles) | yes; no input, const or generic container |
 | `part2d`, `parts2d` | one immutable dynamic instance or a batch | yes; same handle restrictions |
+| `seed` | a [named seed](random.md#named-seeds): 32 bits, forked and compared | yes; no input, output, const or collection |
 | `circle`, `rect` | three/four numeric components for outputs | output writes only |
 | `void` | absence of a result | call statements only |
 
@@ -45,7 +46,8 @@ Initialize values before branching when needed later. Untouched slots retain
 their type's default value.
 
 Helpers have separate locals and read-only parameters. Inputs are read-only
-in `draw`; pass them to helpers. Both can read `seed` (current RNG state),
+in `draw`; pass them to helpers. Both can read `seed` (current RNG state, an
+`i32`), `seed.initial()`,
 palettes and [asset constants](assets.md#asset-constants). None can be assigned
 or shadowed. Constant initializers must match their declared type, except for
 i32-to-f32 widening.

@@ -26,6 +26,7 @@ add_executable(iprop_tests
     language/reserved_keywords_test.cpp
     language/named_arguments_test.cpp
     language/direct_seed_test.cpp
+    language/named_seeds_test.cpp
     language/diagnostic_hints_test.cpp
     language/source_printer_test.cpp
     language/recipe_gallery_test.cpp
@@ -262,6 +263,8 @@ if(IPROP_NODE_EXECUTABLE)
         "$<TARGET_FILE:geometry_representation_probe>")
     add_test(NAME noise_mask_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/backends/html5/test/noise-mask-conformance.js" "$<TARGET_FILE_DIR:ipc>")
+    add_test(NAME named_seeds_v11 COMMAND ${IPROP_NODE_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/backends/html5/test/named-seeds-conformance.js" "$<TARGET_FILE_DIR:ipc>")
     add_test(NAME normal_maps_v11 COMMAND ${IPROP_NODE_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/backends/html5/test/normal-map-conformance.js" "$<TARGET_FILE_DIR:ipc>"
         "$<TARGET_FILE:execution_limits_probe>")

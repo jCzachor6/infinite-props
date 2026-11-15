@@ -3,7 +3,7 @@
   "properties": {
     "schema_version": {
       "type": "integer",
-      "const": 6,
+      "const": 7,
       "description": "Language export protocol version, independent of language and product versions."
     },
     "product_version": {
@@ -116,7 +116,8 @@
                   "contours2d",
                   "regions2d",
                   "part2d",
-                  "parts2d"
+                  "parts2d",
+                  "seed"
                 ],
                 "description": "Types accepted by local values and uniform expression values."
               },
@@ -161,7 +162,8 @@
                   "contours2d",
                   "regions2d",
                   "part2d",
-                  "parts2d"
+                  "parts2d",
+                  "seed"
                 ],
                 "description": "Types accepted in typed helper parameters."
               },
@@ -206,7 +208,8 @@
                   "contours2d",
                   "regions2d",
                   "part2d",
-                  "parts2d"
+                  "parts2d",
+                  "seed"
                 ],
                 "description": "Types accepted by value-returning helpers."
               },
@@ -4291,6 +4294,296 @@
           ],
           "additionalProperties": true,
           "description": "Optional stage 10 typed part export policy in schema 5."
+        },
+        "named_seeds": {
+          "type": "object",
+          "description": "Named seed rules (v1.1): the seed type, seed.initial() and .fork. New in schema 7.",
+          "required": [
+            "type",
+            "type_keyword",
+            "representation",
+            "wire_type",
+            "seed_expression",
+            "initial_syntax",
+            "initial_opcode",
+            "initial_value",
+            "initial_effects",
+            "initial_constant",
+            "fork_syntax",
+            "fork_named_argument",
+            "fork_receivers",
+            "fork_result",
+            "fork_evaluation",
+            "fork_rng",
+            "fork_lowering",
+            "fork_mutates",
+            "fork_chain",
+            "label",
+            "label_hash",
+            "index_type",
+            "text_domain",
+            "text_tag",
+            "index_domain",
+            "index_tag",
+            "text_fork",
+            "index_fork",
+            "conversion",
+            "implicit_conversion",
+            "operators",
+            "seed_parameters",
+            "other_seed_arguments",
+            "helper_parameters",
+            "helper_returns",
+            "locals",
+            "host_inputs",
+            "outputs",
+            "asset_constants",
+            "materials",
+            "palettes",
+            "collections",
+            "samplers",
+            "steppers",
+            "choices"
+          ],
+          "properties": {
+            "type": {
+              "const": "seed",
+              "description": "The source type of a named seed."
+            },
+            "type_keyword": {
+              "const": "contextual_type_position",
+              "description": "`seed` names the type only where a type is expected; as an expression it still reads the stream state."
+            },
+            "representation": {
+              "const": "i32_bits_in_i32_slots",
+              "description": "A seed is its 32 bits, carried in the VM's i32 slots and on its stack."
+            },
+            "wire_type": {
+              "const": false,
+              "description": "No format, VM or host type carries a seed."
+            },
+            "seed_expression": {
+              "const": "current_stream_state_i32",
+              "description": "The `seed` expression keeps its meaning: the current stream state as an i32."
+            },
+            "initial_syntax": {
+              "const": "seed.initial()",
+              "description": "Reads the seed the running asset or part call started with."
+            },
+            "initial_opcode": {
+              "const": "seed.initial",
+              "description": "The instruction seed.initial() compiles to."
+            },
+            "initial_value": {
+              "type": "object",
+              "description": "What seed.initial() returns where it runs.",
+              "properties": {
+                "root": {
+                  "const": "generation_seed",
+                  "description": "In the entry asset: the seed the host passed."
+                },
+                "helper": {
+                  "const": "caller_value",
+                  "description": "In a helper: the value its caller reads."
+                },
+                "part": {
+                  "const": "seed_of_this_part_call",
+                  "description": "In a part: the seed of the call that is running it."
+                },
+                "stream_push": {
+                  "const": "unchanged",
+                  "description": "stream.push and stream.pop do not change it."
+                }
+              },
+              "required": [
+                "root",
+                "helper",
+                "part",
+                "stream_push"
+              ],
+              "additionalProperties": false
+            },
+            "initial_effects": {
+              "$ref": "#/$defs/effects",
+              "description": "Intrinsic effects of seed.initial()."
+            },
+            "initial_constant": {
+              "const": false,
+              "description": "seed.initial() is never a compile-time constant."
+            },
+            "fork_syntax": {
+              "const": "<i32 | seed>.fork(<string literal | i32>)",
+              "description": "Derives a seed from an i32 or a seed and a name or an index."
+            },
+            "fork_named_argument": {
+              "const": "key",
+              "description": "The optional name of fork's one argument."
+            },
+            "fork_receivers": {
+              "type": "array",
+              "const": [
+                "i32",
+                "seed"
+              ],
+              "items": {
+                "type": "string",
+                "description": "Receiver type."
+              },
+              "description": "Receiver types .fork accepts."
+            },
+            "fork_result": {
+              "const": "seed",
+              "description": "The type .fork returns."
+            },
+            "fork_evaluation": {
+              "const": "receiver_then_key_once",
+              "description": "The receiver, then the key, each evaluated once."
+            },
+            "fork_rng": {
+              "const": "none",
+              "description": ".fork itself reads and advances no stream; its operands keep their own effects."
+            },
+            "fork_lowering": {
+              "const": "existing_instructions",
+              "description": ".fork compiles to existing instructions; a string key is hashed while compiling."
+            },
+            "fork_mutates": {
+              "const": false,
+              "description": ".fork returns a new seed and changes neither its receiver nor any stream."
+            },
+            "fork_chain": {
+              "const": "ordered",
+              "description": "Chained forks apply in order; keys are never sorted or merged."
+            },
+            "label": {
+              "const": "string_literal_decoded_utf8_bytes_case_sensitive_no_normalization",
+              "description": "A name key is a string literal; its decoded UTF-8 bytes are hashed exactly."
+            },
+            "label_hash": {
+              "const": "fnv1a32",
+              "description": "The hash of a name key's bytes."
+            },
+            "index_type": {
+              "const": "i32",
+              "description": "The type of an index key."
+            },
+            "text_domain": {
+              "const": "iprop.seed.fork/text/v1",
+              "description": "Domain string of name keys."
+            },
+            "text_tag": {
+              "const": 2161632732,
+              "description": "FNV-1a 32 of text_domain."
+            },
+            "index_domain": {
+              "const": "iprop.seed.fork/index/v1",
+              "description": "Domain string of index keys."
+            },
+            "index_tag": {
+              "const": 2557309847,
+              "description": "FNV-1a 32 of index_domain."
+            },
+            "text_fork": {
+              "const": "hash32(base ^ hash32(text_tag ^ fnv1a32(label)))",
+              "description": "base.fork(label), with hash32 the VM's hash instruction, on u32 bits."
+            },
+            "index_fork": {
+              "const": "hash32(base ^ hash32(index_tag ^ index))",
+              "description": "base.fork(index), on the two's-complement bits of index."
+            },
+            "conversion": {
+              "const": "int(seed)",
+              "description": "Reads a seed's 32 bits as an i32."
+            },
+            "implicit_conversion": {
+              "const": false,
+              "description": "A seed never converts implicitly; int(s) is required for arithmetic, bits or f32."
+            },
+            "operators": {
+              "type": "array",
+              "const": [
+                "==",
+                "!="
+              ],
+              "items": {
+                "type": "string",
+                "description": "Operator."
+              },
+              "description": "Operators defined on two seeds."
+            },
+            "seed_parameters": {
+              "type": "array",
+              "uniqueItems": true,
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Builtin name."
+              },
+              "description": "Builtins with a parameter of role seed, which take an i32 or a seed."
+            },
+            "other_seed_arguments": {
+              "type": "array",
+              "const": [
+                "choose",
+                "part_call"
+              ],
+              "items": {
+                "type": "string",
+                "description": "Argument kind."
+              },
+              "description": "Other seed arguments that take an i32 or a seed: choose's first argument and a part call's seed."
+            },
+            "helper_parameters": {
+              "const": true,
+              "description": "Helpers may declare seed parameters."
+            },
+            "helper_returns": {
+              "const": true,
+              "description": "Helpers may return a seed."
+            },
+            "locals": {
+              "const": true,
+              "description": "A local takes the type seed from its first assignment."
+            },
+            "host_inputs": {
+              "const": false,
+              "description": "Host inputs cannot hold seeds."
+            },
+            "outputs": {
+              "const": false,
+              "description": "Outputs cannot hold seeds."
+            },
+            "asset_constants": {
+              "const": false,
+              "description": "Asset constants cannot hold seeds."
+            },
+            "materials": {
+              "const": false,
+              "description": "Material fields cannot hold seeds."
+            },
+            "palettes": {
+              "const": false,
+              "description": "Palettes cannot hold seeds."
+            },
+            "collections": {
+              "const": false,
+              "description": "Lists cannot hold seeds."
+            },
+            "samplers": {
+              "const": false,
+              "description": "Samplers cannot hold seeds."
+            },
+            "steppers": {
+              "const": false,
+              "description": "Steppers cannot hold seeds."
+            },
+            "choices": {
+              "const": false,
+              "description": "Choices of pick and choose cannot hold seeds."
+            }
+          },
+          "additionalProperties": true
         }
       },
       "required": [
@@ -4301,7 +4594,8 @@
         "named_calls",
         "restrictions",
         "effect_order",
-        "asset_constants"
+        "asset_constants",
+        "named_seeds"
       ],
       "additionalProperties": true,
       "description": "Source, binary storage and expression type mappings. Accepted source value categories and conversions."
@@ -4408,6 +4702,10 @@
           ],
           "additionalProperties": true,
           "description": "Output write accumulation policies."
+        },
+        "seed_initial": {
+          "$ref": "#/$defs/effects",
+          "description": "Reading seed.initial()."
         }
       },
       "required": [
@@ -4423,7 +4721,8 @@
         "part_output_read",
         "integer_division",
         "integer_remainder",
-        "output_write_policy"
+        "output_write_policy",
+        "seed_initial"
       ],
       "additionalProperties": true,
       "description": "Resource limits and operation summaries beyond builtin signatures."
@@ -4538,7 +4837,8 @@
             "read_current",
             "restore_stream",
             "seeded_computation",
-            "shared_callee_stream"
+            "shared_callee_stream",
+            "read_initial"
           ],
           "description": "Intrinsic stream interaction; arguments run first in the caller stream."
         },
@@ -4640,9 +4940,17 @@
             "contours2d",
             "regions2d",
             "part2d",
-            "parts2d"
+            "parts2d",
+            "seed"
           ],
           "description": "Source value type; T is a variadic choice template."
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "seed"
+          ],
+          "description": "Present on a seed parameter, which also takes a seed (named seeds v1.1)."
         }
       },
       "required": [
@@ -4704,7 +5012,8 @@
             "contours2d",
             "regions2d",
             "part2d",
-            "parts2d"
+            "parts2d",
+            "seed"
           ],
           "description": "Return value type; void produces no value."
         },
@@ -4817,7 +5126,8 @@
             "contours2d",
             "regions2d",
             "part2d",
-            "parts2d"
+            "parts2d",
+            "seed"
           ],
           "description": "Return value type; void produces no value."
         },
@@ -4971,6 +5281,13 @@
             }
           ],
           "description": "Optional slot default, including the imported input declaration."
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "seed"
+          ],
+          "description": "Present on a seed parameter, which also takes a seed (named seeds v1.1)."
         }
       },
       "required": [

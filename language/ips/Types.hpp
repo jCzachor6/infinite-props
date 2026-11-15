@@ -24,8 +24,13 @@ std::optional<ValueType> geometryType(std::string_view name);
 
 bool isNumeric(ValueType type);
 
-// Locals can hold scalars, vec2 and distributions.
+// Locals can hold scalars, vec2 and distributions, and seeds.
 bool isStorable(ValueType type);
+
+// The VM type that carries a source type: a seed travels as its 32 bits in
+// i32 slots and on the i32 stack. Every other type is its own. Function
+// signatures, locals and temporaries all lower through this one mapping.
+ValueType runtimeType(ValueType type);
 
 // Numeric mixing: identical types stay, mixed types promote to F32.
 // Precondition: both operands are numeric.

@@ -11,7 +11,7 @@ result in an operation with a checked domain can trap.
 <!-- builtin: int -->
 
 An `i32` is preserved exactly. An `f32` truncates toward zero with saturation
-to the signed 32-bit bounds; NaN becomes 0. Use this conversion for integer
+to the signed 32-bit bounds; NaN becomes 0. A `seed` gives its 32 bits. Use this conversion for integer
 pixel coordinates and conditions.
 
 ## float

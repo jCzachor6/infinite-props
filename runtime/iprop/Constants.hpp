@@ -215,6 +215,9 @@ enum class Opcode : u8 {
     // Height to directions (normal maps v1.1), previously reserved. Aux is
     // the receiver kind: 0 layer, 1 mask.
     SurfaceNormal = 0x6A,
+    // The seed the running asset or part call started with (named seeds
+    // v1.1), previously reserved. It reads no stream.
+    SeedInitial = 0x6B,
     PartGetPoint = 0x96,
     PartGetRect = 0x97,
     PartGetCircle = 0x98,

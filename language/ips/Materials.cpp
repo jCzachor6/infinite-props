@@ -76,6 +76,11 @@ std::unique_ptr<Expr> cloneExpr(const Expr& expr) {
                                              Arg{node.depth.name, cloneExpr(*node.depth.value), node.depth.location},
                                              std::move(smoothing), node.location}},
                           expr);
+            } else if constexpr (std::is_same_v<T, SeedFork>) {
+                return mk(Expr{SeedFork{cloneExpr(*node.receiver),
+                                        Arg{node.key.name, cloneExpr(*node.key.value), node.key.location},
+                                        node.location}},
+                          expr);
             } else {
                 std::vector<PointDistributionLiteral::Point> points;
                 for (const auto& point : node.points)
@@ -122,6 +127,8 @@ void forEachChild(Expr& expr, Visit&& visit) {
             } else if constexpr (std::is_same_v<T, SurfaceNormal>) {
                 visit(node.receiver); visit(node.depth.value);
                 if (node.smoothing) visit(node.smoothing->value);
+            } else if constexpr (std::is_same_v<T, SeedFork>) {
+                visit(node.receiver); visit(node.key.value);
             } else if constexpr (std::is_same_v<T, PointDistributionLiteral>) {
                 for (auto& point : node.points) { visit(point.key); visit(point.value); }
             }

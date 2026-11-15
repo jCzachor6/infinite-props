@@ -151,6 +151,15 @@ struct SurfaceNormal {
     SourceLocation location;
 };
 
+// `receiver.fork(key)`: a seed derived from an i32 or a seed (named seeds
+// v1.1). The key is a string literal, hashed while compiling, or an i32
+// expression. Receiver, then key, each once; the fork reads no stream.
+struct SeedFork {
+    std::unique_ptr<Expr> receiver;
+    Arg key;
+    SourceLocation location;
+};
+
 struct PointDistributionLiteral {
     struct Point {
         std::unique_ptr<Expr> key, value;
@@ -164,10 +173,10 @@ struct PointDistributionLiteral {
 struct Expr
     : std::variant<Literal, Identifier, Member, Call, VectorLit, ListLit, Index, Binary,
                    Unary, RandomRange, SamplerCapture, SamplerPick, ListMethod, SurfaceBlur, SurfaceNormal,
-                   PointDistributionLiteral> {
+                   SeedFork, PointDistributionLiteral> {
     using std::variant<Literal, Identifier, Member, Call, VectorLit, ListLit, Index,
                        Binary, Unary, RandomRange, SamplerCapture, SamplerPick, ListMethod, SurfaceBlur, SurfaceNormal,
-                       PointDistributionLiteral>::variant;
+                       SeedFork, PointDistributionLiteral>::variant;
     TokenRange sourceRange{};
     TokenRange sourceCoreRange{}; // excludes redundant outer parentheses
     // Nodes on the longest path down from this one, itself included. The
@@ -203,6 +212,7 @@ inline std::uint32_t childDepth(const Expr& expr) {
             visit(node.receiver); visit(node.depth.value);
             if (node.smoothing) visit(node.smoothing->value);
         }
+        else if constexpr (std::is_same_v<T, SeedFork>) { visit(node.receiver); visit(node.key.value); }
         else if constexpr (std::is_same_v<T, PointDistributionLiteral>) {
             for (const auto& point : node.points) { visit(point.key); visit(point.value); }
         } else {

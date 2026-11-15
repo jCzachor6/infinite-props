@@ -20,7 +20,9 @@ const Asset::Constant* findAssetConstant(const Program& program, const std::stri
 }
 
 bool constantBuiltin(const BuiltinSpec& spec, const BuiltinOverload& overload) {
-    if (!isStorable(overload.result)) return false;
+    // No constant is a seed (named seeds v1.1), so nothing reads one either.
+    if (!isStorable(overload.result) || overload.result == ValueType::Seed) return false;
+    for (const auto& parameter : overload.params) if (parameter.type == ValueType::Seed) return false;
     if (spec.lowering == BuiltinLowering::ListLength) return true;
     if (overload.opcode) return detail::isConstantOperation(*findOpcode(*overload.opcode));
     return spec.lowering == BuiltinLowering::Opcode || spec.lowering == BuiltinLowering::Round ||
@@ -112,6 +114,9 @@ public:
                 if (current_->type.isResource())
                     fail(current_->location, current_->type.isGeometry() ? "geometry handles depend on generation and cannot be const" :
                         "surface handles depend on generation and cannot be const");
+                if (current_->type == ParamType::Seed)
+                    fail(current_->location, "seeds depend on generation and cannot be const; derive one in a function, "
+                        "as in seed.initial().fork(\"name\")");
                 inspect(*current_->value, dependencies[i]);
             }
             pending[i] = dependencies[i].size();
@@ -277,6 +282,8 @@ private:
             fail(locationOf(expression), ".blur has generation effects and is not allowed");
         } else if (std::holds_alternative<SurfaceNormal>(expression)) {
             fail(locationOf(expression), ".normal has generation effects and is not allowed");
+        } else if (std::holds_alternative<SeedFork>(expression)) {
+            fail(locationOf(expression), ".fork derives a seed while the asset runs; no constant is a seed");
         } else if (std::holds_alternative<SamplerPick>(expression)) {
             fail(locationOf(expression), ".pick has RNG or generation effects and is not allowed");
         }

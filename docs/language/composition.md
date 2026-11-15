@@ -12,8 +12,9 @@ level's placement/D4 once; host indices still count geometry only.
 
 <!-- example: ../../examples/language/composition.ips -->
 
-`alias.draw(seed = seed, at = {x, y}, uniforms...)` requires an integer seed
-(positional or named) and named placement. Transforms/input overrides are
+`alias.draw(seed = seed, at = {x, y}, uniforms...)` requires an `i32` or
+[`seed`](random.md#named-seeds) (positional or named) and named placement.
+Inside the part, `seed.initial()` returns that call's seed. Transforms/input overrides are
 optional and named-only. `at` positions the part's origin.
 
 Extra positional arguments, unknown names and missing seed/placement are

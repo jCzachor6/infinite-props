@@ -94,8 +94,8 @@ TEST_CASE("seed-direct draws nest and accept numeric mixed choices") {
     })";
     CHECK(compileChecked(named) == compileChecked(positional));
     CHECK_NOTHROW(execute(compileChecked(named)));
-    semantic_test::expectCheckError(semantic_test::wrap("roll(1.0, 0, 1)"), "must be i32");
-    semantic_test::expectCheckError(semantic_test::wrap("choose(1.0, 10, 20)"), "seed must be i32");
+    semantic_test::expectCheckError(semantic_test::wrap("roll(1.0, 0, 1)"), "must be an i32 or a seed");
+    semantic_test::expectCheckError(semantic_test::wrap("choose(1.0, 10, 20)"), "seed must be an i32 or a seed");
     semantic_test::expectCheckError(semantic_test::wrap("choose(1)"), "at least one choice");
     semantic_test::expectCheckError(semantic_test::wrap("choose(1, 2, #fff)"), "matching storable types");
     semantic_test::expectCheckError(semantic_test::wrap("choose(seed=1, typo=2)"), "has no argument 'typo'");

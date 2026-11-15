@@ -155,6 +155,7 @@ Frame Execution::spareFrame() {
     spareFrames.pop_back();
     frame.functionIndex = 0;
     frame.stream = 0;
+    frame.initialSeed = 0;
     frame.ip = 0;
     frame.shareStream = false;
     frame.isPart = false;
@@ -200,6 +201,7 @@ void Execution::callFunction(u16 functionIndex) {
     next.functionIndex = functionIndex;
     next.stream = frames.back().stream; // spec §8.2: call frames share the stream
     next.shareStream = true;            // ...like a reference: state propagates back
+    next.initialSeed = frames.back().initialSeed; // a helper runs in its caller's call
     frames.push_back(std::move(next));
 }
 
@@ -248,6 +250,7 @@ void Execution::callPart(u16 partIndex, u8 transform) {
     next.functionIndex = static_cast<u16>(part.functionIndex);
     zeroLocals(next, fn);
     next.stream = seed; // spec §8.2: a part frame starts its own stream
+    next.initialSeed = seed; // ...and seed.initial() reads this call's seed
     next.isPart = true;
     ++frames.back().ip; // the caller resumes after the part.draw instruction
     frames.push_back(std::move(next));
@@ -463,6 +466,7 @@ void VM::setup(const LoadedFile& file, const GenerationInputs& inputs,
         root.locals.push_back(zeroValue(type));
     }
     root.stream = inputs.seed;
+    root.initialSeed = inputs.seed;
     impl_->ex.frames.push_back(std::move(root));
 
     // Global output slots, resolved names, and slot owners: root outputs

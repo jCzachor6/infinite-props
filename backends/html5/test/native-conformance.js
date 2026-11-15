@@ -137,7 +137,7 @@ function run(iprop, toolsDir, geometryProbes = {}) {
     let listMethodEvidence = {};
     let samplerEvidence = {};
     let stepperEvidence = {};
-    let blurEvidence = {}, compatibilityV08 = {}, noiseV09 = {}, noiseMaskV09 = {}, geometryV09 = {}, voronoiV09 = {}, contoursV09 = {}, regionsV09 = {}, gapBevelV09 = {}, dynamicPartsV09 = {}, partExportsV09 = {}, normalMaps = {};
+    let blurEvidence = {}, compatibilityV08 = {}, noiseV09 = {}, noiseMaskV09 = {}, geometryV09 = {}, voronoiV09 = {}, contoursV09 = {}, regionsV09 = {}, gapBevelV09 = {}, dynamicPartsV09 = {}, partExportsV09 = {}, normalMaps = {}, namedSeeds = {};
     let samplingPaletteEvidence = {}, pointDistributionEvidence = {}, densityEvidence = {}, surfaceEvidence = {}, sourceOverEvidence = {}, maskEvidence = {}, resourceExportEvidence = {};
     const failures = [];
     const declaredInputs = require("./declared-input-conformance.js").run(iprop, tool, temporary);
@@ -480,12 +480,13 @@ function run(iprop, toolsDir, geometryProbes = {}) {
         dynamicPartsV09 = require("./dynamic-parts-conformance.js").run(iprop, tool, temporary, {wasm:geometryProbes.dynamicPartsWasm});
         partExportsV09 = require("./part-exports-conformance.js").run(iprop, tool, temporary, {wasm:geometryProbes.partExportsWasm});
         normalMaps = require("./normal-map-conformance.js").run(iprop, tool, temporary);
+        namedSeeds = require("./named-seeds-conformance.js").run(iprop, tool, temporary);
     } finally {
         fs.rmSync(temporary, { recursive: true, force: true });
     }
     return { passed: failures.length === 0, failures, declaredInputs, comparisons, trapComparisons, vectorComparisons,
         vectorOverloads, colorComparisons, mathComparisons, constantComparisons, constantOverloads, collections: collectionEvidence, listMethods: listMethodEvidence,
-        samplers: samplerEvidence, steppers: stepperEvidence, samplingPalettes: samplingPaletteEvidence, pointDistributions: pointDistributionEvidence, density: densityEvidence, surfaces: surfaceEvidence, sourceOver: sourceOverEvidence, masks: maskEvidence, blur: blurEvidence, resourceExports: resourceExportEvidence, compatibilityV08, noiseV09, noiseMaskV09, geometryV09, voronoiV09, contoursV09, regionsV09, gapBevelV09, dynamicPartsV09, partExportsV09, normalMaps };
+        samplers: samplerEvidence, steppers: stepperEvidence, samplingPalettes: samplingPaletteEvidence, pointDistributions: pointDistributionEvidence, density: densityEvidence, surfaces: surfaceEvidence, sourceOver: sourceOverEvidence, masks: maskEvidence, blur: blurEvidence, resourceExports: resourceExportEvidence, compatibilityV08, noiseV09, noiseMaskV09, geometryV09, voronoiV09, contoursV09, regionsV09, gapBevelV09, dynamicPartsV09, partExportsV09, normalMaps, namedSeeds };
 }
 
 module.exports = { run, checkImage, nativeOutputs, wasmOutputs, wasmOutputBits };

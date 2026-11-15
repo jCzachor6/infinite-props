@@ -21,7 +21,6 @@ RNG, fuel and work. See [relief and normal maps](docs/language/relief.md), the
 - **Format and VM.** One opcode, `surface.normal` (0x6A); `layer.begin` mode 3
   for a direction capture; bit 0 of the resource-export flags marks a normal
   output. A 1.0 runtime rejects a program that uses any of them while loading.
-  Twelve opcode values remain unassigned.
 - **Fuel and work.** A conversion is charged at 60% of
   `1 + K + W*H*(5 + 2*K)` units, about the cost of a blur. Publication and the
   derived map cost work, not fuel.
@@ -44,6 +43,35 @@ RNG, fuel and work. See [relief and normal maps](docs/language/relief.md), the
   `tests/fixtures/normal-map-v1.1.json`; native and WASM agree on every byte,
   on fuel and on work. The shared pixel corpus becomes `IPXCRP02` and carries
   every auxiliary image through all seven bindings.
+
+### Named seeds (additive)
+
+`seed.initial().fork("leaves")` replaces hand-picked keys such as
+`hash(start ^ 0x6e1d3b07)`: a branch of the random structure named in the
+source, which keeps its values when draws are added elsewhere. Existing
+sources compile to identical bytecode and existing programs keep their image,
+outputs, RNG, fuel and work. See [named seeds](docs/language/random.md#named-seeds)
+and the [contract](spec/named-seeds-v1.1.md).
+
+- **Language.** `seed.initial()` reads the seed the running asset or part call
+  started with; draws and `stream.push` never change it. `x.fork("name")` and
+  `x.fork(i)` derive a seed from an `i32` or a seed, and chain:
+  `seed.initial().fork("clump").fork(ring).fork(i)`. `seed` is a new source
+  type for locals, helper parameters and results; every seed argument (`roll`,
+  `choose`, noise, `voronoi`, `weather`, `stream.push`, part calls) takes it as
+  well as an `i32`. Seeds compare with `==`/`!=` and convert only through
+  `int(s)`. `seed` itself still reads the stream state, and `fork`/`initial`
+  are not reserved.
+- **Format and VM.** One opcode, `seed.initial` (0x6B), one fuel. `.fork`
+  compiles to existing instructions (`i32.xor` and `hash`, with a name hashed
+  while compiling), so a program that only forks still loads on a 1.0 runtime.
+  Eleven opcode values remain unassigned.
+- **Language description.** Schema 7: the type `seed`, the effect
+  `read_initial`, `"role": "seed"` on seed parameters and
+  `source_rules.named_seeds`.
+- **Verification.** Vectors from an independent implementation of FNV-1a 32,
+  the domain tags and splitmix32 pin every fork; the website tree now forks
+  its rim, gap and clump seeds by name.
 
 ## v1.0.0 — 2026-11-10
 

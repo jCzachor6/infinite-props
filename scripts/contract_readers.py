@@ -8,7 +8,7 @@ import re
 from release_common import read_version_matrix
 from pathlib import PurePosixPath
 
-LANGUAGE_SCHEMA_VERSION = 6
+LANGUAGE_SCHEMA_VERSION = 7
 DIAGNOSTICS_SCHEMA_VERSION = 1
 DOCUMENTATION_SCHEMA_VERSION = 3
 VALUE_TYPES = {'i32', 'f32', 'color', 'vec2', 'distribution', 'circle', 'rect', 'void', 'T', 'palette<f32>', 'palette<color>', 'layer', 'mask'}
@@ -19,8 +19,10 @@ STEPPER_TYPES = {'stepper<' + item + '>' for item in ('i32', 'f32', 'color', 've
 DESCRIPTION_TYPES = SAMPLER_TYPES | STEPPER_TYPES
 LIST_TYPES = {'list<' + item + '>' for item in ({'i32', 'f32', 'color', 'vec2', 'distribution'} | DESCRIPTION_TYPES)}
 VALUE_TYPES |= LIST_TYPES | DESCRIPTION_TYPES
+VALUE_TYPES.add('seed')  # a source type (named seeds v1.1)
 RNG_EFFECTS = {'none', 'read_current', 'advance_current', 'push_seeded_stream', 'restore_stream',
-               'seeded_computation', 'isolated_seeded_stream', 'shared_callee_stream', 'isolated_callee_stream'}
+               'seeded_computation', 'isolated_seeded_stream', 'shared_callee_stream', 'isolated_callee_stream',
+               'read_initial'}
 TRAP_CHECKS = {'numeric_range', 'stream_stack_underflow', 'part_render_arguments', 'callee',
               'part_output_missing', 'part_output_context', 'divide_by_zero', 'integer_overflow', 'index_range', 'unassigned_handle', 'scope_depth'}
 EXITS = {'ok': 0, 'invalid_source': 1, 'cli_error': 2, 'internal_error': 3}
@@ -93,6 +95,9 @@ def ordered_signature(value, path, typed=True):
     for parameter in value['parameters']:
         obj(parameter, ['name', 'type'] if typed else ['name', 'required', 'positional'], path + '.parameter')
         names.append(text(parameter['name'], path + '.name', True))
+        # A seed parameter (named seeds v1.1) is an i32 slot that also takes a seed.
+        require('role' not in parameter or (parameter['role'] == 'seed' and parameter.get('type', 'i32') == 'i32'),
+                path + '.role')
         if typed:
             require(type(parameter['type']) is str and parameter['type'] in VALUE_TYPES, path + '.type')
         else:
@@ -111,6 +116,71 @@ def ordered_signature(value, path, typed=True):
     if typed:
         require(type(value.get('result')) is str and value['result'] in VALUE_TYPES, path + '.result')
         effects(value.get('effects'), path + '.effects')
+
+
+NAMED_SEEDS = {
+    'type': 'seed', 'type_keyword': 'contextual_type_position', 'representation': 'i32_bits_in_i32_slots',
+    'wire_type': False, 'seed_expression': 'current_stream_state_i32', 'initial_syntax': 'seed.initial()',
+    'initial_opcode': 'seed.initial',
+    'initial_value': {'root': 'generation_seed', 'helper': 'caller_value', 'part': 'seed_of_this_part_call',
+                      'stream_push': 'unchanged'},
+    'initial_constant': False, 'fork_syntax': '<i32 | seed>.fork(<string literal | i32>)',
+    'fork_named_argument': 'key', 'fork_receivers': ['i32', 'seed'], 'fork_result': 'seed',
+    'fork_evaluation': 'receiver_then_key_once', 'fork_rng': 'none', 'fork_lowering': 'existing_instructions',
+    'fork_mutates': False, 'fork_chain': 'ordered',
+    'label': 'string_literal_decoded_utf8_bytes_case_sensitive_no_normalization', 'label_hash': 'fnv1a32',
+    'index_type': 'i32', 'text_domain': 'iprop.seed.fork/text/v1', 'text_tag': 2161632732,
+    'index_domain': 'iprop.seed.fork/index/v1', 'index_tag': 2557309847,
+    'text_fork': 'hash32(base ^ hash32(text_tag ^ fnv1a32(label)))',
+    'index_fork': 'hash32(base ^ hash32(index_tag ^ index))', 'conversion': 'int(seed)',
+    'implicit_conversion': False, 'operators': ['==', '!='], 'other_seed_arguments': ['choose', 'part_call'],
+    'helper_parameters': True, 'helper_returns': True, 'locals': True, 'host_inputs': False, 'outputs': False,
+    'asset_constants': False, 'materials': False, 'palettes': False, 'collections': False, 'samplers': False,
+    'steppers': False, 'choices': False}
+
+
+def fnv1a32(data):
+    h = 2166136261
+    for byte in data:
+        h = ((h ^ byte) * 16777619) & 0xffffffff
+    return h
+
+
+def same_value(actual, wanted):
+    # Exact types too: a boolean is not accepted where a number is published.
+    if type(wanted) is dict:
+        return type(actual) is dict and actual.keys() == wanted.keys() and all(same_value(actual[k], wanted[k]) for k in wanted)
+    if type(wanted) is list:
+        return type(actual) is list and len(actual) == len(wanted) and all(same_value(a, w) for a, w in zip(actual, wanted))
+    if type(wanted) is bool or type(actual) is bool:
+        return type(actual) is type(wanted) and actual == wanted
+    return type(actual) in ({int, float} if type(wanted) is int else {type(wanted)}) and actual == wanted
+
+
+def read_named_seeds(value, rules):
+    named = obj(rules.get('named_seeds'), list(NAMED_SEEDS) + ['initial_effects', 'seed_parameters'], 'named seeds')
+    require(all(same_value(named[key], NAMED_SEEDS[key]) for key in NAMED_SEEDS), 'named seed policy')
+    # The tags are the FNV-1a 32 of their own domain strings.
+    require(named['text_tag'] == fnv1a32(named['text_domain'].encode()) and
+            named['index_tag'] == fnv1a32(named['index_domain'].encode()), 'named seed tags')
+    effects(named['initial_effects'], 'seed.initial effects')
+    require(named['initial_effects']['rng'] == 'read_initial' and not named['initial_effects']['writes_canvas'] and
+            not named['initial_effects']['writes_outputs'] and not named['initial_effects']['may_trap'], 'seed.initial effects')
+    builtins = {b['name']: b for b in value['builtins']}
+    seeded = strings(named['seed_parameters'], 'seed parameters', set(builtins), True)
+    for name, builtin in builtins.items():
+        roles = [p for o in builtin['overloads'] for p in o['parameters'] if p.get('role') == 'seed']
+        require((name in seeded) == bool(roles), 'seed parameter list: ' + name)
+    initial = builtins.get('seed.initial')
+    require(initial is not None and len(initial['overloads']) == 1, 'seed.initial builtin')
+    overload = initial['overloads'][0]
+    require(overload['parameters'] == [] and overload['result'] == 'seed' and overload.get('opcode') == 'seed.initial' and
+            overload['constant_evaluable'] is False and overload['effects'] == named['initial_effects'], 'seed.initial builtin')
+    conversions = [o for o in builtins['int']['overloads'] if o['parameters'][0]['type'] == 'seed']
+    require(len(conversions) == 1 and conversions[0]['result'] == 'i32' and 'opcode' not in conversions[0] and
+            conversions[0]['constant_evaluable'] is False, 'int(seed)')
+    require('seed' in rules['types']['storable'] and 'seed' in rules['types']['helper_parameters'] and
+            'seed' in rules['types']['helper_value_returns'], 'seed storage')
 
 
 def read_language(value):
@@ -199,7 +269,7 @@ def read_language(value):
     require(len(source_types) == len(set(source_types)), 'unique source input types')
     types = obj(rules['types'], ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry', 'point_value_type', 'implicit_widening', 'local_reassignment'], 'types')
     for key in ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry']:
-        strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else ({'i32', 'f32', 'color', 'vec2', 'distribution', 'layer', 'mask'} | LIST_TYPES | DESCRIPTION_TYPES | GEOMETRY_TYPES), True)
+        strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else ({'i32', 'f32', 'color', 'vec2', 'distribution', 'layer', 'mask', 'seed'} | LIST_TYPES | DESCRIPTION_TYPES | GEOMETRY_TYPES), True)
     if 'parameterized' in types:
         parameters = types['parameterized']
         require(type(parameters) is list and 1 <= len(parameters) <= 3, 'parameterized type descriptors')
@@ -418,6 +488,8 @@ def read_language(value):
             overload['evaluation_order'] == ['x', 'y', 'z'] and overload['constant_evaluable'] is True and
             'opcode' not in overload and overload['effects']['rng'] == 'none' and
             not overload['effects']['writes_canvas'] and not overload['effects']['may_trap'], 'color.normal builtin')
+    if 'named_seeds' in rules:  # required by schema 7; reduced fixtures omit it
+        read_named_seeds(value, rules)
     if 'resource_exports' in rules:
         exports = rules['resource_exports']
         _strings_and_bools(exports, {

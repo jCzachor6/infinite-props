@@ -257,6 +257,11 @@ std::unique_ptr<Expr> ParserImpl::parsePostfixAfter(std::unique_ptr<Expr> expr) 
                 std::optional<Arg> smoothing;
                 if (args.size() == 2) smoothing = std::move(args[1]);
                 expr = node(SurfaceNormal{std::move(member->object), std::move(args[0]), std::move(smoothing), at});
+            } else if (member && member->name == "fork") {
+                // `x.fork("label")` or `x.fork(i)`: a seed derived from x (named seeds v1.1).
+                if (args.size() != 1 || (args[0].name && *args[0].name != "key"))
+                    throw SourceError{at, ".fork takes one key, a string literal or an i32, optionally named 'key'"};
+                expr = node(SeedFork{std::move(member->object), std::move(args[0]), at});
             } else if (member && (member->name == "distinct" || member->name == "sort")) {
                 if (!args.empty()) throw SourceError{at, "." + member->name + " takes no arguments"};
                 expr = node(ListMethod{std::move(member->object), member->name, at});

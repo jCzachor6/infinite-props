@@ -63,7 +63,9 @@ void Emitter::emitConst(const Value& value) {
     }
 }
 
-TemporaryLocals::Lease Emitter::temporary(ips::ValueType type) {
+TemporaryLocals::Lease Emitter::temporary(ips::ValueType source) {
+    // A seed waits in an i32 slot, like every other seed slot.
+    const auto type = ips::runtimeType(source);
     // Pool exhaustion stays a PoolLimit; only the local table is located here.
     if (type.needsDescriptor()) plan_.pools.addType(type);
     else if (type != ips::ValueType::I32 && type != ips::ValueType::F32 && type != ips::ValueType::Vec2 &&

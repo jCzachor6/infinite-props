@@ -326,6 +326,10 @@ class SourcePrinter {
                 out_ << ')';
             } else if constexpr (std::is_same_v<T, ListMethod>) {
                 expression(*node.receiver); out_ << '.' << node.name << "()";
+            } else if constexpr (std::is_same_v<T, SeedFork>) {
+                expression(*node.receiver); out_ << ".fork(";
+                if (node.key.name) out_ << "key = ";
+                expression(*node.key.value); out_ << ')';
             } else if constexpr (std::is_same_v<T, PointDistributionLiteral>) {
                 out_ << std::string(math::pointDistributionSpec(node.family)->name) << " {";
                 for (std::size_t i = 0; i < node.points.size(); ++i) {

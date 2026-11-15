@@ -2,6 +2,7 @@
 
 Random operations use a deterministic 32-bit stream. `seed` reads its state;
 `saved = seed` saves a snapshot. Draw order/count affects later results.
+[Named seeds](#named-seeds) do not depend on that order.
 Explicitly seeded hash/noise leaves the stream unchanged, apart from argument
 effects. Compiler effects distinguish `read_current`, `advance_current`, seeded
 computation, isolated streams and push/restore; execution limits apply separately.
@@ -247,6 +248,57 @@ and finite, on the natural range `min` to `max` (0 to 1 when omitted;
 `min < max`). `alpha < beta` favours the low end, `alpha > beta` the high end,
 equal values above 1 the middle, and values below 1 both ends.
 
+## Named seeds
+
+`seed.initial()` returns the seed the running asset or part call started with:
+the generation seed in the entry asset, the call's seed in a part, the caller's
+in a helper. Draws and `stream.push` never change it. `x.fork(key)` derives a
+`seed` from an `i32` or `seed` receiver and a key: a string literal or an `i32`.
+A fork reads and advances no stream and changes nothing, so a named branch
+keeps its values when draws are added before it:
+
+```ips
+leaves = seed.initial().fork("leaves")
+for i in 0..4 {
+  leaf = leaves.fork(i)                 // one seed per index
+  x = roll(leaf.fork("x"), 1.0, 14.0)
+}
+clump = seed.initial().fork("clump").fork(ring).fork(i)
+```
+
+`seed` still reads the current stream, so `seed.fork("x")` moves when a draw
+is added before it; fork from `start = seed` (an `i32`) to branch from one
+chosen point. Keys are ordered and typed: `s.fork("a").fork(1)` differs from
+`s.fork(1).fork("a")`, and `fork("12")` from `fork(12)`. The receiver is
+evaluated before the key, once each.
+
+A `seed` is a source type for locals, helper parameters and results, and every
+seed argument (`roll`, `choose`, noise, `voronoi`, `weather`, `stream.push`, a
+part call) takes it as well as an `i32`. Seeds compare with `==` and `!=`;
+`int(s)` reads their 32 bits for anything else. They cannot be inputs, outputs,
+constants, material fields, palette or list elements, samplers or choices.
+
+<!-- llm: skip -->
+A name key hashes the literal's decoded UTF-8 bytes exactly, case-sensitive and
+unnormalized, while compiling; an index key hashes its two's-complement bits at
+run time. Both lower to existing instructions. Changing a key, or rewriting
+`hash(start ^ 0x6e1d3b07)` as a fork, changes the derived seed and so the
+picture. `fork` and `initial` are not reserved. See the
+[named seeds contract](../../spec/named-seeds-v1.1.md).
+
+<!-- example: ../../examples/language/named-seeds.ips -->
+
+<!-- example: ../../examples/language/errors/seed-arithmetic.ips -->
+
+<!-- llm: skip -->
+This example is intentionally rejected: write `s.fork(1)` for a next seed.
+
+## seed.initial
+<!-- builtin: seed.initial -->
+
+The seed of the running asset or part call, as a `seed`; one fuel, never a
+compile-time constant.
+
 ## unit
 <!-- builtin: unit -->
 
@@ -284,14 +336,14 @@ even when `p <= 0`, `p >= 1`, or `p` is NaN. NaN yields false.
 ## roll
 <!-- builtin: roll -->
 
-Draws a range using an explicit `i32` seed. Arguments evaluate in signature
+Draws a range using an explicit `i32` or `seed`. Arguments evaluate in signature
 order before seed isolation. The isolated operation consumes one draw and
 restores the outer stream to its state after argument evaluation.
 
 ## choose
 <!-- builtin: choose -->
 
-Selects from one or more eager typed choices using an explicit seed. Choice
+Selects from one or more eager typed choices using an explicit `i32` or `seed`. Choice
 type rules match multi-choice `pick`. A single choice still performs an
 isolated draw. Nested isolated calls restore each caller's stream. Named
 arguments are `seed`, `value0`, `value1`, etc.
@@ -300,14 +352,14 @@ arguments are `seed`, `value0`, `value1`, etc.
 <!-- builtin: hash -->
 
 Returns the frozen splitmix32 hash of the argument's bit pattern as `i32`.
-It does not change the current stream. It is useful for deriving independent
-seeds from a saved seed and a coordinate or index.
+It does not change the current stream. For seeds derived from a seed and a
+name or index, prefer [`.fork`](#named-seeds).
 
 ## stream.push
 <!-- builtin: stream.push -->
 
-Saves the current stream and derives a nested stream from the supplied seed
-according to the VM contract. Pair it with `stream.pop` before returning.
+Saves the current stream and derives a nested stream from the supplied `i32`
+or `seed` according to the VM contract. Pair it with `stream.pop` before returning.
 This is stream derivation, not the direct seed assignment used by `roll`.
 
 ## stream.pop

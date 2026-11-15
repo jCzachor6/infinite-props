@@ -271,6 +271,7 @@ ValueType Typer::typeListMethod(const Expr& expr, const ListMethod& method, std:
 ValueType Typer::infer(const Expr& expr) {
     if (const auto* blur = std::get_if<SurfaceBlur>(&expr)) return typeBlur(expr, *blur);
     if (const auto* normal = std::get_if<SurfaceNormal>(&expr)) return typeNormal(expr, *normal);
+    if (const auto* fork = std::get_if<SeedFork>(&expr)) return typeFork(*fork);
     if (const auto* lit = std::get_if<Literal>(&expr)) return typeLiteral(*lit);
     if (const auto* id = std::get_if<Identifier>(&expr)) return typeIdentifier(expr, *id);
     if (const auto* member = std::get_if<Member>(&expr)) return typeMember(expr, *member);
@@ -341,6 +342,35 @@ ValueType Typer::typeNormal(const Expr& expr, const SurfaceNormal& normal) {
     if (!overload) error(normal.location, ".normal takes an f32 depth and an optional f32 smoothing");
     resolutions_[&expr].overload = overload;
     return overload->result;
+}
+
+// `receiver.fork(key)` (named seeds v1.1). A string key is hashed while
+// compiling and has no value type of its own, so it is never typed as an
+// expression: string literals stay invalid everywhere else.
+ValueType Typer::typeFork(const SeedFork& fork) {
+    const auto receiver = typeOf(*fork.receiver);
+    if (receiver != ValueType::I32 && receiver != ValueType::Seed)
+        error(fork.location, ".fork needs an i32 or a seed receiver, got " + std::string(typeName(receiver)));
+    const auto* label = std::get_if<Literal>(fork.key.value.get());
+    if (label && label->kind == Literal::Kind::String) return ValueType::Seed;
+    const auto key = typeOf(*fork.key.value);
+    if (key != ValueType::I32)
+        error(locationOf(*fork.key.value), ".fork key must be a string literal or an i32, got " +
+            std::string(typeName(key)) + (key == ValueType::Seed ? "; int(s) reads a seed's 32 bits" : ""));
+    return ValueType::Seed;
+}
+
+// Seeds compare for equality only; everything else reads their bits first.
+ValueType Typer::typeSeedOperands(const Binary& binary, ValueType left, ValueType right) const {
+    const bool equality = binary.op == Binary::Op::Eq || binary.op == Binary::Op::Ne;
+    if (equality && left == right) return ValueType::I32;
+    error(binary.location, std::string(equality ? "comparison" : "this operator") + " does not support " +
+        typeName(left) + " and " + typeName(right) + (equality ? "; compare two seeds, or read a seed's bits with int(s)" :
+        "; a seed only forks and compares with == and !=; int(s) reads its 32 bits"));
+}
+
+void Typer::failSeedOperand(const Unary& unary) const {
+    error(unary.location, "a seed has no unary operators; int(s) reads its 32 bits");
 }
 
 ValueType Typer::typeMember(const Expr& expr, const Member& member) {
@@ -441,7 +471,7 @@ ValueType Typer::typeLiteral(const Literal& lit) {
         return ValueType::Color;
     case Literal::Kind::String:
         error(lit.location,
-              "string literals are only valid as import paths");
+              "string literals are only valid as import paths and .fork keys");
     }
     error(lit.location, "unknown literal kind");
 }
@@ -660,6 +690,7 @@ ValueType Typer::typeRandomRange(const RandomRange& range) {
 ValueType Typer::typeBinary(const Binary& bin) {
     const ValueType left = typeOf(*bin.left);
     const ValueType right = typeOf(*bin.right);
+    if (left == ValueType::Seed || right == ValueType::Seed) return typeSeedOperands(bin, left, right);
     switch (bin.op) {
     case Binary::Op::Add:
     case Binary::Op::Sub:
@@ -727,6 +758,7 @@ ValueType Typer::typeBinary(const Binary& bin) {
 
 ValueType Typer::typeUnary(const Unary& un) {
     const ValueType operand = typeOf(*un.operand);
+    if (operand == ValueType::Seed) failSeedOperand(un);
     switch (un.op) {
     case Unary::Op::Neg:
         if (!isNumeric(operand) && operand != ValueType::Vec2) {

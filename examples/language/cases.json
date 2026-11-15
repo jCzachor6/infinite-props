@@ -88,6 +88,8 @@
     {"file": "functions.ips", "expect": "pass"},
     {"file": "call-effects.ips", "expect": "pass"},
     {"file": "random.ips", "expect": "pass"},
+    {"file": "named-seeds.ips", "expect": "pass"},
+    {"file": "errors/seed-arithmetic.ips", "expect": "compile-error", "message": "a seed only forks and compares with == and !="},
     {"file": "math.ips", "expect": "pass"},
     {"file": "math-bounds.ips", "expect": "pass"},
     {"file": "drawing.ips", "expect": "pass"},

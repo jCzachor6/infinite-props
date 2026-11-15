@@ -496,11 +496,14 @@ Function ParserImpl::parseFunctionAfterName(const Token& name) {
 ParamType ParserImpl::parseParamType(bool insideList) {
     if (kind() == TokenKind::Identifier) {
         if (const auto type = geometryType(peek().text)) { advance(); return *type; }
+        // `seed` names a type only here; elsewhere it reads the stream state.
+        if (peek().text == "seed") { advance(); return ParamType::Seed; }
     }
     if (kind() == TokenKind::KeywordList && kind(1) == TokenKind::Less) {
         advance(); advance();
         if (kind() == TokenKind::KeywordList) failHere("nested lists are not supported");
         const auto item = parseParamType(true);
+        if (item == ParamType::Seed) failHere("lists of seeds are not supported; fork one seed per index instead");
         if (!item.isScalar() && !item.isDescription())
             failHere(item.isGeometry() ? "lists of geometry handles are not supported" : "lists of surfaces are not supported");
         if (listTypeClosed_) listTypeClosed_ = false;
@@ -545,7 +548,7 @@ ParamType ParserImpl::parseParamType(bool insideList) {
         advance();
         return ParamType::Mask;
     default:
-        failExpected("a parameter type (i32, f32, color, vec2, distribution, list<T>, sampler<T>, stepper<T>, layer, mask, diagram2d, contours2d, regions2d, part2d or parts2d)");
+        failExpected("a parameter type (i32, f32, color, vec2, distribution, list<T>, sampler<T>, stepper<T>, layer, mask, diagram2d, contours2d, regions2d, part2d, parts2d or seed)");
     }
 }
 

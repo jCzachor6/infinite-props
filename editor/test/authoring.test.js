@@ -52,3 +52,17 @@ test("the grammar highlights every builtin the compiler reports, and no retired 
         "refill(1)", "rect = 2"])
         assert.equal(builtin.test(source), false, source);
 });
+
+test("named seeds highlight only where the grammar gives them a meaning", () => {
+    const grammar = JSON.parse(fs.readFileSync(path.join(__dirname, "../syntaxes/ips.tmLanguage.json"), "utf8"));
+    const type = new RegExp(grammar.repository.seedType.match);
+    const method = new RegExp(grammar.repository.seedMethod.match);
+    const builtin = new RegExp(grammar.repository.builtins.match);
+    assert.equal(type.exec("wrap(base: seed) -> seed {")[1], "seed");
+    // As an expression `seed` still reads the stream; `fork` stays an ordinary name.
+    for (const source of ["x = seed", "start = seed ^ 1", "x = seed.fork(1)"]) assert.equal(type.test(source), false, source);
+    assert.ok(method.test("leaves.fork(\"leaf\")"));
+    assert.equal(method.test("fork(1)"), false);
+    assert.equal(builtin.exec("x = seed.initial()")[1], "seed.initial");
+    assert.equal(builtin.test("x = seed.fork(1)"), false);
+});

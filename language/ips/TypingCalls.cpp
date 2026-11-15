@@ -62,6 +62,8 @@ ValueType Typer::typeMemberCall(const Call& call) {
     // import alias cannot be a builtin namespace, so the first segment
     // tells a namespace member from a part call.
     const Path path = flatten(*call.callee);
+    if (std::get<Member>(*call.callee).name == "initial" && !(path.base == "seed" && path.segments.size() == 1))
+        failInitialReceiver(call);
     if (!path.segments.empty()) {
         std::string full = path.base;
         for (const std::string& segment : path.segments) {
@@ -135,10 +137,10 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
     }
     if (signature.lowering == BuiltinLowering::Pick || signature.lowering == BuiltinLowering::Choose) {
         const std::size_t first = signature.lowering == BuiltinLowering::Choose ? 1 : 0;
-        if (first && typeOf(*args[0]->value) != ValueType::I32)
-            error(locationOf(*args[0]->value), "choose seed must be i32");
+        if (first) checkSeedArgument(*args[0]->value, "choose seed");
         std::vector<ValueType> types;
         for (std::size_t i = first; i < args.size(); ++i) types.push_back(typeOf(*args[i]->value));
+        if (std::find(types.begin(), types.end(), ValueType::Seed) != types.end()) failSeedChoice(call, name.name);
         const auto result = selectionType(types);
         if (!result) error(call.location, name.name + " choices must have matching storable types or be numeric");
         return *result;
@@ -179,12 +181,9 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
         return overload->result;
     }
     const auto* arityMatch = builtinOverload(signature, args.size());
-    for (std::size_t i = 0; i < args.size(); ++i) {
-        const auto expected = arityMatch->params[i].type;
-        if (!argFits(expected, types[i]))
-            error(locationOf(*args[i]->value), "argument " + std::to_string(i + 1) + " of '" + name.name +
-                "' must be " + typeName(expected) + ", got " + typeName(types[i]));
-    }
+    for (std::size_t i = 0; i < args.size(); ++i)
+        if (!parameterAccepts(arityMatch->params[i], types[i]))
+            failBuiltinArgument(*args[i]->value, i, name.name, arityMatch->params[i], types[i]);
     error(call.location, "no matching overload for '" + name.name + "'");
 }
 
@@ -219,7 +218,39 @@ void Typer::failUndefinedFunction(const Identifier& name, const Call& call) cons
 void Typer::failArgument(const Expr& argument, std::size_t index, const std::string& function,
                          ValueType expected, ValueType got) const {
     error(locationOf(argument), "argument " + std::to_string(index + 1) + " of '" + function +
-                                    "' must be " + typeName(expected) + ", got " + typeName(got));
+                                    "' must be " + typeName(expected) + ", got " + typeName(got) + seedHint(expected, got));
+}
+
+void Typer::failBuiltinArgument(const Expr& argument, std::size_t index, const std::string& function,
+                                const BuiltinParameter& parameter, ValueType got) const {
+    if (parameter.role == ParameterRole::Seed)
+        error(locationOf(argument), "argument " + std::to_string(index + 1) + " of '" + function +
+                                        "' must be an i32 or a seed, got " + typeName(got));
+    failArgument(argument, index, function, parameter.type, got);
+}
+
+// Named seeds (v1.1) convert only on request, so say how.
+std::string Typer::seedHint(ValueType expected, ValueType got) {
+    if (got == ValueType::Seed) return "; int(s) reads a seed's 32 bits";
+    if (expected == ValueType::Seed && got == ValueType::I32)
+        return "; derive a seed with x.fork(\"name\") or read seed.initial()";
+    return {};
+}
+
+void Typer::checkSeedArgument(const Expr& argument, const char* what) {
+    const auto type = typeOf(argument);
+    if (type != ValueType::I32 && type != ValueType::Seed)
+        error(locationOf(argument), std::string(what) + " must be an i32 or a seed, got " + typeName(type));
+}
+
+void Typer::failSeedChoice(const Call& call, const std::string& function) const {
+    error(call.location, function + " cannot choose between seeds; choose an index and fork with it, "
+                                    "as in s.fork(index(n))");
+}
+
+void Typer::failInitialReceiver(const Call& call) const {
+    error(std::get<Member>(*call.callee).location, "only seed.initial() reads the seed this asset or part call "
+          "started with; a seed value keeps no history");
 }
 
 // `part.draw(seed = seed, at = {x, y}, uniforms...)`
@@ -236,10 +267,7 @@ ValueType Typer::typePartCall(const Call& call) {
 
     const auto bound = bind(call, partCallSignature(part->inputs), path.base + ".draw");
     const auto& args = bound.arguments;
-    const auto seed = typeOf(*args[kPartSeedSlot]->value);
-    if (seed != ValueType::I32)
-        error(locationOf(*args[kPartSeedSlot]->value), "part call argument must be an integer, got " +
-              std::string(typeName(seed)));
+    checkSeedArgument(*args[kPartSeedSlot]->value, "a part's seed");
     const auto placement = typeOf(*args[kPartAtSlot]->value);
     if (placement != ValueType::Vec2)
         error(locationOf(*args[kPartAtSlot]->value), "'at' must be a vec2 {x, y}, got " +
