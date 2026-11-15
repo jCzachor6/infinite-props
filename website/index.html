@@ -137,7 +137,7 @@
       <div class="first-prop__text">
         <p class="eyebrow">The simplest example</p>
         <h2 class="section-title" id="first-prop-title">One program, <b>a whole top&#8209;down forest</b></h2>
-        <p class="lead">A program does not describe one picture. It describes a <em>kind</em> of thing, and a seed picks one. This tree is three small files: <code>tree.ips</code> lays rings of leaf clumps from the rim to the top, bulges the rim with smooth noise and opens gaps into the crown with a noise mask, <code>clump.ips</code>, a part of its own, draws one clump lit from the upper left in a five-tone ramp, over its own shadow, and <code>foliage.ips</code> is the leaf material both share: a colour and the shadow, light and rim that follow it. Leaves draw from seven colour ranges: deep, olive, lime and blue-green most of the time, now and then autumn reds, oranges and golds.</p>
+        <p class="lead">A program does not describe one picture. It describes a <em>kind</em> of thing, and a seed picks one. This tree is three small files: <code>tree.ips</code> lays rings of leaf clumps and opens gaps in the crown, <code>clump.ips</code> draws one clump, and <code>foliage.ips</code> holds the leaf colours they share. Each tree also makes its own normal map from the same seed, and the page uses it to shade the forest under a lamp.</p>
         <div class="code-tabs" data-code-tabs>
           <div class="code-tabs__bar">
             <div role="tablist" aria-label="The tree's source files">
@@ -157,7 +157,7 @@
 <!-- @forest-tree *36 -->
         </div>
         <div class="forest__foot">
-          <p class="forest__note">Compiled into one <span data-forest-size>1.8 KB</span> <code>.iprop</code>, rendered right here: every tree is one seed. Each tree also makes its own normal map, the direction every leaf faces: move the pointer over the forest, or tap it, and a lamp shades the canopy.</p>
+          <p class="forest__note">Compiled into one <span data-forest-size>1.8 KB</span> <code>.iprop</code>, rendered right here: every tree is one seed. Move the pointer over the forest, or tap it, and the lamp follows.</p>
           <button class="btn" type="button" data-forest-roll disabled>Roll new trees</button>
         </div>
       </div>
