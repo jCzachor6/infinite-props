@@ -279,12 +279,31 @@ function shownTrees() {
         .filter((cell) => cell.offsetParent !== null);
 }
 
+// The crown and its shadow fill the middle 144 of the 176 canvas.
+const TREE_VIEW = 144;
+const TREE_CROP = 16;
+
+// A tree as generated: its image and the normal map the same program
+// publishes (tree.ips: `output normal relief`), and what its cell shows now.
+const enum Shown { Generated, Lit, Unlit }
+interface Planted {
+    image: ImageData;
+    normal: ImageData | null;
+    shown: Shown;
+    // Made when the lamp first reaches the tree: its opaque pixels in the
+    // view, packed as y << 8 | x, and the image the lamp shades into.
+    spots: Uint16Array | null;
+    shaded: ImageData | null;
+}
+const planted = new WeakMap<HTMLElement, Planted>();
+
 function plantTree(cell: HTMLElement) {
     const seed = (Math.random() * SEED_LIMIT) >>> 0;
-    // The crown and its shadow fill the middle 144 of the 176 canvas.
     const canvas = cell.querySelector("canvas")!;
-    canvas.width = canvas.height = 144;
-    canvas.getContext("2d")!.putImageData(render("tree", seed).image, -16, -16);
+    canvas.width = canvas.height = TREE_VIEW;
+    const { image, normal } = render("tree", seed);
+    canvas.getContext("2d")!.putImageData(image, -TREE_CROP, -TREE_CROP);
+    planted.set(cell, { image, normal, shown: Shown.Generated, spots: null, shaded: null });
     cell.querySelector("figcaption")!.textContent = `seed ${seed.toString(16).padStart(8, "0")}`;
     cell.dataset.planted = "";
 }
@@ -294,6 +313,110 @@ function drawForest() {
     const cells = shownTrees();
     if (forestRoll) forestRoll.textContent = `Roll ${cells.length} new trees`;
     for (const cell of cells) plantTree(cell);
+    relight();
+}
+
+// ---- a lamp over the forest ---------------------------------------------------------------
+
+// The pointer carries a lamp over the canopy, and the page shades every tree
+// the way a game engine lights a sprite: a pixel's brightness is the ambient
+// light plus the lamp's, by how squarely the direction stored in the normal
+// map faces the lamp and how far away it hangs. Brightness moves in a few
+// steps, so the pixel art stays crisp. Without a pointer over the forest
+// every tree shows exactly its generated image.
+let lamp: { x: number; y: number } | null = null;
+let lighting = 0;
+// How far the lamp's light carries and how high it hangs, in tree pixels.
+const LAMP_REACH = TREE_VIEW * 4.8;
+const LAMP_HEIGHT = TREE_VIEW * 0.8;
+// The light without the lamp, the lamp at full strength, and the steps of brightness.
+const AMBIENT = 0.4;
+const LAMP_POWER = 0.9;
+const LIGHT_STEPS = 10;
+
+// The opaque pixels of a tree's view: the lamp shades only these.
+function opaqueSpots(image: ImageData) {
+    const data = image.data, spots: number[] = [];
+    for (let y = 0; y < TREE_VIEW; ++y) {
+        for (let x = 0; x < TREE_VIEW; ++x) {
+            if (data[((y + TREE_CROP) * image.width + x + TREE_CROP) * 4 + 3] !== 0) spots.push(y << 8 | x);
+        }
+    }
+    return Uint16Array.from(spots);
+}
+
+// One tree under a lamp at (lx, ly) in the tree's own pixels; a lamp out of
+// reach leaves the ambient light alone.
+function shadeTree(canvas: HTMLCanvasElement, tree: Planted, lx: number, ly: number, inReach: boolean) {
+    const colour = tree.image.data, direction = tree.normal!.data, stride = tree.image.width;
+    const spots = tree.spots ??= opaqueSpots(tree.image);
+    const shaded = tree.shaded ??= new ImageData(TREE_VIEW, TREE_VIEW), target = shaded.data;
+    const dark = Math.round(AMBIENT * LIGHT_STEPS) / LIGHT_STEPS;
+    const reach = LAMP_REACH * LAMP_REACH, height = LAMP_HEIGHT * LAMP_HEIGHT;
+    for (let i = 0; i < spots.length; ++i) {
+        const x = spots[i] & 255, y = spots[i] >> 8;
+        const from = ((y + TREE_CROP) * stride + x + TREE_CROP) * 4, to = (y * TREE_VIEW + x) * 4;
+        let light = dark;
+        if (inReach) {
+            const dx = lx - (x + TREE_CROP), dy = ly - (y + TREE_CROP), away = dx * dx + dy * dy;
+            const carried = 1 - away / reach;
+            if (carried > 0) {
+                // A byte b stores b / 127.5 - 1: x rightward, y upward, z toward
+                // the viewer. The page's y grows downward.
+                const facing = ((direction[from] - 127.5) * dx - (direction[from + 1] - 127.5) * dy
+                    + (direction[from + 2] - 127.5) * LAMP_HEIGHT) / (127.5 * Math.sqrt(away + height));
+                if (facing > 0) light = Math.round((AMBIENT + LAMP_POWER * facing * carried) * LIGHT_STEPS) / LIGHT_STEPS;
+            }
+        }
+        target[to] = colour[from] * light;
+        target[to + 1] = colour[from + 1] * light;
+        target[to + 2] = colour[from + 2] * light;
+        target[to + 3] = colour[from + 3];
+    }
+    canvas.getContext("2d")!.putImageData(shaded, 0, 0);
+    tree.shown = inReach ? Shown.Lit : Shown.Unlit;
+}
+
+function lightForest() {
+    lighting = 0;
+    if (!forest) return;
+    for (const cell of shownTrees()) {
+        const tree = planted.get(cell);
+        if (!tree || !tree.normal) continue;
+        const canvas = cell.querySelector("canvas")!;
+        if (!lamp) {
+            if (tree.shown !== Shown.Generated) {
+                canvas.getContext("2d")!.putImageData(tree.image, -TREE_CROP, -TREE_CROP);
+                tree.shown = Shown.Generated;
+            }
+            continue;
+        }
+        const box = canvas.getBoundingClientRect();
+        // Trees off the screen wait for the pointer's next move.
+        if (box.bottom < 0 || box.top > window.innerHeight) continue;
+        const scale = TREE_VIEW / box.width;
+        const lx = (lamp.x - box.left) * scale + TREE_CROP, ly = (lamp.y - box.top) * scale + TREE_CROP;
+        const centre = TREE_CROP + TREE_VIEW / 2;
+        const inReach = Math.hypot(lx - centre, ly - centre) < LAMP_REACH + TREE_VIEW * 0.75;
+        // A tree the lamp cannot reach is shaded once and then left alone.
+        if (inReach || tree.shown !== Shown.Unlit) shadeTree(canvas, tree, lx, ly, inReach);
+    }
+}
+
+function relight() {
+    if (lamp && !lighting) lighting = requestAnimationFrame(lightForest);
+}
+
+function moveLamp(event: PointerEvent | null) {
+    lamp = event ? { x: event.clientX, y: event.clientY } : null;
+    if (!lighting) lighting = requestAnimationFrame(lightForest);
+}
+
+if (forest) {
+    forest.addEventListener("pointermove", moveLamp);
+    forest.addEventListener("pointerdown", moveLamp);
+    forest.addEventListener("pointerleave", () => moveLamp(null));
+    forest.addEventListener("pointercancel", () => moveLamp(null));
 }
 
 function fitForest() {
@@ -323,6 +446,7 @@ function fitForest() {
     if (!files.has("tree")) return;
     // New cells get a tree; the trees already shown stay.
     for (const cell of shownTrees()) if (!("planted" in cell.dataset)) plantTree(cell);
+    relight();
     if (forestRoll) forestRoll.textContent = `Roll ${shownTrees().length} new trees`;
 }
 

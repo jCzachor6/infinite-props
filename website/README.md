@@ -11,7 +11,15 @@ getting-started guide with the documentation, and the source page.
   `public/intro/tree.ips`, its part `clump.ips` and the 0.8 leaf material
   `foliage.ips` both import (a part takes the leaf colour and makes the
   material from it, since materials cannot be passed to parts); the tree
-  bulges its rim with smooth noise and opens gaps with a 0.9 `noise.mask`; shown and
+  bulges its rim with smooth noise and opens gaps with a 0.9 `noise.mask`; it
+  also publishes a normal map (`output normal relief`): the rings are drawn a
+  second time from the same point of the random stream, and `clump.ips`, asked
+  with `facing=1`, paints the direction each leaf faces instead of its colour,
+  so the map is as crisp as the leaves. The pointer carries a lamp over the
+  forest and the page shades every tree from its map (`src/home.ts`): ambient
+  light plus the lamp's by how squarely each pixel faces it, in ten steps of
+  brightness; without a pointer over the forest every tree stays as generated;
+  shown and
   downloadable beside a forest of 36 seeds (18 on a phone) with a re-roll
   button; recompile `public/intro/tree.iprop` with `ipc tree.ips -o tree.iprop`
   after editing them: the tabs take the three sources at build time), the games

@@ -7,6 +7,8 @@ import foliage from "foliage.ips"
 asset Tree {
   size 176x176
   origin 88,88
+  // What a game's lights see: the direction each pixel faces.
+  output normal relief
 
   // Most crowns are dense; a few open up.
   const distribution dense = gaussian(mean=0.2, sigma=0.3)
@@ -20,22 +22,11 @@ asset Tree {
     // How far the rim bulges and how open the crown is.
     wobble = 0.0 to 0.3
     open = 0.0 to 1.0 with dense
+    // The rings are drawn twice from this point of the random stream:
+    // as leaves, and below as the directions those leaves face.
+    rewind = seed
     layer crown(alpha=surface.source_over) {
-      for ring in 0..3 {
-        n = max(1, (6 to 8) - ring * 3)
-        turn = 0.0 to 6.2832
-        for i in 0..n {
-          a = turn + float(i) * 6.2832 / float(n)
-          a = a + (-0.25 to 0.25)
-          bulge = 1.0 + wobble * noise.value(cos(a) * 1.5, sin(a) * 1.5, hash(start ^ rimKey))
-          d = R * (0.6 - float(ring) * 0.3) * (0.8 to 1.15) * bulge
-          r = R * (0.44 - float(ring) * 0.06) * (0.8 to 1.15)
-          clump.draw(hash(start ^ (ring * 16 + i)),
-                     at={88.0 + cos(a) * d, 88.0 + sin(a) * d},
-                     r=r, lift=-(cos(a) + sin(a)) * 0.2 * d / R,
-                     leaf=color.shade(leaf.base, -8 to 8))
-        }
-      }
+      rings(start, R, wobble, leaf.base, 0)
     }
     surface.paint(crown)
     shape = mask.from(crown)
@@ -52,5 +43,34 @@ asset Tree {
     gaps = mask.intersect(gaps, mask.intersect(shape, mask.from(inner)))
     surface.paint(gaps, leaf.shadow)
     surface.paint(mask.intersect(gaps, mask.offset(gaps, 2, 2)), leaf.rim)
+    // The normal map: every leaf leans out from its clump and every
+    // clump out from the trunk; the gaps lie flat below them.
+    layer slopes(encoding=surface.normal) {
+      stream.push(rewind)
+      rings(start, R, wobble, leaf.base, 1)
+      stream.pop()
+      surface.paint(gaps, color.normal(0.0, 0.0, 1.0))
+    }
+    relief = slopes
+  }
+
+  // Three rings of clumps, as leaves (facing=0) or as directions (1).
+  rings(start: i32, R: f32, wobble: f32, base: color, facing: i32) {
+    for ring in 0..3 {
+      n = max(1, (6 to 8) - ring * 3)
+      turn = 0.0 to 6.2832
+      for i in 0..n {
+        a = turn + float(i) * 6.2832 / float(n)
+        a = a + (-0.25 to 0.25)
+        bulge = 1.0 + wobble * noise.value(cos(a) * 1.5, sin(a) * 1.5, hash(start ^ rimKey))
+        d = R * (0.6 - float(ring) * 0.3) * (0.8 to 1.15) * bulge
+        r = R * (0.44 - float(ring) * 0.06) * (0.8 to 1.15)
+        clump.draw(hash(start ^ (ring * 16 + i)),
+                   at={88.0 + cos(a) * d, 88.0 + sin(a) * d},
+                   r=r, lift=-(cos(a) + sin(a)) * 0.2 * d / R,
+                   leaf=color.shade(base, -8 to 8),
+                   facing=facing, leanX=cos(a) * d / R, leanY=sin(a) * d / R)
+      }
+    }
   }
 }
