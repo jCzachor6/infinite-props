@@ -10,6 +10,13 @@ function(iprop_warnings target)
         target_compile_definitions(${target} PRIVATE _CRT_SECURE_NO_WARNINGS)
     else()
         target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Werror)
+        # GCC 15 (ubuntu-26.04, the ubuntu-latest image since November 2026)
+        # reports -Wmaybe-uninitialized inside std::variant copies of code that
+        # GCC 13 and Clang accept, such as copying a compilation plan. It stays
+        # a visible warning there, without failing the build.
+        if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 15)
+            target_compile_options(${target} PRIVATE -Wno-error=maybe-uninitialized)
+        endif()
         # spec §13.2: implementations MUST NOT fuse multiply-add. Disable
         # contraction so the VM's f32 results are bit-reproducible.
         target_compile_options(${target} PRIVATE -ffp-contract=off)
