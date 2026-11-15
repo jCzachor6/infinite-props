@@ -1,65 +1,55 @@
 # Assets, inputs and outputs
 
-A source file contains imports followed by exactly one `asset name { ... }`.
-An asset requires `size` and one `draw` entry. It may declare an origin,
-inputs, outputs, palettes, constants and helpers. Metadata
-declarations are outside function bodies. `size 16x16` and `size 16 16` are
-accepted. Origin coordinates are constant numeric expressions; an omitted
-origin is `(0, 0)`. `size` and `origin` are each declared at most once.
+A source contains imports followed by one `asset name { ... }`, with `size`
+and one `draw` entry. Optional declarations include origin, inputs, outputs,
+palettes, constants and helpers. Metadata stays outside functions.
+Both `size 16x16` and `size 16 16` work. Origin coordinates are constant
+numeric expressions and default to `(0, 0)`. Declare size and origin at most once.
 
-Everything an asset declares shares one namespace: an input, output, palette,
-constant, helper and import alias all need different names, whatever their
-kind. `seed` and `draw` cannot be declared.
+Inputs, outputs, palettes, constants, helpers and import aliases share one
+namespace and need unique names. `seed` and `draw` cannot be declared.
 
 <!-- example: ../../examples/language/errors/shared-name.ips -->
 
 <!-- llm: skip -->
 This example is intentionally rejected: an input and a helper share a name.
 
-The host supplies a seed, optional target dimensions and ordinary declared
-input values. `draw` declares no source parameters or return type. There are
-no implicit variant/archetype controls: `v` and `a` are ordinary names and
-must be declared before use. Authors define any style or class selectors
-as input values and decide which selections their asset supports.
+The host supplies a seed, optional target dimensions and declared inputs.
+`draw` has no parameters or return type. Style/class selectors are ordinary
+inputs defined by the author; `v` and `a` have no implicit meaning.
 
 <!-- example: ../../examples/language/assets.ips -->
 
 ## Asset constants
 
-`const type name = expression` declares an immutable asset value with an
-explicit `i32`, `f32`, `color`, `vec2`, `distribution`, [sampler<T>](samplers.md),
-[stepper<T>](steppers.md) or [list<T>](collections.md) type. Constants are
-visible in `draw` and every helper of their defining asset. Imported parts
-resolve their own constants; a parent cannot access a child's constants.
-`i32` initializers may widen to declared `f32`; other types must match.
-Integer arithmetic keeps its wrapping signed 32-bit rules.
+`const type name = expression` declares an immutable `i32`, `f32`, `color`,
+`vec2`, `distribution`, [sampler<T>](samplers.md), [stepper<T>](steppers.md)
+or [list<T>](collections.md). Constants are visible in their asset's `draw`
+and helpers, but not its parent. Types must match except for `i32` widening
+to `f32`. Integer arithmetic wraps at 32 bits.
 
 <!-- example: ../../examples/language/asset-constants.ips -->
 
-Initializers may reference other constants, including declarations later in
-the asset. The compiler evaluates the acyclic dependency graph once during
-compilation. Arithmetic, component/channel reads and deterministic builtins
-are allowed. `ipc --describe-language` marks each eligible overload with
-`constant_evaluable`; seeded noise is allowed with a constant explicit seed.
-Legacy palette indexing and `ramp` are also allowed, including the last-element
-fallback for an invalid palette index.
+Initializers may reference later constants; dependencies must be acyclic.
+They evaluate once at compile time. Arithmetic, component/channel reads,
+legacy palette indexing and `ramp` are allowed, including the last-element
+fallback. Eligible builtin overloads have `constant_evaluable` in
+`ipc --describe-language`; seeded noise requires a constant explicit seed.
 
-The current RNG state `seed`, input uniforms, part outputs, RNG draws
-and user helper or part calls are forbidden. This includes seeded selection
-with `roll`/`choose` and equal-bound random ranges. The compiler checks every
-declaration, including unused constants, and checks forbidden effects in
-both branches of `&&`/`||`. Pure evaluation still short circuits: `false &&
-(1 / 0 == 0)` is a valid `i32` constant, while `false && index(1)` is rejected.
+Forbidden dependencies include `seed`, inputs, part outputs, RNG draws,
+helpers and part calls, including `roll`/`choose` and equal-bound ranges.
+Every declaration is checked, even unused ones, and both sides of `&&`/`||`
+are checked for effects. Pure evaluation short circuits: `false &&
+(1 / 0 == 0)` is valid, but `false && index(1)` is rejected.
 
-Constant `gaussian`, `triangular`, `beta`, `weighted` and `density` constructors
-validate parameters and points during compilation. An invalid unused description is a source
-error; a dynamic constructor in `draw` retains its existing runtime trap.
-Copying or reading a constant distribution performs no draw. Each `to/with`
-still samples through the existing runtime kernel and stream.
+Constant `gaussian`, `triangular`, `beta`, `weighted` and `density` validate
+at compile time, even when unused. Invalid dynamic constructors trap.
+Reading or copying a distribution draws nothing; `to/with` samples the
+existing runtime stream and kernel.
 
-Constant names cannot collide with asset declarations, imported aliases or
-helper parameters, and cannot be `seed`. Constants
-cannot be assigned or used as loop counters. `const` is a reserved word.
+Constant names must differ from asset declarations, import aliases, helper
+parameters and `seed`. Constants cannot be assigned or used as loop counters.
+`const` is reserved.
 
 <!-- llm: skip -->
 Const samplers and steppers capture endpoints and distribution parameters without RNG.
@@ -112,15 +102,13 @@ distinguish source `i32` from `u32`; existing hosts pass U32 bit patterns.
 For example, a host U32 override of `4294967295` yields signed `-1` inside
 `draw` (use that unsigned decimal spelling with `ipgen --uniform`).
 
-Defaults permit a literal, parentheses and one numeric unary minus, such as
-`input f32 amount = -(0.5)`. Arithmetic, names, calls and repeated negation
-are rejected. Floating defaults preserve negative zero (`-0.0`); an integer
-spelling used for an `f32` default is converted directly to binary32, without
-first wrapping to an integer bit pattern. Root and part defaults use the
-same conversion. For a `u32` bit pattern representing signed -1, use
-`0xffffffff`; a negative `u32` default suggests `input i32`.
-Boolean tokens are not integer input defaults.
-Uniforms are visible in `draw`; pass their values explicitly to helpers.
+Defaults allow a literal, parentheses and one numeric unary minus:
+`input f32 amount = -(0.5)`. They reject arithmetic, names, calls, repeated
+negation and integer defaults written as booleans. Floating defaults preserve
+`-0.0`; integer spellings convert directly to binary32 without integer wrapping.
+Root and part defaults use the same conversion. For signed -1 as a `u32`
+bit pattern, use `0xffffffff`; for negative defaults, use `input i32`.
+Uniforms are visible only in `draw`; pass them to helpers explicitly.
 
 <!-- example: ../../examples/language/negative-default.ips -->
 
@@ -143,21 +131,19 @@ declarations may use them. Inputs cannot be assigned or used as loop counters.
 
 ## Structured outputs
 
-`output list part pieces` appends an immutable dynamic-part snapshot on each
-assignment. It has no singular form. Results own shared geometry/raster resources
-independently of the VM; `part.draw` does not append. Use typed host APIs rather
-than legacy JSON; `.iprop` stores the program, not generated results.
+`output list part pieces` appends immutable dynamic-part snapshots on assignment;
+there is no singular form. Results retain shared geometry/raster resources
+after the VM is released. `part.draw` only paints. Use typed host APIs;
+`.iprop` stores the program, not results.
 
-`output kind name` declares a scalar slot. Assignment replaces its current
-value; an unwritten slot remains unset. `output list kind name` appends each
-assignment in execution order. Outputs are written by `draw` or a helper
-belonging to the same asset, and returned to the host alongside the image.
-`output mask name` and `output layer name` instead declare internal
-[resource exports](surfaces.md#export-regions-from-parts). They accept shared
-immutable handles, cannot be lists, and never add host geometry slots.
-`output normal name` declares the asset's [normal map](relief.md): a layer
-export whose value is a direction layer and which the root publishes to the
-host as a second image.
+`output kind name` declares a scalar slot, replaced on assignment and unset
+until written. `output list kind name` appends in execution order. The asset's
+`draw` and helpers write outputs, returned alongside the image.
+`output mask name` and `output layer name` are internal
+[resource exports](surfaces.md#export-regions-from-parts): shared immutable
+handles, never lists or host geometry slots. `output normal name` exports
+a direction layer as the asset's [normal map](relief.md); the root returns
+it to the host as a second image.
 
 | Kind | Assignment value |
 | --- | --- |
@@ -166,18 +152,14 @@ host as a second image.
 | `rect` | `{x, y, width, height}` |
 | `part` (list only) | A `part2d` immutable snapshot |
 
-`output list part tiles` appends each assigned part without drawing it.
-Snapshots retain shared geometry with holes, A8/RGBA and appearance, effective
-root placement, ID and append order. Empty slots are returned. The global
-limit is 256 snapshots across all slots; exporting an ID twice is allowed.
-Only typed C++/C host results represent these records; legacy float/JSON paths
-reject them explicitly. See the [part export contract](../../spec/part-exports-v0.9.md).
+Part snapshots retain geometry with holes, A8/RGBA, appearance, root placement,
+ID and append order. Empty slots are returned. All slots share a 256-snapshot
+limit; duplicate IDs are allowed. Typed C++/C results support these records;
+legacy float/JSON paths reject them. See the [part export contract](../../spec/part-exports-v0.9.md).
 
-Components must be numeric and widen to `f32`. Scalar part outputs can be
-read and propagated; list outputs cannot be read as expressions. Outputs
-are not ordinary readable local variables. See [composition](composition.md)
-for placement and transformation of part-owned outputs.
+Numeric components widen to `f32`. Read and propagate scalar part outputs
+through [composition](composition.md); outputs themselves are write-only,
+and list outputs cannot be read as expressions.
 
-The VM validates the resulting executable and bounds its resources. Generation
-is subject to the host's canvas limits and fuel budget; see
-[execution limits](tooling.md#execution-limits).
+The VM validates executables and enforces resource limits. Hosts also bound
+canvas size and fuel; see [execution limits](tooling.md#execution-limits).

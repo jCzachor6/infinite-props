@@ -1,12 +1,9 @@
 # Materials
 
-A material is a named look declared once and used everywhere: a base color,
-author-chosen shades, an edge color and width, and a taper. Declare materials
-only in a **material file** — a file with no asset — and import that file with
-the ordinary import syntax. One file may define one material or a library of
-several, and it may declare its own `palette` and `const` values for the
-fields to use. Those belong to the material file: the importing asset does not
-see them and may declare its own palettes and consts with the same names.
+A material names a reusable look: base color, shades, edges or taper.
+Declare it in a **material file** with no asset and import it normally.
+A file may define several materials and private `palette`/`const` values.
+Importing assets cannot see those values and may reuse their names.
 
 ```ips
 material Bark {
@@ -19,18 +16,14 @@ material Bark {
 }
 ```
 
-`base` (a color) is the only required field. Every other field is named by
-the author and may be a `color`, `i32`, `f32` or `vec2` constant or range,
-with an optional `with` distribution. A field may read the fields written
-before it by name, so shades can follow the rolled `base` (`shadow` above is
-always a darker version of this instance's bark).
+Only `base` (a color) is required. Author-named fields hold `color`, `i32`,
+`f32` or `vec2` constants/ranges, optionally shaped with `with`. They can
+read earlier fields, so `shadow` above follows this instance's rolled `base`.
 
-Materials are named by the import alias: with `import forest from ...`, the
-definition above is `forest.Bark`. Create an instance by assigning it in a
-function. Creation rolls every range once, each field on its own, in the
-order the fields are written; reading a field never rolls. Named arguments
-replace fields for one instance; an override keeps the field's type, and the
-fields after it read the override.
+With `import forest from ...`, the type is `forest.Bark`. Create instances
+in functions. Each range rolls once in field order; reads never roll.
+Named arguments override fields with matching types. Later fields read
+the overridden value.
 
 ```ips
 import forest from "materials/forest.ips";
@@ -47,31 +40,25 @@ branch(x: f32, y: f32, dx: f32, w: f32, m: forest.Bark) {
 }
 ```
 
-Each definition is its own type: a helper declares `m: forest.Bark` and the compiler
-checks every field read against that definition. Instances are immutable,
-cannot be host inputs, and are passed to helpers by value (each field travels
-as its own scalar). Copying an instance (`n = m`) copies its rolled fields
-without new draws. Returning a material from a helper, `list<Material>` and
-`sampler`/`stepper` of materials are not supported; pass a numeric selector
-to a part and create the material inside it when a part needs one.
+Each definition is a distinct type: `m: forest.Bark` restricts reads to its
+fields. Immutable instances pass to helpers as scalar fields; `n = m` copies
+rolled values without draws. Materials cannot be host inputs, helper results,
+`list<Material>` or `sampler`/`stepper` elements. For parts, pass a numeric
+selector and create the material inside.
 
-A local keeps its first type. You can replace a whole instance with another
-instance of the same material, but cannot change it into a scalar or a
-different material type. The replacement is evaluated completely before
-updating the local: `m = forest.Bark(taper = m.taper * 0.9)` reads the old
-`m.taper`. A default expression that reads an earlier field still sees the
-new instance's field. Helper parameters remain read-only.
+A local can be replaced only by the same material type. Replacement evaluates
+before assignment: `m = forest.Bark(taper = m.taper * 0.9)` reads the old
+`m.taper`, while defaults read earlier fields of the new instance.
+Helper parameters stay read-only.
 
-Check a material library directly with `ipc materials/forest.ips --check`.
-Format it with `ipc materials/forest.ips --format-only --format formatted.ips`;
-both commands support material files without creating an `.iprop`. Ordinary
-compilation uses an asset that imports the library. The editor uses these
-same commands for diagnostics and Format Document.
+Check libraries with `ipc materials/forest.ips --check`; format with
+`ipc materials/forest.ips --format-only --format formatted.ips`. Neither
+creates an `.iprop`; compile an importing asset instead. The editor uses
+these commands for diagnostics and Format Document.
 
-A material never draws. Fields such as `edge`, `edge_width` and `taper` above
-are ordinary fields the author chose; the helper drawing a shape decides per
-side and per end whether to use them — for example, a branch helper omits the edge line at the joint where
-the branch meets the trunk, so the branch reads as grown, not glued on.
+Materials never draw. The drawing helper decides where to use author-defined
+fields such as `edge`, `edge_width` and `taper`. For example, omit the edge
+at a branch/trunk joint to make the branch look grown rather than glued on.
 
 <!-- example: ../../examples/language/materials/forest.ips -->
 
