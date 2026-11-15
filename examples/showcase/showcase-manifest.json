@@ -1,59 +1,67 @@
 {
-  "product": "0.9.0",
   "source_repository": "props",
-  "source_commit": "855ba990cb7b1ffdafc80ad38ff6f4a301c0e820",
   "assets": [
     {
       "id": "sword",
       "file": "sword.iprop",
-      "bytes": 14036,
-      "sha256": "ad17fc03fa2c8c6e6a5ea71988842a3b3e03bd55aae89eb421486aa4d86b6849",
+      "product": "1.1.0",
+      "source_commit": "65d39220d6925e539c632a0b180d62c0cabcfbb2",
+      "bytes": 17567,
+      "sha256": "663d56ef8b94325cb21f6c22019569617e723db4019455294ecd0eaf4b105133",
       "source_sha256": {
-        "weapons/sword/blade.ips": "9b82b1e54b3e22a16fb5fd2fbcb15547bde3ca2af89b19d762f705abcbeeda95",
-        "weapons/sword/hilt.ips": "dcb002c17427e3780340200fd5b540cbd7b6d6d30bc6bd6ea1d4506c7018eef1",
+        "weapons/sword/blade.ips": "0d4886753a48069c13ac560c1052950ec8b989ae1f621b203bd7f753bc09466d",
+        "weapons/sword/hilt.ips": "404d125e9663c9e77759e4477d1473fe4ff0dabdadf76c0bb10ade10485a03db",
         "weapons/sword/materials.ips": "7cc082af15accfacbc3fc3e84e90b20898634089c7a48388bcd4d47beb9e5209",
-        "weapons/sword/plain-hilt.ips": "49ea3659f870afa867eb39a333aaffd2eb2270029f52feed06d114e1ae926bf4",
-        "weapons/sword/sword.ips": "e379d85b606dfe72447f26e73f3b6bb5847203bbf6c4c6e9c88f53c2306e1c19"
+        "weapons/sword/plain-hilt.ips": "938b8f4611fcfcd2dea3cbdafbf6d421a137c9bddb0213d7df0fe075723aa68d",
+        "weapons/sword/sword.ips": "f4b27ae549a83f6cb76fc8587fb22052f8b9ae2b5883ede90571e56af3cd5bf4"
       }
     },
     {
       "id": "axe",
       "file": "axe.iprop",
-      "bytes": 13613,
-      "sha256": "78665845b755ca1ed83751b716c86ac266304b25316a2c61ced22b9f19d55d1c",
+      "product": "1.1.0",
+      "source_commit": "65d39220d6925e539c632a0b180d62c0cabcfbb2",
+      "bytes": 16894,
+      "sha256": "045647a684e57e5d5fcb3462bb61a9310aac2ce43d803e61d425bd5cc75eab32",
       "source_sha256": {
-        "weapons/axe/axe.ips": "55a13691ed376b9a180668fd7395878dc1c741aabd12d944a7fd13b9bc78b273",
-        "weapons/axe/head.ips": "640e48c8614cda74fd20774ac0173b53dab0525721d9c91375239ae4451c3e94",
-        "weapons/common/haft.ips": "876ef2ea054d9cf046ff13f143f2b654ee5f67fe324ce1e9d89d4aa3b111cefa",
-        "weapons/common/materials.ips": "41225e3f868f5a9b935499011a61357f841f29ec54cfba039bef1e2590afc2f6"
+        "weapons/axe/axe.ips": "c9cd0a5418e4b68a1e2c9a380e27258aa485567358144f2fe400aa93896f8d5e",
+        "weapons/axe/head.ips": "9e691c28b0525e8d02d7eacf0e229ebb6a4362e9dee543a932ea4400f4e6590a",
+        "weapons/common/haft.ips": "e260e383068ce5f249b1573f1e133e9e14293f5493e37c34ff459b6eadfde1a0",
+        "weapons/common/materials.ips": "2352b968cc911a2c2f5f3bd2bf1439298be84cffcfd43857f65bda3203607e4f"
       }
     },
     {
       "id": "spear",
       "file": "spear.iprop",
-      "bytes": 9049,
-      "sha256": "329923fa9078e8902f1d461168ac9340870cfdb03a2533da2701d46426058d37",
+      "product": "1.1.0",
+      "source_commit": "65d39220d6925e539c632a0b180d62c0cabcfbb2",
+      "bytes": 13034,
+      "sha256": "5a9149e2ccb66349449cd161b9d49ec33119a32a943d0708cdf0bebd21712fc1",
       "source_sha256": {
-        "weapons/common/haft.ips": "876ef2ea054d9cf046ff13f143f2b654ee5f67fe324ce1e9d89d4aa3b111cefa",
-        "weapons/common/materials.ips": "41225e3f868f5a9b935499011a61357f841f29ec54cfba039bef1e2590afc2f6",
-        "weapons/spear/point.ips": "c6cdcc14fcb6b74286bbbd18e80106d7b2d17db9e12d7421e26c6a3d3ad05620",
-        "weapons/spear/spear.ips": "b1b08078d54cdea005334caa751328a89123e3078814c22d7a4dc82b972ab63f"
+        "weapons/common/haft.ips": "e260e383068ce5f249b1573f1e133e9e14293f5493e37c34ff459b6eadfde1a0",
+        "weapons/common/materials.ips": "2352b968cc911a2c2f5f3bd2bf1439298be84cffcfd43857f65bda3203607e4f",
+        "weapons/spear/point.ips": "2d7833dac0592108d8a0d3597f3669c167772fd092cbd68313544f769eb1f5d9",
+        "weapons/spear/spear.ips": "ba164db806aef0d8890d95557eee28f4f4fe639f43fbbba2098b246cf7ade903"
       }
     },
     {
       "id": "staff",
       "file": "staff.iprop",
-      "bytes": 12034,
-      "sha256": "f1f8de8566d5db720e2c79fb7abe7897cb501f173da4b71596cb2b3f9b5e158d",
+      "product": "1.1.0",
+      "source_commit": "65d39220d6925e539c632a0b180d62c0cabcfbb2",
+      "bytes": 14799,
+      "sha256": "17a771bb5d5f607dc3ebaff4eed69a712a52f437019a616b4f26aaaf2e4ff5d9",
       "source_sha256": {
-        "weapons/staff/head.ips": "6df10c372ad3a33d0cc7719b05c17167f315bc7f21c7da7a7505210e83943686",
-        "weapons/staff/shaft.ips": "d9790e87fef4016ba5cbd38ea4a269860f1a2b73e6cdfc0fd2f369787f90adb0",
-        "weapons/staff/staff.ips": "c4687c5a61c5072b7511c849fbd01730d124b063f6c451ec4fbda205c6c9324d"
+        "weapons/staff/head.ips": "4c53534ed6bb1b41cbf20c3008e713f75e3f20ed63296c058270cc8ed3afb32a",
+        "weapons/staff/shaft.ips": "60c4573ea3a517e359900286c306531667c007caa68ddef124a956a9d766364d",
+        "weapons/staff/staff.ips": "e9fdabf9b64ee758781833e814d590f8da1907fa285825792283c43a83dfea30"
       }
     },
     {
       "id": "portraits_rpg",
       "file": "portraits_rpg.iprop",
+      "product": "0.9.0",
+      "source_commit": "855ba990cb7b1ffdafc80ad38ff6f4a301c0e820",
       "bytes": 27637,
       "sha256": "7b58f9411169427fe11266b5542a779d3af190dc37a1b2a6b710af9896932d1b",
       "source_sha256": {
@@ -68,6 +76,8 @@
     {
       "id": "portraits_scifi",
       "file": "portraits_scifi.iprop",
+      "product": "0.9.0",
+      "source_commit": "855ba990cb7b1ffdafc80ad38ff6f4a301c0e820",
       "bytes": 25836,
       "sha256": "8e9f685107913301546807ff7a8c58708d1086bbf67885eff57da8abf750c3ac",
       "source_sha256": {
@@ -82,6 +92,8 @@
     {
       "id": "portraits_civilian",
       "file": "portraits_civilian.iprop",
+      "product": "0.9.0",
+      "source_commit": "855ba990cb7b1ffdafc80ad38ff6f4a301c0e820",
       "bytes": 23900,
       "sha256": "70c96552f3156d3fd69b2e2215fa2a66310250bb402705278a9dbf54190789b1",
       "source_sha256": {

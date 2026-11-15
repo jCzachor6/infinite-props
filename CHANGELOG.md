@@ -88,6 +88,11 @@ and the [contract](spec/named-seeds-v1.1.md).
 - The forest is lit: every tree publishes a normal map, and a lamp that follows
   the pointer (or a tap) shades the canopy with it. The tree forks its seeds by
   name.
+- The butterflies and the four showcase weapons are rebuilt from the current
+  props with named seeds, so every seed looks different. The weapons, until
+  now 0.9 builds, also gain what the props added since: frost, moss,
+  verdigris and new blades, heads and points. The portraits and the frozen
+  Catemon season 1 are unchanged.
 - The "Roll a legendary" weapon case and "Make It Swarm" with its 128x128
   butterfly are gone; a `#roll/...` link opens the home page.
 - The handbook and the LLM reference are shorter, and the repeated page markup
