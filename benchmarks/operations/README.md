@@ -112,3 +112,35 @@ new scalar noise comparisons and the exhaustive 1–256 random-site sweep for
 20 seeds. Their small drivers are embedded in the compressed scalar capture;
 all raw captures include tool/source identities. The batch gate requires the
 complete 36/128/256-part workflow, including `parts.get`, to beat single creation.
+
+## 1.1 normal map tariff
+
+`surface.normal` is charged at 60% of `1 + K + W*H*(5 + 2*K)` units, with
+`K = 2*ceil(3*smoothing) + 1` or zero without smoothing
+([contract](../../spec/normal-maps-v1.1.md#accounting)). The price was set
+against blur, the kernel it shares its smoothing with:
+
+```sh
+cmake --build build-perf --target iprop_normal_map_tariff
+build-perf/benchmarks/iprop_normal_map_tariff
+```
+
+Each row is the median generation of a program with one operation minus a
+control without it, on 64², 128² and 256² captures of one oval. On the
+reference Mac (arm64, Release) the CPU time per fuel unit was:
+
+| Operation | ns per fuel unit |
+| --- | --- |
+| `mask.blur`, sigma 1.5–12 | 0.20–0.30 |
+| `.normal` with smoothing 1.5–12, both receivers | 0.40–0.56 |
+| `layer.blur`, sigma 1.5–12 | 0.78–0.95 |
+| `.normal` without smoothing | 1.10–1.18 |
+| `surface.paint` of a layer | 1.85 |
+| `mask.expand`, radius 4 | 1.91 |
+
+A conversion is therefore priced inside the band of its neighbours at every
+size: a smoothing tap costs half the CPU of a layer blur tap and twice that of
+a mask blur tap for the same fuel, and the five units per pixel of the slope
+and encoding step leave it cheaper per fuel unit than a paint. The numbers
+are one machine's and are not asserted by any test; the exact fuel is pinned
+in `tests/normal_map_test.cpp`.
