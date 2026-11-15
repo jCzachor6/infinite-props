@@ -1,6 +1,6 @@
 # Android / Kotlin
 
-The JNI/Kotlin wrapper requires C API 0.6 / ABI 0.5. `OutputKind.PART` exposes
+The JNI/Kotlin wrapper requires C API 0.7 / ABI 0.5. `OutputKind.PART` exposes
 ordered `parts` with the complete [C snapshot](../../docs/c-api-part-outputs.md).
 `image.resource(id)` resolves nonzero IDs in the shared `resources` table;
 zero is an absent optional texture and `UInt.MAX_VALUE` denotes no region for
@@ -57,6 +57,18 @@ the native handle; results own their arrays. The caller owns returned Bitmaps.
 under zero alpha. For drawing through Android Canvas/View use the explicit
 `toPremultipliedBitmap()` conversion; its alpha conversion is lossy. Raw `rgba`
 retains the runtime's legacy alpha tag.
+
+`image.normal` is the [normal map](../../docs/native-bindings.md#normal-maps-and-other-auxiliary-images)
+published with the image, or `null`; `image.images` lists every auxiliary
+image and `program.images` what the program declares. Pass
+`deriveNormal = DerivedNormal()` to derive one for a prop that publishes none.
+`AuxiliaryImage.toBitmap()` keeps the exact bytes for a texture upload; they
+are data, so upload them without an sRGB conversion.
+
+```kotlin
+val lit = program.generate(seed = 7u, deriveNormal = DerivedNormal())
+val normalBitmap = lit.normal?.toBitmap()
+```
 
 `generate(..., limits = ExecutionLimits(...))` accepts unsigned `workLimit`,
 `timeoutNanoseconds` and an optional `CancellationToken`. Zero work selects the

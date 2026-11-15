@@ -14,7 +14,7 @@ class RuntimeTests {
         val assets = InstrumentationRegistry.getInstrumentation().context.assets
         verifyBindings { assets.open(it).use { stream -> stream.readBytes() } }
         verifyPartOutputs { assets.open(it).use { stream -> stream.readBytes() } }
-        verifyPixelCorpus(load = { assets.open(it).use { stream -> stream.readBytes() } }) { image, expected, index ->
+        verifyPixelCorpus(load = { assets.open(it).use { stream -> stream.readBytes() } }, transport = { image, expected, index ->
             val bitmap = image.toBitmap()
             try {
                 assertEquals(image.width.toInt(), bitmap.width)
@@ -23,7 +23,16 @@ class RuntimeTests {
                 bitmap.copyPixelsToBuffer(actual)
                 assertArrayEquals("Bitmap RGBA case $index", expected, actual.array())
             } finally { bitmap.recycle() }
-        }
+        }, auxiliaryTransport = { image, expected, index ->
+            val bitmap = image.toBitmap()
+            try {
+                assertEquals(image.width.toInt(), bitmap.width)
+                assertEquals(image.height.toInt(), bitmap.height)
+                val actual = ByteBuffer.allocate(bitmap.byteCount)
+                bitmap.copyPixelsToBuffer(actual)
+                assertArrayEquals("Auxiliary Bitmap RGBA case $index", expected, actual.array())
+            } finally { bitmap.recycle() }
+        })
         Program(assets.open("bindings.iprop").use { it.readBytes() }).use { program ->
             val result = program.generate(inputs = mapOf("tint" to InputValue.RGBA(Color(18, 52, 86))))
             val bitmap = result.toBitmap()

@@ -1,0 +1,8 @@
+asset badDynamicSmoothing {
+    size 1x1
+    input f32 smoothing = 65.0
+    draw {
+        layer image {}
+        bumps = image.normal(1.0, smoothing)
+    }
+}

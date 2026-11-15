@@ -351,6 +351,73 @@ def read_language(value):
         paint = next((b for b in value['builtins'] if b['name'] == 'surface.paint'), None)
         require(paint is not None and all(o['effects']['rng'] == 'none' and o['effects']['writes_canvas'] and
             'unassigned_handle' in o['effects']['may_trap'] and not o['constant_evaluable'] for o in paint['overloads']), 'surface paint effects')
+    if 'normal_maps' in rules:
+        normal = rules['normal_maps']
+        expected = {'output_syntax': 'output normal <name>', 'output_keyword': 'contextual',
+            'output_storage': 'flagged_layer_resource_export', 'outputs_per_asset': 1,
+            'output_value': 'direction_layer_checked_at_write', 'list_outputs': False,
+            'part_read': 'layer_in_caller_coordinates',
+            'publication': 'root_slot_painted_source_over_on_flat_after_success',
+            'published_alpha': 255, 'flat_rgba': [128, 128, 255, 255], 'publication_fuel': 0,
+            'axes': 'x_right_y_up_z_toward_viewer', 'byte': 'nearest_ties_away_from_zero_complement_negates',
+            'capture_syntax': 'layer <name>(encoding=surface.normal) { <statements> }',
+            'capture_mode': 'surface.source_over', 'capture_mode_code': 3, 'capture_alpha_option': False,
+            'encoding': 'buffer_property_not_a_type', 'paint': 'view_D4_reorients_vectors_with_pixels',
+            'weather': 'trap', 'dynamic_parts': False, 'blur': 'keeps_encoding',
+            'method_syntax': '<layer|mask>.normal(depth[, smoothing])',
+            'evaluation': 'receiver_then_depth_then_smoothing_once',
+            'depth_type': 'f32', 'minimum_depth': 0, 'depth_units': 'receiver_raster_pixels_of_full_coverage',
+            'smoothing_type': 'f32', 'minimum_smoothing': 0, 'maximum_smoothing': 64, 'default_smoothing': 0,
+            'smoothing_units': 'receiver_raster_pixels',
+            'height': {'mask': 'coverage', 'layer': 'red_times_alpha_over_255'}, 'height_layer_encoding': 'colour_only',
+            'result': 'direction_layer_with_receiver_extent_scale_placement_D4', 'result_alpha': 'receiver_coverage',
+            'border': 'nearest_edge', 'smoothing_kernel': 'blur_gaussian_binary64_no_rounding',
+            'slope': 'central_differences', 'maximum_radius': 192, 'opcode': 'surface.normal',
+            'receiver_codes': {'layer': 0, 'mask': 1},
+            'fuel': 'ceil_60_percent_one_plus_K_plus_W_H_times_5_plus_2_K',
+            'result_bytes': '128_plus_4_per_pixel', 'scratch_bytes': '8_times_W_H_plus_8_times_W_radius',
+            'scratch_release': 'success_and_error', 'preflight': 'fuel_and_shared_arena_before_filter',
+            'color_builtin': 'color.normal', 'color_axes': 'x_right_y_down_z_toward_viewer',
+            'color_lowering': 'existing_f32_instructions', 'color_constants': 'fold_to_one_color',
+            'color_fallback': 'flat_when_squared_length_zero_or_not_finite',
+            'color_constant_errors': ['zero_or_nonfinite_length', 'z_not_positive'],
+            'asset_constants': {'color.normal': True, 'normal_method': False}}
+        obj(normal, list(expected) + ['methods', 'effects'], 'normal map policy')
+        # Exact types too: a boolean is not accepted where a number is published.
+        def same(actual, wanted):
+            if type(wanted) is dict:
+                return type(actual) is dict and actual.keys() == wanted.keys() and all(same(actual[k], wanted[k]) for k in wanted)
+            if type(wanted) is list:
+                return type(actual) is list and len(actual) == len(wanted) and all(same(a, w) for a, w in zip(actual, wanted))
+            if type(wanted) is bool or type(actual) is bool:
+                return type(actual) is type(wanted) and actual == wanted
+            return type(actual) in ({int, float} if type(wanted) is int else {type(wanted)}) and actual == wanted
+        require(all(same(normal[key], expected[key]) for key in expected), 'normal map policy')
+        require(type(normal['methods']) is list and len(normal['methods']) == 4, 'normal method signatures')
+        signatures = set()
+        for method in normal['methods']:
+            obj(method, ['name', 'receiver', 'parameters', 'result', 'opcode',
+                'constant_evaluable', 'effects'], 'normal method')
+            require(method['name'] == 'normal' and method['receiver'] in {'layer', 'mask'} and
+                method['result'] == 'layer', 'normal method receiver')
+            require(method['parameters'] in ([{'name': 'depth', 'type': 'f32'}],
+                [{'name': 'depth', 'type': 'f32'}, {'name': 'smoothing', 'type': 'f32'}]), 'normal method signature')
+            require(method['opcode'] == 'surface.normal' and method['constant_evaluable'] is False, 'normal method lowering')
+            effects(method['effects'], 'normal method effects')
+            e = method['effects']
+            require(e['rng'] == 'none' and not e['writes_canvas'] and not e['writes_outputs'] and
+                set(e['may_trap']) == {'numeric_range', 'unassigned_handle'}, 'normal method effects')
+            signatures.add((method['receiver'], len(method['parameters'])))
+        require(signatures == {('layer', 1), ('layer', 2), ('mask', 1), ('mask', 2)}, 'unique normal method signatures')
+        effects(normal['effects'], 'normal map effects')
+        stored = next((b for b in value['builtins'] if b['name'] == 'color.normal'), None)
+        require(stored is not None and len(stored['overloads']) == 1, 'color.normal builtin')
+        overload = stored['overloads'][0]
+        require([p['name'] for p in overload['parameters']] == ['x', 'y', 'z'] and
+            all(p['type'] == 'f32' for p in overload['parameters']) and overload['result'] == 'color' and
+            overload['evaluation_order'] == ['x', 'y', 'z'] and overload['constant_evaluable'] is True and
+            'opcode' not in overload and overload['effects']['rng'] == 'none' and
+            not overload['effects']['writes_canvas'] and not overload['effects']['may_trap'], 'color.normal builtin')
     if 'resource_exports' in rules:
         exports = rules['resource_exports']
         _strings_and_bools(exports, {

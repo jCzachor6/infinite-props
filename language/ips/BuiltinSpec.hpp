@@ -15,7 +15,8 @@
 
 namespace iprop::ips {
 
-enum class BuiltinLowering { Opcode, Round, Polygon, ColorConstructor, Pick, Chance, Roll, Choose, Beta, ListLength, SurfacePaint };
+enum class BuiltinLowering { Opcode, Round, Polygon, ColorConstructor, Pick, Chance, Roll, Choose, Beta, ListLength, SurfacePaint,
+    NormalColor };
 struct BuiltinParameter {
     std::string name;
     ValueType type;
@@ -65,6 +66,12 @@ bool isBuiltinFunctionName(std::string_view name);
 // or `surface`. An import alias cannot reuse one: `alias.draw(...)` and the
 // namespace's own members would share one spelling.
 bool isBuiltinNamespace(std::string_view name);
+// color.normal(x, y, z): the colour that stores a direction given in asset
+// coordinates (y downward), by the VM's own f32 operations in the order the
+// emitter lowers them (spec normal maps v1.1). `flat` reports the fallback
+// taken when the squared length is zero or not finite.
+struct NormalColorValue { Color color; bool flat = false; };
+NormalColorValue normalColorValue(f32 x, f32 y, f32 z);
 // Choices preserve identical storable types; mixed numeric choices widen to f32.
 std::optional<ValueType> selectionType(std::span<const ValueType> arguments);
 

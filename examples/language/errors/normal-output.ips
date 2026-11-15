@@ -1,0 +1,6 @@
+asset twoNormals {
+    size 1x1
+    output normal relief
+    output normal detail
+    draw {}
+}

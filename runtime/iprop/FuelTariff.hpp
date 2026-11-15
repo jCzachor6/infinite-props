@@ -13,7 +13,7 @@ constexpr u8 fuelPercent(Opcode op) {
     case Opcode::MaskUnion: case Opcode::MaskIntersect:
     case Opcode::MaskSubtract: case Opcode::MaskInvert:
     case Opcode::MaskExpand: case Opcode::MaskShrink: return 40;
-    case Opcode::LayerBlur: case Opcode::MaskBlur:
+    case Opcode::LayerBlur: case Opcode::MaskBlur: case Opcode::SurfaceNormal:
     case Opcode::SurfacePaint: case Opcode::SurfacePaintMask: return 60;
     case Opcode::Poly: case Opcode::PolyList: case Opcode::Oval:
     case Opcode::Curve: case Opcode::CurveCubic: return 75;

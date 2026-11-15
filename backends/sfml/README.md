@@ -39,6 +39,8 @@ Without SFML the backend is skipped gracefully. This produces:
   Copies exactly `byte_count` bytes; it does not convert alpha or infer the
   generated dimensions from asset metadata.
 - **Left/Right** cycle the seed.
+- **N** shows the [normal map](../../docs/native-bindings.md#normal-maps-and-other-auxiliary-images)
+  instead of the image when the generation published one; the title says so.
 - **A** toggles a 4×4 atlas of 16 consecutive seeds at fixed declared inputs.
 - **S** exports the current image to
   `iprop-export-seed<N>.png` through `sf::Image::saveToFile`.
@@ -51,6 +53,8 @@ reference `ipgen`):
 ```
 iprop_sfml file.iprop --seed 3 --export out.png         # the S-key path
 iprop_sfml file.iprop --set tint=#9dc --export out.png  # an input override
+iprop_sfml file.iprop --seed 3 --normal normal.png      # the normal map of the seed
+iprop_sfml file.iprop --derive-normal --normal n.png    # derived when none is published
 iprop_sfml file.iprop --seed 3 --atlas out.png          # the A-key atlas
 iprop_sfml file.iprop --seed 3 --screenshot out.png     # one windowed frame,
                                                         # read back from the
@@ -104,7 +108,16 @@ auto owned = iprop::sfml_host::copyResult(native.get());
 native.reset(); // owned.outputs, owned.resources and owned.pixels remain valid.
 ```
 
-The adapter opts into typed generation and execution controls through C API 0.6
+`copyResult(result).images` holds owned copies of the auxiliary images and
+`normal()` returns the normal map among them, or null; `copyImages(result)`
+copies only those, and `declaredImages(program)` lists what a program can
+publish. `generate` takes a final optional `const DerivedNormal*`: a non-null
+request derives a normal map for a prop that publishes none, with zero fields
+selecting the defaults. `--normal` fails before writing when there is none.
+An `sf::Texture` is linear unless `setSrgb(true)` is called, so `uploadTexture`
+keeps the stored bytes for a lighting shader.
+
+The adapter opts into typed generation and execution controls through C API 0.7
 (ABI 0.5). Image-only viewers
 can continue using `queryImage` without copying the resource payload. The
 installed SDK includes `Host.hpp` and its shared query dependency under

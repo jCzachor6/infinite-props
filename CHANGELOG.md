@@ -1,5 +1,50 @@
 # Changelog
 
+## Unreleased
+
+### Normal maps for lit sprites (additive)
+
+A prop can publish a normal map beside its image, generated from the same seed
+with the same guarantee: every backend returns the same bytes. Existing sources
+compile to identical bytecode and existing programs keep their image, outputs,
+RNG, fuel and work. See [relief and normal maps](docs/language/relief.md), the
+[1.0 to 1.1 migration](docs/language/migration-v1.1.md) and the
+[contract](spec/normal-maps-v1.1.md).
+
+- **Language.** `output normal name` declares the map. `mask.normal(depth,
+  smoothing)` and `layer.normal(depth, smoothing)` turn a height into round
+  relief, `layer n(encoding = surface.normal) { ... }` captures directions, and
+  `color.normal(x, y, z)` is the colour of one direction, for flat faces. A
+  part declares its own normal output; painting a direction layer turns its
+  vectors with its pixels, so rotated and mirrored parts stay correct. Neither
+  `normal` nor `encoding` is reserved.
+- **Format and VM.** One opcode, `surface.normal` (0x6A); `layer.begin` mode 3
+  for a direction capture; bit 0 of the resource-export flags marks a normal
+  output. A 1.0 runtime rejects a program that uses any of them while loading.
+  Twelve opcode values remain unassigned.
+- **Fuel and work.** A conversion is charged at 60% of
+  `1 + K + W*H*(5 + 2*K)` units, about the cost of a blur. Publication and the
+  derived map cost work, not fuel.
+- **C API 0.7 on ABI 0.5.** `iprop_result_aux_image_count/get/find` return the
+  images published beside the main one, `iprop_program_aux_image_count/get`
+  what a program declares, and `iprop_generate_derived_normal` can derive a map
+  for a prop without relief. No existing structure, enum value or entry point
+  changes. See [auxiliary images](docs/c-api-aux-images.md).
+- **Bindings.** HTML5/WASM, Python, Swift, C#/Unity, Kotlin/Android, Godot and
+  SFML expose the image list, the normal map and the derive request; see
+  [native bindings](docs/native-bindings.md#normal-maps-and-other-auxiliary-images).
+  Godot's `IpropSprite2D` sets a `CanvasTexture` so `Light2D` lights the
+  sprite; Unity gets a linear texture and a `_NormalMap` binding helper. The
+  wrappers now require C API 0.7.
+- **Tools.** `ipgen --normal-output` and `--derive-normal`; `ipsheet --image
+  normal|lit`; `ipa`/`ipdis` round-trip the additions; `ipc
+  --describe-language` reports them under `source_rules.normal_maps`.
+- **Verification.** An independent JavaScript model pins the kernel, the
+  colour encoding, publication and the derived map in
+  `tests/fixtures/normal-map-v1.1.json`; native and WASM agree on every byte,
+  on fuel and on work. The shared pixel corpus becomes `IPXCRP02` and carries
+  every auxiliary image through all seven bindings.
+
 ## v1.0.0 — 2026-11-10
 
 Product/source and editor, website, Unity/Python packages: **1.0.0**.

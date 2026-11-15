@@ -212,6 +212,9 @@ enum class Opcode : u8 {
     OutListRect = 0x94,
     OutListCircle = 0x95,
     OutListPart = 0x69, // v0.9, previously reserved
+    // Height to directions (normal maps v1.1), previously reserved. Aux is
+    // the receiver kind: 0 layer, 1 mask.
+    SurfaceNormal = 0x6A,
     PartGetPoint = 0x96,
     PartGetRect = 0x97,
     PartGetCircle = 0x98,

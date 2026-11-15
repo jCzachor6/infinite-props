@@ -43,6 +43,7 @@ set(IPROP_RUNTIME_SOURCES
     region_offset.cpp
     region_raster.cpp
     blur.cpp
+    normal_map.cpp
     resource_exports.cpp
     masks.cpp
     outputs.cpp

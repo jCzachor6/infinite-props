@@ -94,7 +94,7 @@ constexpr OperationEffects effects(Opcode op) {
     case Opcode::MaskFrom: case Opcode::MaskInvert:
     case Opcode::MaskUnion: case Opcode::MaskIntersect: case Opcode::MaskSubtract:
     case Opcode::MaskExpand: case Opcode::MaskShrink: case Opcode::MaskOffset:
-    case Opcode::LayerBlur: case Opcode::MaskBlur:
+    case Opcode::LayerBlur: case Opcode::MaskBlur: case Opcode::SurfaceNormal:
         return {R::None,false,false,static_cast<u16>(check(C::UnassignedHandle)|check(C::NumericRange))};
     case Opcode::PolyList: return {R::None,true,false,static_cast<u16>(check(C::NumericRange)|check(C::UnassignedHandle))};
     case Opcode::ColorHsv: case Opcode::Vec2Mix: case Opcode::Vec2Normalize:
@@ -360,7 +360,7 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::DistributionBegin, "distribution.begin", OperandKind::Immediate),
     dynamic(Opcode::DistributionAppend, "distribution.append", OperandKind::Immediate),
     dynamic(Opcode::DistributionEnd, "distribution.end", OperandKind::Zero),
-    dynamic(Opcode::LayerBegin, "layer.begin", OperandKind::Local, AuxPolicy::SurfaceMode),
+    dynamic(Opcode::LayerBegin, "layer.begin", OperandKind::Local, AuxPolicy::LayerMode),
     dynamic(Opcode::SurfacePaint, "surface.paint", OperandKind::Immediate),
     dynamic(Opcode::MaskFrom, "mask.from", OperandKind::Zero),
     dynamic(Opcode::MaskUnion, "mask.union", OperandKind::Zero),
@@ -385,6 +385,7 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::ConstStepper, "const.stepper", OperandKind::StepperConst),
     dynamic(Opcode::LayerBlur, "layer.blur", OperandKind::Zero),
     dynamic(Opcode::MaskBlur, "mask.blur", OperandKind::Zero),
+    dynamic(Opcode::SurfaceNormal, "surface.normal", OperandKind::Zero, AuxPolicy::SurfaceKind),
 };
 constexpr auto kByOpcode = [] {
     std::array<const OpcodeSpec*,256> index{};

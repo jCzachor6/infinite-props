@@ -24,7 +24,8 @@ bool constantBuiltin(const BuiltinSpec& spec, const BuiltinOverload& overload) {
     if (spec.lowering == BuiltinLowering::ListLength) return true;
     if (overload.opcode) return detail::isConstantOperation(*findOpcode(*overload.opcode));
     return spec.lowering == BuiltinLowering::Opcode || spec.lowering == BuiltinLowering::Round ||
-        spec.lowering == BuiltinLowering::ColorConstructor || spec.lowering == BuiltinLowering::Beta;
+        spec.lowering == BuiltinLowering::ColorConstructor || spec.lowering == BuiltinLowering::Beta ||
+        spec.lowering == BuiltinLowering::NormalColor;
 }
 
 namespace {
@@ -274,6 +275,8 @@ private:
             inspect(*method->receiver, dependencies);
         } else if (std::holds_alternative<SurfaceBlur>(expression)) {
             fail(locationOf(expression), ".blur has generation effects and is not allowed");
+        } else if (std::holds_alternative<SurfaceNormal>(expression)) {
+            fail(locationOf(expression), ".normal has generation effects and is not allowed");
         } else if (std::holds_alternative<SamplerPick>(expression)) {
             fail(locationOf(expression), ".pick has RNG or generation effects and is not allowed");
         }
@@ -459,6 +462,13 @@ private:
             if (spec.lowering == BuiltinLowering::ColorConstructor) {
                 const auto channel = [&](std::size_t i) { return static_cast<u8>(std::clamp(std::get<i32>(args[i]), 0, 255)); };
                 return Color{channel(0), channel(1), channel(2), args.size() == 4 ? channel(3) : u8{255}};
+            }
+            if (spec.lowering == BuiltinLowering::NormalColor) {
+                const auto stored = normalColorValue(std::get<f32>(args[0]), std::get<f32>(args[1]), std::get<f32>(args[2]));
+                // A constant direction that cannot be stored is an error, not the flat fallback.
+                if (stored.flat || !(std::get<f32>(args[2]) > 0.f))
+                    fail(at, "color.normal needs a finite nonzero direction with z > 0", DiagnosticCode::AssetConstantValue);
+                return stored.color;
             }
         }
         if (const auto* unary = std::get_if<Unary>(&expression)) {

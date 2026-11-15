@@ -30,6 +30,9 @@ destination.
 
 <!-- example: ../../examples/language/captured-panels.ips -->
 
+A capture can also hold directions instead of colours, for a normal map: see
+[relief and normal maps](relief.md).
+
 ## Paint a snapshot
 
 <!-- builtin: surface.paint -->

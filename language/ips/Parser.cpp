@@ -409,8 +409,10 @@ OutputDecl ParserImpl::parseOutput() {
     case TokenKind::KeywordMask: outputKind = OutputKind::Mask; break;
     case TokenKind::KeywordLayer: outputKind = OutputKind::Layer; break;
     default:
+        // `part` and `normal` are contextual: neither is a reserved word.
         if (kind() == TokenKind::Identifier && tokens_[pos_].text == "part") outputKind = OutputKind::Part;
-        else failExpected("an output kind (point, rect, circle, mask, layer or list part)");
+        else if (kind() == TokenKind::Identifier && tokens_[pos_].text == "normal") outputKind = OutputKind::Normal;
+        else failExpected("an output kind (point, rect, circle, mask, layer, normal or list part)");
     }
     if (isList && isResourceOutput(outputKind)) failHere("resource exports cannot be lists");
     if (!isList && outputKind == OutputKind::Part) failHere("part outputs must be lists");
@@ -669,7 +671,7 @@ Stmt ParserImpl::parseIdentifierStatement() {
         throw SourceError{locationOf(*expr), "list elements are immutable; assign a whole new list instead"};
     if (!std::holds_alternative<Call>(*expr) && !std::holds_alternative<SamplerPick>(*expr) &&
         !std::holds_alternative<SamplerCapture>(*expr) && !std::holds_alternative<ListMethod>(*expr) &&
-        !std::holds_alternative<SurfaceBlur>(*expr)) {
+        !std::holds_alternative<SurfaceBlur>(*expr) && !std::holds_alternative<SurfaceNormal>(*expr)) {
         throw SourceError{name.location, "expression statement must be a call" + keywordSuggestion(name.text)};
     }
     return Stmt{ExprStmt{std::move(expr), name.location}};
@@ -681,20 +683,37 @@ Stmt ParserImpl::parseLayer() {
     if (match(TokenKind::Assign))
         return Stmt{VarDecl{local.text, parseExpr(), local.location, ParamType::Layer}};
     auto alpha = CompositionMode::Inherited;
+    bool directions = false;
     if (match(TokenKind::LParen)) {
-        const auto option = expectName("'alpha'");
-        if (option.text != "alpha") throw SourceError{option.location, "layer supports only the 'alpha' option"};
-        expect(TokenKind::Assign, "'=' after alpha");
-        const auto base = expectName("'surface'");
-        expect(TokenKind::Dot, "'.' in surface alpha mode");
-        const auto mode = expectName("'legacy' or 'source_over'");
-        const auto* spec = compositionSpec(mode.text);
-        if (base.text != "surface" || !spec)
-            throw SourceError{mode.location, "layer alpha must be surface.legacy or surface.source_over"};
-        alpha = spec->mode;
-        expect(TokenKind::RParen, "')' after layer alpha");
+        const auto option = expectName("'alpha' or 'encoding'");
+        if (option.text == "encoding") {
+            // A direction capture composes source-over; it takes no alpha mode.
+            expect(TokenKind::Assign, "'=' after encoding");
+            const auto base = expectName("'surface'");
+            expect(TokenKind::Dot, "'.' in surface encoding");
+            const auto encoding = expectName("'normal'");
+            if (base.text != "surface" || encoding.text != "normal")
+                throw SourceError{encoding.location, "layer encoding must be surface.normal"};
+            directions = true;
+            if (kind() == TokenKind::Comma)
+                throw SourceError{tokens_[pos_].location, "a layer takes either 'alpha' or 'encoding', not both"};
+            expect(TokenKind::RParen, "')' after layer encoding");
+        } else {
+            if (option.text != "alpha") throw SourceError{option.location, "layer supports only the 'alpha' and 'encoding' options"};
+            expect(TokenKind::Assign, "'=' after alpha");
+            const auto base = expectName("'surface'");
+            expect(TokenKind::Dot, "'.' in surface alpha mode");
+            const auto mode = expectName("'legacy' or 'source_over'");
+            const auto* spec = compositionSpec(mode.text);
+            if (base.text != "surface" || !spec)
+                throw SourceError{mode.location, "layer alpha must be surface.legacy or surface.source_over"};
+            alpha = spec->mode;
+            if (kind() == TokenKind::Comma)
+                throw SourceError{tokens_[pos_].location, "a layer takes either 'alpha' or 'encoding', not both"};
+            expect(TokenKind::RParen, "')' after layer alpha");
+        }
     }
-    return Stmt{LayerStmt{local.text, alpha, parseBlock(), at}};
+    return Stmt{LayerStmt{local.text, alpha, parseBlock(), at, directions}};
 }
 
 Stmt ParserImpl::parseIf() {

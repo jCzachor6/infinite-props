@@ -216,7 +216,7 @@ TEST_CASE("layer descriptors scopes and modes survive tools and reject malformed
         const auto at=file.code.functions[0].fileOffset+i*4;const auto ins=decodeInstruction(file.code.functions[0].code.subspan(i*4,4));
         if(ins.opcode==Opcode::LayerBegin){
             for(const u16 destination:{u16{1},u16{2},u16{65535}}){auto bad=bytes;patch16(bad,at+2,destination);CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);}
-            auto bad=bytes;bad.at(at+1)=3;CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);
+            auto bad=bytes;bad.at(at+1)=4;CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);
         }
         if(ins.opcode==Opcode::SurfacePaint){
             auto bad=bytes;patch16(bad,at+2,3);CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);
@@ -224,7 +224,7 @@ TEST_CASE("layer descriptors scopes and modes survive tools and reject malformed
         }
     }
     auto old=bytes;patch16(old,6,5);CHECK_THROWS_AS(loadFile(old),FormatError);
-    for(const std::string dead:{"layer.begin 0 3\nend\n", "layer.begin 65535\nend\n", "surface.paint 3\n"})
+    for(const std::string dead:{"layer.begin 0 4\nend\n", "layer.begin 65535\nend\n", "surface.paint 3\n"})
         CHECK_THROWS_AS(assemble("meta: size=1x1\nfn draw ( ) -> ( ):\nreturn\n"+dead+"endfn\n"),std::exception);
 }
 

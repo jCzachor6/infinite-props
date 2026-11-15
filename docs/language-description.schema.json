@@ -2380,6 +2380,432 @@
           },
           "description": "Lexically reserved names from the compiler lexer. Newly introduced words have no contextual compatibility aliases."
         },
+        "normal_maps": {
+          "type": "object",
+          "description": "Optional normal-map rules: the normal output, direction captures, the height conversion and color.normal. Additive to schema 6.",
+          "properties": {
+            "output_syntax": {
+              "const": "output normal <name>",
+              "description": "Declaration of an asset's normal output."
+            },
+            "output_keyword": {
+              "const": "contextual",
+              "description": "`normal` is read as an output kind only after `output`; it is not a reserved word."
+            },
+            "output_storage": {
+              "const": "flagged_layer_resource_export",
+              "description": "A layer record of the resource-export table carrying flag bit 0."
+            },
+            "outputs_per_asset": {
+              "const": 1,
+              "description": "Normal outputs one asset may declare."
+            },
+            "output_value": {
+              "const": "direction_layer_checked_at_write",
+              "description": "A write requires a direction layer and traps otherwise; the check is not static."
+            },
+            "list_outputs": {
+              "const": false,
+              "description": "Normal outputs are singular."
+            },
+            "part_read": {
+              "const": "layer_in_caller_coordinates",
+              "description": "A parent reads a direct child's normal output as a layer in its own coordinates."
+            },
+            "publication": {
+              "const": "root_slot_painted_source_over_on_flat_after_success",
+              "description": "After a successful run the root's slot is painted once, source-over, onto a flat image of the canvas size."
+            },
+            "published_alpha": {
+              "const": 255,
+              "description": "Alpha of every pixel of a published normal image."
+            },
+            "flat_rgba": {
+              "type": "array",
+              "const": [
+                128,
+                128,
+                255,
+                255
+              ],
+              "description": "Stored bytes of the flat direction, and the background of a published image.",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255,
+                "description": "One stored byte."
+              }
+            },
+            "publication_fuel": {
+              "const": 0,
+              "description": "Publication is result packing under the work budget and costs no fuel."
+            },
+            "axes": {
+              "const": "x_right_y_up_z_toward_viewer",
+              "description": "Axes of a stored direction."
+            },
+            "byte": {
+              "const": "nearest_ties_away_from_zero_complement_negates",
+              "description": "Component encoding: the nearest byte with ties away from zero; 255 - b is the exact negation."
+            },
+            "capture_syntax": {
+              "const": "layer <name>(encoding=surface.normal) { <statements> }",
+              "description": "Direction capture syntax."
+            },
+            "capture_mode": {
+              "const": "surface.source_over",
+              "description": "Composition mode of every direction capture."
+            },
+            "capture_mode_code": {
+              "const": 3,
+              "description": "Aux value of layer.begin that selects a direction capture."
+            },
+            "capture_alpha_option": {
+              "const": false,
+              "description": "A direction capture takes no alpha option."
+            },
+            "encoding": {
+              "const": "buffer_property_not_a_type",
+              "description": "Colour or direction is a property of a surface buffer; both are the type layer."
+            },
+            "paint": {
+              "const": "view_D4_reorients_vectors_with_pixels",
+              "description": "Painting a direction layer applies the view's D4 transform to its vectors as well as its pixels."
+            },
+            "weather": {
+              "const": "trap",
+              "description": "weather in a direction capture."
+            },
+            "dynamic_parts": {
+              "const": false,
+              "description": "Whether a dynamic part can hold a direction layer."
+            },
+            "blur": {
+              "const": "keeps_encoding",
+              "description": "A blurred direction layer stays a direction layer."
+            },
+            "methods": {
+              "type": "array",
+              "minItems": 4,
+              "maxItems": 4,
+              "uniqueItems": true,
+              "description": "The .normal receiver methods, exported from the shared receiver-first registry.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "const": "normal",
+                    "description": "Ordinary receiver method name, separate from global builtins."
+                  },
+                  "receiver": {
+                    "enum": [
+                      "layer",
+                      "mask"
+                    ],
+                    "description": "Statically required surface type."
+                  },
+                  "parameters": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 2,
+                    "description": "Depth, then optional smoothing; each may be named.",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "enum": [
+                            "depth",
+                            "smoothing"
+                          ],
+                          "description": "Argument name used by named call syntax."
+                        },
+                        "type": {
+                          "const": "f32",
+                          "description": "Required type after implicit i32 widening."
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "type"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "result": {
+                    "const": "layer",
+                    "description": "A direction layer."
+                  },
+                  "opcode": {
+                    "const": "surface.normal",
+                    "description": "The conversion instruction; its aux byte selects the receiver type."
+                  },
+                  "effects": {
+                    "$ref": "#/$defs/effects",
+                    "description": "Intrinsic effects, excluding operand evaluation and resource traps."
+                  },
+                  "constant_evaluable": {
+                    "const": false,
+                    "description": "The conversion requires generation and cannot initialize an asset constant."
+                  }
+                },
+                "required": [
+                  "name",
+                  "receiver",
+                  "parameters",
+                  "result",
+                  "opcode",
+                  "constant_evaluable",
+                  "effects"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "method_syntax": {
+              "const": "<layer|mask>.normal(depth[, smoothing])",
+              "description": "Source spelling of the height conversion."
+            },
+            "evaluation": {
+              "const": "receiver_then_depth_then_smoothing_once",
+              "description": "Operand evaluation order; each operand is evaluated once."
+            },
+            "depth_type": {
+              "const": "f32",
+              "description": "Type of depth after implicit i32 widening."
+            },
+            "minimum_depth": {
+              "const": 0,
+              "description": "Smallest depth; there is no upper bound beyond finiteness."
+            },
+            "depth_units": {
+              "const": "receiver_raster_pixels_of_full_coverage",
+              "description": "Unit of depth: the height of full coverage in the receiver's raster pixels."
+            },
+            "smoothing_type": {
+              "const": "f32",
+              "description": "Type of smoothing after implicit i32 widening."
+            },
+            "minimum_smoothing": {
+              "const": 0,
+              "description": "Smallest smoothing sigma."
+            },
+            "maximum_smoothing": {
+              "const": 64,
+              "description": "Largest smoothing sigma."
+            },
+            "default_smoothing": {
+              "const": 0,
+              "description": "Smoothing of the one-argument form."
+            },
+            "smoothing_units": {
+              "const": "receiver_raster_pixels",
+              "description": "Unit of the smoothing sigma."
+            },
+            "height": {
+              "type": "object",
+              "description": "What each receiver type contributes as height.",
+              "properties": {
+                "mask": {
+                  "const": "coverage",
+                  "description": "Height read from a mask."
+                },
+                "layer": {
+                  "const": "red_times_alpha_over_255",
+                  "description": "Height read from a colour layer."
+                }
+              },
+              "required": [
+                "mask",
+                "layer"
+              ],
+              "additionalProperties": true
+            },
+            "height_layer_encoding": {
+              "const": "colour_only",
+              "description": "A layer receiver must be a colour layer; a direction layer traps."
+            },
+            "result": {
+              "const": "direction_layer_with_receiver_extent_scale_placement_D4",
+              "description": "The result is a new direction layer viewed like its receiver."
+            },
+            "result_alpha": {
+              "const": "receiver_coverage",
+              "description": "Alpha of the result."
+            },
+            "border": {
+              "const": "nearest_edge",
+              "description": "Samples beyond the receiver repeat its nearest edge, in smoothing and in the slope."
+            },
+            "smoothing_kernel": {
+              "const": "blur_gaussian_binary64_no_rounding",
+              "description": "Smoothing uses the Gaussian of blur on a binary64 plane, with no rounding before the slope."
+            },
+            "slope": {
+              "const": "central_differences",
+              "description": "How the slope is taken from the height."
+            },
+            "maximum_radius": {
+              "const": 192,
+              "description": "Largest smoothing kernel radius in pixels."
+            },
+            "opcode": {
+              "const": "surface.normal",
+              "description": "The one instruction of the conversion."
+            },
+            "receiver_codes": {
+              "type": "object",
+              "description": "Aux value of the instruction for each receiver type.",
+              "properties": {
+                "layer": {
+                  "const": 0,
+                  "description": "Aux value for a layer receiver."
+                },
+                "mask": {
+                  "const": 1,
+                  "description": "Aux value for a mask receiver."
+                }
+              },
+              "required": [
+                "layer",
+                "mask"
+              ],
+              "additionalProperties": true
+            },
+            "fuel": {
+              "const": "ceil_60_percent_one_plus_K_plus_W_H_times_5_plus_2_K",
+              "description": "Fuel of one conversion; K is the smoothing kernel width, zero without smoothing."
+            },
+            "result_bytes": {
+              "const": "128_plus_4_per_pixel",
+              "description": "Generation-arena bytes of the result."
+            },
+            "scratch_bytes": {
+              "const": "8_times_W_H_plus_8_times_W_radius",
+              "description": "Generation-arena bytes held during the conversion."
+            },
+            "scratch_release": {
+              "const": "success_and_error",
+              "description": "When the scratch is released."
+            },
+            "preflight": {
+              "const": "fuel_and_shared_arena_before_filter",
+              "description": "Fuel and memory are checked before any allocation."
+            },
+            "color_builtin": {
+              "const": "color.normal",
+              "description": "The builtin that stores a direction as a colour."
+            },
+            "color_axes": {
+              "const": "x_right_y_down_z_toward_viewer",
+              "description": "Axes of the builtin's arguments: source coordinates, y downward."
+            },
+            "color_lowering": {
+              "const": "existing_f32_instructions",
+              "description": "The builtin expands to existing instructions; it has no opcode."
+            },
+            "color_constants": {
+              "const": "fold_to_one_color",
+              "description": "Constant arguments compile to one colour constant with the same bytes."
+            },
+            "color_fallback": {
+              "const": "flat_when_squared_length_zero_or_not_finite",
+              "description": "Result for a vector that is only known while running and cannot be normalized."
+            },
+            "color_constant_errors": {
+              "type": "array",
+              "const": [
+                "zero_or_nonfinite_length",
+                "z_not_positive"
+              ],
+              "description": "Constant arguments rejected at compile time.",
+              "items": {
+                "type": "string",
+                "description": "One rejected constant condition."
+              }
+            },
+            "asset_constants": {
+              "type": "object",
+              "description": "Which normal-map constructs an asset constant may use.",
+              "properties": {
+                "color.normal": {
+                  "const": true,
+                  "description": "color.normal is constant-evaluable."
+                },
+                "normal_method": {
+                  "const": false,
+                  "description": "The .normal method requires generation."
+                }
+              },
+              "required": [
+                "color.normal",
+                "normal_method"
+              ],
+              "additionalProperties": true
+            },
+            "effects": {
+              "$ref": "#/$defs/effects",
+              "description": "Intrinsic effects of the conversion, excluding operand evaluation and resource traps."
+            }
+          },
+          "required": [
+            "output_syntax",
+            "output_keyword",
+            "output_storage",
+            "outputs_per_asset",
+            "output_value",
+            "list_outputs",
+            "part_read",
+            "publication",
+            "published_alpha",
+            "flat_rgba",
+            "publication_fuel",
+            "axes",
+            "byte",
+            "capture_syntax",
+            "capture_mode",
+            "capture_mode_code",
+            "capture_alpha_option",
+            "encoding",
+            "paint",
+            "weather",
+            "dynamic_parts",
+            "blur",
+            "methods",
+            "method_syntax",
+            "evaluation",
+            "depth_type",
+            "minimum_depth",
+            "depth_units",
+            "smoothing_type",
+            "minimum_smoothing",
+            "maximum_smoothing",
+            "default_smoothing",
+            "smoothing_units",
+            "height",
+            "height_layer_encoding",
+            "result",
+            "result_alpha",
+            "border",
+            "smoothing_kernel",
+            "slope",
+            "maximum_radius",
+            "opcode",
+            "receiver_codes",
+            "fuel",
+            "result_bytes",
+            "scratch_bytes",
+            "scratch_release",
+            "preflight",
+            "color_builtin",
+            "color_axes",
+            "color_lowering",
+            "color_constants",
+            "color_fallback",
+            "color_constant_errors",
+            "asset_constants",
+            "effects"
+          ],
+          "additionalProperties": true
+        },
         "masks": {
           "type": "object",
           "properties": {

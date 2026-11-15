@@ -142,6 +142,14 @@ struct SurfaceBlur {
     Arg sigma;
     SourceLocation location;
 };
+// `receiver.normal(depth[, smoothing])`: the height of a layer or a mask as
+// a direction layer (spec normal maps v1.1). Without smoothing it is zero.
+struct SurfaceNormal {
+    std::unique_ptr<Expr> receiver;
+    Arg depth;
+    std::optional<Arg> smoothing;
+    SourceLocation location;
+};
 
 struct PointDistributionLiteral {
     struct Point {
@@ -155,9 +163,11 @@ struct PointDistributionLiteral {
 
 struct Expr
     : std::variant<Literal, Identifier, Member, Call, VectorLit, ListLit, Index, Binary,
-                   Unary, RandomRange, SamplerCapture, SamplerPick, ListMethod, SurfaceBlur, PointDistributionLiteral> {
+                   Unary, RandomRange, SamplerCapture, SamplerPick, ListMethod, SurfaceBlur, SurfaceNormal,
+                   PointDistributionLiteral> {
     using std::variant<Literal, Identifier, Member, Call, VectorLit, ListLit, Index,
-                       Binary, Unary, RandomRange, SamplerCapture, SamplerPick, ListMethod, SurfaceBlur, PointDistributionLiteral>::variant;
+                       Binary, Unary, RandomRange, SamplerCapture, SamplerPick, ListMethod, SurfaceBlur, SurfaceNormal,
+                       PointDistributionLiteral>::variant;
     TokenRange sourceRange{};
     TokenRange sourceCoreRange{}; // excludes redundant outer parentheses
     // Nodes on the longest path down from this one, itself included. The
@@ -189,6 +199,10 @@ inline std::uint32_t childDepth(const Expr& expr) {
         else if constexpr (std::is_same_v<T, SamplerPick>) { visit(node.receiver); visit(node.count); }
         else if constexpr (std::is_same_v<T, ListMethod>) visit(node.receiver);
         else if constexpr (std::is_same_v<T, SurfaceBlur>) { visit(node.receiver); visit(node.sigma.value); }
+        else if constexpr (std::is_same_v<T, SurfaceNormal>) {
+            visit(node.receiver); visit(node.depth.value);
+            if (node.smoothing) visit(node.smoothing->value);
+        }
         else if constexpr (std::is_same_v<T, PointDistributionLiteral>) {
             for (const auto& point : node.points) { visit(point.key); visit(point.value); }
         } else {
@@ -272,6 +286,8 @@ struct LayerStmt {
     CompositionMode alpha = CompositionMode::Inherited;
     std::vector<Stmt> body;
     SourceLocation location;
+    // `(encoding=surface.normal)`: a source-over capture of directions.
+    bool directions = false;
 };
 struct ClipStmt {
     std::unique_ptr<Expr> mask;
@@ -292,9 +308,11 @@ struct Stmt
 enum class InputType { Color, F32, U32, I32 };
 
 // Resource exports are source-level outputs, separate from the frozen host enum.
-enum class OutputKind { Point, Rect, Circle, Mask, Layer, Part };
+// A normal output is a layer export whose value is a direction layer; the
+// root's is published to the host as the normal image.
+enum class OutputKind { Point, Rect, Circle, Mask, Layer, Part, Normal };
 constexpr bool isResourceOutput(OutputKind kind) {
-    return kind == OutputKind::Mask || kind == OutputKind::Layer;
+    return kind == OutputKind::Mask || kind == OutputKind::Layer || kind == OutputKind::Normal;
 }
 
 // `input color palette = #808d74`

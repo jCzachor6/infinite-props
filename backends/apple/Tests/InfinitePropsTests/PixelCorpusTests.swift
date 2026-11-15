@@ -34,7 +34,7 @@ final class PixelCorpusTests: XCTestCase {
         let manifest = try JSONSerialization.jsonObject(with: Data(contentsOf: directory.appendingPathComponent("pixel-corpus.json"))) as! [String: Any]
         try require(manifest["sha256"] as? String == hash, "Corpus SHA-256 mismatch")
         var reader = CorpusReader(data: data)
-        try require(reader.take(8) == Data("IPXCRP01".utf8), "Corpus version")
+        try require(reader.take(8) == Data("IPXCRP02".utf8), "Corpus version")
         var programs = [Data]()
         for _ in 0..<(try reader.word()) { programs.append(try reader.blob()) }
         let count = try reader.word()
@@ -42,6 +42,7 @@ final class PixelCorpusTests: XCTestCase {
         // CPU image transport is mandatory everywhere. Hardware transport is
         // also exercised when the host exposes Metal (hosted CI may not).
         let device = MTLCreateSystemDefaultDevice()
+        var auxiliaryImages = 0
         for index in 0..<count {
             try autoreleasepool {
                 let program = try Program(bytes: programs[Int(reader.word())])
@@ -61,8 +62,12 @@ final class PixelCorpusTests: XCTestCase {
                     }
                     overrides.append(InputOverride(name, value))
                 }
+                let derive = try reader.word() != 0
+                let request = DerivedNormal(depth: Float(bitPattern: try reader.word()),
+                    rounding: Float(bitPattern: try reader.word()), detail: Float(bitPattern: try reader.word()))
                 let expectedWidth = try reader.word(), expectedHeight = try reader.word(), expected = try reader.blob()
-                let image = try program.generate(seed: seed, width: width, height: height, overrides: overrides, limits: ExecutionLimits(workLimit: 1_000_000_000))
+                let image = try program.generate(seed: seed, width: width, height: height, overrides: overrides,
+                    limits: ExecutionLimits(workLimit: 1_000_000_000), deriveNormal: derive ? request : nil)
                 let label = "Corpus case \(index), seed \(seed)"
                 try require(image.width == expectedWidth && image.height == expectedHeight, label + ": size")
                 try require(image.rgba == expected, label + ": RGBA")
@@ -76,6 +81,25 @@ final class PixelCorpusTests: XCTestCase {
                     try require(output.values.count == Int(reader.word()), label + ": values")
                     for value in output.values { try require(value.bitPattern == reader.word(), label + ": f32 bits") }
                 }
+                // Auxiliary images are part of the gate: every byte, name and tag.
+                try require(image.images.count == Int(reader.word()), label + ": auxiliary image count")
+                for auxiliary in image.images {
+                    let kind = try reader.word(), source = try reader.word(), name = try reader.blob()
+                    let auxWidth = try reader.word(), auxHeight = try reader.word(), auxRGBA = try reader.blob()
+                    try require(auxiliary.kind.rawValue == kind && auxiliary.source.rawValue == source &&
+                        Data(auxiliary.name.utf8) == name, label + ": auxiliary image tags")
+                    try require(auxiliary.width == auxWidth && auxiliary.height == auxHeight && auxiliary.rgba == auxRGBA,
+                        label + ": auxiliary RGBA")
+                    try require(try auxiliary.makeCGImage().dataProvider!.data! as Data == auxRGBA, label + ": auxiliary CGImage RGBA")
+                    if let device = device {
+                        let texture = try auxiliary.makeMetalTexture(device: device)
+                        var bytes = [UInt8](repeating: 0, count: auxRGBA.count)
+                        texture.getBytes(&bytes, bytesPerRow: Int(auxiliary.rowStride),
+                            from: MTLRegionMake2D(0, 0, Int(auxiliary.width), Int(auxiliary.height)), mipmapLevel: 0)
+                        try require(Data(bytes) == auxRGBA, label + ": auxiliary Metal RGBA")
+                    }
+                    auxiliaryImages += 1
+                }
                 let cg = try image.makeCGImage()
                 try require(cg.dataProvider!.data! as Data == expected, label + ": CGImage RGBA")
                 if let device = device {
@@ -88,6 +112,7 @@ final class PixelCorpusTests: XCTestCase {
             }
         }
         try require(reader.at == data.count, "Unread corpus cases")
-        print("Apple + CGImage\(device == nil ? " (Metal unavailable)" : " + Metal"): \(count) pixel-exact cases; SHA-256 \(hash)")
+        try require(auxiliaryImages > 0, "Corpus must exercise auxiliary images")
+        print("Apple + CGImage\(device == nil ? " (Metal unavailable)" : " + Metal"): \(count) pixel-exact cases with \(auxiliaryImages) auxiliary images; SHA-256 \(hash)")
     }
 }

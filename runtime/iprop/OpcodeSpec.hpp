@@ -26,7 +26,9 @@ struct StackSignature {
     }
 };
 
-enum class AuxPolicy { Zero, PartTransform, SurfaceMode };
+// LayerMode: 0-2 composition, 3 direction capture. SurfaceKind: the receiver
+// of surface.normal, 0 layer or 1 mask.
+enum class AuxPolicy { Zero, PartTransform, LayerMode, SurfaceKind };
 
 // Intrinsic effects on validated source, excluding argument-expression effects
 // and execution-wide resource failures. Seeded computations do not use the

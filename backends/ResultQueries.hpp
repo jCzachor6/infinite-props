@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <cstring>
 #include <limits>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -33,6 +34,63 @@ inline bool rgba8Image(const iprop_image_view_ex& image) {
            image.origin == IPROP_IMAGE_ORIGIN_TOP_LEFT &&
            image.row_stride == stride && image.byte_count == stride * image.height &&
            (image.byte_count == 0 || image.pixels != nullptr);
+}
+
+inline iprop_status_ex queryAuxImage(const iprop_result* result, std::uint32_t index,
+                                    iprop_aux_image_view_ex& image, iprop_error_ex* error = nullptr) {
+    iprop_aux_image_view_ex candidate;
+    auto status = iprop_aux_image_view_ex_init(&candidate, sizeof(candidate));
+    if (status == IPROP_EX_OK) status = iprop_result_aux_image_get(result, index, &candidate, error);
+    if (status == IPROP_EX_OK) image = candidate;
+    return status;
+}
+
+// Auxiliary images are opaque: their alpha carries no coverage.
+inline bool rgba8AuxImage(const iprop_aux_image_view_ex& image) {
+    const auto stride = static_cast<std::uint64_t>(image.width) * 4;
+    if (image.height != 0 && stride > std::numeric_limits<std::uint64_t>::max() / image.height) return false;
+    return image.pixel_format == IPROP_PIXEL_FORMAT_RGBA8 &&
+           image.alpha_mode == IPROP_IMAGE_ALPHA_OPAQUE &&
+           image.origin == IPROP_IMAGE_ORIGIN_TOP_LEFT &&
+           image.row_stride == stride && image.byte_count == stride * image.height &&
+           (image.byte_count == 0 || image.pixels != nullptr);
+}
+
+struct AuxImage {
+    // pixels and name are cleared: the owned members below replace them.
+    iprop_aux_image_view_ex info{};
+    std::string name;
+    std::vector<std::uint8_t> pixels;
+};
+
+// Owned copies of every auxiliary image, in result order. Candidates publish
+// together after every query succeeds; nothing borrowed outlives the call.
+inline iprop_status_ex copyAuxImages(const iprop_result* result, std::vector<AuxImage>& images,
+                                    iprop_error_ex* error = nullptr) {
+    std::uint32_t count = 0;
+    auto status = iprop_result_aux_image_count(result, &count, error);
+    if (status != IPROP_EX_OK) return status;
+    std::vector<AuxImage> candidate(count);
+    for (std::uint32_t i = 0; i < count; ++i) {
+        auto& image = candidate[i];
+        status = queryAuxImage(result, i, image.info, error);
+        if (status != IPROP_EX_OK) return status;
+        if (!rgba8AuxImage(image.info) || image.info.byte_count > std::numeric_limits<std::size_t>::max())
+            return IPROP_EX_E_ARGUMENT;
+        if (image.info.name.byte_count != 0) image.name.assign(image.info.name.data, image.info.name.byte_count);
+        if (image.info.byte_count != 0)
+            image.pixels.assign(image.info.pixels, image.info.pixels + static_cast<std::size_t>(image.info.byte_count));
+        image.info.name = {};
+        image.info.pixels = nullptr;
+    }
+    images = std::move(candidate);
+    return IPROP_EX_OK;
+}
+
+// The first normal image of a list, or null.
+inline const AuxImage* normalImage(const std::vector<AuxImage>& images) {
+    for (const auto& image : images) if (image.info.kind == IPROP_AUX_IMAGE_NORMAL) return &image;
+    return nullptr;
 }
 
 inline iprop_status_ex queryOutput(const iprop_result* result, std::uint32_t index,

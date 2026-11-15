@@ -116,6 +116,17 @@ def main():
         m['effects']['rng'] == 'none' and not m['effects']['writes_canvas'] for m in surface_methods)
     assert rules['surfaces']['blur']['maximum_sigma'] == 64
     assert rules['surfaces']['blur']['clip'] == 'paint_only'
+    normal = rules['normal_maps']
+    assert not {'normal', 'encoding', 'depth', 'smoothing'} & set(rules['reserved_keywords'])
+    assert normal['maximum_smoothing'] == 64 and normal['outputs_per_asset'] == 1 and normal['capture_mode_code'] == 3
+    assert len(normal['methods']) == 4 and {(m['receiver'], len(m['parameters'])) for m in normal['methods']} == {
+        ('layer', 1), ('layer', 2), ('mask', 1), ('mask', 2)}
+    assert all(m['name'] == 'normal' and m['result'] == 'layer' and m['opcode'] == normal['opcode'] and
+        not m['constant_evaluable'] and m['effects']['rng'] == 'none' and not m['effects']['writes_canvas']
+        for m in normal['methods'])
+    assert all(b['name'] != 'normal' for b in description['builtins'])
+    stored = [b for b in description['builtins'] if b['name'] == normal['color_builtin']]
+    assert len(stored) == 1 and stored[0]['overloads'][0]['constant_evaluable'] and 'opcode' not in stored[0]['overloads'][0]
     assert rules['masks']['maximum_radius'] == 64
     assert rules['masks']['part_clip'] == 'parent_applies_to_blit_once'
     cases = [
@@ -130,6 +141,22 @@ def main():
         ('blur sigma type rejected', 'draw{layer image{}image.blur(#fff)}', False),
         ('blur missing sigma rejected', 'draw{layer image{}image.blur()}', False),
         ('blur out of range rejected', 'draw{layer image{}image.blur(65)}', False),
+        ('normal output from a direction capture', 'output normal relief draw{layer n(encoding=surface.normal){pixel(0,0,color.normal(0,0,1))}relief=n}', True),
+        ('normal from mask and layer with names and widening', 'output normal relief draw{layer body{}relief=mask.from(body).normal(2,smoothing=1);x=body.normal(depth=2)}', True),
+        ('normal helper transfer', 'bump(m:mask,d:f32)->layer{return m.normal(d)} output normal relief draw{layer body{}relief=bump(mask.from(body),3)}', True),
+        ('normal words stay ordinary names', 'input f32 normal=1 encoding(depth:f32)->f32{return depth} draw{smoothing=encoding(normal)}', True),
+        ('normal constant direction', 'const color up=color.normal(0,-1,1) draw{pixel(0,0,up)}', True),
+        ('second normal output rejected', 'output normal a output normal b draw{}', False),
+        ('list normal output rejected', 'output list normal relief draw{}', False),
+        ('normal output value type rejected', 'output normal relief draw{relief=#fff}', False),
+        ('normal scalar receiver rejected', 'draw{x=(1).normal(2)}', False),
+        ('normal missing depth rejected', 'draw{layer image{}x=image.normal()}', False),
+        ('normal depth out of range rejected', 'draw{layer image{}x=image.normal(-1)}', False),
+        ('normal smoothing out of range rejected', 'draw{layer image{}x=image.normal(1,65)}', False),
+        ('normal zero direction rejected', 'draw{x=color.normal(0,0,0)}', False),
+        ('normal direction facing away rejected', 'draw{x=color.normal(0,0,-1)}', False),
+        ('normal encoding with alpha rejected', 'draw{layer n(alpha=surface.legacy,encoding=surface.normal){}}', False),
+        ('normal encoding of another kind rejected', 'draw{layer n(encoding=surface.legacy){}}', False),
         ('list transforms and constant empty chain', 'const list<i32> empty=[].sort().distinct() draw{items=[3,1,3].distinct().sort()}', True),
         ('list method names remain identifiers', 'sort(x:i32)->i32{return x} distinct(x:i32)->i32{return x} draw{sort=sort(distinct(1))}', True),
         ('distribution sort rejected', 'draw{items=[gaussian(0,1)].sort()}', False),

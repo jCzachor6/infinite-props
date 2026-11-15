@@ -1,0 +1,25 @@
+import wing from "parts/relief-wing.ips"
+
+// A moth: one wing part drawn twice, the second time mirrored. The parent
+// keeps each wing's relief and paints both into its own normal map; painting
+// a direction layer turns its vectors with the part.
+asset reliefMoth {
+  size 48x32
+  output normal relief
+
+  draw {
+    wing.draw(seed, at = {25, 4})
+    right = wing.outputs.relief
+    wing.draw(seed, at = {7, 4}, mirror_x = 1)
+    left = wing.outputs.relief
+    oval(24, 16, 2.5, 9, #4a3b2a)
+
+    layer body { oval(24, 16, 2.5, 9, #ffffff) }
+    layer directions(encoding = surface.normal) {
+      surface.paint(right)
+      surface.paint(left)
+      surface.paint(mask.from(body).normal(3.0, 1.0))
+    }
+    relief = directions
+  }
+}

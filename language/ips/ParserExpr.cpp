@@ -248,6 +248,15 @@ std::unique_ptr<Expr> ParserImpl::parsePostfixAfter(std::unique_ptr<Expr> expr) 
                 if (args.size() != 1 || (args[0].name && *args[0].name != "sigma"))
                     throw SourceError{at, ".blur takes one f32 sigma, optionally named 'sigma'"};
                 expr = node(SurfaceBlur{std::move(member->object), std::move(args[0]), at});
+            } else if (member && member->name == "normal" && !(std::holds_alternative<Identifier>(*member->object) &&
+                    std::get<Identifier>(*member->object).name == "color")) {
+                // `color.normal(x, y, z)` stays the builtin, as `color.mix` does.
+                const auto named = [&](std::size_t i, const char* name) { return !args[i].name || *args[i].name == name; };
+                if (args.empty() || args.size() > 2 || !named(0, "depth") || (args.size() == 2 && !named(1, "smoothing")))
+                    throw SourceError{at, ".normal takes an f32 depth and an optional f32 smoothing, optionally named 'depth' and 'smoothing'"};
+                std::optional<Arg> smoothing;
+                if (args.size() == 2) smoothing = std::move(args[1]);
+                expr = node(SurfaceNormal{std::move(member->object), std::move(args[0]), std::move(smoothing), at});
             } else if (member && (member->name == "distinct" || member->name == "sort")) {
                 if (!args.empty()) throw SourceError{at, "." + member->name + " takes no arguments"};
                 expr = node(ListMethod{std::move(member->object), member->name, at});

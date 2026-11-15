@@ -12,6 +12,7 @@ namespace iprop::capi {
 void packResult(iprop_result& result, GenerationResult generation, const LoadedFile& file, detail::WorkBudget* work) {
     const auto visit = [&](u64 units = 1) { if (work) work->spend(units); };
     result.image = std::move(generation.image);
+    result.images = std::move(generation.images);
     result.ownerCount = static_cast<uint32_t>(file.code.parts.size()) + 1;
 
     auto& outputs = generation.outputs;
@@ -203,10 +204,11 @@ CallOutcome checkGenerationRequest(const iprop_program& program,
 
 void generateProgram(const iprop_program& program, const GenerationInputs& inputs,
                      iprop_result& result, ErrorContext& context,
-                     const iprop_parameters* parameters) {
+                     const iprop_parameters* parameters, const DerivedNormalRequest* derived) {
     context.file = program.data.get();
     context.stage = ErrorStage::Arguments;
     VM vm = parameters != nullptr ? VM(*program.data, inputs, parameters->values) : VM(*program.data, inputs);
+    if (derived != nullptr) vm.deriveNormal(*derived);
     context.stage = ErrorStage::Execute;
     vm.run();
     result.fuelBudget = vm.fuelBudget();

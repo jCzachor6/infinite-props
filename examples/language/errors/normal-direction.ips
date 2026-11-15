@@ -1,0 +1,7 @@
+asset badDirection {
+    size 1x1
+    draw {
+        flat = color.normal(0, 0, 0)
+        pixel(0, 0, flat)
+    }
+}

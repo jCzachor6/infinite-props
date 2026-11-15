@@ -76,8 +76,10 @@ public:
                 fail(i, std::string(spec->mnemonic) + " operand must be zero");
             if (spec->aux == AuxPolicy::PartTransform && !D4Transform::fromKind(ins.aux))
                 fail(i, "unknown part transform kind");
-            if (spec->aux == AuxPolicy::SurfaceMode && !validCompositionMode(ins.aux))
+            if (spec->aux == AuxPolicy::LayerMode && !validLayerMode(ins.aux))
                 fail(i, "unknown layer alpha mode");
+            if (spec->aux == AuxPolicy::SurfaceKind && ins.aux > 1)
+                fail(i, "unknown surface.normal receiver kind");
             if (spec->stack) {
                 applyStack(i, *spec);
                 continue;
@@ -291,6 +293,12 @@ private:
             push(at, type);
             return;
         }
+        case Opcode::SurfaceNormal:
+            expect(at, ValueType::F32, "normal smoothing");
+            expect(at, ValueType::F32, "normal depth");
+            expect(at, ins.aux ? ValueType::Mask : ValueType::Layer, "normal receiver");
+            push(at, ValueType::Layer);
+            return;
         case Opcode::MaskFrom:
             expect(at, ValueType::Layer, "mask.from image");
             push(at, ValueType::Mask);

@@ -293,7 +293,7 @@ void Planner::registerNames() {
             plan_->pools.addType(type);
             plan_->resourceSlotIndex.emplace(std::pair{owner, output.name},
                 static_cast<u16>(plan_->resourceExports.size()));
-            plan_->resourceExports.push_back({owner, output.name, type});
+            plan_->resourceExports.push_back({owner, output.name, type, output.kind == ips::OutputKind::Normal});
         }
     };
     exports(entry_, kRootParent);

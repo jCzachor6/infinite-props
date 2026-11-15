@@ -152,6 +152,10 @@ async function main() {
             native.partExportsV09.nativeWasmPairs + " complete pairs; " + native.partExportsV09.traps + " traps; " +
             native.partExportsV09.rejections + " bytecode rejections; checked C API=" + native.partExportsV09.checkedCapi +
             "; core native=" + native.partExportsV09.internalNative + ", WASM=" + native.partExportsV09.internalWasm + ")");
+        console.log("native/WASM normal maps: PASS (" + native.normalMaps.vectors + " independent vectors; " +
+            native.normalMaps.generations + " exact generations; " + native.normalMaps.workPairs + " exact C/WASM work counters; " +
+            native.normalMaps.orientations + " part orientations; " + native.normalMaps.traps + " matching traps; " +
+            native.normalMaps.rejections + " bytecode rejections)");
         console.log("public WASM shared part fixtures: PASS (" + native.partExportsV09.sharedBindingScenes + " complete C++/C scenes and independent lifetime)");
         console.log("native/WASM work limits: PASS (" + work.pipelines + " pipelines; " + work.nativePairs + " exact C/native/WASM counters; worker cancellation inside noise.mask)");
         if (publishCorpus) publishCorpus();

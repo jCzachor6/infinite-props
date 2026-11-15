@@ -20,6 +20,7 @@ ValueType outputValueType(OutputKind kind) {
     case OutputKind::Circle: return ValueType::Circle;
     case OutputKind::Mask: return ValueType::Mask;
     case OutputKind::Layer: return ValueType::Layer;
+    case OutputKind::Normal: return ValueType::Layer;
     case OutputKind::Part: return ValueType::Part2d;
     }
     return ValueType::Vec2;
@@ -269,6 +270,7 @@ ValueType Typer::typeListMethod(const Expr& expr, const ListMethod& method, std:
 // in a function of their own and take no stack on the way down.
 ValueType Typer::infer(const Expr& expr) {
     if (const auto* blur = std::get_if<SurfaceBlur>(&expr)) return typeBlur(expr, *blur);
+    if (const auto* normal = std::get_if<SurfaceNormal>(&expr)) return typeNormal(expr, *normal);
     if (const auto* lit = std::get_if<Literal>(&expr)) return typeLiteral(*lit);
     if (const auto* id = std::get_if<Identifier>(&expr)) return typeIdentifier(expr, *id);
     if (const auto* member = std::get_if<Member>(&expr)) return typeMember(expr, *member);
@@ -306,6 +308,37 @@ ValueType Typer::typeBlur(const Expr& expr, const SurfaceBlur& blur) {
         if (!std::isfinite(number) || number < 0 || number > kMaxBlurSigma)
             valueError(locationOf(*blur.sigma.value), "blur sigma must be finite and in 0..64");
     }
+    resolutions_[&expr].overload = overload;
+    return overload->result;
+}
+
+ValueType Typer::typeNormal(const Expr& expr, const SurfaceNormal& normal) {
+    const auto receiver = typeOf(*normal.receiver);
+    if (receiver != ValueType::Layer && receiver != ValueType::Mask)
+        error(normal.location, ".normal needs a layer or mask receiver, got " + std::string(typeName(receiver)));
+    std::vector<ValueType> arguments{receiver};
+    const auto number = [&](const Arg& argument, const char* name) {
+        const auto type = typeOf(*argument.value, ValueType::F32);
+        if (!isNumeric(type))
+            error(locationOf(*argument.value), std::string(".normal ") + name + " must be f32, got " + std::string(typeName(type)));
+        arguments.push_back(type);
+        return known(*argument.value);
+    };
+    const auto value = [](const Value& constant) {
+        return std::holds_alternative<i32>(constant) ? static_cast<f32>(std::get<i32>(constant)) : std::get<f32>(constant);
+    };
+    if (const auto depth = number(normal.depth, "depth")) {
+        const auto amount = value(*depth);
+        if (!std::isfinite(amount) || amount < 0)
+            valueError(locationOf(*normal.depth.value), "normal depth must be finite and nonnegative");
+    }
+    if (normal.smoothing) if (const auto smoothing = number(*normal.smoothing, "smoothing")) {
+        const auto sigma = value(*smoothing);
+        if (!std::isfinite(sigma) || sigma < 0 || sigma > kMaxNormalSmoothing)
+            valueError(locationOf(*normal.smoothing->value), "normal smoothing must be finite and in 0..64");
+    }
+    const auto* overload = builtinOverload(surfaceMethodSpecs().at("normal"), arguments);
+    if (!overload) error(normal.location, ".normal takes an f32 depth and an optional f32 smoothing");
     resolutions_[&expr].overload = overload;
     return overload->result;
 }

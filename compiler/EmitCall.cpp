@@ -1,6 +1,7 @@
 #include "Emit.hpp"
 #include "PaletteLowerer.hpp"
 
+#include <array>
 #include <type_traits>
 
 namespace iprop::compiler {
@@ -147,6 +148,90 @@ ips::ValueType Emitter::emitBuiltin(const BuiltinCall& call) {
             emitArg(call.arguments[3]);
             ins(Opcode::ColorSetA);
         }
+        return VT::Color;
+    }
+    if (spec.lowering == ips::BuiltinLowering::NormalColor) {
+        // color.normal(x, y, z), spec normal maps v1.1. Known arguments fold
+        // to the colour the instructions below would produce.
+        std::array<f32, 3> known{};
+        bool constant = true;
+        for (std::size_t i = 0; i < 3 && constant; ++i) {
+            const auto& value = current_->expression(*call.arguments[i].expression).constant;
+            if (!value) constant = false;
+            else if (const auto* integer = std::get_if<i32>(&*value)) known[i] = static_cast<f32>(*integer);
+            else if (const auto* number = std::get_if<f32>(&*value)) known[i] = *number;
+            else constant = false;
+        }
+        if (constant) {
+            emitConst(ips::normalColorValue(known[0], known[1], known[2]).color);
+            return VT::Color;
+        }
+        const auto x = temporary(VT::F32), y = temporary(VT::F32), z = temporary(VT::F32);
+        const auto length = temporary(VT::F32), component = temporary(VT::F32);
+        const auto result = temporary(VT::Color);
+        const std::array<u16, 3> axes{x.index(), y.index(), z.index()};
+        for (std::size_t i = 0; i < 3; ++i) {
+            emitArg(call.arguments[i]);
+            ins(Opcode::LocalSet, 0, axes[i]);
+        }
+        emitConst(Color{128, 128, 255, 255}); // the flat fallback
+        ins(Opcode::LocalSet, 0, result.index());
+        // d = (x*x + y*y) + z*z, kept in `length` for its two tests.
+        for (std::size_t i = 0; i < 3; ++i) {
+            ins(Opcode::LocalGet, 0, axes[i]);
+            ins(Opcode::LocalGet, 0, axes[i]);
+            ins(Opcode::F32Mul);
+            if (i != 0) ins(Opcode::F32Add);
+        }
+        ins(Opcode::LocalSet, 0, length.index());
+        ins(Opcode::LocalGet, 0, length.index());
+        emitConst(0.0f);
+        ins(Opcode::F32Gt);
+        // Finite: d - d is zero for every finite d and NaN otherwise.
+        ins(Opcode::LocalGet, 0, length.index());
+        ins(Opcode::LocalGet, 0, length.index());
+        ins(Opcode::F32Sub);
+        emitConst(0.0f);
+        ins(Opcode::F32Eq);
+        ins(Opcode::I32And);
+        ins(Opcode::If);
+        ins(Opcode::LocalGet, 0, length.index());
+        ins(Opcode::F32Sqrt);
+        ins(Opcode::LocalSet, 0, length.index());
+        // The rgb() masks assemble the three bytes without a colour opcode.
+        const Color masks[] = {{0, 255, 255, 255}, {255, 0, 255, 255}, {255, 255, 0, 255}};
+        for (std::size_t i = 0; i < 3; ++i) {
+            emitConst(masks[i]);
+            ins(Opcode::LocalGet, 0, axes[i]);
+            ins(Opcode::LocalGet, 0, length.index());
+            ins(Opcode::F32Div);
+            if (i == 1) ins(Opcode::F32Neg); // source y is downward, stored y upward
+            ins(Opcode::LocalSet, 0, component.index());
+            // floor(min(128 + 127.5*|n|, 255)), complemented for n < 0.
+            emitConst(128.0f);
+            emitConst(127.5f);
+            ins(Opcode::LocalGet, 0, component.index());
+            ins(Opcode::F32Abs);
+            ins(Opcode::F32Mul);
+            ins(Opcode::F32Add);
+            emitConst(255.0f);
+            ins(Opcode::F32Min);
+            ins(Opcode::F32Floor);
+            ins(Opcode::F32ToI32);
+            ins(Opcode::LocalGet, 0, component.index());
+            emitConst(0.0f);
+            ins(Opcode::F32Lt);
+            ins(Opcode::If);
+            ins(Opcode::I32Neg);
+            emitConst(i32{255});
+            ins(Opcode::I32Add);
+            ins(Opcode::End);
+            ins(Opcode::ColorShade);
+            if (i != 0) ins(Opcode::ColorMul);
+        }
+        ins(Opcode::LocalSet, 0, result.index());
+        ins(Opcode::End);
+        ins(Opcode::LocalGet, 0, result.index());
         return VT::Color;
     }
     if (spec.lowering == ips::BuiltinLowering::Round) {

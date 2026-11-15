@@ -36,13 +36,13 @@ extern "C" {
 #endif
 
 /* Header API feature version, independent of the product/file versions.
- * API 0.6 uses ABI line 0.5. API 0.4/0.5 declarations, enum values,
+ * API 0.7 uses ABI line 0.5. API 0.4/0.5/0.6 declarations, enum values,
  * layouts and ownership cannot change in an additive API release.
  * Later APIs add symbols and separate sized descriptors; they do not
  * append fields to these structs. See docs/c-api-abi.md for the policy.
  * These macros describe this header, not a loaded library's capabilities. */
 #define IPROP_API_VERSION_MAJOR 0
-#define IPROP_API_VERSION_MINOR 6
+#define IPROP_API_VERSION_MINOR 7
 
 /* Opaque handles. */
 typedef struct iprop_program iprop_program; /* a loaded, validated .iprop */
@@ -206,6 +206,8 @@ typedef struct {
 #define IPROP_CAP_PART_OUTPUTS (UINT64_C(1) << 18)
 #define IPROP_CAP_RESULT_RESOURCES (UINT64_C(1) << 19)
 #define IPROP_CAP_EXECUTION_LIMITS (UINT64_C(1) << 20)
+#define IPROP_CAP_AUX_IMAGES (UINT64_C(1) << 21)
+#define IPROP_CAP_DERIVED_NORMAL (UINT64_C(1) << 22)
 
 /* All fields except struct_size are output-only. Set struct_size to the
  * actual caller capacity, at least sizeof(uint32_t). Only complete fields
@@ -990,6 +992,99 @@ IPROP_API iprop_status_ex iprop_generate_controlled(const iprop_program* program
     const iprop_execution_limits_ex* limits, iprop_result** out_result, iprop_error_ex* error);
 IPROP_API iprop_status_ex iprop_result_query_work(const iprop_result* result,
     iprop_work_stats_ex* out, iprop_error_ex* error);
+
+/* API 0.7 additive auxiliary images, IPROP_CAP_AUX_IMAGES. A generation may
+ * publish images beside the main one. The first kind is the normal map of a
+ * program whose root declares `output normal` (spec normal maps v1.1).
+ * Existing structures, enums and layouts are unchanged, and a result without
+ * auxiliary images reports a count of zero through every entry, including
+ * results of the legacy and API 0.4-0.6 generation calls.
+ * A normal image is tight top-left RGBA8 with the main image's dimensions.
+ * R, G and B store a unit direction as x rightward, y upward and z toward
+ * the viewer; a byte b decodes as b/127.5 - 1 and (128,128,255) is flat. The
+ * bytes are linear data, not colour: upload them without an sRGB transfer.
+ * Alpha is 255 in every pixel, tagged IPROP_IMAGE_ALPHA_OPAQUE. `source`
+ * tells an image the program authored from one the runtime derived.
+ * program_aux_image_* describe what a program declares: zero or one normal
+ * output of the root asset. A declared image is absent from the result of a
+ * generation that never assigned it, so index results by result_aux_image_*.
+ * Descriptors follow the sized policy of image views: four-byte minimum,
+ * flags input and zero, only complete output fields written, size/flags,
+ * padding, partial fields and unknown tail preserved, failure leaves the
+ * output unchanged. Names are exact byte-counted UTF-8. Pixels and names are
+ * borrowed from their owner (result or program) until it is freed; a
+ * result's survive program_free and later generations. find reports the
+ * first image of a kind and fails with E_ARGUMENT when there is none. */
+typedef uint32_t iprop_aux_image_kind;
+#define IPROP_AUX_IMAGE_NORMAL UINT32_C(1)
+typedef uint32_t iprop_aux_image_source;
+#define IPROP_AUX_IMAGE_AUTHORED UINT32_C(1)
+#define IPROP_AUX_IMAGE_DERIVED UINT32_C(2)
+#define IPROP_IMAGE_ALPHA_OPAQUE UINT32_C(2)
+
+typedef struct {
+    uint32_t struct_size;
+    uint32_t flags;
+    uint32_t image_index;
+    iprop_aux_image_kind kind;
+    iprop_utf8_view name;
+} iprop_aux_image_info_ex;
+
+typedef struct {
+    uint32_t struct_size;
+    uint32_t flags;
+    uint32_t image_index;
+    iprop_aux_image_kind kind;
+    iprop_aux_image_source source;
+    uint32_t width, height;
+    uint64_t byte_count;
+    uint64_t row_stride;
+    iprop_pixel_format pixel_format;
+    iprop_image_alpha_mode alpha_mode;
+    iprop_image_origin origin;
+    iprop_utf8_view name;
+    const uint8_t* pixels;
+} iprop_aux_image_view_ex;
+
+IPROP_API iprop_status_ex iprop_aux_image_info_ex_init(iprop_aux_image_info_ex* out, uint32_t capacity);
+IPROP_API iprop_status_ex iprop_aux_image_view_ex_init(iprop_aux_image_view_ex* out, uint32_t capacity);
+IPROP_API iprop_status_ex iprop_program_aux_image_count(const iprop_program* program,
+    uint32_t* out_count, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_program_aux_image_get(const iprop_program* program, uint32_t image_index,
+    iprop_aux_image_info_ex* out, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_result_aux_image_count(const iprop_result* result,
+    uint32_t* out_count, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_result_aux_image_get(const iprop_result* result, uint32_t image_index,
+    iprop_aux_image_view_ex* out, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_result_aux_image_find(const iprop_result* result, iprop_aux_image_kind kind,
+    uint32_t* out_index, iprop_error_ex* error);
+
+/* API 0.7, IPROP_CAP_DERIVED_NORMAL. generate_derived_normal is
+ * generate_controlled with one more optional descriptor. A non-NULL request
+ * asks for a normal image derived from the finished image when the program
+ * publishes none: a pillow of the alpha plane blended with alpha-weighted
+ * brightness. It is deterministic like every result, costs no fuel and runs
+ * under the work limit, deadline and cancellation of the generation. An
+ * authored normal image wins; the request is then ignored. depth is the
+ * height of full coverage and rounding a Gaussian sigma, both in image
+ * pixels; detail is the share of brightness in the height. A zero field
+ * selects its default (the image's longer side / 16, / 32 capped at 64, and
+ * 0.5), so an initialized request is the recommended one. depth must be
+ * finite and not negative, rounding in 0-64 and detail in 0-1; flags must be
+ * zero. Invalid values fail as E_ARGUMENT at the ARGUMENTS stage before VM
+ * setup. A NULL request behaves exactly as generate_controlled. */
+typedef struct {
+    uint32_t struct_size;
+    uint32_t flags;
+    float depth;
+    float rounding;
+    float detail;
+} iprop_derived_normal_ex;
+IPROP_API iprop_status_ex iprop_derived_normal_ex_init(iprop_derived_normal_ex* out, uint32_t capacity);
+IPROP_API iprop_status_ex iprop_generate_derived_normal(const iprop_program* program,
+    const iprop_generate_options_ex* options, const iprop_parameters* parameters,
+    const iprop_execution_limits_ex* limits, const iprop_derived_normal_ex* derived,
+    iprop_result** out_result, iprop_error_ex* error);
 
 #ifdef __cplusplus
 } /* extern "C" */

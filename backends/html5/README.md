@@ -96,13 +96,31 @@ const glow = iprop.generate(bytes, { seed: 26, uniforms: { v: 2, renderLayer: 1,
 function is `generate(fileBytes, seed, sizeX, sizeY[,
 uniforms])`.
 
+`images` lists the images published beside the main one and `normal` is the
+[normal map](../../docs/native-bindings.md#normal-maps-and-other-auxiliary-images)
+among them, or `null`. Each entry is `{index, kind, source, name, width,
+height, rowStride, pixelFormat, alphaMode, storageOrigin, data}` with an owned
+`Uint8Array`; `kind` is `iprop.IMAGE_NORMAL` and `source` is
+`iprop.SOURCE_AUTHORED` or `iprop.SOURCE_DERIVED`. Pass `deriveNormal: true`
+to derive one for a prop that publishes none, or `{depth, rounding, detail}`
+to set its parameters (zero keeps a default):
+
+```js
+const lit = iprop.generate(bytes, { seed: 26, deriveNormal: true });
+if (lit.normal) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, lit.normal.width, lit.normal.height, 0,
+                              gl.RGBA, gl.UNSIGNED_BYTE, lit.normal.data); // linear data, not sRGB
+```
+
+The raw module function takes the request as a seventh argument:
+`generate(fileBytes, seed, sizeX, sizeY, uniforms, execution, deriveNormal)`.
+
 `fuel` contains the successful invocation's `budget`, `used` and `remaining`
 fuel units, read directly from the VM. Wall-clock time is measured
 by the host and is independent of these deterministic counts.
 
 ## Typed part results
 
-Generation uses the same checked C API 0.6 implementation as native hosts.
+Generation uses the same checked C API 0.7 implementation as native hosts.
 Every output has `index`, `owner`, `count` and an ordered `parts` array in
 addition to its existing fields. Kind 3 denotes `output list part`; old float
 outputs retain their exact `valueBits`. Empty declarations remain present.

@@ -33,7 +33,11 @@ class CurrentDocumentationTest(unittest.TestCase):
         # The normative index must include every extension, with no inferred components.
         expected = {p.name for p in (ROOT / "spec").glob("*-v0.9.md") if p.name != "iprop-v0.9.md"}
         self.assertLessEqual(expected, set(self.components))
-        tables = "\n".join(re.findall(r"^\|.*Mnemonic.*\n(?:^\|.*\n)+", self.contract, re.M))
+        # Implementation stages land on develop before the product-version
+        # bump. Check their authored wire contracts without editing frozen 1.0.
+        development = "\n".join((ROOT / file).read_text(encoding="utf-8") for file in
+                                ("spec/normal-maps-v1.1.md",))
+        tables = "\n".join(re.findall(r"^\|.*Mnemonic.*\n(?:^\|.*\n)+", self.contract + "\n" + development, re.M))
         documented = set(re.findall(r"\| (0x[0-9A-Fa-f]+) \| `?([a-z][a-z0-9_.]*)(?=[ `|])", tables))
         self.assertEqual(documented, {(number, names[name]) for name, number in numbers.items()})
 
@@ -77,7 +81,7 @@ class CurrentDocumentationTest(unittest.TestCase):
         release = metadata(ROOT, "v" + self.product, publishing=True)
         self.assertEqual(release["product_version"], "1.0.0")
         self.assertEqual(release["language_version"], "1.0.0")
-        self.assertEqual(release["c_api_version"], "0.6")
+        self.assertEqual(release["c_api_version"], "0.7")
         self.assertEqual(release["c_abi_soversion"], "0.5")
         self.assertIn("migration-v1.0.md", release["notes"])
 

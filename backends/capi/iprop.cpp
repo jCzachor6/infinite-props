@@ -96,7 +96,7 @@ iprop_status iprop_generate(const iprop_program* program,
 
 static iprop_status_ex generateChecked(const iprop_program* program, const iprop_generate_options_ex* options,
     const iprop_parameters* parameters, const iprop_execution_limits_ex* limits,
-    iprop_result** out_result, iprop_error_ex* error) {
+    const iprop_derived_normal_ex* derived, iprop_result** out_result, iprop_error_ex* error) {
     using namespace iprop::capi;
     // These owners survive the guarded callable and every diagnostic catch.
     std::unique_ptr<iprop_result> result;
@@ -106,7 +106,8 @@ static iprop_status_ex generateChecked(const iprop_program* program, const iprop
         ProtectedSpan{parameters, parameters != nullptr ? sizeof(*parameters) : 0},
         ProtectedSpan{parameters != nullptr ? parameters->values.data() : nullptr,
                       parameters != nullptr ? parameters->values.size() * sizeof(iprop::UniformValue) : 0},
-        ProtectedSpan{limits, queryCapacity(limits)}};
+        ProtectedSpan{limits, queryCapacity(limits)},
+        ProtectedSpan{derived, queryCapacity(derived)}};
     return checkedBoundary(error, out_result, sizeof(iprop_result*), context, [&] {
         if (program == nullptr) return CallOutcome::argument("program is null");
         if (out_result == nullptr) return CallOutcome::argument("out_result is null");
@@ -116,6 +117,21 @@ static iprop_status_ex generateChecked(const iprop_program* program, const iprop
         ExecutionRequest execution;
         const auto control = readExecutionRequest(limits, execution);
         if (!control.succeeded) return control;
+        // The derived request is copied out of the caller's descriptor before
+        // any VM state exists: an invalid one fails as an argument.
+        iprop::DerivedNormalRequest derivation;
+        if (derived != nullptr) {
+            uint32_t size = 0;
+            if (!descriptorSize(derived, size))
+                return CallOutcome::argument("derived normal request is smaller than four bytes");
+            if (readField<uint32_t>(derived, size, offsetof(iprop_derived_normal_ex, flags)) != 0)
+                return CallOutcome::argument("derived normal request flags are unsupported");
+            derivation.depth = readField<float>(derived, size, offsetof(iprop_derived_normal_ex, depth));
+            derivation.rounding = readField<float>(derived, size, offsetof(iprop_derived_normal_ex, rounding));
+            derivation.detail = readField<float>(derived, size, offsetof(iprop_derived_normal_ex, detail));
+            if (!iprop::validDerivedNormalRequest(derivation))
+                return CallOutcome::argument("derived normal depth, rounding or detail is out of range");
+        }
         iprop::GenerationInputs inputs;
         inputs.seed = request.seed;
         inputs.sizeX = request.sizeX;
@@ -123,7 +139,7 @@ static iprop_status_ex generateChecked(const iprop_program* program, const iprop
         inputs.limits = execution.limits;
         result = std::make_unique<iprop_result>();
         // Parameters are read only, by root-input ID; NULL selects defaults.
-        generateProgram(*program, inputs, *result, context, parameters);
+        generateProgram(*program, inputs, *result, context, parameters, derived != nullptr ? &derivation : nullptr);
         *out_result = result.release();
         return CallOutcome{};
     }, spans);
@@ -131,13 +147,19 @@ static iprop_status_ex generateChecked(const iprop_program* program, const iprop
 
 iprop_status_ex iprop_generate_ex(const iprop_program* program, const iprop_generate_options_ex* options,
     const iprop_parameters* parameters, iprop_result** out_result, iprop_error_ex* error) {
-    return generateChecked(program, options, parameters, nullptr, out_result, error);
+    return generateChecked(program, options, parameters, nullptr, nullptr, out_result, error);
 }
 
 iprop_status_ex iprop_generate_controlled(const iprop_program* program, const iprop_generate_options_ex* options,
     const iprop_parameters* parameters, const iprop_execution_limits_ex* limits,
     iprop_result** out_result, iprop_error_ex* error) {
-    return generateChecked(program, options, parameters, limits, out_result, error);
+    return generateChecked(program, options, parameters, limits, nullptr, out_result, error);
+}
+
+iprop_status_ex iprop_generate_derived_normal(const iprop_program* program, const iprop_generate_options_ex* options,
+    const iprop_parameters* parameters, const iprop_execution_limits_ex* limits,
+    const iprop_derived_normal_ex* derived, iprop_result** out_result, iprop_error_ex* error) {
+    return generateChecked(program, options, parameters, limits, derived, out_result, error);
 }
 
 void iprop_result_free(iprop_result* result) { delete result; }

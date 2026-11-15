@@ -1,16 +1,18 @@
 // The SFML host (tasks 7.1/7.3): a native window over the C API. Loads an
 // .iprop, draws the generated pixels, cycles seeds with the arrow
-// keys, toggles a seed atlas with A and exports the current
-// image as a PNG with S. Escape closes the window.
+// keys, toggles a seed atlas with A, shows the normal map with N and exports
+// the current image as a PNG with S. Escape closes the window.
 //
 // One-shot modes (no window) make the host's paths scriptable and
 // verifiable against the reference generator:
 //
-//   iprop_sfml [file.iprop] [--seed N] [--set input=value]...
-//              [--export out.png] [--atlas out.png] [--screenshot out.png]
+//   iprop_sfml [file.iprop] [--seed N] [--set input=value]... [--derive-normal]
+//              [--export out.png] [--normal out.png] [--atlas out.png] [--screenshot out.png]
 //
 // --set overrides one declared input: #RRGGBB[AA] colours, decimal f32 and
-// u32 (a leading minus sets an i32 input).
+// u32 (a leading minus sets an i32 input). --normal exports the normal map of
+// the seed; --derive-normal asks the runtime to derive one for a prop that
+// publishes none.
 
 #include "Host.hpp"
 #include "Render.hpp"
@@ -35,18 +37,29 @@ struct RenderedImage {
     std::uint32_t width = 0;
     std::uint32_t height = 0;
     std::vector<std::uint8_t> pixels;
+    // The normal map of the same size, or empty when none was published.
+    std::vector<std::uint8_t> normal;
 };
 
 RenderedImage generateSingle(const iprop_program* program, const iprop_parameters* parameters,
-                             std::uint32_t seed) {
+                             std::uint32_t seed, bool deriveNormal = false) {
+    const iprop::sfml_host::DerivedNormal request{};
     const iprop::sfml_host::Result result(
-        iprop::sfml_host::generate(program, seed, parameters), iprop_result_free);
+        iprop::sfml_host::generate(program, seed, parameters, 0, 0, {}, deriveNormal ? &request : nullptr),
+        iprop_result_free);
     const auto image = iprop::sfml_host::queryImage(result.get());
     RenderedImage out;
     out.width = image.width;
     out.height = image.height;
     if (image.byte_count != 0) {
         out.pixels.assign(image.pixels, image.pixels + static_cast<std::size_t>(image.byte_count));
+    }
+    auto images = iprop::sfml_host::copyImages(result.get());
+    for (auto& auxiliary : images) {
+        if (auxiliary.info.kind == IPROP_AUX_IMAGE_NORMAL) {
+            out.normal = std::move(auxiliary.pixels);
+            break;
+        }
     }
     return out;
 }
@@ -83,9 +96,9 @@ RenderedImage generateAtlas(const iprop_program* program, const iprop_parameters
     return atlas;
 }
 
-bool savePng(const RenderedImage& image, const std::string& path) {
+bool savePng(const RenderedImage& image, const std::string& path, bool normal = false) {
     sf::Image sfImage;
-    sfImage.resize({image.width, image.height}, image.pixels.data());
+    sfImage.resize({image.width, image.height}, normal ? image.normal.data() : image.pixels.data());
     return sfImage.saveToFile(path);
 }
 
@@ -111,8 +124,10 @@ int run(int argc, char** argv) {
     std::string path = "examples/plant.iprop";
     std::uint32_t seed = 0;
     std::string exportPath;
+    std::string normalPath;
     std::string atlasPath;
     std::string screenshotPath;
+    bool deriveNormal = false;
     std::vector<std::pair<std::string, std::string>> inputs;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
@@ -120,6 +135,10 @@ int run(int argc, char** argv) {
             seed = parseU32(nextArg(i, argc, argv, "--seed"), "--seed");
         } else if (arg == "--export") {
             exportPath = nextArg(i, argc, argv, "--export");
+        } else if (arg == "--normal") {
+            normalPath = nextArg(i, argc, argv, "--normal");
+        } else if (arg == "--derive-normal") {
+            deriveNormal = true;
         } else if (arg == "--atlas") {
             atlasPath = nextArg(i, argc, argv, "--atlas");
         } else if (arg == "--screenshot") {
@@ -149,13 +168,27 @@ int run(int argc, char** argv) {
 
     // The one-shot modes — the same code paths the interactive keys use,
     // exercised without a window.
-    if (!exportPath.empty()) {
-        const RenderedImage image = generateSingle(program.get(), parameters.get(), seed);
-        if (!savePng(image, exportPath)) {
-            std::fprintf(stderr, "export to %s failed\n", exportPath.c_str());
+    if (!exportPath.empty() || !normalPath.empty()) {
+        const RenderedImage image = generateSingle(program.get(), parameters.get(), seed, deriveNormal);
+        // Refuse before writing anything when the normal map was asked for and is absent.
+        if (!normalPath.empty() && image.normal.empty()) {
+            std::fprintf(stderr, "no normal map: the program publishes none; --derive-normal derives one\n");
             return 1;
         }
-        std::printf("exported %s\n", exportPath.c_str());
+        if (!exportPath.empty()) {
+            if (!savePng(image, exportPath)) {
+                std::fprintf(stderr, "export to %s failed\n", exportPath.c_str());
+                return 1;
+            }
+            std::printf("exported %s\n", exportPath.c_str());
+        }
+        if (!normalPath.empty()) {
+            if (!savePng(image, normalPath, true)) {
+                std::fprintf(stderr, "normal map export to %s failed\n", normalPath.c_str());
+                return 1;
+            }
+            std::printf("normal map exported %s\n", normalPath.c_str());
+        }
         return 0;
     }
     if (!atlasPath.empty()) {
@@ -182,10 +215,13 @@ int run(int argc, char** argv) {
     sf::Sprite atlasSprite(atlasTexture);
 
     bool atlas = false;
+    bool showNormal = false; // N: the normal map instead of the image
+    bool hasNormal = false;
 
     const auto uploadSingle = [&](const RenderedImage& image) {
-        iprop::sfml_host::uploadTexture(texture, sprite,
-            {image.width, image.height}, image.pixels.data());
+        hasNormal = !image.normal.empty();
+        iprop::sfml_host::uploadTexture(texture, sprite, {image.width, image.height},
+            showNormal && hasNormal ? image.normal.data() : image.pixels.data());
         iprop::sfml_host::fitSprite(sprite, window.getSize());
     };
 
@@ -220,11 +256,11 @@ int run(int argc, char** argv) {
         if (atlas) {
             uploadAtlas(generateAtlas(program.get(), parameters.get(), seed));
         } else {
-            uploadSingle(generateSingle(program.get(), parameters.get(), seed));
+            uploadSingle(generateSingle(program.get(), parameters.get(), seed, deriveNormal));
         }
         window.setTitle("iprop - " + path + " - seed " +
                         std::to_string(seed) +
-                        (atlas ? " [atlas]" : ""));
+                        (atlas ? " [atlas]" : showNormal ? (hasNormal ? " [normal map]" : " [no normal map]") : ""));
     };
     refresh();
 
@@ -248,6 +284,10 @@ int run(int argc, char** argv) {
                     break;
                 case sf::Keyboard::Key::A:
                     atlas = !atlas;
+                    refresh();
+                    break;
+                case sf::Keyboard::Key::N:
+                    showNormal = !showNormal;
                     refresh();
                     break;
                 case sf::Keyboard::Key::S: {

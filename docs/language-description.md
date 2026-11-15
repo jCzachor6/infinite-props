@@ -76,6 +76,8 @@ identified by `source_type`.
 | `collections.methods` | Optional seventeen receiver-first signatures for `.distinct()` and `.sort()`, from the shared frontend registry. Each records its same-list result, empty parameters, opcode, `constant_evaluable` flag and intrinsic effects. These are separate from global builtins and reserved keywords. |
 | `surfaces.methods` | Optional receiver-first `.blur(sigma: f32)` signatures for layer and mask, from `surfaceMethodSpecs`. Each records its same-surface result, opcode, minor 7, false `constant_evaluable` and intrinsic effects. The method name is separate from global builtins and reserved keywords. |
 | `surfaces.blur` | Optional Gaussian kernel, sigma range/units, evaluation order, premultiplied alpha, edge extension, preserved mapping, zero identity, fuel, scratch memory and preflight policies. Appears with `surfaces.methods`; both satisfy the complete contract when present. |
+| `normal_maps` | Optional normal-map rules, additive to schema 6: the contextual `output normal` declaration and its flagged layer slot, publication of the root's slot onto a flat image, the stored axes and byte encoding, the direction capture and its aux code, vector re-orientation on paint, the four `.normal` signatures with their depth/smoothing ranges and units, height sources, fuel and scratch memory, and the `color.normal` builtin with its axes, lowering, constant folding and fallback. |
+| `normal_maps.methods` | Four receiver-first `.normal(depth[, smoothing])` signatures for layer and mask, from `surfaceMethodSpecs`. Each returns a layer through the one `surface.normal` instruction, with false `constant_evaluable` and intrinsic effects. `surfaces.methods` keeps listing `.blur` alone. |
 | `collections.transformations` | Optional stable first-occurrence/ascending policies, RGBA/x-y order, float zero/NaN equivalence, structural description equality, preserved element bits and unchanged-buffer sharing. Earlier exports may omit these additive fields. |
 | `samplers` | Capture syntax, bounds/mass validation, receiver/count order, batch preflight, zero-draw behavior and currently supported const/palette capabilities. |
 | `samplers.methods` | Eight statically resolved pick signatures from the shared frontend registry: receiver, count parameter if present, result, opcode and effects. They are separate from the global builtin `pick`. |
@@ -267,6 +269,14 @@ same shared registry used by parsing, typing, builders and file validation.
 No duplicate global signature list is introduced.
 Family names used as numeric for-loop bounds retain the following block
 as their loop body; nested argument expressions may still construct literals.
+
+The optional `source_rules.normal_maps` policy describes the implemented
+[normal map contract](../spec/normal-maps-v1.1.md). It is additive: an export
+without it describes a compiler that publishes no normal images, and readers
+of schema 6 that do not know it ignore it. `color.normal` appears among the
+builtins like any other callable; it has no opcode because it expands to
+existing instructions. Whether a layer holds directions is not a type and is
+therefore absent from `types`.
 
 The optional `source_rules.resource_exports` policy describes internal mask/layer
 slots, direct-child and last-called-part reads, immutable snapshots, no-write

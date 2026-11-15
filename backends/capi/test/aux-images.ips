@@ -1,0 +1,12 @@
+asset AuxImages {
+  size 3x2
+  output normal relief
+  draw {
+    pixel(0, 0, #102030)
+    layer directions(encoding = surface.normal) {
+      pixel(0, 0, #40c0ffff)
+      pixel(2, 1, #20e08080)
+    }
+    relief = directions
+  }
+}

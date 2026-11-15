@@ -173,6 +173,15 @@
     {"file": "stone-wall.ips", "expect": "pass"},
     {"file": "paving.ips", "expect": "pass"},
     {"file": "dry-earth.ips", "expect": "pass"},
-    {"file": "part-export.ips", "expect": "pass", "omit_part_outputs": true}
+    {"file": "part-export.ips", "expect": "pass", "omit_part_outputs": true},
+    {"file": "relief.ips", "expect": "pass"},
+    {"file": "relief-parts.ips", "expect": "pass"},
+    {"file": "parts/relief-wing.ips", "expect": "pass"},
+    {"file": "errors/normal-output.ips", "expect": "compile-error", "message": "an asset declares at most one normal output"},
+    {"file": "errors/normal-depth.ips", "expect": "compile-error", "message": "normal depth must be finite and nonnegative"},
+    {"file": "errors/normal-direction.ips", "expect": "compile-error", "message": "color.normal needs a finite nonzero direction with z > 0"},
+    {"file": "errors/normal-encoding.ips", "expect": "compile-error", "message": "a layer takes either 'alpha' or 'encoding', not both"},
+    {"file": "traps/normal-colour-layer.ips", "expect": "trap", "message": "normal output needs a direction layer"},
+    {"file": "traps/normal-smoothing.ips", "expect": "trap", "message": "normal smoothing must be finite and in 0..64"}
   ]
 }

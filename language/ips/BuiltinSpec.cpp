@@ -1,6 +1,7 @@
 #include "ips/BuiltinSpec.hpp"
 #include "iprop/Samplers.hpp"
 #include "iprop/ListOperations.hpp"
+#include "iprop/VmInternals.hpp"
 #include <set>
 #include <stdexcept>
 
@@ -126,6 +127,8 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
         {"cell.jitter", {V::Vec2, L::Opcode, {{{{"cx", V::I32}, {"cy", V::I32}, {"seed", V::I32}}, Opcode::CellJitter}}}},
         {"noise.ridge", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"octaves", V::I32}, {"seed", V::I32}}, Opcode::NoiseRidge}}}},
         {"color.set_a", {V::Color, L::Opcode, {{{{"color", V::Color}, {"alpha", V::I32}}, Opcode::ColorSetA}}}},
+        // A direction as a colour (normal maps): lowered to existing instructions.
+        {"color.normal", {V::Color, L::NormalColor, {{{{"x", V::F32}, {"y", V::F32}, {"z", V::F32}}, std::nullopt}}}},
         {"color.mul", {V::Color, L::Opcode, {{{{"a", V::Color}, {"b", V::Color}}, Opcode::ColorMul}}}},
         {"color.scale", {V::Color, L::Opcode, {{{{"color", V::Color}, {"scale", V::F32}}, Opcode::ColorScale}}}},
         {"color.hsv", {V::Color, L::Opcode, {{{{"color", V::Color}, {"hue", V::F32}, {"saturation", V::F32}, {"value", V::F32}}, Opcode::ColorHsv}}}},
@@ -279,7 +282,14 @@ const std::map<std::string, BuiltinSpec>& surfaceMethodSpecs() {
     static const std::map<std::string, BuiltinSpec> methods{
         {"blur", {BuiltinLowering::Opcode, {
             {{{"receiver", V::Layer}, {"sigma", V::F32}}, Opcode::LayerBlur, V::Layer},
-            {{{"receiver", V::Mask}, {"sigma", V::F32}}, Opcode::MaskBlur, V::Mask}}}}
+            {{{"receiver", V::Mask}, {"sigma", V::F32}}, Opcode::MaskBlur, V::Mask}}}},
+        // One instruction for both receivers; its aux byte tells them apart.
+        // The short form passes smoothing zero.
+        {"normal", {BuiltinLowering::Opcode, {
+            {{{"receiver", V::Layer}, {"depth", V::F32}}, Opcode::SurfaceNormal, V::Layer},
+            {{{"receiver", V::Layer}, {"depth", V::F32}, {"smoothing", V::F32}}, Opcode::SurfaceNormal, V::Layer},
+            {{{"receiver", V::Mask}, {"depth", V::F32}}, Opcode::SurfaceNormal, V::Layer},
+            {{{"receiver", V::Mask}, {"depth", V::F32}, {"smoothing", V::F32}}, Opcode::SurfaceNormal, V::Layer}}}}
     };
     return methods;
 }
@@ -321,6 +331,28 @@ const BuiltinSpec& stepperPickSpec() {
         return BuiltinSpec(BuiltinLowering::Opcode, std::move(overloads));
     }();
     return spec;
+}
+
+NormalColorValue normalColorValue(f32 x, f32 y, f32 z) {
+    const auto apply = [](Opcode opcode, std::initializer_list<Value> arguments) {
+        const auto result = detail::evaluateConstantOperation(opcode, std::span<const Value>(arguments.begin(), arguments.size()));
+        if (!result) throw std::logic_error("color.normal uses an operation that is not constant");
+        return *result;
+    };
+    const auto number = [&](Opcode opcode, std::initializer_list<Value> arguments) { return std::get<f32>(apply(opcode, arguments)); };
+    const f32 d = number(Opcode::F32Add, {number(Opcode::F32Add, {number(Opcode::F32Mul, {x, x}), number(Opcode::F32Mul, {y, y})}),
+                                          number(Opcode::F32Mul, {z, z})});
+    // Positive and finite: d - d is zero for every finite d and NaN otherwise.
+    if (!(d > 0.f) || !(number(Opcode::F32Sub, {d, d}) == 0.f)) return {Color{128, 128, 255, 255}, true};
+    const f32 length = number(Opcode::F32Sqrt, {d});
+    const auto byte = [&](f32 axis, bool up) {
+        f32 n = number(Opcode::F32Div, {axis, length});
+        if (up) n = number(Opcode::F32Neg, {n});
+        const f32 scaled = number(Opcode::F32Add, {128.f, number(Opcode::F32Mul, {127.5f, number(Opcode::F32Abs, {n})})});
+        const i32 stored = std::get<i32>(apply(Opcode::F32ToI32, {number(Opcode::F32Floor, {number(Opcode::F32Min, {scaled, 255.f})})}));
+        return static_cast<u8>(n < 0.f ? 255 - stored : stored);
+    };
+    return {Color{byte(x, false), byte(y, true), byte(z, false), 255}, false};
 }
 
 const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::size_t arity) {
@@ -399,6 +431,7 @@ OperationEffects builtinEffects(const BuiltinSpec& spec, const BuiltinOverload* 
     case BuiltinLowering::ListLength: return findOpcode(Opcode::ListLen)->effects;
     case BuiltinLowering::SurfacePaint: return findOpcode(Opcode::SurfacePaint)->effects;
     case BuiltinLowering::Round:
+    case BuiltinLowering::NormalColor:
     case BuiltinLowering::ColorConstructor: return {};
     case BuiltinLowering::Beta: return findOpcode(Opcode::DistributionBeta)->effects;
     }

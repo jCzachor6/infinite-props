@@ -155,6 +155,9 @@ belonging to the same asset, and returned to the host alongside the image.
 `output mask name` and `output layer name` instead declare internal
 [resource exports](surfaces.md#export-regions-from-parts). They accept shared
 immutable handles, cannot be lists, and never add host geometry slots.
+`output normal name` declares the asset's [normal map](relief.md): a layer
+export whose value is a direction layer and which the root publishes to the
+host as a second image.
 
 | Kind | Assignment value |
 | --- | --- |

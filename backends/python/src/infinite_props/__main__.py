@@ -12,6 +12,9 @@ def main():
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--library")
     parser.add_argument("--input", action="append", default=[], metavar="NAME=VALUE")
+    parser.add_argument("--normal-output", metavar="PATH", help="also save the normal map")
+    parser.add_argument("--derive-normal", action="store_true",
+                        help="derive a normal map when the program publishes none")
     args = parser.parse_args()
     with Program(args.program, library=args.library) as program:
         schema = {item.name: item.default_value for item in program.inputs}
@@ -33,13 +36,21 @@ def main():
                     overrides[name] = I32(number) if number < 0 else U32(number)
             except (ValueError, OverflowError) as error:
                 parser.error(str(error))
-        image = program.generate(args.seed, inputs=overrides)
+        image = program.generate(args.seed, inputs=overrides, derive_normal=args.derive_normal)
     if any(slot.kind == OutputKind.PART for slot in image.outputs):
         parser.error("part outputs are unsupported by the CLI JSON format; use Program.generate() for typed resources")
+    if args.normal_output and image.normal is None:
+        parser.error("the program publishes no normal map; --derive-normal derives one")
     image.to_pillow().save(args.output)
-    print(json.dumps({"width": image.width, "height": image.height, "alpha_mode": image.alpha_mode,
+    if args.normal_output:
+        image.normal.to_pillow().save(args.normal_output)
+    report = {"width": image.width, "height": image.height, "alpha_mode": image.alpha_mode,
         "outputs": [{key: value for key, value in asdict(slot).items() if key != "parts"} for slot in image.outputs],
-        "statistics": asdict(image.statistics)}, ensure_ascii=False))
+        "statistics": asdict(image.statistics)}
+    if image.images:  # absent for a program that publishes none, as before
+        report["images"] = [{"kind": item.kind.name.lower(), "source": item.source.name.lower(), "name": item.name}
+                            for item in image.images]
+    print(json.dumps(report, ensure_ascii=False))
 
 
 if __name__ == "__main__":

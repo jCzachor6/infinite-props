@@ -83,9 +83,31 @@ templates are not included in the native package.
   asset.set_input("tint", Color8(0x99, 0xdd, 0xcc))
   var image := asset.generate(26, 0, 0)
   ```
+- **Normal maps** — after a generation `normal_image` is the published
+  [normal map](../../docs/native-bindings.md#normal-maps-and-other-auxiliary-images)
+  as an owned RGBA8 `Image`, or null, and `images` lists every auxiliary image
+  as `{index, kind, source, name, image}` with the constants
+  `IpropAsset.IMAGE_NORMAL`, `SOURCE_AUTHORED` and `SOURCE_DERIVED`.
+  `declared_images` lists what the loaded program can publish. Set
+  `derive_normal = true` to derive one for a prop that publishes none;
+  `normal_depth`, `normal_rounding` and `normal_detail` tune it, zero keeping
+  each default. Changing these emits `changed`; values out of range fail the
+  next `generate` with an argument error in `last_error`. Stored directions
+  are X+, Y+, Z+, the convention Godot documents for
+  `CanvasTexture.normal_texture`, so no channel is flipped.
+
+  ```gdscript
+  asset.derive_normal = true
+  var image := asset.generate(26)
+  var lit := CanvasTexture.new()
+  lit.diffuse_texture = ImageTexture.create_from_image(image)
+  lit.normal_texture = ImageTexture.create_from_image(asset.normal_image)
+  ```
 - **`IpropSprite2D` (Sprite2D)** — holds an `IpropAsset` plus
   `seed` and declared inputs; `refresh()` regenerates the
-  `ImageTexture`. Setting any property refreshes automatically.
+  `ImageTexture`. When the generation publishes a normal map the texture is a
+  `CanvasTexture` with that map, so `Light2D` nodes light the sprite; other
+  props keep a plain `ImageTexture`. Setting any property refreshes automatically.
   Clearing the asset or a failed generation clears the texture. Successful
   asset reloads and input changes emit `changed` and refresh its sprites;
   failed reloads keep the previous program, inputs and metadata together. Generation arguments must be
@@ -130,7 +152,7 @@ for slot in asset.output_slots:
 Keep `output_slots` and `resources` together when retaining a result. Both
 remain valid after a later generation, reload or destruction of the asset;
 IDs belong to that particular result. Generation negotiates typed parts
-through C API 0.6 and publishes the image, outputs and resources together.
+through C API 0.7 and publishes the image, outputs, resources and auxiliary images together.
 
 Names are decoded using their exact UTF-8 byte count. Godot 4.5.2's UTF-8 parser
 stops at embedded NUL, so the adapter decodes bounded non-NUL segments and
@@ -202,4 +224,4 @@ run concurrently with generation.
 completed generation. On failure `generate` returns null and preserves the
 prior outputs/resources/work; `asset.last_error` exposes status, reason, stage,
 location flags, PC and message. Successful generation clears the error.
-This adapter builds against C API 0.6, retaining ABI 0.5.
+This adapter builds against C API 0.7, retaining ABI 0.5.

@@ -91,14 +91,57 @@ Json descriptionMethods(const ips::BuiltinSpec& spec) {
     return methods;
 }
 
-Json surfaceMethods() {
+// The receiver-first registry holds every layer/mask method; each published
+// rule set lists its own.
+Json surfaceMethods(std::string_view wanted) {
     Json methods = Json::array();
     for (const auto& [name, spec] : ips::surfaceMethodSpecs()) for (const auto& signature : spec.overloads) {
+        if (name != wanted) continue;
         auto method = receiverMethod(name, signature);
         method["constant_evaluable"] = false;
         methods.push_back(std::move(method));
     }
     return methods;
+}
+
+// Normal maps (spec normal maps v1.1): additive to the schema-6 export.
+Json normalMaps() {
+    const auto* kernel = findOpcode(Opcode::SurfaceNormal);
+    return Json::object({
+        {"output_syntax", "output normal <name>"}, {"output_keyword", "contextual"},
+        {"output_storage", "flagged_layer_resource_export"}, {"outputs_per_asset", 1},
+        {"output_value", "direction_layer_checked_at_write"}, {"list_outputs", false},
+        {"part_read", "layer_in_caller_coordinates"},
+        {"publication", "root_slot_painted_source_over_on_flat_after_success"},
+        {"published_alpha", 255}, {"flat_rgba", Json::array({kFlatDirection.r, kFlatDirection.g, kFlatDirection.b, kFlatDirection.a})},
+        {"publication_fuel", 0},
+        {"axes", "x_right_y_up_z_toward_viewer"}, {"byte", "nearest_ties_away_from_zero_complement_negates"},
+        {"capture_syntax", "layer <name>(encoding=surface.normal) { <statements> }"},
+        {"capture_mode", "surface.source_over"}, {"capture_mode_code", kDirectionLayerMode},
+        {"capture_alpha_option", false}, {"encoding", "buffer_property_not_a_type"},
+        {"paint", "view_D4_reorients_vectors_with_pixels"}, {"weather", "trap"}, {"dynamic_parts", false},
+        {"blur", "keeps_encoding"},
+        {"methods", surfaceMethods("normal")},
+        {"method_syntax", "<layer|mask>.normal(depth[, smoothing])"},
+        {"evaluation", "receiver_then_depth_then_smoothing_once"},
+        {"depth_type", "f32"}, {"minimum_depth", 0}, {"depth_units", "receiver_raster_pixels_of_full_coverage"},
+        {"smoothing_type", "f32"}, {"minimum_smoothing", 0}, {"maximum_smoothing", static_cast<u32>(kMaxNormalSmoothing)},
+        {"default_smoothing", 0}, {"smoothing_units", "receiver_raster_pixels"},
+        {"height", Json::object({{"mask", "coverage"}, {"layer", "red_times_alpha_over_255"}})},
+        {"height_layer_encoding", "colour_only"},
+        {"result", "direction_layer_with_receiver_extent_scale_placement_D4"}, {"result_alpha", "receiver_coverage"},
+        {"border", "nearest_edge"}, {"smoothing_kernel", "blur_gaussian_binary64_no_rounding"},
+        {"slope", "central_differences"}, {"maximum_radius", 192},
+        {"opcode", kernel->mnemonic}, {"receiver_codes", Json::object({{"layer", 0}, {"mask", 1}})},
+        {"fuel", "ceil_60_percent_one_plus_K_plus_W_H_times_5_plus_2_K"},
+        {"result_bytes", "128_plus_4_per_pixel"}, {"scratch_bytes", "8_times_W_H_plus_8_times_W_radius"},
+        {"scratch_release", "success_and_error"}, {"preflight", "fuel_and_shared_arena_before_filter"},
+        {"color_builtin", "color.normal"}, {"color_axes", "x_right_y_down_z_toward_viewer"},
+        {"color_lowering", "existing_f32_instructions"}, {"color_constants", "fold_to_one_color"},
+        {"color_fallback", "flat_when_squared_length_zero_or_not_finite"},
+        {"color_constant_errors", Json::array({"zero_or_nonfinite_length", "z_not_positive"})},
+        {"asset_constants", Json::object({{"color.normal", true}, {"normal_method", false}})},
+        {"effects", operationEffects(kernel->effects)}});
 }
 
 Json samplers() {
@@ -303,7 +346,7 @@ Json sourceRules() {
     Json alphaModes = Json::array();
     for (const auto& spec : kCompositionSpecs) alphaModes.push_back("surface." + std::string(spec.name));
     rules["surfaces"] = Json::object({
-        {"methods", surfaceMethods()},
+        {"methods", surfaceMethods("blur")},
         {"blur", Json::object({{"sigma_type", "f32"}, {"minimum_sigma", 0}, {"maximum_sigma", static_cast<u32>(kMaxBlurSigma)},
             {"sigma_units", "input_raster_pixels"}, {"evaluation", "receiver_then_sigma_once"},
             {"kernel_radius", "ceil_3_sigma"}, {"maximum_radius", 192}, {"border", "nearest_edge"},
@@ -400,6 +443,7 @@ Json sourceRules() {
         {"generation_cleanup", "success_and_trap"}, {"host_handles", false}, {"list_exports", false},
         {"maximum_slots", kMaxConstPoolEntries}, {"slot_bytes", 64}, {"write_read_fuel", 1},
         {"section_id", static_cast<u32>(SectionId::ResourceExports)}});
+    rules["normal_maps"] = normalMaps();
     rules["masks"] = Json::object({
         {"from_syntax", "mask.from(image)"}, {"clip_syntax", "clip(mask) { <statements> }"},
         {"keyword", "reserved"}, {"from_storage", "shared_rgba8_alpha_view"},

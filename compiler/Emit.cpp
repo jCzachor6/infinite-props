@@ -2,6 +2,7 @@
 
 #include <utility>
 
+#include "iprop/Compositor.hpp"
 #include "ips/Fold.hpp"
 #include "ips/Literals.hpp"
 
@@ -150,7 +151,7 @@ void Emitter::emitStmt(const ips::Stmt& stmt) {
         }
         ins(Opcode::End);
     } else if (const auto* capture = std::get_if<ips::LayerStmt>(&stmt)) {
-        ins(Opcode::LayerBegin, static_cast<u8>(capture->alpha),
+        ins(Opcode::LayerBegin, capture->directions ? kDirectionLayerMode : static_cast<u8>(capture->alpha),
             static_cast<u16>(current_->slots.at(capture->name)));
         for (const auto& child : capture->body) emitStmt(child);
         ins(Opcode::End);
@@ -282,6 +283,7 @@ void Emitter::emitOutputWrite(const ips::Program* owner,
         ins(Opcode::OutMask, 0, resource());
         return;
     case ips::OutputKind::Layer:
+    case ips::OutputKind::Normal: // a flagged layer slot; the VM checks the encoding
         emitExpr(value);
         ins(Opcode::OutLayer, 0, resource());
         return;

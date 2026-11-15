@@ -1,0 +1,6 @@
+asset badEncoding {
+    size 1x1
+    draw {
+        layer directions(alpha = surface.source_over, encoding = surface.normal) {}
+    }
+}

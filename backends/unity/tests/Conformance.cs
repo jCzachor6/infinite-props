@@ -14,6 +14,7 @@ static class Conformance
         string path = args[0];
         PartOutputConformance.Run(path);
         ExecutionControls(path);
+        NormalMaps(path);
         if (args.Length > 1) InfiniteProps.Tests.PixelCorpus.Run(args[1]);
         var program = new Program(File.ReadAllBytes(Path.Combine(path, "bindings.iprop")));
         Require(program.Metadata.Width == 8 && program.Metadata.Height == 4 && program.Metadata.OriginX == 2, "metadata");
@@ -62,6 +63,62 @@ static class Conformance
             Require(trap.Generate(inputs: new Dictionary<string, InputValue> { ["divisor"] = InputValue.Int(1) }).FindOutput("value").Values.SequenceEqual(new float[] { 1, 0 }), "recovery after trap");
         }
         Console.WriteLine("Unity C# / native C API conformance passed");
+    }
+    // Auxiliary images against the CLI-rendered shared fixtures.
+    static void NormalMaps(string path)
+    {
+        Func<string, byte[]> load = name => File.ReadAllBytes(Path.Combine(path, name));
+        using (var program = new Program(load("binding-normal.iprop")))
+        {
+            Require(program.Images.Count == 1 && program.Images[0].Index == 0 && program.Images[0].Kind == ImageKind.Normal &&
+                program.Images[0].Name == "relief", "declared normal output");
+            var result = program.Generate(5);
+            Require(result.Rgba.SequenceEqual(load("binding-normal.rgba")), "native RGBA oracle with a normal output");
+            var normal = result.Normal;
+            Require(result.Images.Count == 1 && ReferenceEquals(result.Images[0], normal), "one auxiliary image");
+            Require(normal.Index == 0 && normal.Kind == ImageKind.Normal && normal.Source == ImageSource.Authored && normal.Name == "relief", "authored tags");
+            Require(normal.Width == 8 && normal.Height == 4 && normal.RowStride == 32, "normal image layout");
+            Require(normal.PixelFormat == result.PixelFormat && normal.AlphaMode == 2 && normal.StorageOrigin == result.StorageOrigin, "normal image format");
+            Require(normal.Rgba.SequenceEqual(load("binding-normal.normal.rgba")), "native normal map oracle");
+            Require(Enumerable.Range(0, normal.Rgba.Length / 4).All(i => normal.Rgba[i * 4 + 3] == 255), "opaque normal image");
+            // The seed moves one painted direction; a size override scales the image.
+            Require(!program.Generate(6).Normal.Rgba.SequenceEqual(normal.Rgba), "seed-dependent direction");
+            var scaled = program.Generate(5, width: 16, height: 8).Normal;
+            Require(scaled.Width == 16 && scaled.Height == 8 && scaled.Rgba.Length == 512, "scaled normal image");
+            // An authored image wins over a derive request and stays identical.
+            var requested = program.Generate(5, deriveNormal: new DerivedNormal(depth: 9)).Normal;
+            Require(requested.Source == ImageSource.Authored && requested.Rgba.SequenceEqual(normal.Rgba), "authored wins");
+        }
+        using (var program = new Program(load("bindings.iprop")))
+        {
+            Require(program.Images.Count == 0, "no declared image");
+            var plain = program.Generate(5);
+            Require(plain.Images.Count == 0 && plain.Normal == null, "derived images are opt-in");
+            foreach (var item in new[] { (new DerivedNormal(), "bindings-derived"),
+                                         (new DerivedNormal(2, 0.5f, 0.25f), "bindings-derived-custom") })
+            {
+                var result = program.Generate(5, deriveNormal: item.Item1);
+                var normal = result.Normal;
+                Require(normal.Kind == ImageKind.Normal && normal.Source == ImageSource.Derived && normal.Name == "normal", "derived tags");
+                Require(normal.Rgba.SequenceEqual(load(item.Item2 + ".normal.rgba")), "native derived normal oracle: " + item.Item2);
+                Require(normal.Width == 8 && normal.Height == 4 && normal.AlphaMode == 2, "derived layout");
+                // The request leaves the main image and fuel alone and spends work.
+                Require(result.Rgba.SequenceEqual(plain.Rgba) && result.Statistics.FuelUsed == plain.Statistics.FuelUsed, "main image unchanged");
+                Require(result.Statistics.WorkUsed > plain.Statistics.WorkUsed, "derivation spends work");
+            }
+            ulong used = program.Generate(5, deriveNormal: new DerivedNormal()).Statistics.WorkUsed;
+            Require(program.Generate(5, limits: new ExecutionLimits(used), deriveNormal: new DerivedNormal()).Statistics.WorkRemaining == 0, "exact work");
+            try { program.Generate(5, limits: new ExecutionLimits(used - 1), deriveNormal: new DerivedNormal()); throw new Exception("work limit was ignored"); }
+            catch (IpropException failure) { Require(failure.Reason == 3015 && failure.Stage == 4, "work limit during derivation"); }
+            foreach (var request in new[] { new DerivedNormal(depth: -1), new DerivedNormal(depth: float.PositiveInfinity), new DerivedNormal(rounding: 64.5f),
+                                            new DerivedNormal(rounding: -0.5f), new DerivedNormal(detail: 1.5f), new DerivedNormal(detail: float.NaN) })
+            {
+                try { program.Generate(5, deriveNormal: request); throw new Exception("expected an argument error"); }
+                catch (IpropException failure) { Require(failure.Status == 4 && failure.Stage == 3 && failure.Message.Contains("out of range"), "invalid derive request"); }
+            }
+            Require(program.Generate(5).Normal == null, "recovery after argument errors");
+        }
+        Console.WriteLine("Production C# normal maps: PASS authored and derived images against the CLI, declarations, work limits and argument errors");
     }
     static void ExecutionControls(string path)
     {

@@ -150,6 +150,19 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
         if (current_->typeOf(*blur->sigma.value) == ips::ValueType::I32) ins(Opcode::I32ToF32);
         return emitMethod(expr);
     }
+    if (const auto* normal = std::get_if<ips::SurfaceNormal>(&expr)) {
+        emitExpr(*normal->receiver);
+        const auto number = [&](const ips::Expr& value) {
+            emitExpr(value);
+            if (current_->typeOf(value) == ips::ValueType::I32) ins(Opcode::I32ToF32);
+        };
+        number(*normal->depth.value);
+        if (normal->smoothing) number(*normal->smoothing->value);
+        else emitConst(0.0f);
+        // One instruction for both receivers: aux 1 reads a mask's coverage.
+        ins(Opcode::SurfaceNormal, current_->typeOf(*normal->receiver) == ips::ValueType::Mask ? u8{1} : u8{0});
+        return ips::ValueType::Layer;
+    }
     if (const auto* method = std::get_if<ips::ListMethod>(&expr)) {
         emitExpr(*method->receiver);
         return emitMethod(expr);
@@ -242,6 +255,7 @@ ips::ValueType Emitter::emitPartRead(const ips::Expr& expr) {
         ins(Opcode::PartGetMask, 0, resource());
         return ips::ValueType::Mask;
     case ips::OutputKind::Layer:
+    case ips::OutputKind::Normal:
         ins(Opcode::PartGetLayer, 0, resource());
         return ips::ValueType::Layer;
     case ips::OutputKind::Point:

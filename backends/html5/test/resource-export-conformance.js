@@ -79,7 +79,7 @@ function run(iprop,tool,directory) {
         const binary=base+"-bad.iprop";fs.writeFileSync(binary,broken);const native=spawnSync(tool("ipval"),[binary],{encoding:"utf8"});assert.equal(native.status,1);assert.throws(()=>iprop.generate(new Uint8Array(broken),{seed:26}));++rejections;
     }
     for(const [offset,value] of [[0,65537],[4,1000],[8,100000],[4+12*5,0]]){const broken=Buffer.from(bytes);broken.writeUInt32LE(value,section.offset+offset);reject(broken);}
-    for(const [offset,value] of [[12,65535],[14,1]]){const broken=Buffer.from(bytes);broken.writeUInt16LE(value,section.offset+offset);reject(broken);}
+    for(const [offset,value] of [[12,65535],[14,2]]){const broken=Buffer.from(bytes);broken.writeUInt16LE(value,section.offset+offset);reject(broken);}
     for(const ins of instructions(bytes).filter(i=>i.op>=0xd2&&i.op<=0xd5)){
         for(const field of ['slot','aux','type']){const broken=Buffer.from(bytes);if(field==='slot')broken.writeUInt16LE(65535,ins.at+2);if(field==='aux')broken[ins.at+1]=1;if(field==='type')broken[ins.at]=ins.op===0xd2?0xd3:ins.op===0xd3?0xd2:ins.op===0xd4?0xd5:0xd4;reject(broken);}
     }

@@ -28,6 +28,7 @@ def excerpt(root, chapter, text, heading, paragraphs, skip=0, fences=(), optiona
     # Method signatures are already generated in compiler_rules for every
     # selection. Their handbook placeholder is not prose or a second table.
     text = text.replace('<!-- sampler-methods -->', '').replace('<!-- stepper-methods -->', '').replace('<!-- surface-methods -->', '')
+    text = text.replace('<!-- normal-methods -->', '')
     found = headings(text)
     matches = [h for h in found if h['title'] == heading]
     require(len(matches) == 1, 'missing or ambiguous handbook heading: ' + heading)

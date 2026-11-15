@@ -11,10 +11,14 @@
 
 namespace iprop {
 
+// Record flags (formerly a reserved zero field). A normal output is a layer
+// slot whose value must be a direction layer; the root's is published.
+inline constexpr u16 kResourceExportNormal = 1u << 0;
 struct ResourceExport {
     u32 owner = kRootParent;
     u32 nameIndex = 0;
     TypeDescriptor type;
+    bool normal = false;
 };
 
 // A fully parsed file. The LoadedFile OWNS its byte buffer: every span

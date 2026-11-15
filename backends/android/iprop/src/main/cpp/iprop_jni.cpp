@@ -111,6 +111,14 @@ iprop_image_view_ex image(jlong value) {
     f.check(iprop_result_query_image(result(value), &view, &f.error));
     return view;
 }
+iprop_aux_image_view_ex auxImage(jlong value, jint index) {
+    Failure f; iprop_aux_image_view_ex view{}; iprop_aux_image_view_ex_init(&view, sizeof(view));
+    f.check(iprop_result_aux_image_get(result(value), static_cast<std::uint32_t>(index), &view, &f.error)); return view;
+}
+iprop_aux_image_info_ex declaredImage(jlong value, jint index) {
+    Failure f; iprop_aux_image_info_ex info{}; iprop_aux_image_info_ex_init(&info, sizeof(info));
+    f.check(iprop_program_aux_image_get(context(value).program.get(), static_cast<std::uint32_t>(index), &info, &f.error)); return info;
+}
 } // namespace
 
 #define JNI_METHOD(type, name) extern "C" JNIEXPORT type JNICALL Java_dev_infiniteprops_Native_##name
@@ -121,9 +129,11 @@ JNI_METHOD(jlong, load)(JNIEnv* env, jobject, jbyteArray data) {
         iprop_library_info_ex library{};
         iprop_library_info_ex_init(&library, sizeof(library));
         f.check(iprop_library_query_ex(&library, &f.error));
-        if (library.api_major != 0 || library.api_minor < 6 || library.abi_major != 0 || library.abi_minor != 5 ||
-            (library.capabilities & (IPROP_CAP_PART_OUTPUTS | IPROP_CAP_RESULT_RESOURCES | IPROP_CAP_EXECUTION_LIMITS)) != (IPROP_CAP_PART_OUTPUTS | IPROP_CAP_RESULT_RESOURCES | IPROP_CAP_EXECUTION_LIMITS))
-            throw std::invalid_argument("C API 0.6 / ABI 0.5 with typed results and execution limits required");
+        const std::uint64_t required = IPROP_CAP_PART_OUTPUTS | IPROP_CAP_RESULT_RESOURCES | IPROP_CAP_EXECUTION_LIMITS |
+            IPROP_CAP_AUX_IMAGES | IPROP_CAP_DERIVED_NORMAL;
+        if (library.api_major != 0 || library.api_minor < 7 || library.abi_major != 0 || library.abi_minor != 5 ||
+            (library.capabilities & required) != required)
+            throw std::invalid_argument("C API 0.7 / ABI 0.5 with typed results, execution limits and auxiliary images required");
         auto owner = std::make_unique<Context>();
         const auto count = env->GetArrayLength(data);
         std::vector<std::uint8_t> buffer(static_cast<std::size_t>(count) + 1);
@@ -176,7 +186,9 @@ JNI_METHOD(void, set)(JNIEnv* env, jobject, jlong value, jbyteArray name, jint t
         return 0;
     });
 }
-JNI_METHOD(jlong, generate)(JNIEnv* env, jobject, jlong value, jint seed, jint width, jint height, jlong work, jlong timeout, jlong cancellation) {
+// derive selects a derived normal image; its three floats travel as raw bits.
+JNI_METHOD(jlong, generate)(JNIEnv* env, jobject, jlong value, jint seed, jint width, jint height, jlong work, jlong timeout, jlong cancellation,
+                            jboolean derive, jint depth, jint rounding, jint detail) {
     return guarded<jlong>(env, [&] { Failure f; auto& c = context(value);
         iprop_generate_options_ex options{}; iprop_generate_options_ex_init(&options, sizeof(options));
         options.flags = IPROP_GENERATE_PART_OUTPUTS;
@@ -184,8 +196,36 @@ JNI_METHOD(jlong, generate)(JNIEnv* env, jobject, jlong value, jint seed, jint w
         iprop_execution_limits_ex limits{}; iprop_execution_limits_ex_init(&limits, sizeof(limits));
         limits.work_limit = static_cast<std::uint64_t>(work); limits.timeout_ns = static_cast<std::uint64_t>(timeout);
         limits.cancellation = reinterpret_cast<iprop_cancellation*>(static_cast<std::uintptr_t>(cancellation));
+        iprop_derived_normal_ex request{}; iprop_derived_normal_ex_init(&request, sizeof(request));
+        request.depth = std::bit_cast<float>(depth); request.rounding = std::bit_cast<float>(rounding); request.detail = std::bit_cast<float>(detail);
         iprop_result* generated = nullptr;
-        f.check(iprop_generate_controlled(c.program.get(), &options, c.parameters.get(), &limits, &generated, &f.error)); return pointer(generated); });
+        f.check(iprop_generate_derived_normal(c.program.get(), &options, c.parameters.get(), &limits,
+            derive ? &request : nullptr, &generated, &f.error)); return pointer(generated); });
+}
+JNI_METHOD(jint, declaredImageCount)(JNIEnv* env, jobject, jlong value) {
+    return guarded<jint>(env, [&] { Failure f; std::uint32_t count = 0;
+        f.check(iprop_program_aux_image_count(context(value).program.get(), &count, &f.error)); return static_cast<jint>(count); });
+}
+JNI_METHOD(jlongArray, declaredImageInfo)(JNIEnv* env, jobject, jlong value, jint index) {
+    return guarded<jlongArray>(env, [&] { const auto v = declaredImage(value, index); return longs(env, {v.image_index, v.kind}); });
+}
+JNI_METHOD(jbyteArray, declaredImageName)(JNIEnv* env, jobject, jlong value, jint index) {
+    return guarded<jbyteArray>(env, [&] { const auto v = declaredImage(value, index); return bytes(env, v.name.data, v.name.byte_count); });
+}
+JNI_METHOD(jint, auxImageCount)(JNIEnv* env, jobject, jlong value) {
+    return guarded<jint>(env, [&] { Failure f; std::uint32_t count = 0;
+        f.check(iprop_result_aux_image_count(result(value), &count, &f.error)); return static_cast<jint>(count); });
+}
+JNI_METHOD(jlongArray, auxImageInfo)(JNIEnv* env, jobject, jlong value, jint index) {
+    return guarded<jlongArray>(env, [&] { const auto v = auxImage(value, index);
+        return longs(env, {v.image_index, v.kind, v.source, v.width, v.height, static_cast<jlong>(v.row_stride),
+            v.pixel_format, v.alpha_mode, v.origin}); });
+}
+JNI_METHOD(jbyteArray, auxImageName)(JNIEnv* env, jobject, jlong value, jint index) {
+    return guarded<jbyteArray>(env, [&] { const auto v = auxImage(value, index); return bytes(env, v.name.data, v.name.byte_count); });
+}
+JNI_METHOD(jbyteArray, auxImagePixels)(JNIEnv* env, jobject, jlong value, jint index) {
+    return guarded<jbyteArray>(env, [&] { const auto v = auxImage(value, index); return bytes(env, v.pixels, v.byte_count); });
 }
 JNI_METHOD(jlong, createCancellation)(JNIEnv* env, jobject) {
     return guarded<jlong>(env, [&] { Failure f; iprop_cancellation* token = nullptr;

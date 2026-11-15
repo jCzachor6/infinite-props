@@ -1,6 +1,6 @@
 # Apple / Swift
 
-A Swift package over C API 0.6 / ABI 0.5 for macOS 12+ and iOS 15+.
+A Swift package over C API 0.7 / ABI 0.5 for macOS 12+ and iOS 15+.
 It provides typed inputs, metadata, owned RGBA/geometry/statistics results,
 structured errors and CGImage, SpriteKit and Metal helpers. It has no game
 dependencies. See the [shared binding contract](../../docs/native-bindings.md).
@@ -52,6 +52,22 @@ let collider = image.output(named: "collider", owner: 0)
 let cgImage = try image.makeCGImage()
 // Also: image.makeSKTexture(), image.makeMetalTexture(device: device).
 ```
+
+`image.normal` is the [normal map](../../docs/native-bindings.md#normal-maps-and-other-auxiliary-images)
+published with the image, or `nil`; `image.images` lists every auxiliary image
+and `program.images` what the program declares. Pass
+`deriveNormal: DerivedNormal()` to derive one for a prop that publishes none.
+
+```swift
+let lit = try program.generate(seed: 7, deriveNormal: DerivedNormal())
+if let normal = lit.normal {
+    sprite.normalTexture = try normal.makeSKTexture()   // lit by SKLightNode
+    let texture = try normal.makeMetalTexture(device: device) // linear .rgba8Unorm
+}
+```
+
+An `AuxiliaryImage` owns its `rgba` bytes and has `makeCGImage()` (opaque,
+linear colour space), `makeSKTexture()` and `makeMetalTexture(device:)`.
 
 Use `.float(Float)`, `.uint(UInt32)` or `.int(Int32)` for numeric inputs.
 The program closes automatically on deinitialization; `close()` releases it

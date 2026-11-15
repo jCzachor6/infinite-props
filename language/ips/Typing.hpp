@@ -176,6 +176,7 @@ private:
     ValueType typeRandomRange(const RandomRange& range);
     ValueType typeListMethod(const Expr& expr, const ListMethod& method, std::optional<ValueType> context);
     ValueType typeBlur(const Expr& expr, const SurfaceBlur& blur);
+    ValueType typeNormal(const Expr& expr, const SurfaceNormal& normal);
     ValueType typeMember(const Expr& expr, const Member& member);
     ValueType typePoints(const PointDistributionLiteral& literal);
     ValueType typeCapture(const SamplerCapture& capture);

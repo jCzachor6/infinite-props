@@ -18,6 +18,7 @@
       "samplers",
       "part",
       "surfaces",
+      "relief",
       "procedural",
       "limits",
       "grammar",
@@ -247,6 +248,16 @@
       "examples": [
         "captured-panels.ips",
         "blur.ips"
+      ]
+    },
+    {
+      "id": "relief",
+      "title": "Relief and normal maps",
+      "chapter": "relief.md",
+      "parts": [
+        {
+          "heading": "At a glance"
+        }
       ]
     },
     {

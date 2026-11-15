@@ -99,7 +99,7 @@ function run(iprop,tool,directory) {
         assert.equal(native.status,1,native.stderr);assert.equal(native.signal,null);assert.throws(()=>iprop.generate(new Uint8Array(data),{}));++rejections;
     }
     const valid=Buffer.from(fs.readFileSync(compile("asset t{input i32 v=0 size 1x1 draw{layer image(alpha=surface.source_over){}surface.paint(image,blend=surface.source_over)}}",false,"-wire")));
-    for(const at of instructions(valid))if(valid[at]===0xc6){const bad=Buffer.from(valid);bad[at+1]=3;reject(bad);}
+    for(const at of instructions(valid))if(valid[at]===0xc6){const bad=Buffer.from(valid);bad[at+1]=4;reject(bad);}
     else if(valid[at]===0xc7)for(const mode of [3,257,65535]){const bad=Buffer.from(valid);bad.writeUInt16LE(mode,at+2);reject(bad);}
     const old=Buffer.from(valid);old.writeUInt16LE(5,6);reject(old);
     // Mode 2 is valid even when unreachable; the pre-0.6 gate is still enforced.

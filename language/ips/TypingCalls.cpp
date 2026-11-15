@@ -4,6 +4,7 @@
 #include "ips/PartTransform.hpp"
 #include "ips/AssetConstants.hpp"
 #include <algorithm>
+#include <array>
 
 namespace iprop::ips {
 namespace {
@@ -113,6 +114,20 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
     }
     const auto bound = bind(call, std::move(callSignature), name.name);
     const auto& args = bound.arguments;
+    if (signature.lowering == BuiltinLowering::NormalColor && args.size() == 3) {
+        // A direction that is known and cannot be stored is an error where it
+        // is written; an unknown one falls back to flat at run time.
+        std::array<f32, 3> axes{};
+        bool allKnown = true;
+        for (std::size_t i = 0; i < 3 && allKnown; ++i) {
+            if (!isNumeric(typeOf(*args[i]->value, ValueType::F32))) { allKnown = false; break; }
+            const auto constant = known(*args[i]->value);
+            if (!constant) allKnown = false;
+            else axes[i] = std::holds_alternative<i32>(*constant) ? static_cast<f32>(std::get<i32>(*constant)) : std::get<f32>(*constant);
+        }
+        if (allKnown && (normalColorValue(axes[0], axes[1], axes[2]).flat || !(axes[2] > 0.f)))
+            valueError(call.location, "color.normal needs a finite nonzero direction with z > 0");
+    }
     if (signature.lowering == BuiltinLowering::SurfacePaint &&
         bound.signature.parameters.back().name == "blend") {
         if (!surfaceMode(*args.back()->value))

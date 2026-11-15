@@ -26,6 +26,7 @@ SAMPLER_METHODS = re.compile(r"^<!-- sampler-methods -->$", re.M)
 STEPPER_METHODS = re.compile(r"^<!-- stepper-methods -->$", re.M)
 LIST_METHODS = re.compile(r"^<!-- list-methods -->$", re.M)
 SURFACE_METHODS = re.compile(r"^<!-- surface-methods -->$", re.M)
+NORMAL_METHODS = re.compile(r"^<!-- normal-methods -->$", re.M)
 
 def method_signatures(methods):
     lines = ['| Receiver | Method | Result |', '| --- | --- | --- |']
@@ -212,7 +213,7 @@ def resources(root):
                   and not any(part.endswith(".egg-info") for part in p.parts)
                   and p.name != "local.properties"
                   and (p.suffix in suffixes or p.name in {"LICENSE", "CMakeLists.txt"})]
-    files += [root / "backends/test" / name for name in ("bindings.ips", "binding-trap.ips", "binding-unicode.ips", "execution-slow.ips", "prepare-bindings.py", "result_fixture.py", "check-python.py", "check-csharp.py", "python-asan.supp", "part_bindings.py", "part-bindings-v0.9.json", "check-part-outputs.py")
+    files += [root / "backends/test" / name for name in ("bindings.ips", "binding-trap.ips", "binding-unicode.ips", "binding-normal.ips", "execution-slow.ips", "prepare-bindings.py", "result_fixture.py", "check-python.py", "check-csharp.py", "python-asan.supp", "part_bindings.py", "part-bindings-v0.9.json", "check-part-outputs.py")
               if (root / "backends/test" / name).is_file()]
     files += [p for p in (root / "editor/README.md", root / "website/README.md") if p.is_file()]
     files += list((root / "examples/c").glob("*.c"))
@@ -277,6 +278,7 @@ def build(compiler, destination, root=ROOT, llm_sections=None, llm_symbols=None,
         content = STEPPER_METHODS.sub(lambda _: method_signatures(language['source_rules']['steppers']['methods']), content)
         content = LIST_METHODS.sub(lambda _: method_signatures(language['source_rules']['collections']['methods']), content)
         content = SURFACE_METHODS.sub(lambda _: method_signatures(language['source_rules']['surfaces']['methods']), content)
+        content = NORMAL_METHODS.sub(lambda _: method_signatures(language['source_rules']['normal_maps']['methods']), content)
         expanded[chapter] = content
         output[chapter.relative_to(root).as_posix()] = content
 

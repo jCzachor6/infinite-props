@@ -22,9 +22,34 @@ data class Output @JvmOverloads constructor(val index: UInt, val owner: UInt, va
 data class Statistics(val fuelBudget: ULong, val fuelRemaining: ULong, val fuelUsed: ULong,
     val imageByteCount: ULong, val outputElementCount: ULong,
     val workBudget: ULong = 0u, val workRemaining: ULong = 0u, val workUsed: ULong = 0u)
+/** The C tag of each constant is its ordinal + 1. */
+enum class ImageKind { NORMAL }
+enum class ImageSource { AUTHORED, DERIVED }
+
+/** An auxiliary image a program can publish: the normal output of its root. */
+data class DeclaredImage(val index: UInt, val kind: ImageKind, val name: String)
+
+/** Asks for a normal map derived from the finished image when the program
+ * publishes none. [depth] is the height of full coverage and [rounding] a
+ * Gaussian sigma, both in image pixels; [detail] is the share of brightness
+ * in the height (0..1). Zero selects each default: the longer side / 16, the
+ * longer side / 32 and 0.5. */
+data class DerivedNormal @JvmOverloads constructor(val depth: Float = 0f, val rounding: Float = 0f, val detail: Float = 0f)
+
+/** An image published beside the main one, owned by its result. A normal map
+ * stores one direction per pixel: R is x rightward, G is y upward and B is z
+ * toward the viewer, each byte b decoding as b / 127.5 - 1. The bytes are
+ * linear data, not colour, and alpha is 255 everywhere (alphaMode == 2). */
+data class AuxiliaryImage(val index: UInt, val kind: ImageKind, val source: ImageSource, val name: String,
+    val width: UInt, val height: UInt, val rowStride: ULong,
+    val pixelFormat: UInt, val alphaMode: UInt, val storageOrigin: UInt, val rgba: ByteArray)
+
 data class GeneratedImage @JvmOverloads constructor(val width: UInt, val height: UInt, val rowStride: ULong,
     val pixelFormat: UInt, val alphaMode: UInt, val storageOrigin: UInt,
-    val rgba: ByteArray, val outputs: List<Output>, val statistics: Statistics, val resources: List<ResultResource> = emptyList()) {
+    val rgba: ByteArray, val outputs: List<Output>, val statistics: Statistics, val resources: List<ResultResource> = emptyList(),
+    val images: List<AuxiliaryImage> = emptyList()) {
+    /** The normal map published with this image, authored or derived. */
+    val normal: AuxiliaryImage? get() = images.firstOrNull { it.kind == ImageKind.NORMAL }
     fun output(name: String, owner: UInt = 0u): Output? = outputs.firstOrNull { it.owner == owner && it.name == name }
     fun resource(id: UInt): ResultResource? = if (id > 0u && id <= resources.size.toUInt()) resources[id.toInt() - 1] else null
 }
@@ -39,6 +64,8 @@ class Program(bytes: ByteArray) : AutoCloseable {
     private var handle = Native.load(bytes)
     val metadata: Metadata
     val inputs: List<Input>
+    /** The auxiliary images this program can publish; empty for most programs. */
+    val images: List<DeclaredImage>
     init {
         try {
             val m = Native.metadata(handle)
@@ -54,11 +81,22 @@ class Program(bytes: ByteArray) : AutoCloseable {
                 }
                 Input(index.toUInt(), Native.inputName(handle, index).toString(Charsets.UTF_8), value)
             }
+            // A kind this wrapper does not know is skipped, not an error.
+            images = (0 until Native.declaredImageCount(handle)).mapNotNull { index ->
+                val info = Native.declaredImageInfo(handle, index)
+                ImageKind.entries.getOrNull(info[1].toInt() - 1)?.let {
+                    DeclaredImage(info[0].toUInt(), it, Native.declaredImageName(handle, index).toString(Charsets.UTF_8))
+                }
+            }
         } catch (failure: Throwable) { close(); throw failure }
     }
 
+    /** [deriveNormal] asks the runtime for a normal map when the program
+     * publishes none of its own; an authored one always wins. */
     @Synchronized
-    fun generate(seed: UInt = 0u, inputs: Map<String, InputValue> = emptyMap(), width: UInt = 0u, height: UInt = 0u, limits: ExecutionLimits = ExecutionLimits()): GeneratedImage {
+    @JvmOverloads
+    fun generate(seed: UInt = 0u, inputs: Map<String, InputValue> = emptyMap(), width: UInt = 0u, height: UInt = 0u,
+                 limits: ExecutionLimits = ExecutionLimits(), deriveNormal: DerivedNormal? = null): GeneratedImage {
         check(handle != 0L) { "Program is closed" }
         Native.begin(handle)
         try {
@@ -71,8 +109,10 @@ class Program(bytes: ByteArray) : AutoCloseable {
                 }
                 Native.set(handle, name.toByteArray(Charsets.UTF_8), type, bits)
             }
+            val request = deriveNormal ?: DerivedNormal()
             val invoke = { token: Long -> Native.generate(handle, seed.toInt(), width.toInt(), height.toInt(),
-                limits.workLimit.toLong(), limits.timeoutNanoseconds.toLong(), token) }
+                limits.workLimit.toLong(), limits.timeoutNanoseconds.toLong(), token, deriveNormal != null,
+                request.depth.toRawBits(), request.rounding.toRawBits(), request.detail.toRawBits()) }
             val result = limits.cancellation?.withHandle(invoke) ?: invoke(0L)
             try {
                 val info = Native.imageInfo(result)
@@ -87,9 +127,20 @@ class Program(bytes: ByteArray) : AutoCloseable {
                 return GeneratedImage(info[0].toUInt(), info[1].toUInt(), info[2].toULong(),
                     info[3].toUInt(), info[4].toUInt(), info[5].toUInt(), Native.pixels(result), outputs,
                     Statistics(stats[0].toULong(), stats[1].toULong(), stats[2].toULong(), stats[3].toULong(), stats[4].toULong(),
-                        stats[5].toULong(), stats[6].toULong(), stats[7].toULong()), readResources(result))
+                        stats[5].toULong(), stats[6].toULong(), stats[7].toULong()), readResources(result), readImages(result))
             } finally { Native.freeResult(result) }
         } finally { Native.end(handle) }
+    }
+
+    /** Owned copies of every auxiliary image, in result order. */
+    private fun readImages(result: Long): List<AuxiliaryImage> = (0 until Native.auxImageCount(result)).mapNotNull { index ->
+        val info = Native.auxImageInfo(result, index)
+        val kind = ImageKind.entries.getOrNull(info[1].toInt() - 1)
+        val source = ImageSource.entries.getOrNull(info[2].toInt() - 1)
+        if (kind == null || source == null) null
+        else AuxiliaryImage(info[0].toUInt(), kind, source, Native.auxImageName(result, index).toString(Charsets.UTF_8),
+            info[3].toUInt(), info[4].toUInt(), info[5].toULong(), info[6].toUInt(), info[7].toUInt(), info[8].toUInt(),
+            Native.auxImagePixels(result, index))
     }
 
     @Synchronized
@@ -110,7 +161,15 @@ internal object Native {
     external fun begin(program: Long)
     external fun end(program: Long)
     external fun set(program: Long, name: ByteArray, type: Int, bits: Int)
-    external fun generate(program: Long, seed: Int, width: Int, height: Int, workLimit: Long, timeoutNanoseconds: Long, cancellation: Long): Long
+    external fun generate(program: Long, seed: Int, width: Int, height: Int, workLimit: Long, timeoutNanoseconds: Long, cancellation: Long,
+        derive: Boolean, depthBits: Int, roundingBits: Int, detailBits: Int): Long
+    external fun declaredImageCount(program: Long): Int
+    external fun declaredImageInfo(program: Long, index: Int): LongArray
+    external fun declaredImageName(program: Long, index: Int): ByteArray
+    external fun auxImageCount(result: Long): Int
+    external fun auxImageInfo(result: Long, index: Int): LongArray
+    external fun auxImageName(result: Long, index: Int): ByteArray
+    external fun auxImagePixels(result: Long, index: Int): ByteArray
     external fun createCancellation(): Long
     external fun cancel(cancellation: Long)
     external fun isCancelled(cancellation: Long): Boolean

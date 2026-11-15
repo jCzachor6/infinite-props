@@ -13,6 +13,9 @@ external edits).
   operators).
   Reserved `mask`/`clip`, typed surface handles and all mask namespace operations
   follow the compiler; mask paint arguments format in image/color/blend order.
+  The relief additions highlight like their neighbours: the `.normal` surface
+  method beside `.blur`, `surface.normal` beside the alpha modes, and
+  `color.normal` through the compiler's builtin list.
 - Diagnostics: a debounced full check through the native `ipc` binary on
   edits, saves and external file changes. JSON diagnostics retain exclusive
   source ranges, stable error codes, severity and related locations, including

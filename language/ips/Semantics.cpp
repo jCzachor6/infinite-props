@@ -23,6 +23,7 @@ ValueType outputValueType(OutputKind kind) {
     case OutputKind::Circle: return ValueType::Circle;
     case OutputKind::Mask: return ValueType::Mask;
     case OutputKind::Layer: return ValueType::Layer;
+    case OutputKind::Normal: return ValueType::Layer;
     case OutputKind::Part: return ValueType::Part2d;
     }
     return ValueType::Vec2;
@@ -193,10 +194,14 @@ private:
             recover([&] { checkInputDefault(input); });
         }
 
+        bool normalDeclared = false;
         for (const auto& output : program_.asset.outputs) {
             if (atLimit()) return false;
             const bool valid = recover([&] {
                 declare("output", output.name, output.location, "an output");
+                // The host receives one normal image per generation.
+                if (output.kind == OutputKind::Normal && std::exchange(normalDeclared, true))
+                    error(output.location, "an asset declares at most one normal output");
             });
             namespaceValid = valid && namespaceValid;
         }

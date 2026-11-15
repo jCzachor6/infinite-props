@@ -68,6 +68,14 @@ std::unique_ptr<Expr> cloneExpr(const Expr& expr) {
                                            Arg{node.sigma.name, cloneExpr(*node.sigma.value), node.sigma.location},
                                            node.location}},
                           expr);
+            } else if constexpr (std::is_same_v<T, SurfaceNormal>) {
+                std::optional<Arg> smoothing;
+                if (node.smoothing)
+                    smoothing = Arg{node.smoothing->name, cloneExpr(*node.smoothing->value), node.smoothing->location};
+                return mk(Expr{SurfaceNormal{cloneExpr(*node.receiver),
+                                             Arg{node.depth.name, cloneExpr(*node.depth.value), node.depth.location},
+                                             std::move(smoothing), node.location}},
+                          expr);
             } else {
                 std::vector<PointDistributionLiteral::Point> points;
                 for (const auto& point : node.points)
@@ -111,6 +119,9 @@ void forEachChild(Expr& expr, Visit&& visit) {
                 visit(node.receiver);
             } else if constexpr (std::is_same_v<T, SurfaceBlur>) {
                 visit(node.receiver); visit(node.sigma.value);
+            } else if constexpr (std::is_same_v<T, SurfaceNormal>) {
+                visit(node.receiver); visit(node.depth.value);
+                if (node.smoothing) visit(node.smoothing->value);
             } else if constexpr (std::is_same_v<T, PointDistributionLiteral>) {
                 for (auto& point : node.points) { visit(point.key); visit(point.value); }
             }

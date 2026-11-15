@@ -8,7 +8,11 @@ when compression saves space. `--debug` retains source maps/symbols;
 `--strip` restores the default (the last flag wins). `--no-compress` writes
 an expanded file; `--no-opt` disables compiler optimization for inspection.
 `ipval` validates a binary, `ipdis` disassembles it and `ipgen` generates
-pixels/outputs. The `.ipa` assembly language is the VM-level tool format.
+pixels/outputs. `ipgen --normal-output normal.png` also writes the
+[normal map](relief.md) of a prop that publishes one, and `--derive-normal`
+asks the runtime to derive one from the finished image when it does not;
+`ipsheet --image normal` and `--image lit` show a seed grid of the maps or of
+the props lit through them. The `.ipa` assembly language is the VM-level tool format.
 For exact binary32 transport, assembly accepts `bits:0xXXXXXXXX` with eight
 hexadecimal digits wherever it accepts f32 constants/defaults/origins. `ipdis`
 uses this spelling for subnormals and nonfinite values, preserving NaN payloads

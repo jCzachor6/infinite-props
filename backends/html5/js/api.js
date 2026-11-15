@@ -11,6 +11,9 @@
 // their declared defaults.
 // generate() returns { width, height, data (Uint8Array RGBA), outputs, fuel }.
 // `data` is a copy, so results stay valid across calls.
+// `images` lists the images published beside the main one and `normal` is the
+// normal map among them, or null. `deriveNormal: true` asks the runtime to
+// derive one for a prop that publishes none.
 
 (function (root, factory) {
     if (typeof module === "object" && module.exports) {
@@ -21,12 +24,15 @@
         root.Iprop = factory(root.createIpropModule);
     }
 })(typeof self !== "undefined" ? self : this, function (createModule) {
+    // Auxiliary image tags of the C API.
+    const NORMAL = 1, AUTHORED = 1, DERIVED = 2;
+
     function create(wasmUrl) {
         return createModule({ locateFile: function () { return wasmUrl; } })
             .then(function (Module) {
                 function generate(fileBytes, inputs) {
                     inputs = inputs || {};
-                    const allowed = new Set(["seed", "sizeX", "sizeY", "uniforms", "workLimit", "timeoutMs", "signal", "cancelFlag"]);
+                    const allowed = new Set(["seed", "sizeX", "sizeY", "uniforms", "workLimit", "timeoutMs", "signal", "cancelFlag", "deriveNormal"]);
                     for (const name of Object.keys(inputs)) {
                         if (!allowed.has(name)) throw new Error("unknown generation option '" + name + "'");
                     }
@@ -36,13 +42,17 @@
                         inputs.sizeX >>> 0 || 0,
                         inputs.sizeY >>> 0 || 0];
                     const controls = ["workLimit", "timeoutMs", "signal", "cancelFlag"];
-                    if (controls.some(name => Object.prototype.hasOwnProperty.call(inputs, name))) {
+                    const controlled = controls.some(name => Object.prototype.hasOwnProperty.call(inputs, name));
+                    const derive = inputs.deriveNormal != null && inputs.deriveNormal !== false;
+                    if (controlled || derive) {
                         args.push(inputs.uniforms);
                         const execution = {};
                         for (const name of controls) if (inputs[name] !== undefined) execution[name] = inputs[name];
-                        args.push(execution);
+                        args.push(controlled ? execution : undefined);
+                        if (derive) args.push(inputs.deriveNormal);
                     } else if (inputs.uniforms) args.push(inputs.uniforms);
                     const result = Module.generate.apply(Module, args);
+                    const images = result.images || [];
                     return {
                         width: result.width,
                         height: result.height,
@@ -55,6 +65,8 @@
                         storageOrigin: result.storageOrigin,
                         fuel: result.fuel,
                         work: result.work,
+                        images: images,
+                        normal: images.find(image => image.kind === NORMAL) || null,
                     };
                 }
 
@@ -68,7 +80,8 @@
                         new ImageData(clamped, result.width, result.height), 0, 0);
                 }
 
-                return { generate: generate, drawToCanvas: drawToCanvas };
+                return { generate: generate, drawToCanvas: drawToCanvas,
+                    IMAGE_NORMAL: NORMAL, SOURCE_AUTHORED: AUTHORED, SOURCE_DERIVED: DERIVED };
             });
     }
 

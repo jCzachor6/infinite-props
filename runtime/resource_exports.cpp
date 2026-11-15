@@ -28,20 +28,27 @@ void parseResourceExports(std::span<const u8> data, const Section& section, Load
     for (const auto& output : file.meta.outputs) names.emplace(kRootParent, file.pool.strings[output.nameIndex]);
     for (u32 p = 0; p < file.code.parts.size(); ++p)
         for (const auto& output : file.code.parts[p].outputs) names.emplace(p, file.pool.strings[output.nameIndex]);
+    std::set<u32> normalOwners;
     for (u32 i = 0; i < count; ++i) {
         const auto at = reader.position();
         const auto owner = reader.readU32(), name = reader.readU32();
-        const auto type = reader.readU16(), reserved = reader.readU16();
+        const auto type = reader.readU16(), flags = reader.readU16();
         if (!validOwner(owner)) throw FormatError("resource export owner out of range", at, ErrorReason::InvalidMetadata);
         if (name >= file.pool.strings.size() || file.pool.strings[name].empty())
             throw FormatError("resource export name out of range", at + 4, ErrorReason::InvalidMetadata);
         if (type >= file.collections.types.size() ||
             (file.collections.types[type] != ValueType::Mask && file.collections.types[type] != ValueType::Layer))
             throw FormatError("invalid resource export type descriptor", at + 8, ErrorReason::InvalidMetadata);
-        if (reserved) throw FormatError("resource export reserved field must be zero", at + 10, ErrorReason::InvalidMetadata);
+        if (flags & ~kResourceExportNormal)
+            throw FormatError("unknown resource export flags", at + 10, ErrorReason::InvalidMetadata);
+        const bool normal = (flags & kResourceExportNormal) != 0;
+        if (normal && file.collections.types[type] != ValueType::Layer)
+            throw FormatError("a normal output must be a layer export", at + 8, ErrorReason::InvalidMetadata);
+        if (normal && !normalOwners.insert(owner).second)
+            throw FormatError("an asset declares more than one normal output", at + 10, ErrorReason::InvalidMetadata);
         if (!names.emplace(owner, file.pool.strings[name]).second)
             throw FormatError("duplicate output name in resource exports", at + 4, ErrorReason::InvalidMetadata);
-        file.resourceExports.push_back({owner, name, file.collections.types[type]});
+        file.resourceExports.push_back({owner, name, file.collections.types[type], normal});
     }
     const auto functions = reader.readU32();
     if (functions != file.code.functions.size())
@@ -152,7 +159,10 @@ bool stepResourceExports(Execution& ex, Instruction ins) {
             auto value = ex.popMask(); value.mapping = mapExport(ex, *value.buffer, value.mapping);
             ex.resourceSlots[ins.operand] = std::move(value);
         } else {
-            auto value = ex.popLayer(); value.mapping = mapExport(ex, *value.buffer, value.mapping);
+            auto value = ex.popLayer();
+            if (declaration.normal && value.buffer->encoding != SurfaceBuffer::Encoding::Direction)
+                ex.trap("normal output needs a direction layer", ErrorReason::InvalidOutput);
+            value.mapping = mapExport(ex, *value.buffer, value.mapping);
             ex.resourceSlots[ins.operand] = std::move(value);
         }
     }

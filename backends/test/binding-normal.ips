@@ -1,0 +1,17 @@
+// The shared normal-map fixture of the host bindings: round relief from a
+// height, one painted direction that moves with the seed and one partly
+// covered pixel that blends toward flat.
+asset bindingNormal {
+  size 8x4
+  output normal relief
+  draw {
+    layer base(alpha = surface.source_over) { rect(1, 1, 5, 2, #c08040) }
+    surface.paint(base)
+    layer directions(encoding = surface.normal) {
+      surface.paint(mask.from(base).normal(3.0, 1.0))
+      pixel(seed % 8, 0, color.normal(-0.5, -0.5, 0.7))
+      pixel(7, 3, #20e08080)
+    }
+    relief = directions
+  }
+}

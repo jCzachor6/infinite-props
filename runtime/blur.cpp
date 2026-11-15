@@ -41,6 +41,7 @@ std::shared_ptr<const SurfaceBuffer> filter(Execution& ex, const SurfaceBuffer& 
     ex.allocateResource(resultBytes);
     auto result = ex.resources.makeSurface(resultBytes);
     result->format = Channels == 4 ? SurfaceBuffer::Format::RGBA8 : SurfaceBuffer::Format::A8;
+    if constexpr (Channels == 4) result->encoding = source.encoding;
     result->raster.width = width; result->raster.height = height;
     result->raster.scaleX = raster.scaleX; result->raster.scaleY = raster.scaleY;
     if constexpr (Channels == 4) initializeWork(result->raster.pixels, static_cast<std::size_t>(pixels), Color{}, *ex.workBudget);

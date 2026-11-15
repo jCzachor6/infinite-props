@@ -1,0 +1,35 @@
+// A gem on a stone. The stone is round relief made from a height; the
+// gem's four faces are painted directions. `relief` is the normal map.
+asset gemOnStone {
+  size 48x48
+  input color stone = #7d8791
+  input color gem = #4fc3d9
+  output normal relief
+
+  draw {
+    c = {24.0, 19.0}
+    r = 8.0 to 11.0
+
+    layer base { oval(24, 31, 19, 12, stone) }
+    surface.paint(base)
+    faces(c, r, color.shade(gem, 45), color.shade(gem, 10), color.shade(gem, -45), color.shade(gem, -15))
+
+    layer directions(encoding = surface.normal) {
+      // The silhouette as a height: 6 pixels high, rounded by a sigma of 3.
+      surface.paint(mask.from(base).normal(6.0, 3.0))
+      // One direction per face: x right, y down, z toward the viewer.
+      faces(c, r, color.normal(-0.5, -0.5, 0.7), color.normal(0.5, -0.5, 0.7),
+            color.normal(0.5, 0.5, 0.7), color.normal(-0.5, 0.5, 0.7))
+    }
+    relief = directions
+  }
+
+  // The four triangles of a diamond, clockwise from the upper left. The
+  // same helper paints the colours and the directions.
+  faces(c: vec2, r: f32, a: color, b: color, d: color, e: color) {
+    poly(c.x, c.y, c.x - r, c.y, c.x, c.y - r, a)
+    poly(c.x, c.y, c.x, c.y - r, c.x + r, c.y, b)
+    poly(c.x, c.y, c.x + r, c.y, c.x, c.y + r, d)
+    poly(c.x, c.y, c.x, c.y + r, c.x - r, c.y, e)
+  }
+}
