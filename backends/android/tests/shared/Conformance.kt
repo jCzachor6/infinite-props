@@ -72,5 +72,56 @@ fun verifyBindings(load: (String) -> ByteArray) {
         check(slow.generate(inputs = mapOf("enabled" to InputValue.I32(0))).width == 1u)
     }
     println("Kotlin/JNI execution limits: PASS work/deadline, active cancellation, deferred token close and recovery")
+    verifyNormalMaps(load)
 
+}
+
+/** Auxiliary images against the CLI-rendered shared fixtures. */
+fun verifyNormalMaps(load: (String) -> ByteArray) {
+    Program(load("binding-normal.iprop")).use { program ->
+        check(program.images == listOf(DeclaredImage(0u, ImageKind.NORMAL, "relief")))
+        val result = program.generate(5u)
+        check(result.rgba.contentEquals(load("binding-normal.rgba"))) { "CLI RGBA oracle mismatch" }
+        val normal = result.normal!!
+        check(result.images.size == 1 && result.images[0] === normal)
+        check(normal.index == 0u && normal.kind == ImageKind.NORMAL && normal.source == ImageSource.AUTHORED && normal.name == "relief")
+        check(normal.width == 8u && normal.height == 4u && normal.rowStride == 32uL)
+        check(normal.pixelFormat == result.pixelFormat && normal.alphaMode == 2u && normal.storageOrigin == result.storageOrigin)
+        check(normal.rgba.contentEquals(load("binding-normal.normal.rgba"))) { "CLI normal map oracle mismatch" }
+        check((3 until normal.rgba.size step 4).all { normal.rgba[it] == (-1).toByte() })
+        // The seed moves one painted direction; a size override scales the image.
+        check(!program.generate(6u).normal!!.rgba.contentEquals(normal.rgba))
+        val scaled = program.generate(5u, width = 16u, height = 8u).normal!!
+        check(scaled.width == 16u && scaled.height == 8u && scaled.rgba.size == 512)
+        // An authored image wins over a derive request and stays identical.
+        val requested = program.generate(5u, deriveNormal = DerivedNormal(depth = 9f)).normal!!
+        check(requested.source == ImageSource.AUTHORED && requested.rgba.contentEquals(normal.rgba))
+    }
+    Program(load("bindings.iprop")).use { program ->
+        check(program.images.isEmpty())
+        val plain = program.generate(5u)
+        check(plain.images.isEmpty() && plain.normal == null)
+        for ((request, name) in listOf(DerivedNormal() to "bindings-derived",
+                DerivedNormal(depth = 2f, rounding = 0.5f, detail = 0.25f) to "bindings-derived-custom")) {
+            val result = program.generate(5u, deriveNormal = request)
+            val normal = result.normal!!
+            check(normal.kind == ImageKind.NORMAL && normal.source == ImageSource.DERIVED && normal.name == "normal")
+            check(normal.rgba.contentEquals(load("$name.normal.rgba"))) { "CLI derived normal oracle mismatch: $name" }
+            check(normal.width == 8u && normal.height == 4u && normal.alphaMode == 2u)
+            // The request leaves the main image and fuel alone and spends work.
+            check(result.rgba.contentEquals(plain.rgba) && result.statistics.fuelUsed == plain.statistics.fuelUsed)
+            check(result.statistics.workUsed > plain.statistics.workUsed)
+        }
+        val used = program.generate(5u, deriveNormal = DerivedNormal()).statistics.workUsed
+        check(program.generate(5u, limits = ExecutionLimits(workLimit = used), deriveNormal = DerivedNormal()).statistics.workRemaining == 0uL)
+        try { program.generate(5u, limits = ExecutionLimits(workLimit = used - 1u), deriveNormal = DerivedNormal()); error("Work limit was ignored") }
+        catch (failure: IpropException) { check(failure.reason == 3015 && failure.stage == 4) }
+        for (request in listOf(DerivedNormal(depth = -1f), DerivedNormal(depth = Float.POSITIVE_INFINITY), DerivedNormal(rounding = 64.5f),
+                DerivedNormal(rounding = -0.5f), DerivedNormal(detail = 1.5f), DerivedNormal(detail = Float.NaN))) {
+            try { program.generate(5u, deriveNormal = request); error("Expected an argument error") }
+            catch (failure: IpropException) { check(failure.status == 4 && failure.stage == 3 && failure.message!!.contains("out of range")) }
+        }
+        check(program.generate(5u).normal == null)
+    }
+    println("Kotlin/JNI normal maps: PASS authored and derived images against the CLI, declarations, work limits and argument errors")
 }

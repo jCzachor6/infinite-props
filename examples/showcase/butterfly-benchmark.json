@@ -1,35 +1,35 @@
 {
   "name": "Butterfly benchmark",
-  "product_version": "1.0.0",
+  "product_version": "1.1.0",
   "source_repository": "props",
-  "source_commit": "2228edd1d8612807603b0f8553d06f3f7d607958",
+  "source_commit": "65d39220d6925e539c632a0b180d62c0cabcfbb2",
   "width": 256,
   "height": 256,
   "parts": [
     {
       "id": "forewing",
       "file": "butterfly-forewing.iprop",
-      "bytes": 18099,
-      "sha256": "95e815fb16a92b65cc9b12cefb7cf25bebb5bdb76a819023b2197ba7ed8e019d"
+      "bytes": 18205,
+      "sha256": "1040bdb5e32a508b8d14cb014d393d17d54fce95381ac60b0a29da92fa020f5c"
     },
     {
       "id": "hindwing",
       "file": "butterfly-hindwing.iprop",
-      "bytes": 18101,
-      "sha256": "c9342213d005f83765a3820de3dcb77f62c007317dd9677a377f7f02b9452688"
+      "bytes": 18206,
+      "sha256": "63ebcc48d1f0a1e65b5b22b1fc6b00ca37446c22661fe89dd153916a7e056db8"
     },
     {
       "id": "body",
       "file": "butterfly-body.iprop",
-      "bytes": 4491,
-      "sha256": "2494c64c6e9c4d286fff7651919c48294571d229fa0afb0df5ba6e894aa85400"
+      "bytes": 4487,
+      "sha256": "726a269a692ebacb1c7ba4cae533f1e244d8975da5d495b67444ebbb19b7aa4a"
     }
   ],
   "source_sha256": {
-    "body.ips": "79ad508774ed3d08333fa63b183333651ce1eed07f718658b84a362ab8abf501",
-    "butterfly.ips": "9b7269dc6649bf027adaf864d30d4053ee07f5e8e25949ed10d38cd75c34bb74",
+    "body.ips": "f4c2d43dadf23f9f4456d7245e72211cd69fc1edb54841bc9b39bfa08578b79b",
+    "butterfly.ips": "fb8ffa8fb2bac20a829e2098c92bcc6ea549af07e54cae4ef6c733288a28ebb6",
     "forewing.ips": "51f90bef5acc08837bfc2615576a2cc3d8886f94fcc6209f6086f2b704ed09c8",
     "hindwing.ips": "6588ef594ffba94ced0f73730e3d2d68619ba83de8efeded77105da58b7eb3aa",
-    "wing.ips": "d7326f98193423febf7d78a5224ddc492b42295da42e1bf9356695358bb62b4b"
+    "wing.ips": "84aa3bff6fd9c46a9b06c2ef0e7a67c1fe47e7a2f6e989d0a9557b60a74b002b"
   }
 }

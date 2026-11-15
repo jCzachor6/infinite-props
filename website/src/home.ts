@@ -12,55 +12,24 @@
 //
 // Each weapon also shows its loot rarity: common (plain), rare (soldier), epic
 // (ornate) or legendary (ornate, enchanted and at full power, glow power 4).
-// "Roll a legendary" searches seeds for one and opens it as a drop with a
-// share link, #roll/<weapon>/<seed>: the look follows from the seed alone, so
-// the same link shows the same pixels to everyone.
 
 import "./site";
 import "./butterfly";
 import "./lightning";
-
-interface Output {
-    name: string;
-    points: { x: number; y: number }[];
-    rects: { x: number; y: number; w: number; h: number }[];
-}
-
-interface Result {
-    width: number;
-    height: number;
-    data: Uint8Array;
-    outputs: Output[];
-}
-
-type Uniforms = Record<string, number | string>;
-
-interface IpropModule {
-    generate(fileBytes: Uint8Array, seed: number, sizeX: number, sizeY: number, uniforms?: Uniforms): Result;
-}
-
-declare global {
-    interface Window {
-        createIpropModule(options: { locateFile(): string }): Promise<IpropModule>;
-    }
-}
+import { render as renderWith, startRuntime, type Output, type Runtime, type Uniforms } from "./runtime";
 
 const SEED_LIMIT = 0xffffffff;
 const files = new Map<string, Uint8Array>();
 const WEAPON_ASSETS = new Set(["sword", "axe", "spear", "staff"]);
-let iprop: IpropModule | null = null;
+let iprop: Runtime | null = null;
 
 function randomSeed() {
     return 1 + Math.floor(Math.random() * 99999);
 }
 
-// Renders one asset; the RGBA view into the module heap is copied at once.
+// Renders one asset. The browser composites weapon bloom from a separate emission pass.
 function render(asset: string, seed: number, uniforms: Uniforms = {}) {
-    // The browser composites weapon bloom from a separate emission pass.
-    const inputs = WEAPON_ASSETS.has(asset) ? { bloom: 0, ...uniforms } : uniforms;
-    const result = iprop!.generate(files.get(asset)!, seed >>> 0, 0, 0, inputs);
-    const image = new ImageData(new Uint8ClampedArray(result.data), result.width, result.height);
-    return { image, outputs: result.outputs };
+    return renderWith(iprop!, files.get(asset)!, seed, WEAPON_ASSETS.has(asset) ? { bloom: 0, ...uniforms } : uniforms);
 }
 
 // A weapon's look for a seed, the same every time the seed comes back. The
@@ -107,7 +76,7 @@ const emission = document.createElement("canvas");
 // raise alpha as well as colour, so thin glowing lines still make a visible
 // halo), plus a wider, softer pass.
 function paintGlow(canvas: HTMLCanvasElement, asset: string, seed: number,
-    uniforms: Uniforms, outputs: Output[], intensity = 1) {
+    uniforms: Uniforms, outputs: Output[]) {
     const glow = glowOf(outputs);
     canvas.hidden = !glow || glow.y <= 0;
     if (!glow || canvas.hidden) return;
@@ -122,7 +91,7 @@ function paintGlow(canvas: HTMLCanvasElement, asset: string, seed: number,
     for (const [sigma, count, alpha] of [[glow.w, passes, 0.84], [glow.w * 3, 3, 0.6]]) {
         context.filter = `blur(${sigma}px)`;
         // Split the exposure into passes so alpha never exceeds its 0..1 range.
-        for (let exposure = count * alpha * intensity; exposure > 0; --exposure) {
+        for (let exposure = count * alpha; exposure > 0; --exposure) {
             context.globalAlpha = Math.min(1, exposure);
             context.drawImage(emission, GLOW_PAD, GLOW_PAD);
         }
@@ -279,210 +248,6 @@ function drawSilhouettes() {
     }
 }
 
-// ---- the legendary drop: a weapon case -------------------------------------------
-//
-// "Roll a legendary" opens a case: a strip of real rolled weapons runs under
-// a marker, slows down and stops on a legendary one, then the win shows it
-// big. The next case is prepared in idle time, so a click starts at once.
-
-const WEAPONS: Record<string, string> = { sword: "Sword", axe: "Axe", spear: "Spear", staff: "Staff" };
-const drop = document.querySelector<HTMLDialogElement>("[data-drop]");
-const dropCanvas = document.querySelector<HTMLCanvasElement>("[data-drop-canvas]");
-const track = document.querySelector<HTMLElement>("[data-reel]");
-const ROLL_LINK = /^#roll\/(sword|axe|spear|staff)\/(\d{1,10})$/;
-const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-
-interface Item { asset: string; seed: number; rarity: Rarity; image: ImageData; glow: HTMLCanvasElement }
-interface Case { items: Item[]; winner: Item }
-
-const REEL_LENGTH = 40;
-const WIN_INDEX = 34;
-// The fillers come the way a case shows its loot: mostly common.
-const FILLER_ODDS: [Rarity, number][] = [["common", 0.45], ["rare", 0.33], ["epic", 0.22]];
-const QUALITY: Record<Rarity, number> = { common: 1, rare: 3, epic: 2, legendary: 2 };
-
-let nextCase: Promise<Case> | null = null;
-let spin: Animation | null = null;
-
-function idle() {
-    return new Promise<void>((resolve) => {
-        if ("requestIdleCallback" in window) requestIdleCallback(() => resolve(), { timeout: 250 });
-        else setTimeout(resolve, 16);
-    });
-}
-
-// Searches seeds from a random start for a weapon of the wanted rarity. The
-// look is a cheap hash; only matching candidates are rendered.
-function rollItem(wanted: Rarity): Item {
-    const names = Object.keys(WEAPONS);
-    const asset = names[Math.floor(Math.random() * names.length)];
-    for (let seed = randomSeed(), tries = 0; ; ++seed, ++tries) {
-        const look = weaponLook(seed);
-        if (look.quality !== QUALITY[wanted] || (wanted === "legendary" && look.enchantment !== 2)) continue;
-        const { image, outputs } = render(asset, seed, look.uniforms);
-        const rarity = rarityOf(look.quality, look.enchantment, outputs);
-        if (rarity === wanted || tries > 50000) {
-            // Prepare the halo with the case, keeping WASM and blur work off the spin.
-            const glow = document.createElement("canvas");
-            glow.className = "glow";
-            glow.setAttribute("aria-hidden", "true");
-            paintGlow(glow, asset, seed, look.uniforms, outputs);
-            return { asset, seed, rarity, image, glow };
-        }
-    }
-}
-
-async function prepareCase(): Promise<Case> {
-    const items: Item[] = [];
-    for (let i = 0; i < REEL_LENGTH; ++i) {
-        let roll = Math.random();
-        let tier: Rarity = "epic";
-        for (const [name, odds] of FILLER_ODDS) {
-            if (roll < odds) { tier = name; break; }
-            roll -= odds;
-        }
-        items.push(rollItem(i === WIN_INDEX ? "legendary" : tier));
-        if (i % 4 === 3) await idle();
-    }
-    return { items, winner: items[WIN_INDEX] };
-}
-
-// Focus the dialog itself, not its first button, so nothing shows a focus ring.
-function openModal() {
-    if (!drop || drop.open) return;
-    drop.showModal();
-    drop.focus();
-}
-
-function makeSparks() {
-    const box = drop?.querySelector("[data-sparks]");
-    if (!box || box.childElementCount) return;
-    for (let i = 0; i < 16; ++i) {
-        const spark = document.createElement("span");
-        spark.className = "spark";
-        spark.style.left = `${6 + Math.random() * 88}%`;
-        spark.style.top = `${6 + Math.random() * 88}%`;
-        spark.style.animationDelay = `${(Math.random() * 2.4).toFixed(2)}s`;
-        box.append(spark);
-    }
-}
-
-// The win: the weapon big, with its rarity, its data and its share link.
-function showWin(asset: string, seed: number) {
-    if (!drop || !dropCanvas) return;
-    const look = weaponLook(seed);
-    const { image, outputs } = render(asset, seed, look.uniforms);
-    paint(dropCanvas, image);
-    const halo = drop.querySelector<HTMLCanvasElement>(".win canvas.glow:not(.glow--front)")!;
-    paintGlow(halo, asset, seed, look.uniforms, outputs, 1.2);
-    const overlay = drop.querySelector<HTMLCanvasElement>(".win canvas.glow--front")!;
-    overlay.hidden = halo.hidden;
-    overlay.width = halo.width;
-    overlay.height = halo.height;
-    if (!halo.hidden) {
-        // Reuse the halo, clipped to the weapon; CSS applies one third of its intensity.
-        const context = overlay.getContext("2d")!;
-        context.putImageData(image, GLOW_PAD, GLOW_PAD);
-        context.globalCompositeOperation = "source-in";
-        context.drawImage(halo, 0, 0);
-    }
-    const rarity = rarityOf(look.quality, look.enchantment, outputs);
-    showRarity(drop.querySelector<HTMLElement>("[data-drop-rarity]")!, rarity);
-    drop.querySelector("[data-drop-title]")!.textContent = `${WEAPONS[asset]} #${seed}`;
-    dropCanvas.setAttribute("aria-label", `A ${rarity} ${asset}, seed ${seed}`);
-    const glow = glowOf(outputs);
-    const tip = outputs.find((output) => output.name === "tip")?.points[0];
-    const rows: [string, string][] = [
-        ["file", `${asset}.iprop · ${formatSize(files.get(asset)!.byteLength)}`],
-        ["inputs", `seed ${seed} · enchantment ${look.enchantment} · quality ${look.quality}`],
-        ["glow", glow && glow.y > 0 ? `power ${glow.y} · sigma ${+glow.w.toFixed(2)} · bloom ${+glow.h.toFixed(2)}` : "none"],
-        ["tip", tip ? `${Math.round(tip.x)}, ${Math.round(tip.y)}` : "none"],
-    ];
-    drop.querySelector("[data-drop-data]")!.replaceChildren(...rows.flatMap(([term, value]) => {
-        const dt = document.createElement("dt");
-        const dd = document.createElement("dd");
-        dt.textContent = term;
-        dd.textContent = value;
-        return [dt, dd];
-    }));
-    drop.querySelector("[data-drop-status]")!.textContent = "";
-    makeSparks();
-    drop.classList.remove("is-spinning");
-    history.replaceState(null, "", `#roll/${asset}/${seed}`);
-    openModal();
-}
-
-async function openCase() {
-    if (!drop || !track) return;
-    const strip = track.parentElement!;
-    spin?.cancel();
-    strip.classList.remove("is-done");
-    track.replaceChildren();
-    if (reducedMotion.matches) {
-        const current = await (nextCase ?? prepareCase());
-        nextCase = prepareCase();
-        showWin(current.winner.asset, current.winner.seed);
-        return;
-    }
-    drop.classList.add("is-spinning");
-    openModal();
-    const current = await (nextCase ?? prepareCase());
-    nextCase = prepareCase();
-    if (!drop.open) return;
-    track.replaceChildren(...current.items.map((item) => {
-        const card = document.createElement("div");
-        card.className = "reel__item";
-        card.dataset.tier = item.rarity;
-        const sprite = document.createElement("div");
-        sprite.className = "reel__sprite";
-        const canvas = document.createElement("canvas");
-        paint(canvas, item.image);
-        sprite.append(canvas, item.glow);
-        card.append(sprite);
-        return card;
-    }));
-    // Stop with the marker somewhere on the winner, never quite centred.
-    const winner = track.children[WIN_INDEX] as HTMLElement;
-    const stop = winner.offsetLeft + winner.offsetWidth * (0.5 + (Math.random() - 0.5) * 0.7);
-    spin = track.animate(
-        [{ transform: "translateX(0)" }, { transform: `translateX(${strip.clientWidth / 2 - stop}px)` }],
-        { duration: 6500, easing: "cubic-bezier(0.12, 0.72, 0.1, 1)", fill: "forwards" });
-    try {
-        await spin.finished;
-    } catch {
-        return; // closed mid-spin
-    }
-    winner.classList.add("is-winner");
-    strip.classList.add("is-done");
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-    if (drop.open && drop.classList.contains("is-spinning")) showWin(current.winner.asset, current.winner.seed);
-}
-
-function openRollLink() {
-    const match = ROLL_LINK.exec(location.hash);
-    if (match && Number(match[2]) <= SEED_LIMIT) showWin(match[1], Number(match[2]));
-}
-
-if (drop) {
-    drop.querySelector("[data-drop-close]")!.addEventListener("click", () => drop.close());
-    drop.querySelector("[data-drop-again]")!.addEventListener("click", openCase);
-    drop.querySelector("[data-drop-copy]")!.addEventListener("click", async () => {
-        const status = drop.querySelector("[data-drop-status]")!;
-        try {
-            await navigator.clipboard.writeText(location.href);
-            status.textContent = "Link copied. Anyone who opens it gets this exact weapon.";
-        } catch {
-            status.textContent = location.href;
-        }
-    });
-    // A click on the backdrop closes the drop.
-    drop.addEventListener("click", (event) => { if (event.target === drop) drop.close(); });
-    drop.addEventListener("close", () => {
-        spin?.cancel();
-        if (ROLL_LINK.test(location.hash)) history.replaceState(null, "", location.pathname + location.search);
-    });
-}
-
 // Touch screens have no hover: a tap (or Enter) reveals a slot's weapon.
 for (const slot of Array.from(document.querySelectorAll<HTMLElement>(".game-slot"))) {
     const reveal = () => slot.classList.toggle("is-revealed");
@@ -514,12 +279,31 @@ function shownTrees() {
         .filter((cell) => cell.offsetParent !== null);
 }
 
+// The crown and its shadow fill the middle 144 of the 176 canvas.
+const TREE_VIEW = 144;
+const TREE_CROP = 16;
+
+// A tree as generated: its image and the normal map the same program
+// publishes (tree.ips: `output normal relief`), and what its cell shows now.
+const enum Shown { Generated, Lit, Unlit }
+interface Planted {
+    image: ImageData;
+    normal: ImageData | null;
+    shown: Shown;
+    // Made when the lamp first reaches the tree: its opaque pixels in the
+    // view, packed as y << 8 | x, and the image the lamp shades into.
+    spots: Uint16Array | null;
+    shaded: ImageData | null;
+}
+const planted = new WeakMap<HTMLElement, Planted>();
+
 function plantTree(cell: HTMLElement) {
     const seed = (Math.random() * SEED_LIMIT) >>> 0;
-    // The crown and its shadow fill the middle 144 of the 176 canvas.
     const canvas = cell.querySelector("canvas")!;
-    canvas.width = canvas.height = 144;
-    canvas.getContext("2d")!.putImageData(render("tree", seed).image, -16, -16);
+    canvas.width = canvas.height = TREE_VIEW;
+    const { image, normal } = render("tree", seed);
+    canvas.getContext("2d")!.putImageData(image, -TREE_CROP, -TREE_CROP);
+    planted.set(cell, { image, normal, shown: Shown.Generated, spots: null, shaded: null });
     cell.querySelector("figcaption")!.textContent = `seed ${seed.toString(16).padStart(8, "0")}`;
     cell.dataset.planted = "";
 }
@@ -529,6 +313,110 @@ function drawForest() {
     const cells = shownTrees();
     if (forestRoll) forestRoll.textContent = `Roll ${cells.length} new trees`;
     for (const cell of cells) plantTree(cell);
+    relight();
+}
+
+// ---- a lamp over the forest ---------------------------------------------------------------
+
+// The pointer carries a lamp over the canopy, and the page shades every tree
+// the way a game engine lights a sprite: a pixel's brightness is the ambient
+// light plus the lamp's, by how squarely the direction stored in the normal
+// map faces the lamp and how far away it hangs. Brightness moves in a few
+// steps, so the pixel art stays crisp. Without a pointer over the forest
+// every tree shows exactly its generated image.
+let lamp: { x: number; y: number } | null = null;
+let lighting = 0;
+// How far the lamp's light carries and how high it hangs, in tree pixels.
+const LAMP_REACH = TREE_VIEW * 4.8;
+const LAMP_HEIGHT = TREE_VIEW * 0.8;
+// The light without the lamp, the lamp at full strength, and the steps of brightness.
+const AMBIENT = 0.4;
+const LAMP_POWER = 0.9;
+const LIGHT_STEPS = 10;
+
+// The opaque pixels of a tree's view: the lamp shades only these.
+function opaqueSpots(image: ImageData) {
+    const data = image.data, spots: number[] = [];
+    for (let y = 0; y < TREE_VIEW; ++y) {
+        for (let x = 0; x < TREE_VIEW; ++x) {
+            if (data[((y + TREE_CROP) * image.width + x + TREE_CROP) * 4 + 3] !== 0) spots.push(y << 8 | x);
+        }
+    }
+    return Uint16Array.from(spots);
+}
+
+// One tree under a lamp at (lx, ly) in the tree's own pixels; a lamp out of
+// reach leaves the ambient light alone.
+function shadeTree(canvas: HTMLCanvasElement, tree: Planted, lx: number, ly: number, inReach: boolean) {
+    const colour = tree.image.data, direction = tree.normal!.data, stride = tree.image.width;
+    const spots = tree.spots ??= opaqueSpots(tree.image);
+    const shaded = tree.shaded ??= new ImageData(TREE_VIEW, TREE_VIEW), target = shaded.data;
+    const dark = Math.round(AMBIENT * LIGHT_STEPS) / LIGHT_STEPS;
+    const reach = LAMP_REACH * LAMP_REACH, height = LAMP_HEIGHT * LAMP_HEIGHT;
+    for (let i = 0; i < spots.length; ++i) {
+        const x = spots[i] & 255, y = spots[i] >> 8;
+        const from = ((y + TREE_CROP) * stride + x + TREE_CROP) * 4, to = (y * TREE_VIEW + x) * 4;
+        let light = dark;
+        if (inReach) {
+            const dx = lx - (x + TREE_CROP), dy = ly - (y + TREE_CROP), away = dx * dx + dy * dy;
+            const carried = 1 - away / reach;
+            if (carried > 0) {
+                // A byte b stores b / 127.5 - 1: x rightward, y upward, z toward
+                // the viewer. The page's y grows downward.
+                const facing = ((direction[from] - 127.5) * dx - (direction[from + 1] - 127.5) * dy
+                    + (direction[from + 2] - 127.5) * LAMP_HEIGHT) / (127.5 * Math.sqrt(away + height));
+                if (facing > 0) light = Math.round((AMBIENT + LAMP_POWER * facing * carried) * LIGHT_STEPS) / LIGHT_STEPS;
+            }
+        }
+        target[to] = colour[from] * light;
+        target[to + 1] = colour[from + 1] * light;
+        target[to + 2] = colour[from + 2] * light;
+        target[to + 3] = colour[from + 3];
+    }
+    canvas.getContext("2d")!.putImageData(shaded, 0, 0);
+    tree.shown = inReach ? Shown.Lit : Shown.Unlit;
+}
+
+function lightForest() {
+    lighting = 0;
+    if (!forest) return;
+    for (const cell of shownTrees()) {
+        const tree = planted.get(cell);
+        if (!tree || !tree.normal) continue;
+        const canvas = cell.querySelector("canvas")!;
+        if (!lamp) {
+            if (tree.shown !== Shown.Generated) {
+                canvas.getContext("2d")!.putImageData(tree.image, -TREE_CROP, -TREE_CROP);
+                tree.shown = Shown.Generated;
+            }
+            continue;
+        }
+        const box = canvas.getBoundingClientRect();
+        // Trees off the screen wait for the pointer's next move.
+        if (box.bottom < 0 || box.top > window.innerHeight) continue;
+        const scale = TREE_VIEW / box.width;
+        const lx = (lamp.x - box.left) * scale + TREE_CROP, ly = (lamp.y - box.top) * scale + TREE_CROP;
+        const centre = TREE_CROP + TREE_VIEW / 2;
+        const inReach = Math.hypot(lx - centre, ly - centre) < LAMP_REACH + TREE_VIEW * 0.75;
+        // A tree the lamp cannot reach is shaded once and then left alone.
+        if (inReach || tree.shown !== Shown.Unlit) shadeTree(canvas, tree, lx, ly, inReach);
+    }
+}
+
+function relight() {
+    if (lamp && !lighting) lighting = requestAnimationFrame(lightForest);
+}
+
+function moveLamp(event: PointerEvent | null) {
+    lamp = event ? { x: event.clientX, y: event.clientY } : null;
+    if (!lighting) lighting = requestAnimationFrame(lightForest);
+}
+
+if (forest) {
+    forest.addEventListener("pointermove", moveLamp);
+    forest.addEventListener("pointerdown", moveLamp);
+    forest.addEventListener("pointerleave", () => moveLamp(null));
+    forest.addEventListener("pointercancel", () => moveLamp(null));
 }
 
 function fitForest() {
@@ -558,6 +446,7 @@ function fitForest() {
     if (!files.has("tree")) return;
     // New cells get a tree; the trees already shown stay.
     for (const cell of shownTrees()) if (!("planted" in cell.dataset)) plantTree(cell);
+    relight();
     if (forestRoll) forestRoll.textContent = `Roll ${shownTrees().length} new trees`;
 }
 
@@ -630,7 +519,7 @@ async function main() {
             if (!response.ok) throw new Error(`showcase/${name}.iprop: HTTP ${response.status}`);
             files.set(name, new Uint8Array(await response.arrayBuffer()));
         }));
-        iprop = await window.createIpropModule({ locateFile: () => "iprop.wasm" });
+        iprop = await startRuntime();
         for (const tile of tiles) tile.draw();
         drawSilhouettes();
         for (const tile of tiles) {
@@ -648,13 +537,6 @@ async function main() {
         }
         return;
     }
-
-    const rollBox = document.querySelector<HTMLElement>("[data-roll-box]");
-    if (rollBox) rollBox.hidden = false;
-    document.querySelector("[data-roll]")?.addEventListener("click", openCase);
-    window.addEventListener("hashchange", openRollLink);
-    openRollLink();
-    nextCase = prepareCase();
 
     setAuto(autoOn);
     autoroll?.addEventListener("click", () => setAuto(!autoOn));

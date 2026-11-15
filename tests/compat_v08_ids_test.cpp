@@ -211,6 +211,24 @@ TEST_CASE("0.8 opcode numbers and mnemonics remain frozen", "[compat-v08]") {
     }
 }
 
+TEST_CASE("1.1 adds two opcodes and leaves eleven values unassigned", "[compat-v08]") {
+    CHECK(static_cast<u8>(Opcode::SurfaceNormal) == 0x6A);
+    REQUIRE(opcodeMnemonic(Opcode::SurfaceNormal));
+    CHECK(std::string(opcodeMnemonic(Opcode::SurfaceNormal)) == "surface.normal");
+    CHECK(static_cast<u8>(Opcode::SeedInitial) == 0x6B);
+    REQUIRE(opcodeMnemonic(Opcode::SeedInitial));
+    CHECK(std::string(opcodeMnemonic(Opcode::SeedInitial)) == "seed.initial");
+    // The opcode byte is nearly full: every later feature draws on these.
+    int unassigned = 0;
+    for (int value = 0; value < 256; ++value)
+        if (opcodeMnemonic(static_cast<Opcode>(value)) == nullptr) ++unassigned;
+    CHECK(unassigned == 11);
+    for (const int value : {0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x2F, 0x6C, 0x6D, 0x6E, 0x6F}) {
+        INFO(value);
+        CHECK(opcodeMnemonic(static_cast<Opcode>(value)) == nullptr);
+    }
+}
+
 TEST_CASE("0.8 format type section input and output IDs remain frozen", "[compat-v08]") {
     CHECK(kHeaderSize == 20);
     CHECK(kFlagDebug == 1);

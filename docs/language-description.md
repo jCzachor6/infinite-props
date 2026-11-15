@@ -2,7 +2,9 @@
 
 `ipc --describe-language` writes one JSON document describing the implemented
 source contract. It needs no input file and writes no artifacts. It uses
-`schema_version: 6`, which finalizes discounted fuel formulas and execution-wide
+`schema_version: 7`, which adds the source type `seed`, the `read_initial` effect,
+parameters with `"role": "seed"` and the `source_rules.named_seeds` rules (named
+seeds v1.1). Schema 6 finalized discounted fuel formulas and execution-wide
 work/cancellation/deadline traps. Schema 5 added geometry/dynamic-part handle types.
 Schema 4 removed implicit draw controls. Schema 3 added typed
 asset declarations and intrinsic `constant_evaluable` flags. Schema 2 removed the
@@ -22,8 +24,8 @@ The binary format is unversioned, so operations carry no minimum format version.
 | `abi_version.major`, `.minor` | C ABI compatibility line configured in `cmake/CAbi.cmake`; the structured form of `c_abi_soversion`. |
 | `c_abi_soversion` | Optional additive alias since schema 1: the runtime C library's SOVERSION string from `cmake/CAbi.cmake`, equal to `abi_version` as `major.minor`. Producers emit it; readers validate consistency when present. |
 
-The current values are product `1.0.0`, source language `1.0.0`,
-C header API `0.6` and ABI line/SOVERSION `0.5`. These values are
+The current values are product `1.1.0`, source language `1.1.0`,
+C header API `0.7` and ABI line/SOVERSION `0.5`. These values are
 independent: signed source inputs do not introduce a new binary input type.
 The C versions describe the bundled contract without loading the C library;
 query a loaded library with `iprop_library_query` for its actual capabilities.
@@ -33,6 +35,16 @@ Schema 6 describes the constant policy, parameterized lists, samplers/steppers,
 point distributions, surfaces, collection limits and receiver-first methods.
 Source language 0.8 adds the optional `materials` object without changing
 schema 4. See [0.8 migration](language/migration-v0.8.md).
+
+## Migrating schema 6 to 7
+
+Require schema 7 and add `seed` to value-type readers and renderers. It
+appears in signatures (`seed.initial` returns one, `int` takes one) and in the
+storable, helper parameter and helper result arrays, never among variadic
+choice types. Accept the effect `read_initial`, the optional parameter field
+`"role": "seed"` (on `i32` parameters that also take a seed) and
+`effect_rules.seed_initial`, and read the required `source_rules.named_seeds`.
+Everything else in schema 6 is unchanged.
 
 ## Migrating schemas 4 and 5 to 6
 
@@ -49,8 +61,8 @@ Release preflight and package manifests (`release.json`) use the same names as
 strings: `product_version`, `language_version`, `c_api_version` and
 `c_abi_soversion`. Packaging and documentation builds reject a compiler whose
 export differs from the versions in the source tree. A release requires the
-frozen format specification of its product line (`spec/iprop-v1.0.md` for
-1.0.x, frozen with product 1.0.0).
+frozen format specification of its product line (`spec/iprop-v1.1.md` for
+1.1.x, frozen with product 1.1.0).
 
 Schema 5 consumers also update the closed fuel formula strings and resource-trap
 enum; see [the schema-6 migration](language/migration-v0.9.md#programs-and-generated-results).
@@ -76,6 +88,9 @@ identified by `source_type`.
 | `collections.methods` | Optional seventeen receiver-first signatures for `.distinct()` and `.sort()`, from the shared frontend registry. Each records its same-list result, empty parameters, opcode, `constant_evaluable` flag and intrinsic effects. These are separate from global builtins and reserved keywords. |
 | `surfaces.methods` | Optional receiver-first `.blur(sigma: f32)` signatures for layer and mask, from `surfaceMethodSpecs`. Each records its same-surface result, opcode, minor 7, false `constant_evaluable` and intrinsic effects. The method name is separate from global builtins and reserved keywords. |
 | `surfaces.blur` | Optional Gaussian kernel, sigma range/units, evaluation order, premultiplied alpha, edge extension, preserved mapping, zero identity, fuel, scratch memory and preflight policies. Appears with `surfaces.methods`; both satisfy the complete contract when present. |
+| `named_seeds` | Named seeds, required from schema 7: the source type `seed` and its `i32` representation, `seed.initial()` with its opcode, per-context values and `read_initial` effects, the `.fork` syntax, receivers, key kinds, evaluation order, lowering, domain tags and formulas, the `int(seed)` conversion and `==`/`!=`, the builtins with seed parameters, and every place a seed may not appear. |
+| `normal_maps` | Optional normal-map rules, additive to schema 6: the contextual `output normal` declaration and its flagged layer slot, publication of the root's slot onto a flat image, the stored axes and byte encoding, the direction capture and its aux code, vector re-orientation on paint, the four `.normal` signatures with their depth/smoothing ranges and units, height sources, fuel and scratch memory, and the `color.normal` builtin with its axes, lowering, constant folding and fallback. |
+| `normal_maps.methods` | Four receiver-first `.normal(depth[, smoothing])` signatures for layer and mask, from `surfaceMethodSpecs`. Each returns a layer through the one `surface.normal` instruction, with false `constant_evaluable` and intrinsic effects. `surfaces.methods` keeps listing `.blur` alone. |
 | `collections.transformations` | Optional stable first-occurrence/ascending policies, RGBA/x-y order, float zero/NaN equivalence, structural description equality, preserved element bits and unchanged-buffer sharing. Earlier exports may omit these additive fields. |
 | `samplers` | Capture syntax, bounds/mass validation, receiver/count order, batch preflight, zero-draw behavior and currently supported const/palette capabilities. |
 | `samplers.methods` | Eight statically resolved pick signatures from the shared frontend registry: receiver, count parameter if present, result, opcode and effects. They are separate from the global builtin `pick`. |
@@ -267,6 +282,23 @@ same shared registry used by parsing, typing, builders and file validation.
 No duplicate global signature list is introduced.
 Family names used as numeric for-loop bounds retain the following block
 as their loop body; nested argument expressions may still construct literals.
+
+The optional `source_rules.normal_maps` policy describes the implemented
+[normal map contract](../spec/normal-maps-v1.1.md). It is additive: an export
+without it describes a compiler that publishes no normal images, and readers
+of schema 6 that do not know it ignore it. `color.normal` appears among the
+builtins like any other callable; it has no opcode because it expands to
+existing instructions. Whether a layer holds directions is not a type and is
+therefore absent from `types`.
+
+`source_rules.named_seeds`, required from schema 7, describes the
+[named seeds contract](../spec/named-seeds-v1.1.md): the source type `seed`
+(32 bits in `i32` slots, never a wire type), `seed.initial()` and its
+`read_initial` effect, the `.fork` receivers, keys, domain tags and formulas,
+and where seeds may and may not appear. `seed.initial` and `int(seed)` are
+ordinary builtins with `constant_evaluable: false`; `.fork` has no opcode
+because it expands to existing instructions. Parameters that take a seed
+carry `"role": "seed"`, as do `choose`'s seed and a part call's seed.
 
 The optional `source_rules.resource_exports` policy describes internal mask/layer
 slots, direct-child and last-called-part reads, immutable snapshots, no-write

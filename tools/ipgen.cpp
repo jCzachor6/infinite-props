@@ -30,6 +30,9 @@ struct Options {
     u64 timeoutMs = 0;
     bool workStats = false;
     std::string output; // PNG path; empty = <stem>-<seed>.png
+    std::string normalOutput; // PNG path of the normal image; empty = not written
+    bool deriveNormal = false;
+    DerivedNormalRequest derived{};
     std::vector<std::pair<std::string, std::string>> uniforms;
 };
 
@@ -45,6 +48,11 @@ void printUsage(std::FILE* out) {
                  "  --uniform name=val  uniform override (repeatable); colours are\n"
                  "                      #RRGGBB or #RRGGBBAA, numbers are decimal\n"
                  "  -o, --output PATH   PNG output path (default: <stem>-<seed>.png)\n"
+                 "  --normal-output PATH  also write the normal image as a PNG\n"
+                 "  --derive-normal     derive a normal image when the program publishes none\n"
+                 "  --normal-depth F    derived depth in pixels (0 = size-relative default)\n"
+                 "  --normal-rounding F derived Gaussian sigma in pixels, 0-64 (0 = default)\n"
+                 "  --normal-detail F   derived share of brightness in the height, 0-1\n"
                  "  --float-bits        encode output coordinates as raw binary32 bits\n"
                  "  --omit-part-outputs preview PNG/legacy outputs without typed part records\n"
                  "  --work-limit N      independent native work budget (0 = finite default)\n"
@@ -137,6 +145,7 @@ Color parseColor(const std::string& text) {
 int ipgenMain(int argc, char* argv[]) {
     Options options;
     bool wantHelp = false;
+    bool derivedParameters = false;
     std::string invalid;
 
     for (int i = 1; i < argc; ++i) {
@@ -175,6 +184,19 @@ int ipgenMain(int argc, char* argv[]) {
             }
         } else if (arg == "-o" || arg == "--output") {
             options.output = next("--output");
+        } else if (arg == "--normal-output") {
+            options.normalOutput = next("--normal-output");
+            if (invalid.empty() && options.normalOutput.empty()) invalid = "empty --normal-output path";
+        } else if (arg == "--derive-normal") {
+            options.deriveNormal = true;
+        } else if (arg == "--normal-depth" || arg == "--normal-rounding" || arg == "--normal-detail") {
+            const std::string text = next(arg.c_str());
+            f32& field = arg == "--normal-depth" ? options.derived.depth
+                : arg == "--normal-rounding" ? options.derived.rounding : options.derived.detail;
+            const auto parsed = std::from_chars(text.data(), text.data() + text.size(), field);
+            if (invalid.empty() && (text.empty() || parsed.ec != std::errc{} || parsed.ptr != text.data() + text.size()))
+                invalid = "bad " + arg + " value";
+            derivedParameters = true;
         } else if (!arg.empty() && arg[0] == '-') {
             invalid = "unknown option '" + arg + "'";
         } else if (options.file.empty()) {
@@ -195,6 +217,10 @@ int ipgenMain(int argc, char* argv[]) {
         printUsage(stderr);
         return fail("no input file");
     }
+    if (derivedParameters && !options.deriveNormal)
+        return fail("--normal-depth, --normal-rounding and --normal-detail need --derive-normal");
+    if (options.deriveNormal && !validDerivedNormalRequest(options.derived))
+        return fail("derived normal parameters out of range (depth >= 0, rounding 0-64, detail 0-1)");
 
     // Read the file; the buffer must outlive the LoadedFile (zero-copy).
     std::ifstream stream(options.file, std::ios::binary);
@@ -264,6 +290,7 @@ int ipgenMain(int argc, char* argv[]) {
         inputs.limits.deadline = ExecutionLimits::deadlineAfter(options.timeoutMs * 1'000'000);
         VM vm(loaded, inputs); // setup traps (canvas
                                // size) throw here too
+        if (options.deriveNormal) vm.deriveNormal(options.derived);
         vm.run();
         result = vm.result();
         budget = vm.fuelBudget();
@@ -279,9 +306,16 @@ int ipgenMain(int argc, char* argv[]) {
                                     : options.file.substr(0, options.file.rfind('.')) + "-" +
                                           std::to_string(options.seed) + ".png";
     const Canvas& canvas = result.image;
+    const AuxImage* normal = nullptr;
+    for (const auto& image : result.images) if (image.kind == AuxImageKind::Normal && !normal) normal = &image;
+    // Checked before anything is written: a missing image leaves no file.
+    if (!options.normalOutput.empty() && !normal)
+        return fail("no normal image: the program publishes none; --derive-normal derives one");
     if (!tools::writePng(pngPath, tools::canvasImage(canvas))) {
         return fail("cannot write PNG '" + pngPath + "'");
     }
+    if (!options.normalOutput.empty() && !tools::writePng(options.normalOutput, tools::canvasImage(normal->image)))
+        return fail("cannot write PNG '" + options.normalOutput + "'");
 
     // Result JSON to stdout: the declared inputs (for uniform editors), the
     // fuel readout and the structured outputs.
@@ -329,6 +363,22 @@ int ipgenMain(int argc, char* argv[]) {
     }
     json << "\n  ]";
     if (options.omitPartOutputs && hasPartOutputs(loaded)) json << ",\n  \"part_outputs_omitted\": true";
+    // Present only when the generation published an image beside the main one.
+    if (!result.images.empty()) {
+        json << ",\n  \"images\": [";
+        for (std::size_t i = 0; i < result.images.size(); ++i) {
+            const auto& image = result.images[i];
+            json << (i ? "," : "") << "\n    {\"kind\": \"normal\", \"source\": \""
+                 << (image.source == AuxImageSource::Authored ? "authored" : "derived") << "\", \"name\": ";
+            json << '"' << tools::jsonEscape(image.name) << '"';
+            if (&image == normal && !options.normalOutput.empty()) {
+                json << ", \"path\": ";
+                json << '"' << tools::jsonEscape(options.normalOutput) << '"';
+            }
+            json << "}";
+        }
+        json << "\n  ]";
+    }
     json << "\n}\n";
     std::cout << json.str();
 

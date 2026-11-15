@@ -16,57 +16,48 @@
 | `mask` | immutable [coverage view or A8 result](surfaces.md#masks-from-captured-alpha) | yes; same surface restrictions |
 | `diagram2d`, `contours2d`, `regions2d` | immutable [geometry handles](geometry.md#geometry-handles) | yes; no input, const or generic container |
 | `part2d`, `parts2d` | one immutable dynamic instance or a batch | yes; same handle restrictions |
+| `seed` | a [named seed](random.md#named-seeds): 32 bits, forked and compared | yes; no input, output, const or collection |
 | `circle`, `rect` | three/four numeric components for outputs | output writes only |
 | `void` | absence of a result | call statements only |
 
-`u32` is an input declaration type, not a local/helper type. A point is
-represented by `vec2`; there is no separate storable `point` type.
+`u32` is only an input type. Points use `vec2`, not a separate storable type.
 
-An imported [material](materials.md) such as `forest.Bark` is a nominal
-source type for locals and helper parameters. It expands to scalar fields
-before code generation and is not a VM value type. Materials cannot be
-returned, declared as host inputs/constants or used in collections.
+Imported [materials](materials.md), such as `forest.Bark`, are nominal source
+types for locals/helper parameters, expanded to scalar fields before code
+generation. They cannot be returned, used in collections or declared as
+host inputs/constants.
 
-Numeric arithmetic mixes `i32` and `f32` by widening the integer to `f32`.
-Builtin/helper arguments and return values also permit this widening.
-Local reassignment requires an exact type match. Use `int(x)` or `float(x)`
-when an explicit conversion is needed; no implicit float-to-integer conversion
-is performed. Integer-to-float conversion can lose precision.
+Mixed numeric arithmetic, arguments and returns widen `i32` to `f32`, which
+can lose precision. Reassignment requires the exact local type. Use `int(x)`
+or `float(x)` for explicit conversion; floats never convert implicitly to integers.
 
 ## Variables and scope
 
-The first assignment to a fresh name declares a local and fixes its type.
-`distribution name = value` also states the type and requires a
-distribution value. `list<T> name = value` supplies the element context,
-including for an empty literal. See [collections](collections.md).
-`sampler<T> name = value` declares a [sampling description](samplers.md).
-`stepper<T> name = value` declares a [deterministic step description](steppers.md).
-`layer name { ... }` captures a surface and binds the name after the block.
-`layer copy = image` explicitly types a handle copy. A layer handle whose
-capture did not execute is unset and traps when painted.
-Sampler, stepper and list locals whose initializer does not run contain unset handles;
-using them traps, including a sampler or stepper's empty batch pick.
-Locals belong to the whole function, including those first assigned inside
-a branch or loop; braces do not introduce shadowing scopes. Source is checked
-in traversal order. Initialize a local before branching if it is needed later:
-the language does not perform definite-assignment analysis, and untouched
-runtime local slots have the default value of their type.
+The first assignment declares a local and fixes its type. Typed forms include
+`distribution name = value`, `list<T> name = value` (also for empty lists),
+`sampler<T> name = value` and `stepper<T> name = value`; see
+[collections](collections.md), [samplers](samplers.md) and [steppers](steppers.md).
+`layer name { ... }` captures a surface and binds its name after the block;
+`layer copy = image` types a handle copy. Skipped layer, sampler, stepper or
+list initializers leave unset handles. Using one traps, even for an empty pick.
+Locals span the whole function, including branches/loops; braces do not shadow.
+Source is checked in traversal order, without definite-assignment analysis.
+Initialize values before branching when needed later. Untouched slots retain
+their type's default value.
 
-Helpers have their own locals. Parameters are read-only. `draw` also has
-read-only inputs; helpers receive their values through parameters.
-`seed` reads the current RNG state in either kind of function and cannot be
-assigned. Palettes are asset-level constants visible to draw and helpers.
-Typed [asset constants](assets.md#asset-constants) are also visible in both
-contexts. Their initializer type must match the declaration, allowing only
-the ordinary i32-to-f32 widening; later assignment or shadowing is rejected.
+Helpers have separate locals and read-only parameters. Inputs are read-only
+in `draw`; pass them to helpers. Both can read `seed` (current RNG state, an
+`i32`), `seed.initial()`,
+palettes and [asset constants](assets.md#asset-constants). None can be assigned
+or shadowed. Constant initializers must match their declared type, except for
+i32-to-f32 widening.
 
 <!-- example: ../../examples/language/types.ips -->
 
 ## Operators
 
-Binary operators associate leftward, except comparisons and `to`, which take
-one operator per level. The precedence below goes from lowest to highest;
-parentheses explicitly select grouping.
+Binary operators associate leftward; comparisons and `to` allow one operator
+per level. Precedence runs from lowest to highest; parentheses change grouping.
 
 | Precedence | Operators | Operands |
 | --- | --- | --- |
@@ -82,42 +73,32 @@ parentheses explicitly select grouping.
 | 12 | unary `-`, `!`, `~` | numeric/vector minus; `i32` logical/bitwise not |
 | 13 | call, member access, palette index | postfix expressions |
 
-Bitwise operators and shifts bind more tightly than comparisons:
-`flags & 1 == 0` tests the masked value, and `value < 1 << bits` means
-`value < (1 << bits)`. Comparisons do not chain. `a < b < c` and
-`a == b == c` are rejected, because they would compare the 0/1 result of the
-first comparison with `c`; write `a < b && b < c`. An equality of two
-orderings, `a < b == c < d`, needs no parentheses; parenthesize any other
-comparison whose 0/1 result is compared again. The [grammar](grammar.md)
-records these rules.
+Bitwise operators and shifts bind before comparisons: `flags & 1 == 0`
+tests the masked value; `value < 1 << bits` means `value < (1 << bits)`.
+Chained `a < b < c` and `a == b == c` are rejected; use `a < b && b < c`.
+Equality between orderings, `a < b == c < d`, needs no parentheses. Other
+comparisons of comparison results need parentheses; see [grammar](grammar.md).
 
 <!-- example: ../../examples/language/errors/comparison-chain.ips -->
 
 <!-- llm: skip -->
 This example is intentionally rejected: comparisons do not chain.
 
-Comparisons and logical operations return normalized `i32` 0/1. `&&` and
-`||` skip the right operand when its value cannot affect the result, including
-its RNG effects. Other binary operands evaluate left to right.
-Integer arithmetic wraps modulo 2³². `/` and `%` use signed integer semantics
-when both operands are integers; division by zero traps. Shift counts are
-masked to five bits, and `>>` is logical (zero-filling). Floating division
-uses IEEE-754 results, including NaN/infinity.
-Signed division of `-2147483648` by `-1` also traps for overflow; signed
-remainder for that pair is zero. These checks are distinct from the ordinary
-wrapping behavior of integer addition, subtraction and multiplication.
+Comparisons/logical operations return `i32` 0/1. `&&`/`||` skip an unneeded
+right operand, including its RNG effects. Other operands evaluate left to right.
+Integer arithmetic wraps modulo 2³². Integer `/` and `%` are signed and trap
+on zero divisors. `-2147483648 / -1` also traps; its remainder is zero.
+Shift counts use five bits; `>>` fills with zeros. Floating division follows
+IEEE-754, including NaN/infinity.
 
-Vectors use `{x, y}`, expose `.x` and `.y`, support componentwise `+`, `-`,
-`*`, `/` with another vector, vector `*`/`/` scalar, scalar `*` vector and
-unary minus. Scalar/vector `+`, `-`, `/`, vector comparisons and vector `%`
-are rejected. Components are values rather than assignable fields.
+Vectors use `{x, y}` and read-only `.x`/`.y`. They support componentwise
+`+`, `-`, `*`, `/`, vector `*`/`/` scalar, scalar `*` vector and unary minus.
+Scalar/vector `+`, `-`, `/`, vector comparisons and `%` are rejected.
 
-Colors expose `.r`, `.g`, `.b` and `.a` as `i32` values in 0–255 on any color
-expression: a local, input, palette element, helper result or color builtin.
-Reading a channel evaluates its base once and draws no randomness itself.
-Channels are not assignable either, and there is no implicit conversion between
-a color and a number; build a new color with `rgb()`/`rgba()` and use
-`float(c.a) / 255.0` for 0–1 arithmetic. See [color channels](drawing.md#color-channels).
+Any color expression exposes read-only `.r`, `.g`, `.b`, `.a` as `i32` 0–255.
+A read evaluates its base once without an extra draw. Colors and numbers do
+not convert implicitly. Build colors with `rgb()`/`rgba()`; normalize a channel
+with `float(c.a) / 255.0`. See [color channels](drawing.md#color-channels).
 
 <!-- example: ../../examples/language/errors/local-type.ips -->
 

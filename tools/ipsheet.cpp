@@ -3,6 +3,8 @@
 
 #include "iprop/VM.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <fstream>
 #include <iostream>
@@ -40,6 +42,10 @@ int ipsheetMain(int argc, char* argv[]) {
     u32 columns = 0; // 0 = seed count
     u32 firstSeed = 0;
     std::vector<std::pair<std::string, std::string>> overrides;
+    // What each cell shows: the image, its normal image, or the image lit
+    // from the upper left through the normal image (a review preview).
+    enum class Shown { Colour, Normal, Lit } shown = Shown::Colour;
+    bool deriveNormal = false;
 
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
@@ -57,6 +63,9 @@ int ipsheetMain(int argc, char* argv[]) {
                       << "  --seeds N      seed count (default 4)\n"
                       << "  --columns N    grid columns (default: the seed count)\n"
                       << "  --uniform NAME=VALUE  fixed input override (repeatable)\n"
+                      << "  --image KIND   color (default), normal or lit: the image, its normal\n"
+                      << "                 image, or the image lit from the upper left (a preview)\n"
+                      << "  --derive-normal  derive a normal image when the program publishes none\n"
                       << "  -o PATH        output PNG (default: sheet.png)\n";
             return 0;
         } else if (arg == "--seed") {
@@ -82,6 +91,17 @@ int ipsheetMain(int argc, char* argv[]) {
                 std::cerr << "ipsheet: bad --columns\n";
                 return 1;
             }
+        } else if (arg == "--image") {
+            const std::string kind = next("--image");
+            if (kind == "color") shown = Shown::Colour;
+            else if (kind == "normal") shown = Shown::Normal;
+            else if (kind == "lit") shown = Shown::Lit;
+            else {
+                std::cerr << "ipsheet: bad --image (expected color, normal or lit)\n";
+                return 1;
+            }
+        } else if (arg == "--derive-normal") {
+            deriveNormal = true;
         } else if (arg == "-o" || arg == "--output") {
             output = next("--output");
         } else if (!arg.empty() && arg[0] == '-') {
@@ -158,14 +178,34 @@ int ipsheetMain(int argc, char* argv[]) {
         for (u32 s = 0; s < seeds; ++s) {
             inputs.seed = firstSeed + s;
             VM vm(loaded, inputs);
+            if (deriveNormal) vm.deriveNormal({});
             vm.run();
-            const Canvas& canvas = vm.canvas();
+            const GenerationResult generated = shown == Shown::Colour ? GenerationResult{} : vm.takeResult();
+            const Canvas& canvas = shown == Shown::Colour ? vm.canvas() : generated.image;
+            const Canvas* normal = nullptr;
+            for (const auto& image : generated.images) if (image.kind == AuxImageKind::Normal && !normal) normal = &image.image;
+            if (shown != Shown::Colour && !normal) {
+                std::cerr << "ipsheet: no normal image: the program publishes none; --derive-normal derives one\n";
+                return 1;
+            }
             const u32 cell = s;
             const u32 cellX = cell % columns;
             const u32 cellY = cell / columns;
             for (u32 y = 0; y < canvas.height; ++y) {
                 for (u32 x = 0; x < canvas.width; ++x) {
-                    const Color& pixel = canvas.at(x, y);
+                    Color pixel = canvas.at(x, y);
+                    if (shown == Shown::Normal) pixel = normal->at(x, y);
+                    else if (shown == Shown::Lit) {
+                        // A fixed light from the upper left: ambient plus a
+                        // Lambert term. A preview, not part of any contract.
+                        const Color n = normal->at(x, y);
+                        const double nx = n.r / 127.5 - 1.0, ny = n.g / 127.5 - 1.0, nz = n.b / 127.5 - 1.0;
+                        const double length = std::sqrt(nx * nx + ny * ny + nz * nz);
+                        const double facing = length > 0 ? std::max(0.0, (nx * -0.55 + ny * 0.55 + nz * 0.63) / length) : 0.0;
+                        const double light = 0.35 + 1.05 * facing;
+                        const auto lit = [&](u8 channel) { return static_cast<u8>(std::min(255.0, channel * light + 0.5)); };
+                        pixel = {lit(pixel.r), lit(pixel.g), lit(pixel.b), pixel.a};
+                    }
                     const std::size_t at =
                         ((static_cast<std::size_t>(cellY) * cellH + y) * columns * cellW +
                          static_cast<std::size_t>(cellX) * cellW + x) *

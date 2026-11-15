@@ -169,6 +169,15 @@ function run(iprop, tool, directory) {
         }
     }
     const contracts = JSON.parse(execFileSync(tool("ipc"), ["--describe-language"], {encoding: "utf8"}));
+    // Named seeds (1.1) annotate i32 seed parameters with an additive
+    // `role: "seed"`. Strip exactly that annotation; every 0.8 field stays frozen.
+    const unannotated = parameters => parameters.map(p => {
+        if (!("role" in p)) return p;
+        assert.equal(p.role, "seed");
+        assert.equal(p.type, "i32");
+        const {role, ...frozen} = p;
+        return frozen;
+    });
     for (const recorded of fixture.builtin_contracts) {
         const builtin = language10(recorded);
         if (!builtin) {
@@ -180,12 +189,13 @@ function run(iprop, tool, directory) {
         const actual = contracts.builtins.find(b => b.name === builtin.name);
         assert(actual, "removed builtin " + builtin.name);
         if (builtin.name === "pick") assert.deepEqual(actual.overloads, [], "pick(n) is index(n)");
+        const overloads = actual.overloads.map(o => ({...o, parameters: unannotated(o.parameters)}));
         for (const overload of builtin.overloads) {
-            const match = actual.overloads.find(o => JSON.stringify(o.parameters) === JSON.stringify(overload.parameters));
+            const match = overloads.find(o => JSON.stringify(o.parameters) === JSON.stringify(overload.parameters));
             assert.deepEqual(match, overload, "changed 0.8 overload " + builtin.name);
         }
         if (builtin.variadic) {
-            const projected={...actual.variadic};
+            const projected={...actual.variadic, parameters: unannotated(actual.variadic.parameters)};
             if (builtin.variadic.choice_types) {
                 // New storable handles extend the accepted choices. Freeze
                 // every legacy type and rule exactly, and permit only these

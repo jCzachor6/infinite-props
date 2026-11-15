@@ -34,6 +34,7 @@ constexpr OperationEffects effects(Opcode op) {
     case Opcode::DistributionGaussian: case Opcode::DistributionTriangular: case Opcode::DistributionBeta:
         return {R::None,false,false,check(C::NumericRange)};
     case Opcode::StreamState: return {R::ReadCurrent};
+    case Opcode::SeedInitial: return {R::ReadInitial};
     case Opcode::StreamPush: return {R::PushSeededStream};
     case Opcode::StreamPop: return {R::RestoreStream,false,false,check(C::StreamStackUnderflow)};
     case Opcode::Noise: case Opcode::Fault: return {R::SeededComputation};
@@ -94,7 +95,7 @@ constexpr OperationEffects effects(Opcode op) {
     case Opcode::MaskFrom: case Opcode::MaskInvert:
     case Opcode::MaskUnion: case Opcode::MaskIntersect: case Opcode::MaskSubtract:
     case Opcode::MaskExpand: case Opcode::MaskShrink: case Opcode::MaskOffset:
-    case Opcode::LayerBlur: case Opcode::MaskBlur:
+    case Opcode::LayerBlur: case Opcode::MaskBlur: case Opcode::SurfaceNormal:
         return {R::None,false,false,static_cast<u16>(check(C::UnassignedHandle)|check(C::NumericRange))};
     case Opcode::PolyList: return {R::None,true,false,static_cast<u16>(check(C::NumericRange)|check(C::UnassignedHandle))};
     case Opcode::ColorHsv: case Opcode::Vec2Mix: case Opcode::Vec2Normalize:
@@ -121,9 +122,11 @@ constexpr OperationEffects effects(Opcode op) {
     }
 }
 constexpr OpcodeSpec fixed(Opcode op, const char* name, StackSignature stack) {
-    const bool voronoi=op == Opcode::Voronoi || op == Opcode::VoronoiConfig ||
-        op == Opcode::VoronoiMetric || op == Opcode::VoronoiRows;
-    return {op,name,voronoi ? OperandKind::Zero : OperandKind::None,AuxPolicy::Zero,stack,effects(op)};
+    // Later additions require their unused operand to be zero; older fixed
+    // instructions keep ignoring it.
+    const bool zero=op == Opcode::Voronoi || op == Opcode::VoronoiConfig ||
+        op == Opcode::VoronoiMetric || op == Opcode::VoronoiRows || op == Opcode::SeedInitial;
+    return {op,name,zero ? OperandKind::Zero : OperandKind::None,AuxPolicy::Zero,stack,effects(op)};
 }
 constexpr OpcodeSpec dynamic(Opcode op, const char* name, OperandKind operand,
                              AuxPolicy aux = AuxPolicy::Zero) {
@@ -213,6 +216,7 @@ constexpr OpcodeSpec kSpecs[] = {
     fixed(Opcode::RngIndex, "rng.index", StackSignature({S::I32}, V::I32)),
     fixed(Opcode::Hash, "hash", StackSignature({S::I32}, V::I32)),
     fixed(Opcode::StreamState, "stream.state", StackSignature({}, V::I32)),
+    fixed(Opcode::SeedInitial, "seed.initial", StackSignature({}, V::I32)),
     fixed(Opcode::Noise, "noise", StackSignature({S::F32, S::F32, S::I32}, V::F32)),
     fixed(Opcode::Fault, "fault", StackSignature({S::F32, S::F32, S::I32}, V::F32)),
     fixed(Opcode::Smooth, "smooth", StackSignature({S::F32}, V::F32)),
@@ -360,7 +364,7 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::DistributionBegin, "distribution.begin", OperandKind::Immediate),
     dynamic(Opcode::DistributionAppend, "distribution.append", OperandKind::Immediate),
     dynamic(Opcode::DistributionEnd, "distribution.end", OperandKind::Zero),
-    dynamic(Opcode::LayerBegin, "layer.begin", OperandKind::Local, AuxPolicy::SurfaceMode),
+    dynamic(Opcode::LayerBegin, "layer.begin", OperandKind::Local, AuxPolicy::LayerMode),
     dynamic(Opcode::SurfacePaint, "surface.paint", OperandKind::Immediate),
     dynamic(Opcode::MaskFrom, "mask.from", OperandKind::Zero),
     dynamic(Opcode::MaskUnion, "mask.union", OperandKind::Zero),
@@ -385,6 +389,7 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::ConstStepper, "const.stepper", OperandKind::StepperConst),
     dynamic(Opcode::LayerBlur, "layer.blur", OperandKind::Zero),
     dynamic(Opcode::MaskBlur, "mask.blur", OperandKind::Zero),
+    dynamic(Opcode::SurfaceNormal, "surface.normal", OperandKind::Zero, AuxPolicy::SurfaceKind),
 };
 constexpr auto kByOpcode = [] {
     std::array<const OpcodeSpec*,256> index{};
@@ -405,6 +410,7 @@ const char* rngEffectName(RngEffect effect) {
     case RngEffect::IsolatedSeededStream: return "isolated_seeded_stream";
     case RngEffect::SharedCallee: return "shared_callee_stream";
     case RngEffect::IsolatedCallee: return "isolated_callee_stream";
+    case RngEffect::ReadInitial: return "read_initial";
     }
     return "unknown";
 }

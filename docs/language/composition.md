@@ -1,91 +1,67 @@
 # Imports and part composition
 
-`import alias from "path.ips"` precedes the asset. The path is relative to
-the file that contains the import, and an imported asset may import parts
-of its own ([nested parts](#nested-parts)). Duplicate aliases in one asset,
-missing files and import cycles are errors. The compiler links every part
-into one executable; generation does not load source files.
-An alias shares the asset's one namespace with its inputs, outputs, palettes,
-constants and helpers, and cannot be the name of a builtin namespace such as
-`surface`, `noise` or `part`: `alias.draw(...)` and the namespace's members
-would share one spelling.
-Parts can share immutable mask/layer snapshots through
-[resource outputs](surfaces.md#export-regions-from-parts). They follow each
-hierarchy level's placement and D4 once; host indices still count geometry only.
+`import alias from "path.ips"` precedes the asset and resolves relative to
+its source file. Parts may import [nested parts](#nested-parts). Duplicate
+aliases, missing files and cycles are errors. All parts link into one
+executable; generation needs no source files. Aliases share the asset namespace
+and cannot match builtin namespaces (`surface`, `noise`, `part`). Shared
+[resource outputs](surfaces.md#export-regions-from-parts) apply each hierarchy
+level's placement/D4 once; host indices still count geometry only.
 
 <!-- example: ../../examples/language/part.ips -->
 
 <!-- example: ../../examples/language/composition.ips -->
 
-`alias.draw(seed = seed, at = {x, y}, uniforms...)` requires one integer
-seed and a named placement. Seed may be positional or named. Transform
-arguments and input overrides are named only.
+`alias.draw(seed = seed, at = {x, y}, uniforms...)` requires an `i32` or
+[`seed`](random.md#named-seeds) (positional or named) and named placement.
+Inside the part, `seed.initial()` returns that call's seed. Transforms/input overrides are
+optional and named-only. `at` positions the part's origin.
 
-Placement `at`, transform arguments and optional input overrides are named
-only. Extra positional arguments, unknown names and missing seed or
-placement are errors. Input names `variant` and `archetype` remain ordinary
-uniform names. Unspecified
-uniforms use the part's defaults. `at` positions the part's declared origin.
-Call order determines paint order; the parent's RNG stream is restored
-after the part executes to its state after the dynamic argument expressions.
-An override containing `unit()` therefore still advances the parent stream;
-random draws made by the child use its isolated stream. A part may paint and
-write its own outputs, and its conservative exported effect summary includes
-callee/placement checks rather than assuming the child is pure.
+Extra positional arguments, unknown names and missing seed/placement are
+errors. `variant`/`archetype` are ordinary input names. Omitted uniforms keep
+the part's defaults. Call order is paint order. Argument effects such as
+`unit()` advance the parent stream; child draws use an isolated stream and
+leave the parent's post-argument state intact. Parts can paint/write outputs;
+exported effects include callee and placement checks.
 
-Optional transform arguments are compile-time integers: `rot` is 0, 90, 180
-or 270; `mirror_x`/`mirror_y` are 0 or 1, including boolean constants.
-Each can occur once. Rotation is applied before the mirrors. Positive angles
-are counterclockwise in the downward-y plane; transforms are exact D4 pixel
-permutations, not filtered image rotation.
+Transforms are compile-time integers: `rot` is 0, 90, 180 or 270;
+`mirror_x`/`mirror_y` are 0/1, including booleans. Each appears at most once.
+Rotation precedes mirrors; positive angles are counterclockwise in downward-y
+coordinates. D4 transforms permute pixels without filtering.
 
-Scalar `alias.outputs.name` reads the last called part's output, including
-point `.x`/`.y`. A read before that slot has been set traps. The value is in
-the reading asset's coordinates: the child's transform and placement are
-already applied, so it can place another part or be drawn directly.
-Assigning it to a parent's output propagates it. List outputs are
-host-facing and cannot be read this way. The host receives every output in
-the root asset's coordinates, including points, rectangles, circles and
-list elements written by part helpers; each enclosing call is applied once,
-when the value is written. A singular output keeps its last written value: a
-later call that does not write it neither replaces nor moves it.
+`alias.outputs.name` reads scalar outputs of the last-called part, including
+point `.x`/`.y`; unset reads trap. Values already include the child's placement
+and transform in caller coordinates. Assign them to parent outputs to propagate.
+List outputs are host-only. Host outputs use root coordinates, with each
+hierarchy level applied once at write time. Calls without a write retain
+the slot's previous value and placement.
 
 ## Part call order
 
-Uniform overrides evaluate in the part's input declaration order. Then the
-`seed` and placement expressions evaluate, regardless of the order
-of named arguments in the source. Transform
-arguments are compile-time constants. Each dynamic argument evaluates once.
+Uniform overrides evaluate once in input declaration order, then seed and
+placement, regardless of named order. Transforms are compile-time constants.
 See [parts and D4 transforms](../../spec/iprop-v0.8.md#105-part-transforms)
-for the exact geometry mapping and rectangle bounds, and
-[part instances](../../spec/iprop-v0.8.md#106-part-instances-section) for the output
-coordinates.
+for geometry/bounds and [part instances](../../spec/iprop-v0.8.md#106-part-instances-section)
+for output coordinates.
 
-The current example uses named arguments in a different written order from
-their evaluation order. Omitted overrides use the part's resolved declaration
-defaults, including signed integer and floating constants; no new runtime
-input type is introduced for a signed source declaration.
+The example reorders named arguments without changing evaluation. Omitted
+overrides use typed defaults, including signed integers/floats; signed source
+declarations add no runtime input type.
 
 <!-- example: ../../examples/language/errors/list-read.ips -->
 
 ## Nested parts
 
-An imported asset may import parts itself, to any depth. Each import path is
-resolved beside the importing file: a `hilt.ips` in `parts/hilt/` that
-imports `"grip.ips"` loads `parts/hilt/grip.ips`, whichever asset imports
-the hilt. `ipc` resolves paths on the file system, so `..` after a
-symlinked directory leaves its target; embedding hosts resolve against
-their own source store.
+Nested imports resolve beside the importing file: `parts/hilt/hilt.ips`
+importing `"grip.ips"` loads `parts/hilt/grip.ips`. `ipc` follows filesystem
+symlinks, so `..` leaves the symlink target; embedding hosts use their source store.
 
-Aliases are local to their asset. An instance is named by its alias path
-from the root, such as `hilt.grip`, and each alias path is a separate
-instance with its own inputs, outputs and RNG stream, even when two branches
-import the same file. That file is still loaded and parsed once. A parent
-draws and reads only its direct children; to expose a grandchild's output,
-the child copies it to an output of its own. At most 256 instances may
-result from expanding the imports. A cycle, including one through an
-equivalent path such as `"../dir/a.ips"`, is an error naming the whole
-chain.
+Aliases are asset-local. Each root alias path, such as `hilt.grip`, defines
+an instance with separate inputs, outputs and RNG, even for repeated imports
+of one file. The file is parsed once. Parents draw/read direct children only;
+children must propagate grandchild outputs. Imports may expand to at most
+256 instances. Cycles through equivalent paths such as `"../dir/a.ips"`
+report the whole chain.
 
 <!-- llm: skip -->
 The following imports the composition example, which itself imports a part,

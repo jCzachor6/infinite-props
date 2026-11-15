@@ -11,6 +11,12 @@ owned RGBA pixels, geometry and statistics. `image.ToTexture2D()` and
 `image.ToSprite(program.Metadata)` create caller-owned Unity objects; destroy
 generated sprites and their textures when finished. See the included sample.
 
+A prop that publishes a normal map exposes it as `image.Normal`; pass
+`deriveNormal: new DerivedNormal()` to `Generate` to derive one for a prop
+that does not. `image.Normal.ToTexture2D()` creates a caller-owned linear
+texture and `AuxiliaryImage.Bind(spriteRenderer, texture)` sets it as
+`_NormalMap` for 2D lights.
+
 Native plugins must be built before using the package. In the Infinite Props
 source checkout run `python3 backends/unity/package-native.py --platform macos`
 (or windows, linux, android, ios), then add this package through Package Manager.

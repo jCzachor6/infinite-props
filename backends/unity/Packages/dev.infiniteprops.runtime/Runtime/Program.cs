@@ -68,6 +68,51 @@ namespace InfiniteProps
         public ulong WorkRemaining { get; internal set; }
         public ulong WorkUsed { get; internal set; }
     }
+    public enum ImageKind : uint { Normal = 1 }
+    public enum ImageSource : uint { Authored = 1, Derived = 2 }
+
+    /// <summary>An auxiliary image a program can publish: the normal output of its root.</summary>
+    public sealed class DeclaredImage
+    {
+        public uint Index { get; internal set; }
+        public ImageKind Kind { get; internal set; }
+        public string Name { get; internal set; }
+    }
+
+    /// <summary>Asks for a normal map derived from the finished image when the
+    /// program publishes none. Depth is the height of full coverage and
+    /// rounding a Gaussian sigma, both in image pixels; detail is the share of
+    /// brightness in the height (0..1). Zero selects each default: the longer
+    /// side / 16, the longer side / 32 and 0.5.</summary>
+    public sealed class DerivedNormal
+    {
+        public float Depth { get; }
+        public float Rounding { get; }
+        public float Detail { get; }
+        public DerivedNormal(float depth = 0, float rounding = 0, float detail = 0)
+        { Depth = depth; Rounding = rounding; Detail = detail; }
+    }
+
+    /// <summary>An image published beside the main one, owned by its result. A
+    /// normal map stores one direction per pixel: R is x rightward, G is y
+    /// upward and B is z toward the viewer, each byte b decoding as
+    /// b / 127.5 - 1. The bytes are linear data, not colour, and alpha is 255
+    /// everywhere (AlphaMode == 2): use the main image's alpha for coverage.</summary>
+    public sealed partial class AuxiliaryImage
+    {
+        public uint Index { get; internal set; }
+        public ImageKind Kind { get; internal set; }
+        public ImageSource Source { get; internal set; }
+        public string Name { get; internal set; }
+        public uint Width { get; internal set; }
+        public uint Height { get; internal set; }
+        public ulong RowStride { get; internal set; }
+        public uint PixelFormat { get; internal set; }
+        public uint AlphaMode { get; internal set; }
+        public uint StorageOrigin { get; internal set; }
+        public byte[] Rgba { get; internal set; }
+    }
+
     public sealed partial class GeneratedImage
     {
         public uint Width { get; internal set; }
@@ -79,6 +124,17 @@ namespace InfiniteProps
         public byte[] Rgba { get; internal set; }
         public IReadOnlyList<Output> Outputs { get; internal set; }
         public Statistics Statistics { get; internal set; }
+        /// <summary>Images published beside the main one, in result order.</summary>
+        public IReadOnlyList<AuxiliaryImage> Images { get; internal set; }
+        /// <summary>The normal map published with this image, authored or derived, or null.</summary>
+        public AuxiliaryImage Normal
+        {
+            get
+            {
+                foreach (var image in Images) if (image.Kind == ImageKind.Normal) return image;
+                return null;
+            }
+        }
         public Output FindOutput(string name, uint owner = 0)
         {
             foreach (var output in Outputs) if (output.Owner == owner && output.Name == name) return output;
@@ -115,6 +171,8 @@ namespace InfiniteProps
         private readonly Native.ProgramHandle handle;
         public Metadata Metadata { get; }
         public IReadOnlyList<Input> Inputs { get; }
+        /// <summary>The auxiliary images this program can publish; empty for most programs.</summary>
+        public IReadOnlyList<DeclaredImage> Images { get; }
         public Program(byte[] bytes)
         {
             if (bytes == null) throw new ArgumentNullException(nameof(bytes));
@@ -122,9 +180,11 @@ namespace InfiniteProps
             {
                 var library = Native.Sized<Native.Library>();
                 error.Check(Native.iprop_library_query_ex(ref library, ref error.Value));
-                if (library.ApiMajor != 0 || library.ApiMinor < 6 || library.AbiMajor != 0 || library.AbiMinor != 5 ||
-                    (library.Capabilities & (7UL << 18)) != (7UL << 18))
-                    throw new NotSupportedException("Infinite Props requires C API 0.6 / ABI 0.5 with typed results and execution limits");
+                // Bits 18-22: part outputs, result resources, execution limits,
+                // auxiliary images and the derived normal image.
+                if (library.ApiMajor != 0 || library.ApiMinor < 7 || library.AbiMajor != 0 || library.AbiMinor != 5 ||
+                    (library.Capabilities & (31UL << 18)) != (31UL << 18))
+                    throw new NotSupportedException("Infinite Props requires C API 0.7 / ABI 0.5 with typed results, execution limits and auxiliary images");
                 IntPtr pointer;
                 error.Check(Native.iprop_program_load_ex(bytes.Length == 0 ? new byte[1] : bytes,
                     (ulong)bytes.LongLength, out pointer, ref error.Value));
@@ -151,13 +211,28 @@ namespace InfiniteProps
                                 input.Type == 1 ? InputValue.Float(input.F) : InputValue.UInt(input.U) });
                     }
                     Inputs = inputs.AsReadOnly();
+                    error.Check(Native.iprop_program_aux_image_count(handle, out count, ref error.Value));
+                    var images = new List<DeclaredImage>();
+                    for (uint i = 0; i < count; ++i)
+                    {
+                        var info = Native.Sized<Native.AuxInfo>();
+                        error.Check(Native.iprop_program_aux_image_get(handle, i, ref info, ref error.Value));
+                        // A kind this package does not know is skipped, not an error.
+                        if (info.Kind != (uint)ImageKind.Normal) continue;
+                        images.Add(new DeclaredImage { Index = info.Index, Kind = (ImageKind)info.Kind, Name = Native.ReadString(info.Name) });
+                    }
+                    Images = images.AsReadOnly();
                 }
                 catch { handle.Dispose(); throw; }
             }
         }
 
+        /// <summary>Generates one image. A non-null <paramref name="deriveNormal"/>
+        /// asks the runtime for a normal map when the program publishes none of
+        /// its own; an authored one always wins.</summary>
         public GeneratedImage Generate(uint seed = 0, IReadOnlyDictionary<string, InputValue> inputs = null,
-                                       uint width = 0, uint height = 0, ExecutionLimits limits = null)
+                                       uint width = 0, uint height = 0, ExecutionLimits limits = null,
+                                       DerivedNormal deriveNormal = null)
         {
             lock (gate)
             {
@@ -189,7 +264,21 @@ namespace InfiniteProps
                         IntPtr result;
                         using (var execution = new Native.ExecutionScope(limits, error))
                         {
-                            error.Check(Native.iprop_generate_controlled(handle, ref options, parameters, ref execution.Value, out result, ref error.Value));
+                            uint status;
+                            if (deriveNormal == null)
+                            {
+                                // A null request behaves exactly as iprop_generate_controlled.
+                                status = Native.iprop_generate_derived_normal(handle, ref options, parameters, ref execution.Value,
+                                    IntPtr.Zero, out result, ref error.Value);
+                            }
+                            else
+                            {
+                                var request = Native.Sized<Native.DerivedRequest>();
+                                request.Depth = deriveNormal.Depth; request.Rounding = deriveNormal.Rounding; request.Detail = deriveNormal.Detail;
+                                status = Native.iprop_generate_derived_normal(handle, ref options, parameters, ref execution.Value,
+                                    ref request, out result, ref error.Value);
+                            }
+                            error.Check(status);
                             try { return ReadResult(result, error); }
                             finally { Native.iprop_result_free(result); }
                         }
@@ -229,9 +318,24 @@ namespace InfiniteProps
                     Name = Native.ReadString(slot.Name), Kind = (OutputKind)slot.Kind,
                     IsList = slot.IsList != 0, Count = slot.Count, Values = values, Parts = parts });
             }
+            error.Check(Native.iprop_result_aux_image_count(result, out count, ref error.Value));
+            var images = new List<AuxiliaryImage>();
+            for (uint i = 0; i < count; ++i)
+            {
+                var view = Native.Sized<Native.AuxImage>();
+                error.Check(Native.iprop_result_aux_image_get(result, i, ref view, ref error.Value));
+                // A kind or source this package does not know is skipped, not an error.
+                if (view.Kind != (uint)ImageKind.Normal ||
+                    (view.Source != (uint)ImageSource.Authored && view.Source != (uint)ImageSource.Derived)) continue;
+                var pixels = new byte[checked((int)view.ByteCount)];
+                if (pixels.Length != 0) Marshal.Copy(view.Pixels, pixels, 0, pixels.Length);
+                images.Add(new AuxiliaryImage { Index = view.Index, Kind = (ImageKind)view.Kind, Source = (ImageSource)view.Source,
+                    Name = Native.ReadString(view.Name), Width = view.Width, Height = view.Height, RowStride = view.RowStride,
+                    PixelFormat = view.PixelFormat, AlphaMode = view.AlphaMode, StorageOrigin = view.Origin, Rgba = pixels });
+            }
             return new GeneratedImage { Width = image.Width, Height = image.Height, RowStride = image.RowStride,
                 PixelFormat = image.PixelFormat, AlphaMode = image.AlphaMode, StorageOrigin = image.Origin,
-                Rgba = rgba, Outputs = outputs.AsReadOnly(), Resources = ReadResources(result, error), Statistics = new Statistics {
+                Rgba = rgba, Outputs = outputs.AsReadOnly(), Resources = ReadResources(result, error), Images = images.AsReadOnly(), Statistics = new Statistics {
                     FuelBudget = stats.FuelBudget, FuelRemaining = stats.FuelRemaining, FuelUsed = stats.FuelUsed,
                     ImageByteCount = stats.ImageByteCount, OutputElementCount = stats.OutputElementCount,
                     WorkBudget = work.Budget, WorkRemaining = work.Remaining, WorkUsed = work.Used } };
@@ -289,6 +393,9 @@ namespace InfiniteProps
         [StructLayout(LayoutKind.Sequential)] internal struct Image { internal uint Size, Flags, Width, Height; internal ulong ByteCount, RowStride; internal uint PixelFormat, AlphaMode, Origin; internal IntPtr Pixels; }
         [StructLayout(LayoutKind.Sequential)] internal struct Stats { internal uint Size, Flags; internal ulong FuelBudget, FuelRemaining, FuelUsed, ImageByteCount, OutputElementCount; }
         [StructLayout(LayoutKind.Sequential)] internal struct OutputView { internal uint Size, Flags, Index, Owner, Kind, IsList, Count, Stride; internal Utf8View Name; internal IntPtr Values; }
+        [StructLayout(LayoutKind.Sequential)] internal struct AuxInfo { internal uint Size, Flags, Index, Kind; internal Utf8View Name; }
+        [StructLayout(LayoutKind.Sequential)] internal struct AuxImage { internal uint Size, Flags, Index, Kind, Source, Width, Height; internal ulong ByteCount, RowStride; internal uint PixelFormat, AlphaMode, Origin; internal Utf8View Name; internal IntPtr Pixels; }
+        [StructLayout(LayoutKind.Sequential)] internal struct DerivedRequest { internal uint Size, Flags; internal float Depth, Rounding, Detail; }
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern uint iprop_library_query_ex(ref Library info, ref Error error);
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern uint iprop_program_load_ex(byte[] bytes, ulong count, out IntPtr program, ref Error error);
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern void iprop_program_free(IntPtr program);
@@ -306,5 +413,12 @@ namespace InfiniteProps
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern uint iprop_result_query_stats(IntPtr result, ref Stats stats, ref Error error);
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern uint iprop_result_output_count(IntPtr result, out uint count, ref Error error);
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern uint iprop_result_output_get(IntPtr result, uint index, ref OutputView output, ref Error error);
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern uint iprop_program_aux_image_count(ProgramHandle program, out uint count, ref Error error);
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern uint iprop_program_aux_image_get(ProgramHandle program, uint index, ref AuxInfo info, ref Error error);
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern uint iprop_result_aux_image_count(IntPtr result, out uint count, ref Error error);
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern uint iprop_result_aux_image_get(IntPtr result, uint index, ref AuxImage image, ref Error error);
+        // One C entry, two managed signatures: a request by reference, or a null pointer.
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern uint iprop_generate_derived_normal(ProgramHandle program, ref Options options, IntPtr parameters, ref Limits limits, ref DerivedRequest derived, out IntPtr result, ref Error error);
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern uint iprop_generate_derived_normal(ProgramHandle program, ref Options options, IntPtr parameters, ref Limits limits, IntPtr derived, out IntPtr result, ref Error error);
     }
 }

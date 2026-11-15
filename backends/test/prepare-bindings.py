@@ -87,18 +87,48 @@ def prepare_execution(tools, output):
     slow.write_bytes(data)
 
 
+def prepare_normal(tools, output):
+    """Normal maps rendered by the CLI: the authored image of binding-normal
+    and two derived images of the plain fixture, as raw RGBA."""
+    suffix = ".exe" if __import__("os").name == "nt" else ""
+    here = Path(__file__).resolve().parent
+    subprocess.run([tools / ("ipc" + suffix), here / "binding-normal.ips", "-o", output / "binding-normal.iprop"], check=True)
+
+    def render(program, name, *arguments):
+        image, normal = output / (name + ".png"), output / (name + "-normal.png")
+        subprocess.run([tools / ("ipgen" + suffix), output / program, *arguments, "-o", image, "--normal-output", normal],
+                       check=True, capture_output=True)
+        (output / (name + ".normal.rgba")).write_bytes(rgba_png(normal))
+        return rgba_png(image)
+
+    (output / "binding-normal.rgba").write_bytes(render("binding-normal.iprop", "binding-normal", "--seed", "5"))
+    # Seed 5 with default inputs draws one white pixel on the tint, so the
+    # derived image has slopes; the request must leave the main image alone.
+    plain = subprocess.run([tools / ("ipgen" + suffix), output / "bindings.iprop", "--seed", "5", "-o", output / "bindings-seed5.png"],
+                           check=True, capture_output=True)
+    for name, extra in (("bindings-derived", []),
+                        ("bindings-derived-custom", ["--normal-depth", "2", "--normal-rounding", "0.5", "--normal-detail", "0.25"])):
+        assert render("bindings.iprop", name, "--seed", "5", "--derive-normal", *extra) == rgba_png(output / "bindings-seed5.png")
+        assert (output / (name + ".normal.rgba")).read_bytes() != bytes([128, 128, 255, 255]) * 32
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("tools", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("--execution-only", action="store_true")
+    parser.add_argument("--normal-only", action="store_true")
     args = parser.parse_args()
     here = Path(__file__).resolve().parent
     args.output.mkdir(parents=True, exist_ok=True)
+    suffix = ".exe" if __import__("os").name == "nt" else ""
+    if args.normal_only:
+        subprocess.run([args.tools / ("ipc" + suffix), here / "bindings.ips", "-o", args.output / "bindings.iprop"], check=True)
+        prepare_normal(args.tools, args.output)
+        return
     prepare_execution(args.tools, args.output)
     if args.execution_only:
         return
-    suffix = ".exe" if __import__("os").name == "nt" else ""
     subprocess.run([args.tools / ("ipc" + suffix), here / "bindings.ips", "-o", args.output / "bindings.iprop"], check=True)
     for name in ("binding-trap", "binding-unicode"):
         subprocess.run([args.tools / ("ipc" + suffix), here / (name + ".ips"), "--debug", "--no-compress", "-o", args.output / (name + ".iprop")], check=True)
@@ -111,6 +141,7 @@ def main():
         "--uniform", "offset=4294967289", "--float-bits", "-o", args.output / "bindings.png"], check=True, capture_output=True)
     (args.output / "bindings.json").write_bytes(result.stdout)
     (args.output / "bindings.rgba").write_bytes(rgba_png(args.output / "bindings.png"))
+    prepare_normal(args.tools, args.output)
     spec = importlib.util.spec_from_file_location("result_fixture", here / "result_fixture.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

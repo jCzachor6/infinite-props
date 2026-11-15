@@ -61,6 +61,8 @@ template<class Surface> Part2dValue rasterPart(Execution& ex, const Surface& sou
     // Masks may be zero-copy alpha views of RGBA, just like mask.from(layer).
     if constexpr (std::is_same_v<Surface,LayerValue>) {
         if(source.buffer->format!=SurfaceBuffer::Format::RGBA8)ex.trap("layer buffer must be RGBA8",ErrorReason::RuntimeViolation);
+        if(source.buffer->encoding==SurfaceBuffer::Encoding::Direction)
+            ex.trap("dynamic parts do not support direction layers",ErrorReason::RuntimeViolation);
     }
     validateSurfaceView(ex,*source.buffer,source.mapping,true);checkCreations(ex,1);
     const auto& raster=source.buffer->raster;
@@ -163,6 +165,8 @@ Part2dValue fillPart(Execution& ex,const Part2dValue& part,Color tint){
 Part2dValue texturePart(Execution& ex,const Part2dValue& part,const LayerValue& image){
     assigned(ex,static_cast<bool>(part.data),"part2d");assigned(ex,static_cast<bool>(image.buffer),"layer");
     if(image.buffer->format!=SurfaceBuffer::Format::RGBA8)ex.trap("layer buffer must be RGBA8",ErrorReason::RuntimeViolation);
+    if(image.buffer->encoding==SurfaceBuffer::Encoding::Direction)
+        ex.trap("dynamic parts do not support direction layers",ErrorReason::RuntimeViolation);
     validateSurfaceView(ex,*image.buffer,image.mapping,false);
     if((!std::holds_alternative<RegionSource>(part.data->source)||part.data->placed)&&
         image.mapping.transform.mapExtent(Vec2{image.buffer->raster.scaleX,image.buffer->raster.scaleY})!=part.data->original.scale)

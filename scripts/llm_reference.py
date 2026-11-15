@@ -28,6 +28,7 @@ def excerpt(root, chapter, text, heading, paragraphs, skip=0, fences=(), optiona
     # Method signatures are already generated in compiler_rules for every
     # selection. Their handbook placeholder is not prose or a second table.
     text = text.replace('<!-- sampler-methods -->', '').replace('<!-- stepper-methods -->', '').replace('<!-- surface-methods -->', '')
+    text = text.replace('<!-- normal-methods -->', '')
     found = headings(text)
     matches = [h for h in found if h['title'] == heading]
     require(len(matches) == 1, 'missing or ambiguous handbook heading: ' + heading)
@@ -279,9 +280,8 @@ def render(root, language, authored, cases, identity, compiler, sections=None, s
 
     lines = ['# .ips LLM reference', '',
         'Generated from the handbook, compiler export and registered examples. Do not edit this artifact.', '',
-        'Write .ips the way the first section shows: draw values with `lower to upper`, shape them with '
-        '`with` and a distribution, draw colors as gradients (`dark to light with d`), name fixed sets in '
-        'palettes, and make every seed alone a different prop. The later sections cover the whole language.', '',
+        'Follow the opening idioms when writing props. API demos teach calls on small canvases, '
+        'not prop style. Later sections cover the full language.', '',
         f"Product {language['product_version']} · source language {version('language_version')} · C API {version('c_api_version')} · ABI {version('abi_version')}",
         f"Commit: `{identity['source_commit'] or 'source archive'}` · {identity['status']} · dirty: {str(identity['working_tree_dirty']).lower()}",
         f"Budget: {budget} UTF-8 bytes (no truncation). Sections: {', '.join(sections) or 'none'}. Symbols: {', '.join(symbols) if 'symbols' in sections and symbols else 'none'}.", '',
@@ -298,8 +298,7 @@ def render(root, language, authored, cases, identity, compiler, sections=None, s
         require(not (library and demo), 'a material library is not an executable API demo')
         example_paths.append(path)
         caption = (', a material library validated with --check; compiled through its importing asset.' if library else
-                   ', an API demo executed with seed 7: it shows the calls of this section on a tiny canvas, '
-                   'not the style of a prop.' if demo else ', executed with seed 7.')
+                   ', an API demo executed with seed 7.' if demo else ', executed with seed 7.')
         return ['[' + path.name + '](' + path.relative_to(root).as_posix() + ')' + caption, '',
                 '```ips', path.read_text(encoding='utf-8').rstrip(), '```', '']
 

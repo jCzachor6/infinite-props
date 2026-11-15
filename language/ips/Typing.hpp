@@ -176,6 +176,11 @@ private:
     ValueType typeRandomRange(const RandomRange& range);
     ValueType typeListMethod(const Expr& expr, const ListMethod& method, std::optional<ValueType> context);
     ValueType typeBlur(const Expr& expr, const SurfaceBlur& blur);
+    ValueType typeNormal(const Expr& expr, const SurfaceNormal& normal);
+    // Named seeds (v1.1): `.fork`, and the operators a seed allows.
+    ValueType typeFork(const SeedFork& fork);
+    ValueType typeSeedOperands(const Binary& binary, ValueType left, ValueType right) const;
+    [[noreturn]] void failSeedOperand(const Unary& unary) const;
     ValueType typeMember(const Expr& expr, const Member& member);
     ValueType typePoints(const PointDistributionLiteral& literal);
     ValueType typeCapture(const SamplerCapture& capture);
@@ -185,6 +190,12 @@ private:
     [[noreturn]] void failUndefinedFunction(const Identifier& name, const Call& call) const;
     [[noreturn]] void failArgument(const Expr& argument, std::size_t index, const std::string& function,
                                    ValueType expected, ValueType got) const;
+    [[noreturn]] void failBuiltinArgument(const Expr& argument, std::size_t index, const std::string& function,
+                                          const BuiltinParameter& parameter, ValueType got) const;
+    static std::string seedHint(ValueType expected, ValueType got);
+    void checkSeedArgument(const Expr& argument, const char* what);
+    [[noreturn]] void failSeedChoice(const Call& call, const std::string& function) const;
+    [[noreturn]] void failInitialReceiver(const Call& call) const;
     bool namesValue(const std::string& name) const;
     static std::string methodNamespace(ValueType type);
 

@@ -47,7 +47,7 @@ using Step = bool (*)(Execution&, Instruction);
 constexpr Step kSteps[] = {stepCore, stepStack, stepControl, stepArithmetic, stepVector, stepSdf,
     stepColor, stepCurves, stepSeeded, stepCanvas, stepOutputs, stepParts, stepCollections,
     stepSamplers, stepSteppers, stepPointDistributions, stepSurfaces, stepMasks, stepBlur,
-    stepResourceExports, stepVoronoi, stepContours, stepRegions, stepDynamicParts};
+    stepResourceExports, stepVoronoi, stepContours, stepRegions, stepDynamicParts, stepNormalMap};
 // The owning group per opcode, found by the first execution and then reused,
 // so every later instruction costs one indexed call. Every thread computes the
 // same immutable pointer; reserved opcodes never get an entry.
@@ -155,6 +155,7 @@ Frame Execution::spareFrame() {
     spareFrames.pop_back();
     frame.functionIndex = 0;
     frame.stream = 0;
+    frame.initialSeed = 0;
     frame.ip = 0;
     frame.shareStream = false;
     frame.isPart = false;
@@ -200,6 +201,7 @@ void Execution::callFunction(u16 functionIndex) {
     next.functionIndex = functionIndex;
     next.stream = frames.back().stream; // spec §8.2: call frames share the stream
     next.shareStream = true;            // ...like a reference: state propagates back
+    next.initialSeed = frames.back().initialSeed; // a helper runs in its caller's call
     frames.push_back(std::move(next));
 }
 
@@ -248,6 +250,7 @@ void Execution::callPart(u16 partIndex, u8 transform) {
     next.functionIndex = static_cast<u16>(part.functionIndex);
     zeroLocals(next, fn);
     next.stream = seed; // spec §8.2: a part frame starts its own stream
+    next.initialSeed = seed; // ...and seed.initial() reads this call's seed
     next.isPart = true;
     ++frames.back().ip; // the caller resumes after the part.draw instruction
     frames.push_back(std::move(next));
@@ -357,6 +360,7 @@ struct VM::Impl {
     bool finished = false;
     bool failed = false;
     bool taken = false;
+    std::optional<DerivedNormalRequest> derivedNormal;
 
     explicit Impl(const LoadedFile& file) : ex(file) {}
 };
@@ -462,6 +466,7 @@ void VM::setup(const LoadedFile& file, const GenerationInputs& inputs,
         root.locals.push_back(zeroValue(type));
     }
     root.stream = inputs.seed;
+    root.initialSeed = inputs.seed;
     impl_->ex.frames.push_back(std::move(root));
 
     // Global output slots, resolved names, and slot owners: root outputs
@@ -493,6 +498,13 @@ void VM::setup(const LoadedFile& file, const GenerationInputs& inputs,
 VM::~VM() = default;
 VM::VM(VM&&) noexcept = default;
 VM& VM::operator=(VM&&) noexcept = default;
+
+void VM::deriveNormal(const DerivedNormalRequest& request) {
+    if (impl_->finished || impl_->failed || impl_->taken) throw std::logic_error("VM has already run");
+    if (!validDerivedNormalRequest(request))
+        throw Trap("derived normal parameters out of range", ErrorReason::InvalidArgument, ErrorStage::Arguments);
+    impl_->derivedNormal = request;
+}
 
 void VM::run() {
     if (impl_->taken) throw std::logic_error("VM result already consumed");
@@ -537,6 +549,8 @@ void VM::run() {
         }
     }
     ex.workBudget->poll();
+    if (!ex.resourceSlots.empty() || impl_->derivedNormal)
+        detail::publishAuxImages(ex, impl_->derivedNormal ? &*impl_->derivedNormal : nullptr);
     impl_->finished = true;
     ex.resourceSlots.clear();
     ex.resources.clear();
@@ -546,6 +560,7 @@ void VM::run() {
             ex.frames.clear(); ex.entryStack.clear(); ex.partCalls.clear(); ex.layerScopes.clear();
             ex.target = ex.rootTarget;
             ex.resourceSlots.clear();
+            ex.auxImages.clear();
             for (auto& slot : ex.outputSlots) slot.parts.reset();
             ex.resources.clear();
         }
@@ -587,6 +602,18 @@ GenerationResult VM::result() const {
         output.parts = slots[i].parts;
         result.outputs.push_back(std::move(output));
     }
+    result.images.reserve(impl_->ex.auxImages.size());
+    for (const auto& published : impl_->ex.auxImages) {
+        work.spend();
+        AuxImage image;
+        image.kind = published.kind;
+        image.source = published.source;
+        image.name = detail::copyStringWork(published.name, work);
+        image.image.width = published.image.width; image.image.height = published.image.height;
+        image.image.scaleX = published.image.scaleX; image.image.scaleY = published.image.scaleY;
+        detail::copyWork(image.image.pixels, published.image.pixels, work);
+        result.images.push_back(std::move(image));
+    }
     return result;
 }
 
@@ -618,6 +645,8 @@ GenerationResult VM::takeResult() {
         output.circles = std::move(slot.circles);
         output.parts = std::move(slot.parts);
     }
+    static_assert(std::is_nothrow_move_assignable_v<std::vector<AuxImage>>);
+    result.images = std::move(ex.auxImages);
     impl_->taken = true;
     return result;
 }

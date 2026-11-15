@@ -31,6 +31,14 @@ function record(iprop, directory) {
                 u32(1); const b = Buffer.alloc(4); b.writeFloatLE(value); u32(b.readUInt32LE()); u32(value);
             }
         }
+        // IPXCRP02: the derived-normal request travels with the inputs. A
+        // request is one flag and three binary32 values, zero when absent.
+        const request = options.deriveNormal == null || options.deriveNormal === false ? null
+            : options.deriveNormal === true ? {} : options.deriveNormal;
+        u32(request ? 1 : 0);
+        for (const name of ["depth", "rounding", "detail"]) {
+            const b = Buffer.alloc(4); b.writeFloatLE((request && request[name]) || 0); u32(b.readUInt32LE());
+        }
         u32(result.width); u32(result.height); blob(result.data);
         u32(result.outputs.length);
         for (const output of result.outputs) {
@@ -42,17 +50,23 @@ function record(iprop, directory) {
             u32(output.kind === 3 ? output.parts.length : output.valueBits.length); u32(output.valueBits.length * keys.length);
             for (const value of output.valueBits) for (const key of keys) u32(value[key]);
         }
+        // IPXCRP02: every auxiliary image, in result order.
+        u32(result.images.length);
+        for (const image of result.images) {
+            u32(image.kind); u32(image.source); blob(Buffer.from(image.name, "utf8"));
+            u32(image.width); u32(image.height); blob(image.data);
+        }
         cases.push(Buffer.concat(words));
         return result;
     };
     return function publish() {
         if (!calls || calls !== cases.length) throw new Error("Incomplete pixel corpus");
         const word = x => { const b = Buffer.alloc(4); b.writeUInt32LE(x); return b; };
-        const data = Buffer.concat([Buffer.from("IPXCRP01"), word(programs.length),
+        const data = Buffer.concat([Buffer.from("IPXCRP02"), word(programs.length),
             ...programs.flatMap(p => [word(p.length), p]), word(cases.length), ...cases]);
         fs.mkdirSync(directory, { recursive: true });
         fs.writeFileSync(path.join(directory, "pixel-corpus.bin"), data);
-        const summary = { format: "IPXCRP01", cases: calls, programs: programs.length,
+        const summary = { format: "IPXCRP02", cases: calls, programs: programs.length,
             bytes: data.length, sha256: crypto.createHash("sha256").update(data).digest("hex") };
         fs.writeFileSync(path.join(directory, "pixel-corpus.json"), JSON.stringify(summary, null, 2) + "\n");
         console.log("shared pixel corpus: " + JSON.stringify(summary));

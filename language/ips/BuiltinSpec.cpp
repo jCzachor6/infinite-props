@@ -1,6 +1,8 @@
 #include "ips/BuiltinSpec.hpp"
 #include "iprop/Samplers.hpp"
 #include "iprop/ListOperations.hpp"
+#include "iprop/VmInternals.hpp"
+#include <array>
 #include <set>
 #include <stdexcept>
 
@@ -9,19 +11,23 @@ namespace {
 std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
     using V = ValueType;
     using L = BuiltinLowering;
+    // Every seed parameter: an i32 or a seed (named seeds v1.1).
+    const BuiltinParameter seed{"seed", V::I32, ParameterRole::Seed};
     std::map<std::string, BuiltinSpec> table = {
         {"unit", {V::F32, L::Opcode, {{{}, Opcode::RngUnit}}}},
-        {"stream.push", {V::Void, L::Opcode, {{{{"seed", V::I32}}, Opcode::StreamPush}}}},
+        {"stream.push", {V::Void, L::Opcode, {{{seed}, Opcode::StreamPush}}}},
         {"stream.pop", {V::Void, L::Opcode, {{{}, Opcode::StreamPop}}}},
+        // The seed the running asset or part call started with.
+        {"seed.initial", {V::Seed, L::Opcode, {{{}, Opcode::SeedInitial}}}},
         {"range", {V::F32, L::Opcode, {{{{"a", V::F32}, {"b", V::F32}}, Opcode::RngRange}}}},
         {"index", {V::I32, L::Opcode, {{{{"n", V::I32}}, Opcode::RngIndex}}}},
         // Two or more choices; `index(n)` draws an index.
         {"pick", {L::Pick, {}}},
         {"chance", {V::I32, L::Chance, {{{{"p", V::F32}}, std::nullopt}}}},
-        {"roll", {V::F32, L::Roll, {{{{"seed", V::I32}, {"a", V::F32}, {"b", V::F32}}, std::nullopt}}}},
+        {"roll", {V::F32, L::Roll, {{{seed, {"a", V::F32}, {"b", V::F32}}, std::nullopt}}}},
         {"choose", {L::Choose, {}}},
         {"hash", {V::I32, L::Opcode, {{{{"x", V::I32}}, Opcode::Hash}}}},
-        {"noise.value", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::Noise}}}},
+        {"noise.value", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, seed}, Opcode::Noise}}}},
         {"regions", {V::Regions2d,L::Opcode,{
             {{{"source",V::Diagram2d}},Opcode::RegionsDiagram},
             {{{"source",V::Diagram2d},{"inset",V::F32},{"min_area",V::F32}},Opcode::RegionsDiagramConfig},
@@ -46,7 +52,7 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
         {"part.mask", {V::Mask,L::Opcode,{{{{"part",V::Part2d}},Opcode::PartMask}}}},
         {"regions.gap", {V::Regions2d,L::Opcode,{
             {{{"regions",V::Regions2d},{"width",V::F32}},Opcode::RegionsGap},
-            {{{"regions",V::Regions2d},{"width",V::F32},{"variation",V::F32},{"seed",V::I32}},Opcode::RegionsGapConfig}}}},
+            {{{"regions",V::Regions2d},{"width",V::F32},{"variation",V::F32},seed},Opcode::RegionsGapConfig}}}},
         {"regions.bevel", {V::Layer,L::Opcode,{
             {{{"regions",V::Regions2d},{"width",V::F32},{"light",V::Vec2}},Opcode::RegionsBevel},
             {{{"regions",V::Regions2d},{"width",V::F32},{"light",V::Vec2},{"highlight",V::Color},{"shadow",V::Color},{"strength",V::F32}},Opcode::RegionsBevelConfig}}}},
@@ -66,13 +72,13 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
             {{{"source",V::Mask},{"threshold",V::F32},{"simplify",V::F32},
               {"min_area",V::F32},{"connectivity",V::I32}},Opcode::ContourConfig}}}},
         {"voronoi", {V::Diagram2d, L::Opcode, {
-            {{{"origin",V::Vec2},{"size",V::Vec2},{"count",V::I32},{"seed",V::I32}},Opcode::Voronoi},
-            {{{"origin",V::Vec2},{"size",V::Vec2},{"count",V::I32},{"seed",V::I32},
+            {{{"origin",V::Vec2},{"size",V::Vec2},{"count",V::I32},seed},Opcode::Voronoi},
+            {{{"origin",V::Vec2},{"size",V::Vec2},{"count",V::I32},seed,
               {"method",V::I32},{"jitter",V::F32},{"relax",V::I32}},Opcode::VoronoiConfig},
-            {{{"origin",V::Vec2},{"size",V::Vec2},{"count",V::I32},{"seed",V::I32},
+            {{{"origin",V::Vec2},{"size",V::Vec2},{"count",V::I32},seed,
               {"method",V::I32},{"jitter",V::F32},{"relax",V::I32},
               {"anisotropy",V::F32},{"direction",V::Vec2}},Opcode::VoronoiMetric},
-            {{{"origin",V::Vec2},{"size",V::Vec2},{"count",V::I32},{"seed",V::I32},
+            {{{"origin",V::Vec2},{"size",V::Vec2},{"count",V::I32},seed,
               {"method",V::I32},{"jitter",V::F32},{"relax",V::I32},
               {"anisotropy",V::F32},{"direction",V::Vec2},{"row_bias",V::F32},
               {"row_jitter",V::F32},{"row_offset",V::F32}},Opcode::VoronoiRows},
@@ -83,7 +89,7 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
         {"diagram.site", {V::Vec2,L::Opcode,{{{{"diagram",V::Diagram2d},{"index",V::I32}},Opcode::DiagramSite}}}},
         {"diagram.neighbors", {V::list(V::I32),L::Opcode,
             {{{{"diagram",V::Diagram2d},{"index",V::I32}},Opcode::DiagramNeighbors}}}},
-        {"noise.fault", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::Fault}}}},
+        {"noise.fault", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, seed}, Opcode::Fault}}}},
         {"smooth", {V::F32, L::Opcode, {{{{"t", V::F32}}, Opcode::Smooth}}}},
         {"sqrt", {V::F32, L::Opcode, {{{{"x", V::F32}}, Opcode::F32Sqrt}}}},
         {"sin", {V::F32, L::Opcode, {{{{"x", V::F32}}, Opcode::F32Sin}}}},
@@ -110,22 +116,24 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
         {"dist.fill", {V::F32, L::Opcode, {{{{"distance", V::F32}, {"width", V::F32}}, Opcode::Fill}}}},
         {"gain", {V::F32, L::Opcode, {{{{"t", V::F32}, {"k", V::F32}}, Opcode::Gain}}}},
         {"quintic", {V::F32, L::Opcode, {{{{"t", V::F32}}, Opcode::Quintic}}}},
-        {"noise.grad", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::NoiseGrad}}}},
-        {"noise.fbm", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"octaves", V::I32}, {"seed", V::I32}}, Opcode::NoiseFbm}}}},
-        {"noise.cell", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::NoiseCell}}}},
-        {"noise.cell2", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::NoiseCell2}}}},
-        {"noise.cell_id", {V::I32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::NoiseCellId}}}},
+        {"noise.grad", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, seed}, Opcode::NoiseGrad}}}},
+        {"noise.fbm", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"octaves", V::I32}, seed}, Opcode::NoiseFbm}}}},
+        {"noise.cell", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, seed}, Opcode::NoiseCell}}}},
+        {"noise.cell2", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, seed}, Opcode::NoiseCell2}}}},
+        {"noise.cell_id", {V::I32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, seed}, Opcode::NoiseCellId}}}},
         {"noise.mask", {V::Mask, L::Opcode, {
             {{{"origin", V::Vec2}, {"size", V::Vec2}, {"mode", V::I32}, {"frequency", V::Vec2},
-              {"threshold", V::F32}, {"seed", V::I32}}, Opcode::NoiseMask},
+              {"threshold", V::F32}, seed}, Opcode::NoiseMask},
             {{{"origin", V::Vec2}, {"size", V::Vec2}, {"mode", V::I32}, {"frequency", V::Vec2},
-              {"threshold", V::F32}, {"seed", V::I32}, {"octaves", V::I32}, {"softness", V::F32},
+              {"threshold", V::F32}, seed, {"octaves", V::I32}, {"softness", V::F32},
               {"comparison", V::I32}, {"warp_amount", V::F32}}, Opcode::NoiseMaskConfig}}}},
-        {"noise.warp_vec", {V::Vec2, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"amount", V::F32}, {"seed", V::I32}}, Opcode::NoiseWarpVec}}}},
-        {"noise.warp", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"amount", V::F32}, {"seed", V::I32}}, Opcode::Warp}}}},
-        {"cell.jitter", {V::Vec2, L::Opcode, {{{{"cx", V::I32}, {"cy", V::I32}, {"seed", V::I32}}, Opcode::CellJitter}}}},
-        {"noise.ridge", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"octaves", V::I32}, {"seed", V::I32}}, Opcode::NoiseRidge}}}},
+        {"noise.warp_vec", {V::Vec2, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"amount", V::F32}, seed}, Opcode::NoiseWarpVec}}}},
+        {"noise.warp", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"amount", V::F32}, seed}, Opcode::Warp}}}},
+        {"cell.jitter", {V::Vec2, L::Opcode, {{{{"cx", V::I32}, {"cy", V::I32}, seed}, Opcode::CellJitter}}}},
+        {"noise.ridge", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"octaves", V::I32}, seed}, Opcode::NoiseRidge}}}},
         {"color.set_a", {V::Color, L::Opcode, {{{{"color", V::Color}, {"alpha", V::I32}}, Opcode::ColorSetA}}}},
+        // A direction as a colour (normal maps): lowered to existing instructions.
+        {"color.normal", {V::Color, L::NormalColor, {{{{"x", V::F32}, {"y", V::F32}, {"z", V::F32}}, std::nullopt}}}},
         {"color.mul", {V::Color, L::Opcode, {{{{"a", V::Color}, {"b", V::Color}}, Opcode::ColorMul}}}},
         {"color.scale", {V::Color, L::Opcode, {{{{"color", V::Color}, {"scale", V::F32}}, Opcode::ColorScale}}}},
         {"color.hsv", {V::Color, L::Opcode, {{{{"color", V::Color}, {"hue", V::F32}, {"saturation", V::F32}, {"value", V::F32}}, Opcode::ColorHsv}}}},
@@ -141,8 +149,9 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
         {"clamp", {L::Opcode, {
             {{{"x", V::F32}, {"min", V::F32}, {"max", V::F32}}, Opcode::Clamp, V::F32},
             {{{"x", V::I32}, {"min", V::I32}, {"max", V::I32}}, Opcode::I32Clamp, V::I32}}}},
+        // int(seed) reads a seed's 32 bits; it emits nothing.
         {"int", {V::I32, L::Opcode, {
-            {{{"x", V::I32}}, std::nullopt}, {{{"x", V::F32}}, Opcode::F32ToI32}}}},
+            {{{"x", V::I32}}, std::nullopt}, {{{"x", V::F32}}, Opcode::F32ToI32}, {{{"x", V::Seed}}, std::nullopt}}}},
         {"float", {V::F32, L::Opcode, {
             {{{"x", V::F32}}, std::nullopt}, {{{"x", V::I32}}, Opcode::I32ToF32}}}},
         {"rgb", {V::Color, L::ColorConstructor, {{{{"r", V::I32}, {"g", V::I32}, {"b", V::I32}}, std::nullopt}}}},
@@ -168,7 +177,7 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
             {{{"a", V::Vec2}, {"b", V::Vec2}, {"c", V::Vec2}, {"thickness", V::F32}, {"color", V::Color}}, Opcode::Curve},
             {{{"a", V::Vec2}, {"b", V::Vec2}, {"c", V::Vec2}, {"d", V::Vec2}, {"thickness", V::F32}, {"color", V::Color}}, Opcode::CurveCubic}}}},
         {"oval", {V::Void, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"rx", V::F32}, {"ry", V::F32}, {"color", V::Color}}, Opcode::Oval}}}},
-        {"weather", {V::Void, L::Opcode, {{{{"seed", V::I32}, {"amount", V::I32}}, Opcode::Weather}}}},
+        {"weather", {V::Void, L::Opcode, {{{seed, {"amount", V::I32}}, Opcode::Weather}}}},
         {"poly", {V::Void, L::Polygon, {
             {{{"points", V::list(V::Vec2)}, {"color", V::Color}}, Opcode::PolyList}}}},
         {"surface.paint", {V::Void, L::SurfacePaint, {
@@ -207,17 +216,17 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
             adaptation == BuiltinAdaptation::VectorLerp ? V::Vec2 : scalar.result, adaptation});
     };
     for (const auto* name : {"noise.value", "noise.fault", "noise.grad", "noise.cell", "noise.cell2", "noise.cell_id"})
-        add(name, {{"p", V::Vec2}, {"seed", V::I32}});
+        add(name, {{"p", V::Vec2}, seed});
     for (const auto* name : {"noise.fbm", "noise.ridge"})
-        add(name, {{"p", V::Vec2}, {"octaves", V::I32}, {"seed", V::I32}});
-    add("noise.warp", {{"p", V::Vec2}, {"amount", V::F32}, {"seed", V::I32}});
-    add("noise.warp_vec", {{"p", V::Vec2}, {"amount", V::F32}, {"seed", V::I32}});
+        add(name, {{"p", V::Vec2}, {"octaves", V::I32}, seed});
+    add("noise.warp", {{"p", V::Vec2}, {"amount", V::F32}, seed});
+    add("noise.warp_vec", {{"p", V::Vec2}, {"amount", V::F32}, seed});
     // Append both new fBm overloads after the frozen scalar/vec2 pair.
     auto& fbm = table.at("noise.fbm").overloads;
     fbm.push_back({{{"x", V::F32}, {"y", V::F32}, {"octaves", V::I32},
-        {"lacunarity", V::F32}, {"gain", V::F32}, {"seed", V::I32}}, Opcode::NoiseFbmConfig, V::F32});
+        {"lacunarity", V::F32}, {"gain", V::F32}, seed}, Opcode::NoiseFbmConfig, V::F32});
     fbm.push_back({{{"p", V::Vec2}, {"octaves", V::I32}, {"lacunarity", V::F32},
-        {"gain", V::F32}, {"seed", V::I32}}, Opcode::NoiseFbmConfig, V::F32, BuiltinAdaptation::Coordinates});
+        {"gain", V::F32}, seed}, Opcode::NoiseFbmConfig, V::F32, BuiltinAdaptation::Coordinates});
     add("rect", {{"position", V::Vec2}, {"size", V::Vec2}, {"color", V::Color}});
     add("rect", {{"position", V::Vec2}, {"w", V::F32}, {"h", V::F32}, {"color", V::Color}});
     add("rect", {{"x", V::F32}, {"y", V::F32}, {"size", V::Vec2}, {"color", V::Color}});
@@ -226,7 +235,7 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
     add("oval", {{"center", V::Vec2}, {"rx", V::F32}, {"ry", V::F32}, {"color", V::Color}});
     add("oval", {{"x", V::F32}, {"y", V::F32}, {"radii", V::Vec2}, {"color", V::Color}});
     add("pixel", {{"p", V::Vec2}, {"color", V::Color}}, BuiltinAdaptation::IntegerCoordinates);
-    add("cell.jitter", {{"cell", V::Vec2}, {"seed", V::I32}}, BuiltinAdaptation::IntegerCoordinates);
+    add("cell.jitter", {{"cell", V::Vec2}, seed}, BuiltinAdaptation::IntegerCoordinates);
     add("dither", {{"t", V::F32}, {"p", V::Vec2}}, BuiltinAdaptation::IntegerCoordinates);
     add("mask.offset", {{"source", V::Mask}, {"offset", V::Vec2}}, BuiltinAdaptation::IntegerCoordinates);
     add("atan2", {{"v", V::Vec2}}, BuiltinAdaptation::VectorAngle);
@@ -279,7 +288,14 @@ const std::map<std::string, BuiltinSpec>& surfaceMethodSpecs() {
     static const std::map<std::string, BuiltinSpec> methods{
         {"blur", {BuiltinLowering::Opcode, {
             {{{"receiver", V::Layer}, {"sigma", V::F32}}, Opcode::LayerBlur, V::Layer},
-            {{{"receiver", V::Mask}, {"sigma", V::F32}}, Opcode::MaskBlur, V::Mask}}}}
+            {{{"receiver", V::Mask}, {"sigma", V::F32}}, Opcode::MaskBlur, V::Mask}}}},
+        // One instruction for both receivers; its aux byte tells them apart.
+        // The short form passes smoothing zero.
+        {"normal", {BuiltinLowering::Opcode, {
+            {{{"receiver", V::Layer}, {"depth", V::F32}}, Opcode::SurfaceNormal, V::Layer},
+            {{{"receiver", V::Layer}, {"depth", V::F32}, {"smoothing", V::F32}}, Opcode::SurfaceNormal, V::Layer},
+            {{{"receiver", V::Mask}, {"depth", V::F32}}, Opcode::SurfaceNormal, V::Layer},
+            {{{"receiver", V::Mask}, {"depth", V::F32}, {"smoothing", V::F32}}, Opcode::SurfaceNormal, V::Layer}}}}
     };
     return methods;
 }
@@ -323,6 +339,40 @@ const BuiltinSpec& stepperPickSpec() {
     return spec;
 }
 
+u32 forkLabelSalt(std::string_view label) {
+    const std::array<Value, 1> key{Value(static_cast<i32>(kForkTextTag ^ fnv1a32(label)))};
+    const auto salt = detail::evaluateConstantOperation(Opcode::Hash, key);
+    if (!salt) throw std::logic_error("hash is not a constant operation");
+    return static_cast<u32>(std::get<i32>(*salt));
+}
+
+NormalColorValue normalColorValue(f32 x, f32 y, f32 z) {
+    const auto apply = [](Opcode opcode, std::initializer_list<Value> arguments) {
+        const auto result = detail::evaluateConstantOperation(opcode, std::span<const Value>(arguments.begin(), arguments.size()));
+        if (!result) throw std::logic_error("color.normal uses an operation that is not constant");
+        return *result;
+    };
+    const auto number = [&](Opcode opcode, std::initializer_list<Value> arguments) { return std::get<f32>(apply(opcode, arguments)); };
+    const f32 d = number(Opcode::F32Add, {number(Opcode::F32Add, {number(Opcode::F32Mul, {x, x}), number(Opcode::F32Mul, {y, y})}),
+                                          number(Opcode::F32Mul, {z, z})});
+    // Positive and finite: d - d is zero for every finite d and NaN otherwise.
+    if (!(d > 0.f) || !(number(Opcode::F32Sub, {d, d}) == 0.f)) return {Color{128, 128, 255, 255}, true};
+    const f32 length = number(Opcode::F32Sqrt, {d});
+    const auto byte = [&](f32 axis, bool up) {
+        f32 n = number(Opcode::F32Div, {axis, length});
+        if (up) n = number(Opcode::F32Neg, {n});
+        const f32 scaled = number(Opcode::F32Add, {128.f, number(Opcode::F32Mul, {127.5f, number(Opcode::F32Abs, {n})})});
+        const i32 stored = std::get<i32>(apply(Opcode::F32ToI32, {number(Opcode::F32Floor, {number(Opcode::F32Min, {scaled, 255.f})})}));
+        return static_cast<u8>(n < 0.f ? 255 - stored : stored);
+    };
+    return {Color{byte(x, false), byte(y, true), byte(z, false), 255}, false};
+}
+
+bool parameterAccepts(const BuiltinParameter& parameter, ValueType argument) {
+    return argFits(parameter.type, argument) ||
+        (parameter.role == ParameterRole::Seed && argument == ValueType::Seed);
+}
+
 const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::size_t arity) {
     for (const auto& overload : spec.overloads) {
         if (overload.params.size() == arity) return &overload;
@@ -339,7 +389,7 @@ const BuiltinOverload* builtinOverload(const BuiltinSpec& spec,
         std::size_t widenings = 0;
         bool fits = true;
         for (std::size_t i = 0; i < arguments.size(); ++i) {
-            if (!argFits(candidate.params[i].type, arguments[i])) { fits = false; break; }
+            if (!parameterAccepts(candidate.params[i], arguments[i])) { fits = false; break; }
             if (candidate.params[i].type != arguments[i]) ++widenings;
         }
         if (fits && widenings < bestWidenings) {
@@ -355,7 +405,8 @@ bool variadicPolygon(const BuiltinSpec& spec, std::size_t arity) {
 }
 
 std::optional<ValueType> selectionType(std::span<const ValueType> arguments) {
-    if (arguments.empty() || !isStorable(arguments[0])) return std::nullopt;
+    // Seeds are not choices: choose an index and fork with it instead.
+    if (arguments.empty() || !isStorable(arguments[0]) || arguments[0] == ValueType::Seed) return std::nullopt;
     auto result = arguments[0];
     for (const auto type : arguments) {
         if (isNumeric(result) && isNumeric(type)) result = promote(result, type);
@@ -399,6 +450,7 @@ OperationEffects builtinEffects(const BuiltinSpec& spec, const BuiltinOverload* 
     case BuiltinLowering::ListLength: return findOpcode(Opcode::ListLen)->effects;
     case BuiltinLowering::SurfacePaint: return findOpcode(Opcode::SurfacePaint)->effects;
     case BuiltinLowering::Round:
+    case BuiltinLowering::NormalColor:
     case BuiltinLowering::ColorConstructor: return {};
     case BuiltinLowering::Beta: return findOpcode(Opcode::DistributionBeta)->effects;
     }

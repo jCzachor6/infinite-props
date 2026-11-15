@@ -7,6 +7,11 @@ asset Clump {
   input f32 r = 12.0
   input f32 lift = 0.0
   input color leaf = #4a8a3a
+  // For the tree's normal map: facing=1 draws the direction each
+  // leaf faces instead of its colour, the clump leaning by (leanX, leanY).
+  input i32 facing = 0
+  input f32 leanX = 0.0
+  input f32 leanY = 0.0
 
   draw {
     // A part takes colours, not materials: the leaf material is made
@@ -16,14 +21,14 @@ asset Clump {
     tones = stepper(m.shadow to m.light).pick(5)
     layer lobes(alpha=surface.source_over) {
       body = r * 0.72
-      oval(32.0, 32.0, body, body, tone(tones, 0.3 + lift))
+      oval(32.0, 32.0, body, body, look(tones, 0.3 + lift, facing, leanX, leanY))
       for i in 0..9 {
         a = float(i) * 0.7 + (-0.3 to 0.3)
         x = 32.0 + cos(a) * r * 0.66
         y = 32.0 + sin(a) * r * 0.66
         lr = r * (0.28 to 0.4)
         lit = lift + 0.35 - (x + y - 64.0) / r * 0.1
-        oval(x, y, lr, lr, tone(tones, lit))
+        oval(x, y, lr, lr, look(tones, lit, facing, leanX + cos(a) * 0.7, leanY + sin(a) * 0.7))
       }
       for i in 0..int(r * r * 0.2) {
         a = 0.0 to 6.2832
@@ -33,15 +38,22 @@ asset Clump {
         lit = lift + 0.4 - (x + y - 64.0) / r * 0.4
         s = 0.8 to 1.8
         j = -0.25 to 0.25
-        oval(x, y, s, s * 0.8, tone(tones, lit + j))
+        oval(x, y, s, s * 0.8, look(tones, lit + j, facing,
+                                    leanX + (cos(a) * d / r + j) * 0.7, leanY + (sin(a) * d / r - j) * 0.7))
       }
     }
-    surface.paint(mask.offset(mask.from(lobes), 1, 2), m.rim)
+    if (facing == 0) {
+      surface.paint(mask.offset(mask.from(lobes), 1, 2), m.rim)
+    }
     surface.paint(lobes)
   }
 
-  // The nearest of the five tones.
-  tone(tones: list<color>, t: f32) -> color {
+  // A leaf's colour, the nearest of the five tones; or, for the normal
+  // map, the direction (x, y) it leans in.
+  look(tones: list<color>, t: f32, facing: i32, x: f32, y: f32) -> color {
+    if (facing == 1) {
+      return color.normal(x, y, 1.0)
+    }
     return tones[int(clamp(t, 0.0, 1.0) * 4.0 + 0.5)]
   }
 }

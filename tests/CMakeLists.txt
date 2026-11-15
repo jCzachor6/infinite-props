@@ -26,6 +26,7 @@ add_executable(iprop_tests
     language/reserved_keywords_test.cpp
     language/named_arguments_test.cpp
     language/direct_seed_test.cpp
+    language/named_seeds_test.cpp
     language/diagnostic_hints_test.cpp
     language/source_printer_test.cpp
     language/recipe_gallery_test.cpp
@@ -64,6 +65,7 @@ add_executable(iprop_tests
     compiler/masks_test.cpp
     compiler/noise_masks_test.cpp
     compiler/blur_test.cpp
+    compiler/relief_test.cpp
     compiler/resource_exports_test.cpp
     compiler/gradients_test.cpp
     compiler/part_transforms_test.cpp
@@ -117,6 +119,7 @@ add_executable(iprop_tests
     contours_test.cpp
     regions_test.cpp
     gap_bevel_test.cpp
+    normal_map_test.cpp
     tools_test.cpp
     defense_test.cpp
     utf8_test.cpp
@@ -153,6 +156,11 @@ add_executable(vm_result_allocation_probe vm_result_allocation_probe.cpp)
 target_link_libraries(vm_result_allocation_probe PRIVATE iprop_compiler)
 iprop_warnings(vm_result_allocation_probe)
 add_test(NAME vm_result_allocations COMMAND vm_result_allocation_probe)
+
+add_executable(normal_map_allocation_probe normal_map_allocation_probe.cpp)
+target_link_libraries(normal_map_allocation_probe PRIVATE iprop_compiler)
+iprop_warnings(normal_map_allocation_probe)
+add_test(NAME normal_map_allocation_failures COMMAND normal_map_allocation_probe)
 
 add_executable(blur_allocation_probe compiler/blur_allocation_probe.cpp)
 target_link_libraries(blur_allocation_probe PRIVATE iprop_runtime)
@@ -255,6 +263,11 @@ if(IPROP_NODE_EXECUTABLE)
         "$<TARGET_FILE:geometry_representation_probe>")
     add_test(NAME noise_mask_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/backends/html5/test/noise-mask-conformance.js" "$<TARGET_FILE_DIR:ipc>")
+    add_test(NAME named_seeds_v11 COMMAND ${IPROP_NODE_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/backends/html5/test/named-seeds-conformance.js" "$<TARGET_FILE_DIR:ipc>")
+    add_test(NAME normal_maps_v11 COMMAND ${IPROP_NODE_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/backends/html5/test/normal-map-conformance.js" "$<TARGET_FILE_DIR:ipc>"
+        "$<TARGET_FILE:execution_limits_probe>")
     add_test(NAME noise_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/backends/html5/test/noise-v09-conformance.js" "$<TARGET_FILE_DIR:ipc>")
     add_test(NAME compatibility_v08 COMMAND ${IPROP_NODE_EXECUTABLE}

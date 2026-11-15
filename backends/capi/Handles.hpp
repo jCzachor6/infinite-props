@@ -35,6 +35,8 @@ struct iprop_result {
         std::shared_ptr<const iprop::PartOutputData> data;
     };
     iprop::Canvas image;
+    // Images published beside the main one (API 0.7), in publication order.
+    std::vector<iprop::AuxImage> images;
     std::vector<std::string> names;
     std::vector<float> packed;
     std::vector<iprop_output> outputs;

@@ -6,6 +6,7 @@
 #include "iprop/Binary.hpp"
 #include "iprop/Constants.hpp"
 #include "iprop/OpcodeSpec.hpp"
+#include "iprop/Validator.hpp"
 #include "ips/Fold.hpp"
 
 namespace iprop::compiler {
@@ -237,7 +238,7 @@ std::vector<u8> Assembler::assemble() {
             exports.writeU32(output.owner);
             exports.writeU32(plan_.pools.indexOf(output.name));
             exports.writeU16(plan_.pools.typeIndexOf(output.type));
-            exports.writeU16(0);
+            exports.writeU16(output.normal ? kResourceExportNormal : u16{0});
         }
         exports.writeU32(static_cast<u32>(plan_.functions.size()));
         for (const auto& function : plan_.functions)

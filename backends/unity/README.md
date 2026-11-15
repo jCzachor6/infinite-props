@@ -6,7 +6,7 @@ Texture2D/Sprite helpers. Unity 2022.3+; native targets are macOS arm64/x86_64,
 Windows/Linux x86_64, Android and iOS arm64. WebGL uses the separate
 [HTML5/WASM backend](../html5/README.md).
 
-The native wrapper requires C API 0.6 / ABI 0.5 and negotiates typed part
+The native wrapper requires C API 0.7 / ABI 0.5 and negotiates typed part
 resources before loading. `OutputKind.Part` slots expose ordered `Parts` and
 empty float `Values`. `GeneratedImage.Resources` owns one copy per result-local
 ID; `image.Resource(id)` returns that shared object, or null for an invalid ID.
@@ -58,6 +58,33 @@ using (var program = importedAsset.Load())
     var collider = image.FindOutput("collider", owner: 0);
 }
 ```
+
+### Normal maps
+
+`image.Normal` is the [normal map](../../docs/native-bindings.md#normal-maps-and-other-auxiliary-images)
+published with the image, or null; `image.Images` lists every auxiliary image
+and `program.Images` what the program declares. Pass
+`deriveNormal: new DerivedNormal()` to derive one for a prop that publishes
+none.
+
+```csharp
+var image = program.Generate(seed: 7, deriveNormal: new DerivedNormal());
+spriteRenderer.sprite = image.ToSprite(program.Metadata);
+if (image.Normal != null)
+{
+    Texture2D normalMap = image.Normal.ToTexture2D();   // linear, caller-owned
+    AuxiliaryImage.Bind(spriteRenderer, normalMap);     // _NormalMap for 2D lights
+}
+```
+
+`ToTexture2D()` creates a linear RGBA32 texture and flips rows like the main
+image; green still points up on the displayed sprite, which is Unity's
+convention, and the opaque alpha lets `UnpackNormal` read the map as is.
+`Bind` sets it as `_NormalMap` through the renderer's property block, the name
+the 2D lit sprite shaders of the Universal Render Pipeline sample. This works
+on every supported editor version; on Unity 6 the texture can instead be passed
+to `Sprite.Create` as a secondary texture. Destroy the texture when the sprite
+no longer needs it.
 
 `InputValue.Float`, `.UInt` and `.Int` preserve explicit binary input types.
 Generate on worker threads if needed; create Unity objects on the main thread.

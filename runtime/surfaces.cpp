@@ -60,11 +60,12 @@ LayerValue Execution::popLayer() {
     return image;
 }
 
-// The caller reserves the whole source visit count before entering this loop.
-// Shared by part returns and surface.paint, including transparent-pixel skips,
-// placement rounding and D4's distinction between pixels and edge coordinates.
-void paintSurface(Execution& ex, const LayerValue& image, CompositionMode mode) {
-    mode = resolveComposition(mode, ex.target.mode);
+namespace {
+// `stored` maps a source pixel to the pixel that is painted: the identity for
+// a colour buffer, the view's re-orientation for a direction buffer. It is
+// fixed for the whole paint, so the colour instantiation is the loop it was.
+template<class Stored>
+void paintRows(Execution& ex, const LayerValue& image, CompositionMode mode, Stored stored) {
     const auto& source = image.buffer->raster;
     const auto& destination = ex.canvas();
     const RasterPoint extent{static_cast<i32>(source.width), static_cast<i32>(source.height)};
@@ -76,7 +77,7 @@ void paintSurface(Execution& ex, const LayerValue& image, CompositionMode mode) 
             Canvas& target = ex.canvas();
             for (u32 sx = 0; sx < source.width; ++sx) {
                 polls.step();
-                const Color pixel = source.at(sx, sy);
+                const Color pixel = stored(source.at(sx, sy));
                 if (pixel.a == 0 && mode == CompositionMode::Legacy) continue;
                 const auto mapped = image.mapping.transform.mapPixel(
                     {static_cast<i32>(sx), static_cast<i32>(sy)}, extent);
@@ -91,7 +92,7 @@ void paintSurface(Execution& ex, const LayerValue& image, CompositionMode mode) 
         ex.work();
         for (u32 sx = 0; sx < source.width; ++sx) {
             ex.work();
-            const auto& pixel = source.at(sx, sy);
+            const Color pixel = stored(source.at(sx, sy));
             if (pixel.a == 0 && mode == CompositionMode::Legacy) continue;
             const auto mapped = image.mapping.transform.mapPixel(
                 {static_cast<i32>(sx), static_cast<i32>(sy)}, extent);
@@ -102,9 +103,27 @@ void paintSurface(Execution& ex, const LayerValue& image, CompositionMode mode) 
         }
     }
 }
+} // namespace
+
+// The caller reserves the whole source visit count before entering this loop.
+// Shared by part returns and surface.paint, including transparent-pixel skips,
+// placement rounding and D4's distinction between pixels and edge coordinates.
+// A direction buffer seen through a D4 view has its vectors re-oriented too
+// (spec normal maps v1.1); visits, fuel and work are those of any paint.
+void paintSurface(Execution& ex, const LayerValue& image, CompositionMode mode) {
+    mode = resolveComposition(mode, ex.target.mode);
+    const u8 kind = image.buffer->encoding == SurfaceBuffer::Encoding::Direction
+        ? image.mapping.transform.kind() : u8{0};
+    if (kind == 0) paintRows(ex, image, mode, [](const Color& pixel) { return pixel; });
+    else paintRows(ex, image, mode, [kind](const Color& pixel) { return reorientDirection(pixel, kind); });
+}
 
 void Execution::beginLayer(u16 local, u8 mode) {
-    if (!validCompositionMode(mode)) trap("unknown layer alpha mode", ErrorReason::InvalidInstruction);
+    if (!validLayerMode(mode)) trap("unknown layer alpha mode", ErrorReason::InvalidInstruction);
+    // A direction capture composes source-over, whatever the active mode.
+    const bool direction = mode == kDirectionLayerMode;
+    const auto composition = direction ? CompositionMode::SourceOver
+        : resolveComposition(static_cast<CompositionMode>(mode), target.mode);
     if (local < fn().params.size() || local >= frame().locals.size() ||
         valueType(frame().locals[local]) != ValueType::Layer)
         trap("layer destination must be a layer local", ErrorReason::StackType);
@@ -117,7 +136,8 @@ void Execution::beginLayer(u16 local, u8 mode) {
     // Like a part canvas, a capture starts without the parent's clips: they
     // apply exactly once, when the snapshot is painted.
     auto next = RenderTarget::create(resources.makeSurface(surfaceBytes(width, height)), width, height, scale,
-        resolveComposition(static_cast<CompositionMode>(mode), target.mode), workBudget.get());
+        composition, workBudget.get());
+    if (direction) next.buffer->encoding = SurfaceBuffer::Encoding::Direction;
     LayerScope scope{frames.size(), frame().labels.size() + 1, local, std::move(target)};
     layerScopes.push_back(std::move(scope));
     target = std::move(next);

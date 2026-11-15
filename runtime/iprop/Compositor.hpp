@@ -32,6 +32,12 @@ constexpr bool validCompositionMode(u16 mode) {
     for (const auto& spec : kCompositionSpecs) if (mode == static_cast<u16>(spec.mode)) return true;
     return false;
 }
+// layer.begin alone also accepts a direction capture: source-over composition
+// into a buffer whose RGB bytes are unit vectors (spec normal maps v1.1).
+inline constexpr u8 kDirectionLayerMode = 3;
+constexpr bool validLayerMode(u16 mode) {
+    return validCompositionMode(mode) || mode == kDirectionLayerMode;
+}
 constexpr CompositionMode resolveComposition(CompositionMode requested, CompositionMode active) {
     return requested == CompositionMode::Inherited ? active : requested;
 }

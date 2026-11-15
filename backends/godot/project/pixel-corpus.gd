@@ -32,7 +32,7 @@ func _init() -> void:
 	demand(manifest.sha256 == hash_text, "Corpus SHA-256 mismatch")
 	reader.data_array = data
 	reader.big_endian = false
-	demand(reader.get_data(8)[1].get_string_from_ascii() == "IPXCRP01", "Corpus version")
+	demand(reader.get_data(8)[1].get_string_from_ascii() == "IPXCRP02", "Corpus version")
 	var programs: Array[String] = []
 	var directory := "user://pixel-corpus/" + hash_text
 	DirAccess.make_dir_recursive_absolute(directory)
@@ -42,6 +42,7 @@ func _init() -> void:
 		programs.append(file)
 	var count := word()
 	demand(count > 0 and count == int(manifest.cases), "Incomplete corpus")
+	var auxiliary_images := 0
 	for index in range(count):
 		var asset := IpropAsset.new()
 		demand(asset.load_file(programs[word()]) == OK, "Program load")
@@ -67,6 +68,12 @@ func _init() -> void:
 				packed.encode_u32(0, bits)
 				value = packed.decode_float(0) if is_float else integer
 			demand(asset.set_input(name, value) == OK, "Input override")
+		# The derived-normal request: one flag and three binary32 values.
+		asset.derive_normal = word() != 0
+		var request: PackedByteArray = reader.get_data(12)[1]
+		asset.normal_depth = request.decode_float(0)
+		asset.normal_rounding = request.decode_float(4)
+		asset.normal_detail = request.decode_float(8)
 		var expected_width := word()
 		var expected_height := word()
 		var expected := blob()
@@ -94,9 +101,26 @@ func _init() -> void:
 		var texture := ImageTexture.create_from_image(image)
 		var readback := texture.get_image()
 		demand(readback != null and readback.get_data() == expected, label + ": GPU texture readback")
+		# Auxiliary images are part of the gate: every byte, name and tag.
+		var images: Array = asset.images
+		demand(images.size() == word(), label + ": auxiliary image count")
+		for auxiliary in images:
+			var kind := word()
+			var source := word()
+			var auxiliary_name := blob()
+			var auxiliary_width := word()
+			var auxiliary_height := word()
+			var auxiliary_rgba := blob()
+			var picture: Image = auxiliary.image
+			demand(auxiliary.kind == kind and auxiliary.source == source and auxiliary.name.to_utf8_buffer() == auxiliary_name, label + ": auxiliary image tags")
+			demand(picture.get_size() == Vector2i(auxiliary_width, auxiliary_height) and picture.get_data() == auxiliary_rgba, label + ": auxiliary RGBA")
+			var stored := ImageTexture.create_from_image(picture).get_image()
+			demand(stored != null and stored.get_data() == auxiliary_rgba, label + ": auxiliary GPU texture readback")
+			auxiliary_images += 1
 		if failed:
 			quit(1)
 			return
 	demand(reader.get_available_bytes() == 0, "Unread corpus cases")
-	print("Godot + Image + GPU texture: %d pixel-exact cases; SHA-256 %s" % [count, hash_text])
+	demand(auxiliary_images > 0, "Corpus must exercise auxiliary images")
+	print("Godot + Image + GPU texture: %d pixel-exact cases with %d auxiliary images; SHA-256 %s" % [count, auxiliary_images, hash_text])
 	quit(1 if failed else 0)

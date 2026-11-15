@@ -5,7 +5,7 @@ square brackets mean optional syntax and quoted strings are literal tokens.
 `identifier` is an ordinary identifier; `name` additionally accepts soft
 keywords as described in [source syntax](syntax.md). Semantic checks such as
 types, restricted declaration constants, required declarations and acyclic calls
-apply after parsing. Strings are only valid as import paths after typing.
+apply after parsing. Strings are only valid as import paths and `.fork` keys after typing.
 
 ```ebnf
 program       = { import }, (asset | material_file), EOF ;  (* ";" may separate items at every level *)
@@ -22,14 +22,14 @@ size          = "size", integer, (integer | xdigits), [ ";" ] ;
 origin        = "origin", expression, ",", expression, [ ";" ] ;
 input         = "input", input_type, name, "=", declaration_constant, [ ";" ] ;
 input_type    = "color" | "f32" | "u32" | "i32" ;
-output        = "output", [ "list" ], output_kind, name, [ ";" ] ; (* part requires list; mask/layer forbid list *)
-output_kind   = "point" | "circle" | "rect" | "mask" | "layer" | "part" ;
+output        = "output", [ "list" ], output_kind, name, [ ";" ] ; (* part requires list; mask/layer/normal forbid list *)
+output_kind   = "point" | "circle" | "rect" | "mask" | "layer" | "normal" | "part" ;
 palette       = "palette", name, "=", "[", [ expressions ], "]", [ ";" ] ;
 asset_constant = "const", value_type, name, "=", expression, [ ";" ] ;  (* reserved "const" *)
 draw          = "draw", block ;
-helper        = name, "(", [ parameters ], ")", [ "->", value_type ], block ;
+helper        = name, "(", [ parameters ], ")", [ "->", (value_type | "seed") ], block ;
 parameters    = parameter, { ",", parameter }, [ "," ] ;
-parameter     = name, ":", (value_type | material_type) ;
+parameter     = name, ":", (value_type | material_type | "seed") ;  (* "seed": contextual type name *)
 scalar_type   = "i32" | "f32" | "color" | "vec2" | "distribution" ;
 sampler_type  = "sampler", "<", ("i32" | "f32" | "color" | "vec2"), ">" ;
 stepper_type  = "stepper", "<", ("i32" | "f32" | "color" | "vec2"), ">" ;
@@ -72,6 +72,9 @@ stepper_pick  = postfix, ".pick", "(", [ "n", "=" ], expression, ")" ;
 sampler_pick  = postfix, ".pick", "(", [ [ "n", "=" ], expression ], ")" ;
 list_method   = postfix, (".distinct" | ".sort"), "(", ")" ;  (* ordinary method names, statically typed *)
 surface_blur  = postfix, ".blur", "(", [ "sigma", "=" ], expression, ")" ; (* layer or mask receiver *)
+surface_normal = postfix, ".normal", "(", [ "depth", "=" ], expression,
+                 [ ",", [ "smoothing", "=" ], expression ], ")" ; (* layer or mask receiver, not `color` *)
+seed_fork     = postfix, ".fork", "(", [ "key", "=" ], expression, ")" ; (* i32 or seed receiver; string or i32 key *)
 list_literal  = "[", [ expressions ], "]" ;
 compound      = "{", [ expressions ], "}" ;
 expressions   = expression, { ",", expression }, [ "," ] ;
@@ -82,7 +85,8 @@ declaration_constant = literal | "(", declaration_constant, ")"
                      | "-", constant_atom ;
 constant_atom = literal | "(", constant_atom, ")" ;
 surface_mode = "surface.legacy" | "surface.source_over" ;
-layer_capture = "layer", name, [ "(", "alpha", "=", surface_mode, ")" ], block ;
+layer_capture = "layer", name, [ "(", layer_option, ")" ], block ;
+layer_option  = "alpha", "=", surface_mode | "encoding", "=", "surface.normal" ;
 identifier    = (letter | "_"), { letter | digit | "_" } ;
 xdigits       = ("x" | "X"), decimal ;
 integer       = decimal | "0", ("x" | "X"), hex, { hex } ;  (* at most 4294967295 or 8 hex digits *)
@@ -143,6 +147,17 @@ expression, including inside a helper call used as a loop upper bound.
 is a typed handle copy. Lists/samplers of surfaces are rejected. Omitted alpha
 inherits the active target; `surface.paint` uses that target's mode unless blend
 explicitly selects one operation. See [alpha composition](surfaces.md).
+
+`normal` and `encoding` are not reserved. `normal` is read as an output kind
+only after `output`, and `.normal(...)` is the surface method on every
+receiver except the namespace `color`, where `color.normal` is the builtin.
+`encoding` is an option name only inside a capture's parentheses. See
+[relief and normal maps](relief.md).
+
+`seed`, `fork` and `initial` are not reserved words. `seed` names a type only
+after `:` or `->`; as an expression it reads the stream state, and
+`seed.initial()` is a builtin. `.fork(...)` is the [named seed](random.md#named-seeds)
+method on every receiver.
 
 `mask` is also a reserved value type and the mask namespace. `mask.from` uses
 the existing reserved `from` token only in this namespace. `clip` introduces

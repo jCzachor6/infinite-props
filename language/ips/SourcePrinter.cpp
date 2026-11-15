@@ -314,8 +314,22 @@ class SourcePrinter {
                 expression(*node.receiver); out_ << ".blur(";
                 if (node.sigma.name) out_ << "sigma = ";
                 expression(*node.sigma.value); out_ << ')';
+            } else if constexpr (std::is_same_v<T, SurfaceNormal>) {
+                expression(*node.receiver); out_ << ".normal(";
+                if (node.depth.name) out_ << "depth = ";
+                expression(*node.depth.value);
+                if (node.smoothing) {
+                    out_ << ", ";
+                    if (node.smoothing->name) out_ << "smoothing = ";
+                    expression(*node.smoothing->value);
+                }
+                out_ << ')';
             } else if constexpr (std::is_same_v<T, ListMethod>) {
                 expression(*node.receiver); out_ << '.' << node.name << "()";
+            } else if constexpr (std::is_same_v<T, SeedFork>) {
+                expression(*node.receiver); out_ << ".fork(";
+                if (node.key.name) out_ << "key = ";
+                expression(*node.key.value); out_ << ')';
             } else if constexpr (std::is_same_v<T, PointDistributionLiteral>) {
                 out_ << std::string(math::pointDistributionSpec(node.family)->name) << " {";
                 for (std::size_t i = 0; i < node.points.size(); ++i) {
@@ -392,7 +406,8 @@ class SourcePrinter {
                 }
             } else if constexpr (std::is_same_v<T, LayerStmt>) {
                 out_ << "layer " << node.name;
-                if (const auto* mode = compositionSpec(node.alpha)) out_ << "(alpha = surface." << mode->name << ')';
+                if (node.directions) out_ << "(encoding = surface.normal)";
+                else if (const auto* mode = compositionSpec(node.alpha)) out_ << "(alpha = surface." << mode->name << ')';
                 block(node.body, level);
             } else if constexpr (std::is_same_v<T, ClipStmt>) {
                 out_ << "clip("; expression(*node.mask); out_ << ')';
@@ -509,8 +524,8 @@ public:
         }
         for (const auto& output : asset.outputs) {
             indent(1); SourceOutput::Scope range(out_, output.sourceRange, false);
-            const char* kinds[] = {"point", "rect", "circle", "mask", "layer", "part"};
-            if (static_cast<unsigned>(output.kind) >= 6 || (output.kind == OutputKind::Part && !output.isList))
+            const char* kinds[] = {"point", "rect", "circle", "mask", "layer", "part", "normal"};
+            if (static_cast<unsigned>(output.kind) >= 7 || (output.kind == OutputKind::Part && !output.isList))
                 throw SourceError{output.location, "invalid output kind in source printer"};
             out_ << "  output " << (output.isList ? "list " : "")
                  << kinds[static_cast<unsigned>(output.kind)] << ' ' << output.name; out_.finishRange(); out_ << '\n'; range.close();

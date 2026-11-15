@@ -83,7 +83,7 @@ set_target_properties(iprop_godot PROPERTIES
 # library), ready for the Godot editor or the headless runs.
 set(IPROP_GODOT_PROJECT ${CMAKE_BINARY_DIR}/godot-project)
 file(MAKE_DIRECTORY ${IPROP_GODOT_PROJECT}/assets)
-foreach(file project.godot demo.tscn demo.gd conformance.gd pixel-corpus.gd part-outputs.gd)
+foreach(file project.godot demo.tscn demo.gd conformance.gd pixel-corpus.gd part-outputs.gd normal-maps.gd)
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/project/${file}
                    ${IPROP_GODOT_PROJECT}/${file} COPYONLY)
 endforeach()
@@ -117,7 +117,7 @@ add_custom_target(godot_demo
 
 if(IPROP_BUILD_TESTS)
     include(${CMAKE_CURRENT_SOURCE_DIR}/../ResultTests.cmake)
-    add_dependencies(iprop_godot capi_golden capi_result_output_fixture backend_result_fixtures backend_part_fixtures backend_execution_fixture)
+    add_dependencies(iprop_godot capi_golden capi_result_output_fixture backend_result_fixtures backend_part_fixtures backend_execution_fixture backend_normal_fixtures)
     find_program(IPROP_GODOT_BINARY
         NAMES Godot godot
         HINTS "${CMAKE_SOURCE_DIR}/../.deps/Godot.app/Contents/MacOS"
@@ -140,6 +140,11 @@ if(IPROP_BUILD_TESTS)
             --path ${IPROP_GODOT_PROJECT} --script res://part-outputs.gd
             -- ${CMAKE_BINARY_DIR}/binding-fixtures)
         set_tests_properties(godot_part_outputs PROPERTIES TIMEOUT 120)
+        add_test(NAME godot_normal_maps COMMAND ${IPROP_GODOT_BINARY}
+            --headless --log-file ${CMAKE_BINARY_DIR}/godot-normal-maps.log
+            --path ${IPROP_GODOT_PROJECT} --script res://normal-maps.gd
+            -- ${CMAKE_BINARY_DIR}/binding-fixtures)
+        set_tests_properties(godot_normal_maps PROPERTIES TIMEOUT 120)
     else()
         if(IPROP_GODOT STREQUAL "ON")
             message(FATAL_ERROR "Required Godot engine for conformance was not found")

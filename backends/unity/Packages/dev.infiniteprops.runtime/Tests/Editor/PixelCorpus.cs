@@ -16,7 +16,8 @@ namespace InfiniteProps.Tests
             Require(bytes.Length == count, "Truncated corpus"); return bytes;
         }
         static void Require(bool condition, string message) { if (!condition) throw new Exception(message); }
-        public static int Run(string directory, Action<GeneratedImage, byte[], int> texture = null)
+        public static int Run(string directory, Action<GeneratedImage, byte[], int> texture = null,
+                              Action<AuxiliaryImage, byte[], int> auxiliaryTexture = null)
         {
             byte[] data = File.ReadAllBytes(Path.Combine(directory, "pixel-corpus.bin"));
             string hash;
@@ -25,10 +26,11 @@ namespace InfiniteProps.Tests
             Require(File.ReadAllText(Path.Combine(directory, "pixel-corpus.json")).Contains(hash), "Corpus SHA-256 mismatch");
             using (var reader = new BinaryReader(new MemoryStream(data), Encoding.UTF8))
             {
-                Require(Encoding.ASCII.GetString(reader.ReadBytes(8)) == "IPXCRP01", "Corpus version");
+                Require(Encoding.ASCII.GetString(reader.ReadBytes(8)) == "IPXCRP02", "Corpus version");
                 var programs = new byte[checked((int)reader.ReadUInt32())][];
                 for (int i = 0; i < programs.Length; ++i) programs[i] = Blob(reader);
                 int count = checked((int)reader.ReadUInt32()); Require(count > 0, "Empty corpus");
+                int auxiliaryImages = 0;
                 for (int i = 0; i < count; ++i)
                 using (var program = new Program(programs[checked((int)reader.ReadUInt32())]))
                 {
@@ -43,9 +45,13 @@ namespace InfiniteProps.Tests
                             program.Inputs.First(x => x.Name == name).DefaultValue.Type == InputKind.Float ?
                             InputValue.Float(BitConverter.ToSingle(BitConverter.GetBytes(bits), 0)) : InputValue.UInt(integer));
                     }
+                    bool derive = reader.ReadUInt32() != 0;
+                    // Three binary32 values: ReadSingle on the same bytes keeps their bits.
+                    float depth = reader.ReadSingle(), rounding = reader.ReadSingle(), detail = reader.ReadSingle();
                     uint expectedWidth = reader.ReadUInt32(), expectedHeight = reader.ReadUInt32();
                     byte[] expected = Blob(reader);
-                    var image = program.Generate(seed, inputs, width, height, new ExecutionLimits(workLimit: 1000000000));
+                    var image = program.Generate(seed, inputs, width, height, new ExecutionLimits(workLimit: 1000000000),
+                        derive ? new DerivedNormal(depth, rounding, detail) : null);
                     string label = "Corpus case " + i + " seed " + seed;
                     Require(image.Width == expectedWidth && image.Height == expectedHeight, label + ": size");
                     Require(image.Rgba.SequenceEqual(expected), label + ": RGBA");
@@ -70,10 +76,26 @@ namespace InfiniteProps.Tests
                                 ", actual=" + actual.ToString("x8") + ", expected=" + expectedBits.ToString("x8"));
                         }
                     }
+                    // Auxiliary images are part of the gate: every byte, name and tag.
+                    Require(image.Images.Count == reader.ReadUInt32(), label + ": auxiliary image count");
+                    foreach (var auxiliary in image.Images)
+                    {
+                        uint kind = reader.ReadUInt32(), source = reader.ReadUInt32();
+                        byte[] name = Blob(reader);
+                        uint auxWidth = reader.ReadUInt32(), auxHeight = reader.ReadUInt32();
+                        byte[] auxRgba = Blob(reader);
+                        Require((uint)auxiliary.Kind == kind && (uint)auxiliary.Source == source &&
+                            Encoding.UTF8.GetBytes(auxiliary.Name).SequenceEqual(name), label + ": auxiliary image tags");
+                        Require(auxiliary.Width == auxWidth && auxiliary.Height == auxHeight && auxiliary.Rgba.SequenceEqual(auxRgba),
+                            label + ": auxiliary RGBA");
+                        auxiliaryTexture?.Invoke(auxiliary, auxRgba, i);
+                        ++auxiliaryImages;
+                    }
                     texture?.Invoke(image, expected, i);
                 }
                 Require(reader.BaseStream.Position == reader.BaseStream.Length, "Unread corpus cases");
-                Console.WriteLine("C# pixel corpus: " + count + " cases; SHA-256 " + hash);
+                Require(auxiliaryImages > 0, "Corpus must exercise auxiliary images");
+                Console.WriteLine("C# pixel corpus: " + count + " cases with " + auxiliaryImages + " auxiliary images; SHA-256 " + hash);
                 return count;
             }
         }

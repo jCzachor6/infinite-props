@@ -99,7 +99,7 @@ function run(iprop,tool,directory) {
     for(const [at,value] of [[types+4,255],[types+5,0],[types+6,1],[types+7,1]]){const bad=Buffer.from(valid);bad[at]=value;reject(bad);}
     for(const at of parsed)if(valid[at]===0xc6) {
         for(const operand of [0,2,65535]){const bad=Buffer.from(valid);bad.writeUInt16LE(operand,at+2);reject(bad);}
-        const bad=Buffer.from(valid);bad[at+1]=3;reject(bad);
+        const bad=Buffer.from(valid);bad[at+1]=4;reject(bad);
     } else if(valid[at]===0xc7) {
         const bad=Buffer.from(valid);bad.writeUInt16LE(3,at+2);reject(bad);
         const aux=Buffer.from(valid);aux[at+1]=1;reject(aux);

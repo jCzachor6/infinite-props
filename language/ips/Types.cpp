@@ -54,7 +54,9 @@ bool isNumeric(ValueType type) {
     return type == ValueType::I32 || type == ValueType::F32;
 }
 
-bool isStorable(ValueType type) { return type.isStorable(); }
+bool isStorable(ValueType type) { return type == ValueType::Seed || type.isStorable(); }
+
+ValueType runtimeType(ValueType type) { return type == ValueType::Seed ? ValueType::I32 : type; }
 
 ValueType promote(ValueType a, ValueType b) {
     return a == b ? a : ValueType::F32;

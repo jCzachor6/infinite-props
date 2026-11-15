@@ -1,4 +1,4 @@
-# C API 0.6 and ABI line 0.5
+# C API 0.7 and ABI line 0.5
 
 Product 0.7.0 intentionally removes variant/archetype controls and uses C ABI
 line 0.5. The earliest compatible product is 0.7.0. Clients must rebuild with
@@ -15,7 +15,7 @@ and complete-field reads/writes under their new layouts.
 The shared library uses SOVERSION/install identity 0.5. Windows uses the DLL
 name `ipropc-0.5.dll`; imported CMake targets resolve the current artifact.
 Package version selection rejects product requests before 0.7.0. Runtime
-queries report API 0.6 and ABI 0.5 independently; the file format is
+queries report API 0.7 and ABI 0.5 independently; the file format is
 unversioned, so the library's format fields are reserved zeros.
 
 Conformance checks the new sizes and every field offset, shared/static clients,
@@ -39,3 +39,15 @@ also use a finite default work budget; requesting a different work limit or
 deadline requires the new controlled entry. Existing API 0.4/0.5 clients on
 ABI 0.5 remain compatible. These API additions leave file/program encodings unchanged.
 The runtime uses the [shared fuel tariff](../spec/fuel-v0.9.md).
+
+API 0.7 adds [auxiliary images](c-api-aux-images.md) beside the main image:
+`IPROP_CAP_AUX_IMAGES` advertises the program and result queries
+(`iprop_program_aux_image_*`, `iprop_result_aux_image_*`) with their separate
+sized descriptors, and `IPROP_CAP_DERIVED_NORMAL` advertises
+`iprop_generate_derived_normal` with `iprop_derived_normal_ex`. The first image
+kind is the normal map; `IPROP_IMAGE_ALPHA_OPAQUE` is a new value of the
+existing alpha tag and is reported only for auxiliary images. No existing
+structure, enum value or entry point changes, so API 0.4–0.6 clients on ABI 0.5
+remain compatible and see the same results. Programs that declare a normal
+output use the [normal map extension](../spec/normal-maps-v1.1.md) of the
+unversioned file format; a runtime without it rejects them at load.

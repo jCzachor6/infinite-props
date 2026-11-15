@@ -26,11 +26,13 @@ int main(int argc, char** argv) {
     try {
         require(argc == 2, "usage: sfml_pixel_corpus pixel-corpus.bin");
         Reader r{readFile(argv[1])};
-        require(r.data.size() >= 8 && std::memcmp(r.data.data(), "IPXCRP01", 8) == 0, "corpus version"); r.at = 8;
+        require(r.data.size() >= 8 && std::memcmp(r.data.data(), "IPXCRP02", 8) == 0, "corpus version"); r.at = 8;
         std::vector<std::vector<std::uint8_t>> programs(r.word());
         for (auto& bytes : programs) bytes = r.blob();
         const auto count = r.word(); require(count > 0, "empty corpus");
         sf::Texture texture; sf::Sprite sprite(texture);
+        sf::Texture auxiliaryTexture; sf::Sprite auxiliarySprite(auxiliaryTexture);
+        std::uint32_t auxiliaryImages = 0;
         for (std::uint32_t i = 0; i < count; ++i) {
             Program program(loadProgram(programs.at(r.word())), iprop_program_free);
             const auto seed = r.word(), width = r.word(), height = r.word();
@@ -47,9 +49,12 @@ int main(int argc, char** argv) {
                 else if (current.type == IPROP_INPUT_F32) error.check(iprop_parameters_set_f32_named(parameters.get(), view, std::bit_cast<float>(bits), error.get()), "float");
                 else error.check(iprop_parameters_set_u32_named(parameters.get(), view, integer, error.get()), "uint");
             }
+            const bool derive = r.word() != 0;
+            const auto depth = r.word(), rounding = r.word(), detail = r.word();
+            const DerivedNormal request{std::bit_cast<float>(depth), std::bit_cast<float>(rounding), std::bit_cast<float>(detail)};
             const auto expectedWidth = r.word(), expectedHeight = r.word(); const auto expected = r.blob();
             Result result(generate(program.get(), seed, parameters.get(), width, height,
-                                   {1'000'000'000, 0, {}}), iprop_result_free);
+                                   {1'000'000'000, 0, {}}, derive ? &request : nullptr), iprop_result_free);
             const auto image = queryImage(result.get()); const std::string label = "case " + std::to_string(i);
             require(image.width == expectedWidth && image.height == expectedHeight, label + ": size");
             require(image.byte_count == expected.size() && std::memcmp(image.pixels, expected.data(), expected.size()) == 0, label + ": RGBA");
@@ -69,8 +74,23 @@ int main(int argc, char** argv) {
             target.draw(sprite, sf::BlendNone); target.display();
             const auto rendered = target.getTexture().copyToImage();
             require(std::memcmp(rendered.getPixelsPtr(), expected.data(), expected.size()) == 0, label + ": SFML GPU render");
+            // Auxiliary images are part of the gate: every byte, name and tag,
+            // also after an SFML texture upload.
+            const auto images = copyImages(result.get()); require(images.size() == r.word(), label + ": auxiliary image count");
+            for (const auto& auxiliary : images) {
+                const auto kind = r.word(), source = r.word(); const auto name = r.blob();
+                const auto auxWidth = r.word(), auxHeight = r.word(); const auto auxPixels = r.blob();
+                require(auxiliary.info.kind == kind && auxiliary.info.source == source && auxiliary.name.size() == name.size() &&
+                        std::memcmp(auxiliary.name.data(), name.data(), name.size()) == 0, label + ": auxiliary image tags");
+                require(auxiliary.info.width == auxWidth && auxiliary.info.height == auxHeight && auxiliary.pixels == auxPixels, label + ": auxiliary RGBA");
+                uploadTexture(auxiliaryTexture, auxiliarySprite, {auxWidth, auxHeight}, auxiliary.pixels.data());
+                const auto stored = auxiliaryTexture.copyToImage();
+                require(std::memcmp(stored.getPixelsPtr(), auxPixels.data(), auxPixels.size()) == 0, label + ": auxiliary SFML texture upload");
+                ++auxiliaryImages;
+            }
         }
         require(r.at == r.data.size(), "unread corpus cases");
-        std::cout << "SFML + texture + GPU render: " << count << " pixel-exact cases\n";
+        require(auxiliaryImages > 0, "corpus must exercise auxiliary images");
+        std::cout << "SFML + texture + GPU render: " << count << " pixel-exact cases with " << auxiliaryImages << " auxiliary images\n";
     } catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }
 }

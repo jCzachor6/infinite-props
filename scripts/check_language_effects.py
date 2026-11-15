@@ -13,7 +13,8 @@ def main():
     assert not result.stderr, result.stderr
     description = json.loads(result.stdout)
     rng = {'none', 'read_current', 'advance_current', 'push_seeded_stream', 'restore_stream',
-           'seeded_computation', 'isolated_seeded_stream', 'shared_callee_stream', 'isolated_callee_stream'}
+           'seeded_computation', 'isolated_seeded_stream', 'shared_callee_stream', 'isolated_callee_stream',
+           'read_initial'}
     checks = {'numeric_range', 'stream_stack_underflow', 'part_render_arguments', 'callee',
               'part_output_missing', 'divide_by_zero', 'integer_overflow', 'part_output_context', 'index_range', 'unassigned_handle', 'scope_depth'}
 
@@ -72,7 +73,7 @@ def main():
     assert rules['validation_limits'] == ['operand_stack_limit']
     assert rules['allocation_failure'] is True
     assert rules['output_write_policy'] == {'singular': 'replace', 'list': 'append'}
-    for name in ('helper', 'part', 'seed_read', 'output_write', 'part_output_read', 'integer_division', 'integer_remainder'):
+    for name in ('helper', 'part', 'seed_read', 'seed_initial', 'output_write', 'part_output_read', 'integer_division', 'integer_remainder'):
         valid(rules[name])
     for name in ('helper', 'part'):
         assert rules[name]['summary'] == 'conservative'
@@ -82,6 +83,9 @@ def main():
     assert rules['part']['rng'] == 'isolated_callee_stream'
     assert 'part_render_arguments' in rules['part']['may_trap']
     assert rules['seed_read']['rng'] == 'read_current'
+    # seed.initial() reads the seed of the running call, not the stream (named seeds v1.1).
+    assert rules['seed_initial'] == {'rng': 'read_initial', 'writes_canvas': False, 'writes_outputs': False,
+                                     'summary': 'intrinsic', 'may_trap': []}
     assert rules['output_write']['writes_outputs'] and not rules['output_write']['writes_canvas']
     assert rules['part_output_read']['may_trap'] == ['part_output_missing', 'part_output_context']
     assert rules['integer_division']['may_trap'] == ['divide_by_zero', 'integer_overflow']

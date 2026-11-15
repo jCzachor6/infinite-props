@@ -1,20 +1,18 @@
 # Randomness and seeds
 
-Random operations use the current deterministic 32-bit stream. `seed` reads
-its current state, so saving `saved = seed` before drawing preserves an
-explicit seed value. Changing the number or order of stream draws changes
-later results. Hash/noise operations with explicit seeds do not advance it.
-They may still evaluate effectful arguments first. The shared compiler export
-distinguishes `read_current`, `advance_current`, seeded computation, isolated
-streams and stream push/restore; these summaries describe the operation itself,
-separately from argument effects and execution-wide limits.
+Random operations use a deterministic 32-bit stream. `seed` reads its state;
+`saved = seed` saves a snapshot. Draw order/count affects later results.
+[Named seeds](#named-seeds) do not depend on that order.
+Explicitly seeded hash/noise leaves the stream unchanged, apart from argument
+effects. Compiler effects distinguish `read_current`, `advance_current`, seeded
+computation, isolated streams and push/restore; execution limits apply separately.
 
 <!-- example: ../../examples/language/random.ips -->
 
 ## Random ranges with `to`
 
-`lower to upper` draws a value from the current stream every time it is
-evaluated; it is not a list or a stored range. Both bounds are included:
+`lower to upper` draws from the current stream on each evaluation; it does
+not store a range or list. Both bounds are included:
 
 | Bounds | Result | Draw |
 | --- | --- | --- |
@@ -29,23 +27,17 @@ thickness = 1.6 to 2.0
 mixed = 1 to 2.0          // f32
 ```
 
-The lower bound is evaluated once, then the upper bound, then the value is
-drawn; RNG used inside a bound stays part of the current stream. Equal bounds
-return that value and still consume a draw. A lower bound greater than the
-upper one traps, as does a NaN or infinite `f32` bound; bounds are never
-swapped. When both bounds are constants the compiler reports this where the
-range is written, so `3 to 1` does not compile. Integer draws discard the few raw values that would favour some
-results, so every integer of the range is equally likely for any width, and
-the full `i32` range is allowed. Redraws cost 1 fuel each; the exact algorithms
-are in [random ranges](../../spec/iprop-v0.8.md#18-uniform-random-ranges).
-Floating results never leave the bounds, even after rounding.
+Evaluate lower then upper once, then draw. RNG inside bounds uses the current
+stream. Equal bounds still draw. Reversed, NaN or infinite bounds trap;
+constants fail compilation at the range, as in `3 to 1`. Bounds are never
+swapped. Integer rejection sampling gives equal probabilities across the
+full `i32` range; redraws cost 1 fuel each. Rounded floats stay in bounds.
+See [random ranges](../../spec/iprop-v0.8.md#18-uniform-random-ranges).
 
-`to` binds more loosely than arithmetic, shifts and bitwise operators and more
-tightly than comparisons, so `base - 2 to base + 2` draws around `base`, and
-`(0 to 100) < 10` compares a draw. Write `c.r + (-5 to 5)` to add a draw to
-an expression. Ranges cannot be chained: `a to b to c` is rejected; use
-`(1 to 3) to (5 to 8)` to draw the bounds themselves. The formatter writes
-every range in parentheses.
+`to` binds below arithmetic/shifts/bitwise operators and above comparisons:
+`base - 2 to base + 2` draws around `base`; `(0 to 100) < 10` compares a draw.
+Use `c.r + (-5 to 5)` to add a draw. Chained `a to b to c` is rejected;
+`(1 to 3) to (5 to 8)` draws its bounds. The formatter parenthesizes ranges.
 
 <!-- llm: skip -->
 `to` and `with` are reserved words and cannot name anything. `range()` and
@@ -59,11 +51,9 @@ This example is intentionally rejected: its constant bounds are reversed.
 
 ### Gradients and segments
 
-Between two colors or two `vec2` values, `to` draws one position `t` from 0
-to 1 and moves every channel or component by it, so they never vary
-independently. `#000000 to #ffffff` gives only grays, and
-`{0.0, 0.0} to {1.0, 1.0}` only points with equal coordinates; write
-`{0.0 to 1.0, 0.0 to 1.0}` for two independent draws.
+For colors/vec2, `to` draws one position `t` in 0–1 shared by all channels
+or components. `#000000 to #ffffff` gives grays; `{0.0, 0.0} to {1.0, 1.0}`
+gives equal coordinates. Use `{0.0 to 1.0, 0.0 to 1.0}` for independent draws.
 
 ```text
 metal = #705845ff to #c8c8c8ff
@@ -72,18 +62,15 @@ distribution middle = gaussian(mean=0.5, sigma=0.15)
 metal = #705845ff to #e8e8e8ff with middle      // mostly mid-gradient
 ```
 
-With `with`, the distribution describes `t` on 0 to 1, as in
-`0.0 to 1.0 with d`, so use a description in those units. Swapping the ends
-reverses the direction a skewed distribution favours. One stream step is
-drawn even for equal ends.
+With `with`, describe `t` in 0–1 units, as in `0.0 to 1.0 with d`.
+Swapping ends reverses the favored direction. Equal ends still use one step.
 
-Colors mix their stored RGBA8 channels with the `color.mix` formula, alpha
-included (unlike `color.mix`, which keeps the first alpha); there is no HSV
-or linear-light conversion. Channels truncate as in `color.mix`: every byte
-from a channel's smaller end up to one below its larger end is equally
-likely, and the larger end itself appears only at the exact end of a
-distribution's range. Vectors interpolate each component in `f32` and stay on
-the segment, even for opposite large ends; an infinite or NaN end traps.
+Colors mix stored RGBA8 channels using the `color.mix` formula, including
+alpha (unlike `color.mix`, which keeps the first alpha), without HSV or
+linear-light conversion. Channels truncate: bytes from the smaller end
+through one below the larger are equally likely; the larger appears only
+at the distribution's exact endpoint. Vectors interpolate in `f32` along
+the segment, even for opposite large ends. NaN/infinite ends trap.
 
 <!-- example: ../../examples/language/errors/chained-range.ips -->
 
@@ -97,10 +84,9 @@ input and traps during generation.
 
 ## Distributions
 
-`lower to upper with d` draws from the distribution `d` restricted to the
-range: values outside `[lower, upper]` are never produced, and the shape
-inside the range is kept, so nothing piles up at the bounds the way a
-clamped draw would. Without `with` a range is uniform.
+`lower to upper with d` samples `d` restricted to `[lower, upper]`, preserving
+its shape inside that range. It never clamps outliers onto the bounds.
+Without `with`, ranges are uniform.
 
 ```text
 distribution softWear = gaussian(mean=0.0, sigma=1.5)
@@ -109,35 +95,25 @@ distribution mostlyClean = beta(alpha=2.0, beta=5.0)
 rust = 0.0 to 1.0 with mostlyClean          // mostly below 0.3
 ```
 
-A `distribution` is a value: store it, copy it, pass it to a helper and
-return it from one. `distribution d = ...` declares it explicitly; a plain
-first assignment infers the type as usual. Its parameters are evaluated
-once, when the constructor runs, and may come from inputs, earlier
-computations or draws; changing those variables later does not change the
-description. Constructing a distribution draws nothing; every `with` draw
-takes its own value from the current stream, so two ranges using one
-description are two independent draws. Distributions support no arithmetic,
-comparison, members or conversion, and are not inputs, outputs or palette
-elements.
+A `distribution` can be stored, copied, passed and returned. Declare it with
+`distribution d = ...` or infer its type. Parameters evaluate once at
+construction, from inputs, computations or draws; later changes do not affect
+this snapshot. Construction draws nothing. Each `with` uses a separate stream
+draw. Distributions have no arithmetic, comparison, members or conversion,
+and cannot be inputs, outputs or palette elements.
 
-Parameters describe the result's own units; they are not rescaled to the
-range. `-5 to 5 with gaussian(mean=0.0, sigma=2.0)` clusters around 0, while
-the same description with `20 to 30` samples its far tail. A range that
-leaves no probability under the distribution traps, as does an equal range
-outside its natural range. For an `i32` range the continuous draw rounds to
-the nearest integer, halves away from zero; both bounds stay possible, with
-the probability of their half intervals.
+Parameters use the result's units without rescaling. `-5 to 5 with
+gaussian(mean=0.0, sigma=2.0)` clusters near 0; with `20 to 30` it samples
+the far tail. Zero probability mass traps, as do equal bounds outside the
+natural range. Integer ranges round nearest, halves away from zero;
+both endpoints remain possible through their half intervals.
 
-Evaluation order is the lower bound, the upper bound, the distribution, then
-one stream step. Parameters are checked when the constructor runs: invalid
-values trap there, even when the description is never used, and an
-unassigned `distribution` local traps when drawn. Constant parameters that a
-constructor always rejects, such as `gaussian(0.0, -1.0)`, are a compile
-error. Draws cost 1 fuel plus 1 per
-iteration of the pinned numerical kernels, typically 20-150; the
-[specification](../../spec/iprop-v0.8.md#19-analytic-distributions) gives the exact
-algorithms. `gaussian`, `triangular` and `beta` are builtins like any other:
-a helper cannot take one of these names.
+Evaluate lower, upper, distribution, then one stream step. Constructors check
+parameters even if unused; unset distributions trap on draw. Always-invalid
+constants such as `gaussian(0.0, -1.0)` fail compilation. Draws cost 1 fuel
+plus 1 per kernel iteration (typically 20–150); see the
+[specification](../../spec/iprop-v0.8.md#19-analytic-distributions).
+`gaussian`, `triangular` and `beta` are builtin names, unavailable to helpers.
 
 <!-- example: ../../examples/language/distributions.ips -->
 
@@ -272,6 +248,57 @@ and finite, on the natural range `min` to `max` (0 to 1 when omitted;
 `min < max`). `alpha < beta` favours the low end, `alpha > beta` the high end,
 equal values above 1 the middle, and values below 1 both ends.
 
+## Named seeds
+
+`seed.initial()` returns the seed the running asset or part call started with:
+the generation seed in the entry asset, the call's seed in a part, the caller's
+in a helper. Draws and `stream.push` never change it. `x.fork(key)` derives a
+`seed` from an `i32` or `seed` receiver and a key: a string literal or an `i32`.
+A fork reads and advances no stream and changes nothing, so a named branch
+keeps its values when draws are added before it:
+
+```ips
+leaves = seed.initial().fork("leaves")
+for i in 0..4 {
+  leaf = leaves.fork(i)                 // one seed per index
+  x = roll(leaf.fork("x"), 1.0, 14.0)
+}
+clump = seed.initial().fork("clump").fork(ring).fork(i)
+```
+
+`seed` still reads the current stream, so `seed.fork("x")` moves when a draw
+is added before it; fork from `start = seed` (an `i32`) to branch from one
+chosen point. Keys are ordered and typed: `s.fork("a").fork(1)` differs from
+`s.fork(1).fork("a")`, and `fork("12")` from `fork(12)`. The receiver is
+evaluated before the key, once each.
+
+A `seed` is a source type for locals, helper parameters and results, and every
+seed argument (`roll`, `choose`, noise, `voronoi`, `weather`, `stream.push`, a
+part call) takes it as well as an `i32`. Seeds compare with `==` and `!=`;
+`int(s)` reads their 32 bits for anything else. They cannot be inputs, outputs,
+constants, material fields, palette or list elements, samplers or choices.
+
+<!-- llm: skip -->
+A name key hashes the literal's decoded UTF-8 bytes exactly, case-sensitive and
+unnormalized, while compiling; an index key hashes its two's-complement bits at
+run time. Both lower to existing instructions. Changing a key, or rewriting
+`hash(start ^ 0x6e1d3b07)` as a fork, changes the derived seed and so the
+picture. `fork` and `initial` are not reserved. See the
+[named seeds contract](../../spec/named-seeds-v1.1.md).
+
+<!-- example: ../../examples/language/named-seeds.ips -->
+
+<!-- example: ../../examples/language/errors/seed-arithmetic.ips -->
+
+<!-- llm: skip -->
+This example is intentionally rejected: write `s.fork(1)` for a next seed.
+
+## seed.initial
+<!-- builtin: seed.initial -->
+
+The seed of the running asset or part call, as a `seed`; one fuel, never a
+compile-time constant.
+
 ## unit
 <!-- builtin: unit -->
 
@@ -309,14 +336,14 @@ even when `p <= 0`, `p >= 1`, or `p` is NaN. NaN yields false.
 ## roll
 <!-- builtin: roll -->
 
-Draws a range using an explicit `i32` seed. Arguments evaluate in signature
+Draws a range using an explicit `i32` or `seed`. Arguments evaluate in signature
 order before seed isolation. The isolated operation consumes one draw and
 restores the outer stream to its state after argument evaluation.
 
 ## choose
 <!-- builtin: choose -->
 
-Selects from one or more eager typed choices using an explicit seed. Choice
+Selects from one or more eager typed choices using an explicit `i32` or `seed`. Choice
 type rules match multi-choice `pick`. A single choice still performs an
 isolated draw. Nested isolated calls restore each caller's stream. Named
 arguments are `seed`, `value0`, `value1`, etc.
@@ -325,14 +352,14 @@ arguments are `seed`, `value0`, `value1`, etc.
 <!-- builtin: hash -->
 
 Returns the frozen splitmix32 hash of the argument's bit pattern as `i32`.
-It does not change the current stream. It is useful for deriving independent
-seeds from a saved seed and a coordinate or index.
+It does not change the current stream. For seeds derived from a seed and a
+name or index, prefer [`.fork`](#named-seeds).
 
 ## stream.push
 <!-- builtin: stream.push -->
 
-Saves the current stream and derives a nested stream from the supplied seed
-according to the VM contract. Pair it with `stream.pop` before returning.
+Saves the current stream and derives a nested stream from the supplied `i32`
+or `seed` according to the VM contract. Pair it with `stream.pop` before returning.
 This is stream derivation, not the direct seed assignment used by `roll`.
 
 ## stream.pop

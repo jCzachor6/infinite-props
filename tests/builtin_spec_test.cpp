@@ -23,6 +23,7 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
         case T::Distribution: return ValueType::Distribution;
         case T::Mask: return ValueType::Mask;
         case T::Diagram2d: return ValueType::Diagram2d;
+        case T::Seed: return ValueType::I32; // a source type carried as its bits
         default: throw std::logic_error("not a VM value");
         }
     };
@@ -86,7 +87,7 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
                 ++position;
                 // Exact argument types exercise each overload, including identity
                 // casts; distribution parameters increase so that min < max.
-                const std::string value = type == T::Part2d ? "partValue" : type == T::Parts2d ? "partsValue" :
+                const std::string value = type == T::Seed ? "seed.initial()" : type == T::Part2d ? "partValue" : type == T::Parts2d ? "partsValue" :
                     name.starts_with("part") && (param.name=="index" || param.name=="rot") ? "0" :
                     type == T::Regions2d ? "regionsValue" : type == T::Contours2d ? "contoursValue" :
                     type == T::Diagram2d ? "diagramValue" :

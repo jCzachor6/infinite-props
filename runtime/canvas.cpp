@@ -365,6 +365,8 @@ bool stepCanvas(Execution& ex, Instruction ins) {
     case Opcode::Weather: {
         const i32 amount = ex.popI32();
         const u32 seed = static_cast<u32>(ex.popI32());
+        if (ex.target.buffer->encoding == SurfaceBuffer::Encoding::Direction)
+            ex.trap("weather cannot run in a direction capture", ErrorReason::RuntimeViolation);
         const u32 w = ex.canvas().width;
         const u32 h = ex.canvas().height;
         ex.spend(static_cast<u64>(w) * h);

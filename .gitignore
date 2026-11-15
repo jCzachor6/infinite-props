@@ -36,6 +36,7 @@ bin/
 !examples/portrait-sheet.png
 !examples/showcase/readme-collection.png
 !website/public/social-preview.png
+!website/public/catemon/social-preview.png
 
 # Editor / website
 editor/node_modules/

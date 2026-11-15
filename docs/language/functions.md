@@ -1,54 +1,45 @@
 # User functions and argument evaluation
 
-A helper is an asset-level `name(parameter: type, ...) { ... }` declaration.
-All parameter types are explicit and use the [storable types](types.md#value-types-and-conversions),
-including scalars, lists, sampler/stepper descriptions and surface handles.
-A helper parameter may also use an imported [material type](materials.md),
-such as `m: forest.Bark`; the compiler passes its immutable fields by value.
-Materials are not supported as helper return types.
-A value-returning helper declares `-> type`; omission means a void helper.
-A helper cannot take the name of a builtin function, such as `rect` or
-`gaussian`: a call by that name always reaches the builtin.
-Arguments may be positional, named by the declared parameter, or mixed.
-Every parameter is required, parameter names are unique, and `i32` may widen
-to `f32`. For example, `paint(tint=#9dc, x=8)` binds to
+A helper is declared at asset level: `name(parameter: type, ...) { ... }`.
+Explicit parameter types are [storable types](types.md#value-types-and-conversions)
+or imported [materials](materials.md), such as `m: forest.Bark`, whose immutable
+fields pass by value. Materials cannot be returned. `-> type` declares a
+result; omission means void. Helper names cannot match builtins such as
+`rect` or `gaussian`. Parameters are required and uniquely named; `i32` may
+widen to `f32`. Arguments can be positional, named or mixed:
+`paint(tint=#9dc, x=8)` binds to
 `paint(x: i32, tint: color) { pixel(x, 0, tint); }`.
-Forward calls are allowed. Direct and indirect recursion are rejected.
+Forward calls work; direct and indirect recursion are rejected.
 
-Pass uniforms to helpers explicitly. Helpers share the executing
-asset's RNG stream and may draw or write its declared output slots. A helper
-cannot access a caller's local variables or mutate its own parameters.
-Asset [constants](assets.md#asset-constants) and palettes are directly visible
-to helpers, and helpers write the asset's outputs by name, so a parameter
-cannot take the name of a constant, a palette or an output. It may repeat the
-name of an input, which helpers do not see. Const initializers cannot call helpers.
-Calling a value-returning function as a statement discards its result.
+Helpers share the asset's RNG stream and can draw or write its outputs.
+They see [constants](assets.md#asset-constants) and palettes, but not inputs
+or caller locals; pass inputs explicitly. Parameters are read-only and cannot
+share names with constants, palettes or outputs. They may reuse input names.
+Const initializers cannot call helpers. Calling a function as a statement
+discards its result.
 
 <!-- example: ../../examples/language/functions.ips -->
 
 ## Argument binding and evaluation
 
-Builtin, canvas and helper calls accept positional and named arguments, including
-a mixture. Positional arguments fill signature slots from the start;
-named arguments bind the indicated slot. Names do not advance the positional
-counter. Duplicate, missing and unknown arguments are rejected.
-Part placement (`at`) is required and named-only. Transform and uniform
-overrides are optional and named-only; omitted uniforms keep their declared
-typed defaults. Variadic builtin names are derived from the selected arity
-(`x0`/`y0` for polygon vertices and `value0`, ... for choices).
+Positional arguments fill slots from the start; named arguments select slots
+without advancing the positional counter. Duplicate, missing and unknown
+arguments are rejected. Part placement (`at`) is required and named-only.
+Transforms and uniform overrides are optional and named-only; omitted uniforms
+keep their typed defaults. Variadic parameter names follow arity: `x0`/`y0`
+for polygon vertices and `value0`, ... for choices.
 
-Ordinary builtin arguments evaluate once, in signature order, independent
-of written name order. `rect(color = #fff, h = 2, x = 1, w = 2, y = 1)` has
-the same argument evaluation order as `rect(1, 1, 2, 2, #fff)`.
-`poly` evaluates its coordinate pairs and then its color, in the order they
-are written. Helpers evaluate every argument once in declaration
-order, including named calls: `measure(y=unit(), x=unit())` evaluates `x`
-before `y` when declared as `measure(x: f32, y: f32)`. Positional calls retain
-their left-to-right order. Part calls have their [own order](composition.md#part-call-order).
+Ordinary builtin arguments evaluate once in signature order, regardless of
+name order: `rect(color = #fff, h = 2, x = 1, w = 2, y = 1)` matches
+`rect(1, 1, 2, 2, #fff)`. `poly` evaluates coordinate pairs then color in
+written order. Helpers evaluate each argument once in declaration order:
+`measure(y=unit(), x=unit())` evaluates `x` first for
+`measure(x: f32, y: f32)`. Positional calls remain left-to-right.
+Parts have their [own order](composition.md#part-call-order).
 
-`pick`/`choose` evaluate all choices eagerly; only logical `&&`/`||` provide
-short-circuit evaluation. RNG effects remain even when a selected result is
-discarded. `roll`/`choose` isolate their stream after argument evaluation.
+`pick`/`choose` evaluate every choice; only `&&`/`||` short circuit.
+Discarding results does not undo RNG effects. `roll`/`choose` isolate their
+stream after arguments evaluate.
 
 <!-- llm: skip -->
 The compiler export supplies each signature's `evaluation_order` and

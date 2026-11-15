@@ -1,4 +1,4 @@
-"""C API 0.6 / ABI 0.5. Pointer-bearing records use native alignment."""
+"""C API 0.7 / ABI 0.5. Pointer-bearing records use native alignment."""
 import ctypes as c
 from ctypes.util import find_library
 import os
@@ -63,6 +63,21 @@ class Image(c.Structure):
     _fields_ = [(name, c.c_uint32) for name in ("struct_size", "flags", "width", "height")] + [
         ("byte_count", c.c_uint64), ("row_stride", c.c_uint64), ("pixel_format", c.c_uint32),
         ("alpha_mode", c.c_uint32), ("origin", c.c_uint32), ("pixels", c.c_void_p)]
+
+
+class AuxInfo(c.Structure):
+    _fields_ = [(name, c.c_uint32) for name in ("struct_size", "flags", "image_index", "kind")] + [("name", View)]
+
+
+class AuxImage(c.Structure):
+    _fields_ = [(name, c.c_uint32) for name in ("struct_size", "flags", "image_index", "kind", "source", "width", "height")] + [
+        ("byte_count", c.c_uint64), ("row_stride", c.c_uint64), ("pixel_format", c.c_uint32),
+        ("alpha_mode", c.c_uint32), ("origin", c.c_uint32), ("name", View), ("pixels", c.c_void_p)]
+
+
+class DerivedNormal(c.Structure):
+    _fields_ = [("struct_size", c.c_uint32), ("flags", c.c_uint32),
+        ("depth", c.c_float), ("rounding", c.c_float), ("detail", c.c_float)]
 
 
 class Stats(c.Structure):
@@ -145,6 +160,11 @@ class Native:
             "parameters_set_named": [p, View, c.POINTER(Parameter), error],
             "generate_ex": [p, c.POINTER(Options), p, c.POINTER(p), error],
             "generate_controlled": [p, c.POINTER(Options), p, c.POINTER(Limits), c.POINTER(p), error],
+            "generate_derived_normal": [p, c.POINTER(Options), p, c.POINTER(Limits), c.POINTER(DerivedNormal), c.POINTER(p), error],
+            "program_aux_image_count": [p, c.POINTER(u), error],
+            "program_aux_image_get": [p, u, c.POINTER(AuxInfo), error],
+            "result_aux_image_count": [p, c.POINTER(u), error],
+            "result_aux_image_get": [p, u, c.POINTER(AuxImage), error],
             "cancellation_create": [c.POINTER(p), error],
             "result_query_work": [p, c.POINTER(Work), error],
             "result_query_image": [p, c.POINTER(Image), error],
@@ -165,9 +185,11 @@ class Native:
         self.library_query_ex = query
         info = sized(LibraryInfo)
         self.call("library_query_ex", c.byref(info))
-        if ((info.api_major, info.abi_major, info.abi_minor) != (0, 0, 5) or info.api_minor < 6
-                or info.capabilities & (7 << 18) != 7 << 18):
-            raise RuntimeError("Infinite Props requires C API 0.6 / ABI 0.5 with typed results and execution limits")
+        # Bits 18-22: part outputs, result resources, execution limits,
+        # auxiliary images and the derived normal image.
+        if ((info.api_major, info.abi_major, info.abi_minor) != (0, 0, 5) or info.api_minor < 7
+                or info.capabilities & (31 << 18) != 31 << 18):
+            raise RuntimeError("Infinite Props requires C API 0.7 / ABI 0.5 with typed results, execution limits and auxiliary images")
         for name, args in signatures.items():
             function = getattr(self.library, "iprop_" + name)
             function.argtypes, function.restype = args, u

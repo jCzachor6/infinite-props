@@ -1,30 +1,23 @@
 # Control flow
 
-`if (condition) { ... }`, optional `else if` branches and an optional `else`
-select blocks. `while (condition) { ... }` re-evaluates its condition before
-each iteration. Conditions must be `i32`: zero is false and any nonzero
-value is true. Compare a float or explicitly convert it instead of using it
-directly as a condition.
+`if (condition) { ... }` selects a block, with optional `else if` and `else`.
+`while (condition) { ... }` checks before each iteration. Conditions are `i32`:
+zero is false, nonzero is true. Compare or explicitly convert floats first.
 
-`for i in start..end { ... }` iterates over a half-open integer range.
-The start is evaluated, assigned to the counter, then the end is evaluated
-once and retained. The counter is an `i32` local and takes any name a local
-can have; a fresh counter is declared and remains visible after the loop. An existing `i32` local is reused.
-The loop tests `i < end`, runs the body and increments `i`. Start ≥ end
-produces no iterations. Assigning to the counter inside the body is allowed
-and changes subsequent iteration behavior.
+`for i in start..end { ... }` uses a half-open integer range. It evaluates
+start, assigns the counter, then evaluates end once. The `i32` counter reuses
+an existing local or declares one that remains visible afterward. Each
+iteration tests `i < end`, runs the body and increments `i`. Start ≥ end
+runs nothing. Assigning the counter in the body changes later iterations.
 
-`break` exits the innermost loop in the current function. `continue` moves
-to its next iteration; in a `for` loop it still executes the increment.
-Neither statement can target a caller's loop. Inputs, outputs, palettes,
-parameters and reserved names cannot serve as counters.
+`break` exits the current function's innermost loop. `continue` starts its
+next iteration, still incrementing a `for` counter. Neither targets caller
+loops. Inputs, outputs, palettes, parameters and reserved names cannot be counters.
 
-`return value` returns from a typed helper; `return;` returns from a void
-helper or draw. Since newlines are whitespace, use the semicolon when a bare
-return precedes another statement; before `}` a bare `return` is sufficient.
-A value-returning helper must return a value on every path: its body ends
-with a `return`, or with an `if`/`else` whose branches all do. A `return`
-inside a loop does not count, because the loop body may not run.
+`return value` exits a typed helper; `return;` exits a void helper or draw.
+A bare return needs `;` before another statement, but not before `}`.
+Value-returning helpers must end with a return or an `if`/`else` whose
+branches all return. Returns inside loops do not count: the loop may not run.
 
 <!-- example: ../../examples/language/errors/missing-return.ips -->
 
@@ -32,10 +25,9 @@ inside a loop does not count, because the loop body may not run.
 This example is intentionally rejected: one branch reaches the end of the
 helper without a value.
 
-When these statements leave a `layer` or `clip` block, exited scopes close in
-reverse entry order. Layers retain their partial image; target, mode and clip
-coverage are restored before the caller or loop resumes. Caller scopes remain
-active during helper returns. See [surface scopes](surfaces.md#clip-scopes-and-painting-masks).
+Exiting `layer`/`clip` scopes closes them in reverse entry order, retains
+captured pixels and restores target, mode and clips before resuming.
+Helper returns leave caller scopes active. See [surface scopes](surfaces.md#clip-scopes-and-painting-masks).
 
 <!-- example: ../../examples/language/control-flow.ips -->
 

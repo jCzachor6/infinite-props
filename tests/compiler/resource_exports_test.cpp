@@ -167,7 +167,7 @@ TEST_CASE("resource export validation rejects invalid table fields and dead-code
     for(const auto& [offset,value]:{std::pair{0u,65537u},{4u,1000u},{8u,100000u},{28u,100000u}}){
         auto broken=bytes;patch32(broken,section.offset+offset,value);CHECK_THROWS_AS(loadFile(broken),FormatError);
     }
-    for(const auto& [offset,value]:{std::pair{12u,u16{65535}},{14u,u16{1}}}){
+    for(const auto& [offset,value]:{std::pair{12u,u16{65535}},{14u,u16{2}}}){
         auto broken=bytes;patch16(broken,section.offset+offset,value);CHECK_THROWS_AS(loadFile(broken),FormatError);
     }
     for(const auto opcode:{Opcode::OutLayer,Opcode::PartGetLayer}){

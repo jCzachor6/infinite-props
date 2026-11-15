@@ -29,6 +29,25 @@ struct ExecutionLimits {
     Cancellation cancellation;
 };
 
+// Asks for a normal image derived from the finished image when the program
+// publishes none. depth is the height of full coverage and rounding a Gaussian
+// sigma, both in image pixels; detail is the share of brightness in the
+// height (0..1). Zero selects each default.
+struct DerivedNormal {
+    float depth = 0.f, rounding = 0.f, detail = 0.f;
+};
+
+// An owned image published beside the main one. A normal image stores one
+// direction per pixel: R is x rightward, G is y upward, B is z toward the
+// viewer, each byte b decoding as b / 127.5 - 1. Alpha is 255 everywhere.
+using AuxiliaryImage = backend::AuxImage;
+
+struct DeclaredImage {
+    std::uint32_t index;
+    iprop_aux_image_kind kind;
+    std::string name; // Exact UTF-8 bytes.
+};
+
 class Failure : public std::runtime_error {
 public:
     const iprop_status_ex status;
@@ -128,6 +147,35 @@ inline std::vector<OutputSlot> copyOutputs(const iprop_result* result) {
     return outputs;
 }
 
+// Owned copies of every image published beside the main one, in result
+// order; they survive result_free. Empty for most programs.
+inline std::vector<AuxiliaryImage> copyImages(const iprop_result* result) {
+    std::vector<AuxiliaryImage> images;
+    if (backend::copyAuxImages(result, images) != IPROP_EX_OK) {
+        throw std::runtime_error("unsupported or invalid auxiliary image");
+    }
+    return images;
+}
+
+// The auxiliary images a program can publish: the normal output of its root.
+inline std::vector<DeclaredImage> declaredImages(const iprop_program* program) {
+    std::uint32_t count = 0;
+    if (iprop_program_aux_image_count(program, &count, nullptr) != IPROP_EX_OK) {
+        throw std::runtime_error("iprop_program_aux_image_count failed");
+    }
+    std::vector<DeclaredImage> images;
+    for (std::uint32_t i = 0; i < count; ++i) {
+        iprop_aux_image_info_ex info;
+        if (iprop_aux_image_info_ex_init(&info, sizeof(info)) != IPROP_EX_OK ||
+            iprop_program_aux_image_get(program, i, &info, nullptr) != IPROP_EX_OK) {
+            throw std::runtime_error("iprop_program_aux_image_get failed");
+        }
+        images.push_back({info.image_index, info.kind,
+                          info.name.byte_count != 0 ? std::string(info.name.data, info.name.byte_count) : std::string()});
+    }
+    return images;
+}
+
 struct GeneratedResult {
     std::uint32_t width, height;
     std::uint64_t rowStride;
@@ -137,6 +185,9 @@ struct GeneratedResult {
     std::vector<backend::ResultResource> resources;
     iprop_result_stats_ex statistics;
     iprop_work_stats_ex work;
+    std::vector<AuxiliaryImage> images;
+    // The normal image published with this result, authored or derived.
+    const AuxiliaryImage* normal() const { return backend::normalImage(images); }
 };
 
 // Optional complete owned handoff for engine integration. Image-only viewers
@@ -154,6 +205,7 @@ inline GeneratedResult copyResult(const iprop_result* result) {
     error.check(iprop_result_query_stats(result, &candidate.statistics, error.get()), "stats query");
     error.check(iprop_work_stats_ex_init(&candidate.work, sizeof(candidate.work)), "work init");
     error.check(iprop_result_query_work(result, &candidate.work, error.get()), "work query");
+    candidate.images = copyImages(result);
     return candidate;
 }
 
@@ -259,11 +311,12 @@ inline void setParameter(iprop_parameters* parameters, std::string_view name, st
 
 // Generates one seed tuple from the given parameters,
 // or the stored defaults when none are given; throws on failure. The
-// returned handle must be freed by the caller.
+// returned handle must be freed by the caller. A non-null `derive` asks for a
+// derived normal image when the program publishes none of its own.
 inline iprop_result* generate(const iprop_program* program, std::uint32_t seed,
                               const iprop_parameters* parameters = nullptr,
                               std::uint32_t width = 0, std::uint32_t height = 0,
-                              ExecutionLimits limits = {}) {
+                              ExecutionLimits limits = {}, const DerivedNormal* derive = nullptr) {
     Error error;
     iprop_generate_options_ex options;
     error.check(iprop_generate_options_ex_init(&options, sizeof(options)), "iprop_generate_options_ex_init");
@@ -275,9 +328,16 @@ inline iprop_result* generate(const iprop_program* program, std::uint32_t seed,
     execution.work_limit = limits.workLimit;
     execution.timeout_ns = limits.timeoutNanoseconds;
     execution.cancellation = limits.cancellation.get();
+    iprop_derived_normal_ex request;
+    error.check(iprop_derived_normal_ex_init(&request, sizeof(request)), "derived normal init");
+    if (derive != nullptr) {
+        request.depth = derive->depth; request.rounding = derive->rounding; request.detail = derive->detail;
+    }
     iprop_result* result = nullptr;
-    error.check(iprop_generate_controlled(program, &options, parameters, &execution, &result, error.get()),
-                "iprop_generate_controlled");
+    // A null request behaves exactly as iprop_generate_controlled.
+    error.check(iprop_generate_derived_normal(program, &options, parameters, &execution,
+                                              derive != nullptr ? &request : nullptr, &result, error.get()),
+                "iprop_generate_derived_normal");
     return result;
 }
 

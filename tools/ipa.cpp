@@ -1,6 +1,7 @@
 #include "ipa.hpp"
 
 #include "iprop/Code.hpp"
+#include "iprop/Compositor.hpp"
 #include "iprop/Constants.hpp"
 #include "iprop/Consts.hpp"
 #include "iprop/Format.hpp"
@@ -115,7 +116,7 @@ struct Program {
     std::vector<Collection> samplers;
     std::vector<Collection> steppers;
     std::vector<std::vector<u8>> distributions;
-    struct Export { TypeDescriptor type; std::string name; u32 owner; };
+    struct Export { TypeDescriptor type; std::string name; u32 owner; bool normal = false; };
     std::vector<Export> resourceExports;
     std::map<std::string, u32> functionOwners;
 };
@@ -492,10 +493,12 @@ std::vector<u8> assemble(const std::string& source) {
             u32 owner = kRootParent;
             if (words.back() != "root" && !parseU32Text(words.back(), owner)) throw error("bad resource owner");
             if (output) {
-                ValueType type;
-                if (!parseValueType(words[1], type) || (type != ValueType::Mask && type != ValueType::Layer))
-                    throw error("resource exports must be mask or layer");
-                program.resourceExports.push_back({type, words[2], owner});
+                // `normal` declares a layer export with the normal-output flag.
+                const bool normal = words[1] == "normal";
+                ValueType type = ValueType::Layer;
+                if (!normal && (!parseValueType(words[1], type) || (type != ValueType::Mask && type != ValueType::Layer)))
+                    throw error("resource exports must be mask, layer or normal");
+                program.resourceExports.push_back({type, words[2], owner, normal});
             } else if (!program.functionOwners.emplace(words[1], owner).second) throw error("duplicate function owner");
             continue;
         }
@@ -631,9 +634,16 @@ std::vector<u8> assemble(const std::string& source) {
         }
         if (instruction.opcode == Opcode::LayerBegin && words.size() == 3) {
             u32 mode = 0;
-            if (!parseU32Text(words[2], mode) || mode > 2)
-                throw error("layer alpha mode must be 0 (inherited), 1 (legacy) or 2 (source_over)");
+            if (!parseU32Text(words[2], mode) || mode > kDirectionLayerMode)
+                throw error("layer mode must be 0 (inherited), 1 (legacy), 2 (source_over) or 3 (direction)");
             instruction.aux = static_cast<u8>(mode);
+            words.pop_back();
+        }
+        if (instruction.opcode == Opcode::SurfaceNormal && words.size() == 2) {
+            u32 receiver = 0;
+            if (!parseU32Text(words[1], receiver) || receiver > 1)
+                throw error("surface.normal receiver must be 0 (layer) or 1 (mask)");
+            instruction.aux = static_cast<u8>(receiver);
             words.pop_back();
         }
         if (def->operand != OperandKind::None && def->operand != OperandKind::Zero) {
@@ -1100,7 +1110,8 @@ std::vector<u8> assemble(const std::string& source) {
         for (const auto& output : program.resourceExports) {
             exports.writeU32(output.owner); exports.writeU32(stringIndex.at(output.name));
             const auto type = std::find(program.types.begin(), program.types.end(), output.type);
-            exports.writeU16(static_cast<u16>(type - program.types.begin())); exports.writeU16(0);
+            exports.writeU16(static_cast<u16>(type - program.types.begin()));
+            exports.writeU16(output.normal ? kResourceExportNormal : u16{0});
         }
         for (const auto& [name, owner] : program.functionOwners) {
             (void)owner;

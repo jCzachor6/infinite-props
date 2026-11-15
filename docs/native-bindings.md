@@ -3,7 +3,7 @@
 The [Apple](../backends/apple/README.md), [Unity](../backends/unity/README.md),
 [Android](../backends/android/README.md) and [Python](../backends/python/README.md)
 packages call the same [C API](../backends/capi/README.md). They require C API
-0.5 / ABI 0.5 and load compiled `.iprop` files. Compile `.ips` with `ipc` before
+0.7 / ABI 0.5 and load compiled `.iprop` files. Compile `.ips` with `ipc` before
 shipping assets. No compiler, server or network connection is needed at runtime.
 
 ## Shared contract
@@ -79,6 +79,54 @@ all dynamic/static D4 and retained data. These are test fixtures, separate from
 the image corpus and from any public export format. The pixel corpus keeps
 part kind/count with zero float leaves; full snapshots/resources use this gate.
 
+## Normal maps and other auxiliary images
+
+A generation can publish images beside the main one. The first kind is the
+normal map of a prop that declares `output normal`
+([authoring](language/relief.md), [C API](c-api-aux-images.md)). Every binding
+exposes the full list, a convenience for the normal map and the opt-in request
+for a derived one; a result without auxiliary images has an empty list.
+
+| Host | All images | Normal map | Derive one | Declared by the program |
+| --- | --- | --- | --- | --- |
+| Python | `image.images` | `image.normal` | `generate(derive_normal=True)` or a `DerivedNormal` | `program.images` |
+| Swift | `image.images` | `image.normal` | `generate(deriveNormal: DerivedNormal())` | `program.images` |
+| C#/Unity | `image.Images` | `image.Normal` | `Generate(deriveNormal: new DerivedNormal())` | `program.Images` |
+| Kotlin/Android | `image.images` | `image.normal` | `generate(deriveNormal = DerivedNormal())` | `program.images` |
+| HTML5/WASM | `result.images` | `result.normal` | `generate(bytes, {deriveNormal: true})` | — |
+| Godot | `asset.images` | `asset.normal_image` | `asset.derive_normal = true` | `asset.declared_images` |
+| SFML | `copyResult(result).images` | `copyResult(result).normal()` | `generate(..., &request)` | `declaredImages(program)` |
+
+Each image carries its kind (1 = normal), its source (1 = authored by the
+program, 2 = derived by the runtime), its name and owned top-left RGBA8 bytes
+of the main image's size. An authored image always wins over a request, so one
+code path serves both kinds of program. A kind or source a wrapper does not
+know is skipped, never an error.
+
+A normal map stores one direction per pixel: R is x rightward, G is y
+**upward** and B is z toward the viewer, each byte `b` decoding as
+`b / 127.5 - 1`. The bytes are linear data: upload them without an sRGB
+transfer, and normalize after decoding. Alpha is 255 everywhere (alpha tag 2);
+coverage is the main image's alpha. Green-up is the convention of Godot's
+`CanvasTexture.normal_texture` and of Unity's normal maps, so neither needs a
+channel flip: Unity flips only the row order on upload, as for the main image,
+which leaves "up on the displayed sprite" unchanged.
+
+| Host | Presentation helper |
+| --- | --- |
+| Godot | `IpropSprite2D` sets a `CanvasTexture` with the normal map, lit by `Light2D` |
+| Unity | `image.Normal.ToTexture2D()` is a linear texture; `AuxiliaryImage.Bind(renderer, texture)` sets it as `_NormalMap` |
+| Swift | `makeCGImage()`, `makeSKTexture()` for `SKSpriteNode.normalTexture`, `makeMetalTexture(device:)` |
+| Kotlin/Android | `toBitmap()` keeps the exact bytes |
+| Python | `to_pillow()` |
+| HTML5/WASM | `drawToCanvas(canvas, result.normal)` shows the stored bytes |
+
+The derived request has three numbers, each defaulting when zero: `depth`
+(longer side / 16) and `rounding` (longer side / 32, at most 64) in image
+pixels, and `detail` (0.5), the share of brightness in the height. It spends
+work, not fuel, and leaves the main image and outputs untouched. Values out of
+range are argument errors before execution.
+
 ## Pixels and presentation
 
 Raw images preserve the runtime's **legacy destination** alpha tag (1).
@@ -126,7 +174,10 @@ Unity editor and Android device tests are separate verification steps.
 ## Required pixel equality gate
 
 Every backend must return identical dimensions and **every RGBA byte** for the
-same compiled program, uint32 seed, dimensions and typed inputs. There is no
+same compiled program, uint32 seed, dimensions and typed inputs. Auxiliary
+images are part of the gate: the corpus (format `IPXCRP02`) records the
+derived-normal request of each case and every published image with its kind,
+source and name. There is no
 tolerance, perceptual metric, alpha-channel exemption or backend-specific golden.
 This includes RGB underneath zero alpha. Ordered geometry values are compared
 by their binary32 bits as well; the focused fixtures separately verify owner IDs

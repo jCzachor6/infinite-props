@@ -6,6 +6,7 @@
 
 #include "iprop/Canvas.hpp"
 #include "iprop/Instruction.hpp"
+#include "iprop/NormalMap.hpp"
 #include "iprop/OpcodeSpec.hpp"
 #include "iprop/Outputs.hpp"
 #include "iprop/PartOutput.hpp"
@@ -64,6 +65,10 @@ struct Frame {
     std::vector<Value> locals; // params first, then declared locals
     std::vector<Value> stack;  // operand stack
     u32 stream = 0;            // current stream state
+    // The seed the running asset or part call started with (seed.initial,
+    // named seeds v1.1): the root's input seed or the seed of a part call.
+    // Helper frames inherit it; stream.push and stream.pop leave it alone.
+    u32 initialSeed = 0;
     std::vector<u32> savedStreams;
     std::size_t ip = 0; // instruction index within the function stream
     std::vector<Label> labels;
@@ -119,6 +124,8 @@ struct Execution {
     std::vector<u16> slotOwner;
     // Shared immutable snapshots, indexed only by the resource-export table.
     std::vector<Value> resourceSlots;
+    // Images published beside the canvas when the run succeeds.
+    std::vector<AuxImage> auxImages;
     // Saved caller state of active part calls, mirroring part frames.
     std::vector<PartCallState> partCalls;
     std::vector<LayerScope> layerScopes;
@@ -268,6 +275,10 @@ void compositePixel(Execution& ex, i32 x, i32 y, const Color& src,
 void paintSurface(Execution& ex, const LayerValue& image,
     CompositionMode mode = CompositionMode::Inherited);
 u8 clipCoverage(Execution& ex, i32 x, i32 y);
+// After a successful run: publishes the root's normal output, or the derived
+// normal image a host asked for when the program published none. Result
+// packing under the work budget; no fuel and no instruction location.
+void publishAuxImages(Execution& ex, const DerivedNormalRequest* derived);
 // Checks a layer or mask view before use: representable i32 bounds, known
 // storage matching its extent and a finite positive raster scale, which must
 // equal the active target's with matchTarget. Returns the view's bounds.
@@ -309,6 +320,7 @@ bool stepContours(Execution& ex, Instruction ins);
 bool stepRegions(Execution& ex, Instruction ins);
 bool stepDynamicParts(Execution& ex, Instruction ins);
 bool stepBlur(Execution& ex, Instruction ins);
+bool stepNormalMap(Execution& ex, Instruction ins);
 bool stepResourceExports(Execution& ex, Instruction ins);
 Value drawSampler(Execution& ex, const SamplerData& sampler);
 

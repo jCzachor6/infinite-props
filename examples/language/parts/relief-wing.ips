@@ -1,0 +1,22 @@
+// One wing, growing rightward from its root at the left edge. Its relief is
+// the wing's own silhouette as a height, with a raised leading edge.
+asset reliefWing {
+  size 16x24
+  input color tint = #c9a15a
+  output normal relief
+
+  draw {
+    layer wing {
+      poly(0, 6, 14, 1, 15, 12, 9, 22, 0, 16, tint)
+    }
+    surface.paint(wing)
+    line(0, 6, 14, 1, 1, color.shade(tint, 50))
+
+    layer directions(encoding = surface.normal) {
+      surface.paint(mask.from(wing).normal(4.0, 1.5))
+      // The lit leading edge faces up and a little to the left.
+      line(0, 6, 14, 1, 1, color.normal(-0.2, -0.7, 0.7))
+    }
+    relief = directions
+  }
+}

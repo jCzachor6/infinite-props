@@ -134,9 +134,27 @@ val outputs(const iprop_result* result, Checked& check) {
     }
     return list;
 }
+// Images published beside the main one, as owned JS copies in result order.
+val auxImages(const iprop_result* result, Checked& check) {
+    std::vector<iprop::backend::AuxImage> images;
+    check(iprop::backend::copyAuxImages(result, images, &check.error));
+    auto list = val::array();
+    for (const auto& image : images) {
+        const auto& info = image.info;
+        auto entry = val::object();
+        entry.set("index", info.image_index); entry.set("kind", info.kind); entry.set("source", info.source);
+        entry.set("name", image.name); entry.set("width", info.width); entry.set("height", info.height);
+        entry.set("rowStride", static_cast<double>(info.row_stride)); entry.set("pixelFormat", info.pixel_format);
+        entry.set("alphaMode", info.alpha_mode); entry.set("storageOrigin", info.origin);
+        // slice() detaches storage from both the C result and the WASM heap.
+        entry.set("data", val(emscripten::typed_memory_view(image.pixels.size(), image.pixels.data())).call<val>("slice"));
+        list.call<void>("push", entry);
+    }
+    return list;
+}
 } // namespace
 
-val generateControlled(val fileBytes, u32 seed, u32 sizeX, u32 sizeY, val uniforms, val execution) {
+val generateDerived(val fileBytes, u32 seed, u32 sizeX, u32 sizeY, val uniforms, val execution, val derived) {
     try {
         const auto length = fileBytes["byteLength"].as<std::size_t>();
         std::vector<std::uint8_t> bytes(length ? length : 1);
@@ -169,8 +187,21 @@ val generateControlled(val fileBytes, u32 seed, u32 sizeX, u32 sizeY, val unifor
             limits.poll_context = &execution;
             limits.poll = [](void* context) -> u32 { return iprop_cancel_js(static_cast<val*>(context)->as_handle()); };
         }
+        // module_api.js passes null or three numbers; the C API checks their ranges.
+        iprop_derived_normal_ex request{}; iprop_derived_normal_ex_init(&request, sizeof(request));
+        const bool derive = !derived.isUndefined() && !derived.isNull();
+        if (derive) {
+            const auto field = [&](const char* name) {
+                const auto value = derived[name];
+                if (value.isUndefined()) return 0.0f;
+                if (!value.isNumber()) throw std::invalid_argument(std::string("deriveNormal.") + name + " must be a number");
+                return static_cast<float>(value.as<double>());
+            };
+            request.depth = field("depth"); request.rounding = field("rounding"); request.detail = field("detail");
+        }
         iprop_result* rawResult = nullptr;
-        check(iprop_generate_controlled(program.get(), &options, parameters.get(), &limits, &rawResult, &check.error));
+        check(iprop_generate_derived_normal(program.get(), &options, parameters.get(), &limits,
+                                            derive ? &request : nullptr, &rawResult, &check.error));
         const std::unique_ptr<iprop_result, decltype(&iprop_result_free)> result(rawResult, iprop_result_free);
         iprop_image_view_ex image{}; check(iprop::backend::queryImage(result.get(), image, &check.error));
         g_rgba.assign(image.pixels, image.pixels + image.byte_count);
@@ -181,6 +212,7 @@ val generateControlled(val fileBytes, u32 seed, u32 sizeX, u32 sizeY, val unifor
         object.set("rowStride", static_cast<double>(image.row_stride)); object.set("pixelFormat", image.pixel_format);
         object.set("alphaMode", image.alpha_mode); object.set("storageOrigin", image.origin);
         object.set("outputs", outputs(result.get(), check)); object.set("resources", iprop::html5::resources(stores));
+        object.set("images", auxImages(result.get(), check));
         iprop_result_stats_ex stats{}; iprop_result_stats_ex_init(&stats, sizeof(stats));
         check(iprop_result_query_stats(result.get(), &stats, &check.error));
         auto fuel = val::object();
@@ -199,6 +231,9 @@ val generateControlled(val fileBytes, u32 seed, u32 sizeX, u32 sizeY, val unifor
     } catch (const ApiError& error) { return errorResult(error.what(), &error.detail); }
       catch (const std::exception& error) { return errorResult(error.what()); }
 }
+val generateControlled(val fileBytes, u32 seed, u32 sizeX, u32 sizeY, val uniforms, val execution) {
+    return generateDerived(fileBytes, seed, sizeX, sizeY, uniforms, execution, val::undefined());
+}
 val generateWith(val fileBytes, u32 seed, u32 sizeX, u32 sizeY, val uniforms) {
     return generateControlled(fileBytes, seed, sizeX, sizeY, uniforms, val::undefined());
 }
@@ -209,4 +244,5 @@ EMSCRIPTEN_BINDINGS(iprop) {
     emscripten::function("_generate", &generate);
     emscripten::function("_generate", &generateWith);
     emscripten::function("_generate", &generateControlled);
+    emscripten::function("_generate", &generateDerived);
 }

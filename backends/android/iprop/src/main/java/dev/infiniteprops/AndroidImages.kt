@@ -27,3 +27,15 @@ fun GeneratedImage.toPremultipliedBitmap(): Bitmap {
     }
     return Bitmap.createBitmap(colors, width.toInt(), height.toInt(), Bitmap.Config.ARGB_8888)
 }
+
+/** The exact bytes of an auxiliary image, such as a normal map, for texture
+ * upload or lossless export. They are data, not colour: upload them without
+ * an sRGB conversion. Alpha is 255 everywhere, so nothing is premultiplied. */
+fun AuxiliaryImage.toBitmap(): Bitmap {
+    val bitmap = Bitmap.createBitmap(width.toInt(), height.toInt(), Bitmap.Config.ARGB_8888)
+    try {
+        bitmap.setPremultiplied(false)
+        bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(rgba))
+        return bitmap
+    } catch (error: Throwable) { bitmap.recycle(); throw error }
+}

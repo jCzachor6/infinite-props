@@ -37,6 +37,8 @@ constexpr std::array pipelines{
     Pipeline{"algebra", "layer image(alpha=surface.source_over) { rect(8,8,40,40,#abc8) }; m=mask.invert(mask.from(image)); surface.paint(m,#abc)", Opcode::MaskInvert},
     Pipeline{"layer blur", "layer image(alpha=surface.source_over) { rect(8,8,40,40,#abc8) }; surface.paint(image.blur(2.0))", Opcode::LayerBlur},
     Pipeline{"mask blur", "layer image(alpha=surface.source_over) { rect(8,8,40,40,#abc8) }; surface.paint(mask.from(image).blur(2.0),#abc)", Opcode::MaskBlur},
+    Pipeline{"layer normal", "layer image(alpha=surface.source_over) { rect(8,8,40,40,#abc8) }; surface.paint(image.normal(4.0,2.0))", Opcode::SurfaceNormal},
+    Pipeline{"mask normal", "layer image(alpha=surface.source_over) { rect(8,8,40,40,#abc8) }; surface.paint(mask.from(image).normal(4.0,2.0))", Opcode::SurfaceNormal},
     Pipeline{"layer paint", "layer image(alpha=surface.source_over) { rect(8,8,40,40,#abc8) }; surface.paint(image)", Opcode::SurfacePaint},
     Pipeline{"mask paint", "layer image(alpha=surface.source_over) { rect(8,8,40,40,#abc8) }; surface.paint(mask.from(image),#abc)", Opcode::SurfacePaintMask},
     Pipeline{"polygon", "poly(1,1,61,3,59,61,2,59, #abc8)", Opcode::Poly},

@@ -79,6 +79,44 @@ public struct Output: Sendable {
     public let parts: [PartSnapshot]
 }
 
+public enum ImageKind: UInt32, Sendable { case normal = 1 }
+public enum ImageSource: UInt32, Sendable { case authored = 1, derived = 2 }
+
+/// An auxiliary image a program can publish: the normal output of its root.
+public struct DeclaredImage: Sendable, Equatable {
+    public let index: UInt32
+    public let kind: ImageKind
+    public let name: String
+}
+
+/// Asks for a normal map derived from the finished image when the program
+/// publishes none. `depth` is the height of full coverage and `rounding` a
+/// Gaussian sigma, both in image pixels; `detail` is the share of brightness
+/// in the height (0...1). Zero selects each default: the longer side / 16,
+/// the longer side / 32 and 0.5.
+public struct DerivedNormal: Sendable, Equatable {
+    public var depth, rounding, detail: Float
+    public init(depth: Float = 0, rounding: Float = 0, detail: Float = 0) {
+        self.depth = depth; self.rounding = rounding; self.detail = detail
+    }
+}
+
+/// An image published beside the main one, owned by its result. A normal map
+/// stores one direction per pixel: R is x rightward, G is y upward and B is z
+/// toward the viewer, each byte b decoding as b / 127.5 - 1. The bytes are
+/// linear data, not colour, and alpha is 255 everywhere (alphaMode == 2): use
+/// the main image's alpha for coverage.
+public struct AuxiliaryImage: Sendable, Equatable {
+    public let index: UInt32
+    public let kind: ImageKind
+    public let source: ImageSource
+    public let name: String
+    public let width, height: UInt32
+    public let rowStride: UInt64
+    public let pixelFormat, alphaMode, storageOrigin: UInt32
+    public let rgba: Data
+}
+
 public struct GeneratedImage: Sendable {
     public let width, height: UInt32
     public let rowStride: UInt64
@@ -89,6 +127,10 @@ public struct GeneratedImage: Sendable {
     public let outputs: [Output]
     public let statistics: Statistics
     public let resources: [ResultResource]
+    /// Images published beside the main one, in result order.
+    public let images: [AuxiliaryImage]
+    /// The normal map published with this image, authored or derived.
+    public var normal: AuxiliaryImage? { images.first { $0.kind == .normal } }
     public func resource(_ id: UInt32) -> ResultResource? {
         id > 0 && Int(id) <= resources.count ? resources[Int(id) - 1] : nil
     }
@@ -133,12 +175,14 @@ private func requireRuntime() throws {
     var library = iprop_library_info_ex()
     iprop_library_info_ex_init(&library, UInt32(MemoryLayout<iprop_library_info_ex>.size))
     try checked { iprop_library_query_ex(&library, $0) }
-    guard library.api_major == 0, library.api_minor >= 6,
+    // Bits 18-22: part outputs, result resources, execution limits,
+    // auxiliary images and the derived normal image.
+    guard library.api_major == 0, library.api_minor >= 7,
           library.abi_major == 0, library.abi_minor == 5,
-          library.capabilities & (UInt64(7) << 18) == UInt64(7) << 18 else {
+          library.capabilities & (UInt64(31) << 18) == UInt64(31) << 18 else {
         throw IpropError(status: 4, reason: 4000, stage: 0, byteOffset: 0,
             locationFlags: 0, offsetSpace: 0, functionIndex: 0, pc: 0, debugLine: 0,
-            message: "InfiniteProps requires C API 0.6 / ABI 0.5 with typed results and execution limits", messageTruncated: false)
+            message: "InfiniteProps requires C API 0.7 / ABI 0.5 with typed results, execution limits and auxiliary images", messageTruncated: false)
     }
 }
 
@@ -149,6 +193,8 @@ public final class Program: @unchecked Sendable {
     private var handle: OpaquePointer?
     public let metadata: Metadata
     public let inputs: [Input]
+    /// The auxiliary images this program can publish; empty for most programs.
+    public let images: [DeclaredImage]
 
     public convenience init(contentsOf url: URL) throws { try self.init(bytes: Data(contentsOf: url)) }
 
@@ -190,6 +236,17 @@ public final class Program: @unchecked Sendable {
                 declarations.append(Input(index: input.input_index, name: string(input.name), defaultValue: value))
             }
             inputs = declarations
+            try checked { iprop_program_aux_image_count(loaded, &count, $0) }
+            var declared: [DeclaredImage] = []
+            for index in 0..<count {
+                var info = iprop_aux_image_info_ex()
+                iprop_aux_image_info_ex_init(&info, UInt32(MemoryLayout<iprop_aux_image_info_ex>.size))
+                try checked { iprop_program_aux_image_get(loaded, index, &info, $0) }
+                // A kind this package does not know is skipped, not an error.
+                guard let kind = ImageKind(rawValue: info.kind) else { continue }
+                declared.append(DeclaredImage(index: info.image_index, kind: kind, name: string(info.name)))
+            }
+            images = declared
             handle = loaded
         } catch { iprop_program_free(loaded); throw error }
     }
@@ -200,14 +257,18 @@ public final class Program: @unchecked Sendable {
         if let handle { iprop_program_free(handle); self.handle = nil }
     }
 
+    /// `deriveNormal` asks the runtime for a normal map when the program
+    /// publishes none of its own; an authored one always wins.
     public func generate(seed: UInt32 = 0, width: UInt32 = 0, height: UInt32 = 0,
-                         inputs: [String: InputValue] = [:], limits: ExecutionLimits = ExecutionLimits()) throws -> GeneratedImage {
+                         inputs: [String: InputValue] = [:], limits: ExecutionLimits = ExecutionLimits(),
+                         deriveNormal: DerivedNormal? = nil) throws -> GeneratedImage {
         try generate(seed: seed, width: width, height: height,
-                     overrides: inputs.map { InputOverride($0.key, $0.value) }, limits: limits)
+                     overrides: inputs.map { InputOverride($0.key, $0.value) }, limits: limits, deriveNormal: deriveNormal)
     }
 
     public func generate(seed: UInt32 = 0, width: UInt32 = 0, height: UInt32 = 0,
-                         overrides: [InputOverride], limits: ExecutionLimits = ExecutionLimits()) throws -> GeneratedImage {
+                         overrides: [InputOverride], limits: ExecutionLimits = ExecutionLimits(),
+                         deriveNormal: DerivedNormal? = nil) throws -> GeneratedImage {
         lock.lock(); defer { lock.unlock() }
         // Passing nil follows the checked API's structured invalid-handle path.
         var parameters: OpaquePointer?
@@ -245,9 +306,19 @@ public final class Program: @unchecked Sendable {
         iprop_execution_limits_ex_init(&control, UInt32(MemoryLayout<iprop_execution_limits_ex>.size))
         control.work_limit = limits.workLimit; control.timeout_ns = limits.timeoutNanoseconds
         control.cancellation = limits.cancellation?.handle
+        var request = iprop_derived_normal_ex()
+        iprop_derived_normal_ex_init(&request, UInt32(MemoryLayout<iprop_derived_normal_ex>.size))
+        if let deriveNormal {
+            request.depth = deriveNormal.depth; request.rounding = deriveNormal.rounding; request.detail = deriveNormal.detail
+        }
         var result: OpaquePointer?
         try withExtendedLifetime(limits.cancellation) {
-            try checked { iprop_generate_controlled(handle, &options, parameters, &control, &result, $0) }
+            try checked { error in
+                // A nil request behaves exactly as iprop_generate_controlled.
+                deriveNormal == nil
+                    ? iprop_generate_derived_normal(handle, &options, parameters, &control, nil, &result, error)
+                    : iprop_generate_derived_normal(handle, &options, parameters, &control, &request, &result, error)
+            }
         }
         defer { iprop_result_free(result) }
         var image = iprop_image_view_ex()
@@ -288,6 +359,26 @@ public final class Program: @unchecked Sendable {
             statistics: Statistics(fuelBudget: stats.fuel_budget, fuelRemaining: stats.fuel_remaining,
                 fuelUsed: stats.fuel_used, imageByteCount: stats.image_byte_count,
                 outputElementCount: stats.output_element_count,
-                workBudget: work.work_budget, workRemaining: work.work_remaining, workUsed: work.work_used), resources: try readPartResources(result))
+                workBudget: work.work_budget, workRemaining: work.work_remaining, workUsed: work.work_used),
+            resources: try readPartResources(result), images: try readAuxiliaryImages(result))
     }
+}
+
+/// Owned copies of every auxiliary image of a result, in result order.
+private func readAuxiliaryImages(_ result: OpaquePointer?) throws -> [AuxiliaryImage] {
+    var count: UInt32 = 0
+    try checked { iprop_result_aux_image_count(result, &count, $0) }
+    var images: [AuxiliaryImage] = []
+    for index in 0..<count {
+        var view = iprop_aux_image_view_ex()
+        iprop_aux_image_view_ex_init(&view, UInt32(MemoryLayout<iprop_aux_image_view_ex>.size))
+        try checked { iprop_result_aux_image_get(result, index, &view, $0) }
+        // A kind or source this package does not know is skipped, not an error.
+        guard let kind = ImageKind(rawValue: view.kind), let source = ImageSource(rawValue: view.source) else { continue }
+        let rgba = view.byte_count == 0 ? Data() : Data(bytes: view.pixels!, count: Int(view.byte_count))
+        images.append(AuxiliaryImage(index: view.image_index, kind: kind, source: source, name: string(view.name),
+            width: view.width, height: view.height, rowStride: view.row_stride, pixelFormat: view.pixel_format,
+            alphaMode: view.alpha_mode, storageOrigin: view.origin, rgba: rgba))
+    }
+    return images
 }

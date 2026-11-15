@@ -104,6 +104,13 @@ add_custom_command(OUTPUT ${image_fixture}
 add_custom_target(capi_image_fixture DEPENDS ${image_fixture})
 add_dependencies(capi_golden capi_image_fixture)
 
+set(aux_fixture ${golden}/aux-images.iprop)
+add_custom_command(OUTPUT ${aux_fixture}
+    COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/test/aux-images.ips -o ${aux_fixture}
+    DEPENDS ipc test/aux-images.ips)
+add_custom_target(capi_aux_fixture DEPENDS ${aux_fixture})
+add_dependencies(capi_golden capi_aux_fixture)
+
 set(owner_fixture ${golden}/output-owners.iprop)
 add_custom_command(OUTPUT ${owner_fixture}
     COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/test/output-owners.ips -o ${owner_fixture}
@@ -218,6 +225,7 @@ foreach(linkage shared static)
         IPROP_TEST_PRODUCT_PATCH=${PROJECT_VERSION_PATCH})
 endforeach()
 iprop_capi_test(capi_image_view test/image_view.c BOTH ARGS ${image_fixture})
+iprop_capi_test(capi_aux_images test/aux_images.c BOTH ARGS ${aux_fixture} ${image_fixture})
 iprop_capi_test(capi_error_buffers test/error_buffers.c BOTH ARGS ${golden}/uniforms.iprop)
 iprop_capi_test(capi_checked test/checked.c BOTH ARGS ${golden}/uniforms.iprop)
 iprop_capi_test(capi_reflection test/reflection.c BOTH

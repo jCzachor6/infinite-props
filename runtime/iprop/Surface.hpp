@@ -13,7 +13,12 @@ namespace iprop {
 // adds an integer placement and D4 without copying or resampling its pixels.
 struct SurfaceBuffer {
     enum class Format { RGBA8, A8 };
+    // What the RGB bytes of an RGBA8 buffer hold (spec normal maps v1.1). A
+    // direction buffer stores unit vectors; painting it re-orients them with
+    // the view's D4 kind. The encoding belongs to the buffer, not to a handle.
+    enum class Encoding : u8 { Colour, Direction };
     Format format = Format::RGBA8;
+    Encoding encoding = Encoding::Colour;
     Canvas raster;
     // A8 uses the same geometry, with one coverage byte instead of RGBA.
     std::vector<u8> coverage;
@@ -46,6 +51,27 @@ struct RenderTarget {
 inline constexpr u32 kMaxSurfaceScopes = 32;
 inline constexpr i32 kMaxMaskRadius = 64;
 inline constexpr f32 kMaxBlurSigma = 64.0f;
+inline constexpr f32 kMaxNormalSmoothing = 64.0f;
+
+// The flat direction (0, 0, 1) and the background of a published normal image.
+inline constexpr Color kFlatDirection{128, 128, 255, 255};
+
+// A direction pixel seen through a D4 view: the linear part of the pixel
+// mapping acts on (x, -y), and 255 - v negates a stored component exactly.
+// The eight kinds act on the bytes as a group, like the transforms compose.
+constexpr Color reorientDirection(Color pixel, u8 kind) {
+    const auto negate = [](u8 value) { return static_cast<u8>(255u - value); };
+    switch (kind) {
+    case 1: return {negate(pixel.g), pixel.r, pixel.b, pixel.a};
+    case 2: return {negate(pixel.r), negate(pixel.g), pixel.b, pixel.a};
+    case 3: return {pixel.g, negate(pixel.r), pixel.b, pixel.a};
+    case 4: return {negate(pixel.r), pixel.g, pixel.b, pixel.a};
+    case 5: return {pixel.r, negate(pixel.g), pixel.b, pixel.a};
+    case 6: return {negate(pixel.g), negate(pixel.r), pixel.b, pixel.a};
+    case 7: return {pixel.g, pixel.r, pixel.b, pixel.a};
+    default: return pixel;
+    }
+}
 // Named captures include their handle/control metadata. Part canvases keep
 // their existing 4 bytes per pixel, without the 128-byte handle charge.
 inline constexpr u64 surfaceBytes(u32 width, u32 height) {

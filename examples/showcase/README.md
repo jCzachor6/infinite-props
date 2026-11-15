@@ -3,23 +3,22 @@
 The compiled props rendered live on the website's home page: four weapon
 packs (`sword`, `axe`, `spear`, `staff`, 96×96) and three portrait packs
 (`portraits_rpg`, `portraits_scifi`, `portraits_civilian`, 64×64), plus three
-butterfly parts (`butterfly-forewing`, `butterfly-hindwing`, `butterfly-body`)
-and the three parts of the smaller 128×128 butterfly released by the swarm
-(`butterfly-forewing-128`, `butterfly-hindwing-128`, `butterfly-body-128`).
+butterfly parts (`butterfly-forewing`, `butterfly-hindwing`, `butterfly-body`).
 
 The `.ips` sources are kept outside this repository; the programs here are
-compiled binaries, in the unversioned format. The weapon and portrait packs
-are compiled by product 0.9.0 from the props working tree at commit `855ba99`,
-with its default fuel budget of 5,000,000. `showcase-manifest.json` records
-the full source commit, every binary's byte size and SHA-256, and the hashes
-of all imported sources.
-`butterfly-benchmark.json` and `butterfly-swarm.json` record the same for the
-two butterflies. Their six programs are written in the 1.0 language and
-compiled by product 1.0.0, whose default budget of 25,000,000 they need
-(a 256×256 wing spends up to about 10 million fuel), from the `butterfly`
-folder of the props repository at commit `2228edd`; the source hashes in the
-manifests identify the exact files. The 128×128 parts are the
-same sources drawn at half the scale. Selection is implemented by ordinary inputs named after what they choose:
+compiled binaries, in the unversioned format. The weapon packs are written in
+the 1.1 language, with named seeds, and compiled by product 1.1.0 from the
+props repository at commit `65d3922`; they need a 1.1 runtime. The portrait
+packs are compiled by product 0.9.0 from the props working tree at commit
+`855ba99`, with its default fuel budget of 5,000,000. `showcase-manifest.json`
+records, for every binary, the product that compiled it, the full source
+commit, its byte size and SHA-256, and the hashes of all imported sources.
+`butterfly-benchmark.json` records the same for the butterfly. Its three
+programs are written in the 1.1 language and compiled by product 1.1.0, whose
+default budget of 25,000,000 they need (a 256×256 wing spends up to about
+11 million fuel), from the `butterfly` folder of the props repository at
+commit `65d3922`; the source hashes in the manifest identify the exact files.
+Selection is implemented by ordinary inputs named after what they choose:
 `enchant` and `quality` (plus `bladeStyle`, `bladeSteel`, `headStyle` and
 `coating` where declared) for weapons, `sex` and `role` for portraits;
 default 0 rolls from the seed. Weapons use `renderPass` for color/emission selection and `bloom` for
@@ -30,6 +29,12 @@ The runtime provides no variant/archetype counts or selectors.
 ```sh
 ipgen sword.iprop --seed 7 -o sword.png
 ```
+
+`catemon-1.iprop` (128×128) is the Catemon page's program, season 1, frozen:
+the page's links name catemons by seed, so a changed generator ships as
+`catemon-2.iprop` with a seed prefix of its own. `catemon.json` records its
+SHA-256, the props commit (`c69bd35`), the hashes of its sources and the
+table the page reads: the 27 kinds, their rarity, weights and blurbs.
 
 `website/prepare.sh` copies them into `website/public/showcase/`. The website
 release smoke test checks that the site ships these exact bytes and compares

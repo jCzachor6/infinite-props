@@ -77,6 +77,7 @@ struct PlannedResourceExport {
     u32 owner = kRootParent;
     std::string name;
     ips::ValueType type;
+    bool normal = false; // a normal output: the record's flag bit 0
 };
 
 // One part instance of the flattened import tree. The same program may back

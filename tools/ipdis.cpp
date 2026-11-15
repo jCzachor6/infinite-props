@@ -105,6 +105,8 @@ std::string instructionText(const Function& function,
     switch (operandKind(ins.opcode)) {
     case OperandKind::None:
     case OperandKind::Zero:
+        // The receiver kind of surface.normal: 1 is a mask.
+        if (ins.opcode == Opcode::SurfaceNormal && ins.aux) return std::string(mnemonic) + " " + std::to_string(ins.aux);
         return mnemonic;
     case OperandKind::IntConst:
         return std::string(mnemonic) + " " +
@@ -254,7 +256,7 @@ std::string disassembleImpl(std::span<const u8> bytes, bool annotated) {
     }
     const auto ownerText = [](u32 owner) { return owner == kRootParent ? std::string("root") : std::to_string(owner); };
     for (const auto& output : loaded.resourceExports)
-        out << "export: " << valueTypeName(output.type) << ' ' << pool.strings.at(output.nameIndex)
+        out << "export: " << (output.normal ? "normal" : valueTypeName(output.type)) << ' ' << pool.strings.at(output.nameIndex)
             << ' ' << ownerText(output.owner) << '\n';
     for (u32 f = 0; f < loaded.functionOwners.size(); ++f)
         out << "owner: " << names.functions[f] << ' ' << ownerText(loaded.functionOwners[f]) << '\n';

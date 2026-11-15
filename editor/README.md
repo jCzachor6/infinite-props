@@ -13,6 +13,9 @@ external edits).
   operators).
   Reserved `mask`/`clip`, typed surface handles and all mask namespace operations
   follow the compiler; mask paint arguments format in image/color/blend order.
+  The relief additions highlight like their neighbours: the `.normal` surface
+  method beside `.blur`, `surface.normal` beside the alpha modes, and
+  `color.normal` through the compiler's builtin list.
 - Diagnostics: a debounced full check through the native `ipc` binary on
   edits, saves and external file changes. JSON diagnostics retain exclusive
   source ranges, stable error codes, severity and related locations, including
@@ -149,7 +152,8 @@ The same real diagnostic mutation corpus is checked by Python, the editor and
 the formal schema in `compiler_export_contracts`.
 
 Completion and hover signatures come from the selected `ipc --describe-language`
-catalogue (schema 6), including namespace constants and geometry/part handle types.
+catalogue (schema 7), including namespace constants, geometry/part handle types and
+the `seed` type.
 The executable identity invalidates the cache after a compiler change. Preview
 renders use `--omit-part-outputs`: images and ordinary outputs remain visible;
 typed snapshots/resources require a host API and are not serialized by the editor.

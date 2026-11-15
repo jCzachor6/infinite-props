@@ -23,6 +23,25 @@ Module["onRuntimeInitialized"] = function () {
                 throw new TypeError("cancelFlag must be an Int32Array in shared memory with at least one element");
             args[5] = { workLimit: workLimit, timeoutMs: timeoutMs, signal: signal, cancelFlag: cancelFlag };
         }
+        // A derived normal image: true asks for the defaults, an object may
+        // set depth, rounding and detail (zero keeps a default).
+        if (args.length > 6) {
+            var derive = args[6];
+            if (derive == null || derive === false) args[6] = null;
+            else if (derive === true) args[6] = { depth: 0, rounding: 0, detail: 0 };
+            else {
+                if (typeof derive !== "object" || Array.isArray(derive)) throw new TypeError("deriveNormal must be a boolean or an object");
+                var request = { depth: 0, rounding: 0, detail: 0 };
+                for (var field of Object.keys(derive)) {
+                    if (!Object.prototype.hasOwnProperty.call(request, field)) throw new TypeError("unknown deriveNormal option '" + field + "'");
+                    if (derive[field] === undefined) continue;
+                    if (typeof derive[field] !== "number" || !Number.isFinite(derive[field]))
+                        throw new TypeError("deriveNormal." + field + " must be a finite number");
+                    request[field] = derive[field];
+                }
+                args[6] = request;
+            }
+        }
         var result = invoke.apply(Module, args);
         if (result.__ipropError) throw result.__ipropError;
         return result;

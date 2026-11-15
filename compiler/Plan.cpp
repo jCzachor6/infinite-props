@@ -69,9 +69,10 @@ void Planner::failLocalLimit(const ips::Function& function) {
 }
 
 ValueType Planner::storedType(ips::ValueType type, const ips::SourceLocation& at, const std::string& slot) {
-    if (!type.isStorable())
+    const auto stored = ips::runtimeType(type);
+    if (!stored.isStorable())
         error(at, "cannot store " + std::string(ips::typeName(type)) + " in " + slot);
-    return type;
+    return stored;
 }
 
 const ips::InputDecl* Planner::ownerInput(const ips::Program* owner,
@@ -293,7 +294,7 @@ void Planner::registerNames() {
             plan_->pools.addType(type);
             plan_->resourceSlotIndex.emplace(std::pair{owner, output.name},
                 static_cast<u16>(plan_->resourceExports.size()));
-            plan_->resourceExports.push_back({owner, output.name, type});
+            plan_->resourceExports.push_back({owner, output.name, type, output.kind == ips::OutputKind::Normal});
         }
     };
     exports(entry_, kRootParent);

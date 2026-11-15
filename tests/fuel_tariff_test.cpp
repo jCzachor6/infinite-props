@@ -12,7 +12,7 @@ using namespace iprop;
 TEST_CASE("tariffs round the entire opcode once and never wrap", "[fuel-v09]") {
     LoadedFile file;
     detail::Execution ex(file);
-    for (const auto op : {Opcode::NoiseMask, Opcode::MaskInvert, Opcode::LayerBlur,
+    for (const auto op : {Opcode::NoiseMask, Opcode::MaskInvert, Opcode::LayerBlur, Opcode::SurfaceNormal,
                           Opcode::Poly, Opcode::PartCreateRegion, Opcode::PartsFromRegions, Opcode::Pixel}) {
         const auto rate = detail::fuelPercent(op);
         for (u64 units : {u64{1}, u64{99}, u64{100}, u64{1025}, UINT64_MAX}) {

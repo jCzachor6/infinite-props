@@ -65,6 +65,21 @@ namespace InfiniteProps.Tests
                         UnityEngine.Object.DestroyImmediate(target);
                         UnityEngine.Object.DestroyImmediate(texture);
                     }
+                }, (auxiliary, expected, index) => {
+                    // A normal map is uploaded as linear data: its bytes survive as stored.
+                    var texture = auxiliary.ToTexture2D();
+                    try
+                    {
+                        // Named by text so the test does not depend on where the format enum lives.
+                        Assert.IsFalse(texture.graphicsFormat.ToString().Contains("SRGB"), "A normal map texture must be linear: " + texture.graphicsFormat);
+                        var actual = texture.GetRawTextureData<byte>();
+                        int stride = checked((int)auxiliary.Width * 4);
+                        Assert.AreEqual(expected.Length, actual.Length, "Auxiliary texture length case " + index);
+                        for (int y = 0; y < auxiliary.Height; ++y) for (int x = 0; x < stride; ++x)
+                            if (expected[y * stride + x] != actual[((int)auxiliary.Height - 1 - y) * stride + x])
+                                Assert.Fail("Auxiliary texture RGBA case " + index + ", row " + y + ", byte " + x);
+                    }
+                    finally { UnityEngine.Object.DestroyImmediate(texture); }
                 });
             }
             finally { UnityEngine.Object.DestroyImmediate(material); }

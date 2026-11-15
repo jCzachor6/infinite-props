@@ -1,0 +1,19 @@
+asset SeedBranches {
+  size 16x16
+
+  draw {
+    // One named branch of this asset's own seed: adding a draw anywhere
+    // above or below leaves the leaves where they are.
+    leaves = seed.initial().fork("leaves")
+    height = 6 to 10
+
+    for i in 0..4 {
+      leaf = leaves.fork(i)
+      x = roll(leaf.fork("x"), 1.0, 14.0)
+      y = roll(leaf.fork("y"), 1.0, 14.0)
+      pixel(int(x), int(y), #55aa88)
+    }
+
+    rect(7, 16 - height, 2, height, #805030)
+  }
+}

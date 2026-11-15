@@ -20,6 +20,17 @@ if(NOT TARGET backend_execution_fixture)
     add_custom_target(backend_execution_fixture DEPENDS ${execution_fixture})
 endif()
 
+# The CLI-rendered normal map oracles of the shared binding fixtures.
+if(NOT TARGET backend_normal_fixtures)
+    set(normal_fixture ${CMAKE_BINARY_DIR}/binding-fixtures/binding-normal.normal.rgba)
+    add_custom_command(OUTPUT ${normal_fixture}
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/test/prepare-bindings.py
+            $<TARGET_FILE_DIR:ipc> ${CMAKE_BINARY_DIR}/binding-fixtures --normal-only
+        DEPENDS ipc ipgen ${CMAKE_CURRENT_LIST_DIR}/test/prepare-bindings.py
+            ${CMAKE_CURRENT_LIST_DIR}/test/bindings.ips ${CMAKE_CURRENT_LIST_DIR}/test/binding-normal.ips)
+    add_custom_target(backend_normal_fixtures DEPENDS ${normal_fixture})
+endif()
+
 if(NOT TARGET backend_part_fixtures)
     set(part_fixtures ${CMAKE_BINARY_DIR}/binding-fixtures/part-bindings.json)
     file(GLOB part_sources CONFIGURE_DEPENDS

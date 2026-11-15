@@ -2,74 +2,63 @@
 
 ## Capture geometry once
 
-`layer name { statements }` starts a transparent RGBA8 target with the current
-target's dimensions and raster scale. Primitives, weather, helpers and part
-calls write into that target. The block executes once in the current RNG stream;
-called parts keep their isolated streams and existing argument order. Capture
-does not automatically paint its parent.
+`layer name { statements }` captures a transparent RGBA8 target with the
+current dimensions and raster scale. Primitives, weather, helpers and parts
+write there once, using the current RNG stream; parts keep isolated streams
+and their argument order. Capture does not paint the parent.
 
-After the block closes, `name` holds an immutable `layer`. Copying it, passing
-it to a typed helper or returning it shares the buffer. A later capture with the
-same name creates a new snapshot; earlier copies remain unchanged. `layer copy
-= image` can state the local type explicitly. Lists and samplers of layers,
-pixel reads, arithmetic, comparisons, host inputs and asset constants are
-unsupported. An initializer skipped by a branch leaves an unset handle; using
-it traps rather than silently producing an empty image.
+Afterward, `name` holds an immutable `layer`. Copies, helper arguments and
+returns share its buffer. Recapture creates a new snapshot without changing
+earlier copies. `layer copy = image` types a copy. Layers do not support
+lists/samplers, pixel reads, arithmetic, comparisons, host inputs or asset
+constants. Skipped initializers leave unset handles that trap on use.
 
-The name becomes available after its block, including in the function's usual
-scope outside a loop or conditional. `return`, `break` and `continue` close
-every capture they exit with its current image and restore the previous target.
-A loop inside a layer does not close that layer when it exits. Returning a
-value evaluates it before scope cleanup. Outputs written in a capture publish
-once, even if the captured image is never painted.
+The name enters function scope after the block, also outside loops/conditions.
+`return`, `break` and `continue` close captures they exit, keeping pixels and
+restoring the previous target. Exiting a loop inside a layer does not close
+it. Return values evaluate before cleanup. Capture outputs publish once,
+even if the image is never painted.
 
-`layer` is a reserved keyword. Rename old locals, inputs and helpers with
-that spelling before compiling their source. A capture result must be a writable local;
-parameters, inputs, constants, palettes and output declarations cannot be its
-destination.
+`layer` is reserved; rename existing declarations that use it. Capture must
+write a local, not a parameter, input, constant, palette or output.
 
 <!-- example: ../../examples/language/captured-panels.ips -->
+
+A capture can also hold directions instead of colours, for a normal map: see
+[relief and normal maps](relief.md).
 
 ## Paint a snapshot
 
 <!-- builtin: surface.paint -->
 
-Paints a captured layer into the current target using its saved mapping. Its
-first argument, named `source`, is a layer, or a mask followed by a color. The
-source expression evaluates once, with no intrinsic RNG, rerendering or pixel
-copy. The full source canvas is visited in row order, including transparent and
-off-target pixels; transparent source pixels are skipped by legacy composition.
-`surface.paint` adds no `at`, rotation or mirror arguments: placement and D4
-come from the existing part mechanism, shared with captured surfaces.
+Paints a captured layer using its saved mapping. `source` accepts a layer,
+or a mask followed by a color. It evaluates once without RNG, rerendering
+or copying pixels. Paint visits the full source canvas in row order,
+including transparent/off-target pixels; legacy skips transparent writes.
+Placement and D4 come from parts, without extra `at`, rotation or mirror arguments.
 
-Omitted `alpha` on a layer inherits the active target's composition mode.
-The root always starts in `surface.legacy`. Select
-`layer name(alpha=surface.source_over)` for correct straight RGBA8 alpha,
-or `alpha=surface.legacy` for the frozen compositor. Mode arguments must be
-literal namespace constants; a numeric variable or const alias is rejected.
-`surface.legacy` and `surface.source_over` have scalar constant values 0 and 1,
-but those integers cannot be passed as mode arguments.
+Layers inherit the active target's composition mode; the root starts in
+`surface.legacy`. Use `layer name(alpha=surface.source_over)` for straight
+RGBA8 alpha, or `alpha=surface.legacy` for the frozen compositor. Mode arguments
+must be literal namespace constants, not variables or const aliases.
+Their scalar values 0 and 1 are also rejected as mode arguments.
 
-Helpers share the active target and its mode. A part's temporary canvas and
-its blit inherit that mode; ordinary part source therefore works with
-source-over when called inside such a layer. An explicit layer inside the
-part may override it. End, return, break and continue restore both the
-caller's target and its mode. Weather still changes RGB on the active target
-and preserves alpha.
+Helpers share the active target/mode. Part canvases and blits inherit that
+mode; explicit layers inside parts can override it. Exiting scopes restores
+target and mode. Weather changes RGB and preserves alpha.
 
-Omitted `blend` on `surface.paint(image)` uses the **destination's active
-mode**. The image's capture mode does not select its blend. An explicit
-`blend=surface.source_over` or `blend=surface.legacy` overrides that one
-paint operation, without changing the target's mode for subsequent draws.
+`surface.paint(image)` uses the **destination's mode**, not the capture mode.
+Explicit `blend=surface.source_over` or `blend=surface.legacy` affects only
+that paint, leaving later draws unchanged.
 
 <!-- example: ../../examples/language/source-over-panels.ips -->
 <!-- example: ../../examples/language/parts/translucent-panel.ips -->
 
 ## Exact RGBA8 source-over
 
-Channels use their stored 0–255 values; composition does not convert to
-linear light and does not change `color.mix`. For source `Cs, As` and
-destination `Cd, Ad`, calculate with unsigned 64-bit integers:
+Composition uses stored 0–255 channels, without linear-light conversion or
+changes to `color.mix`. For source `Cs, As` and destination `Cd, Ad`, use
+unsigned 64-bit arithmetic:
 
 ```text
 D = As * 255 + Ad * (255 - As)
@@ -78,24 +67,21 @@ N = Cs * As * 255 + Cd * Ad * (255 - As)
 Cout = (N + floor(D / 2)) / D
 ```
 
-All divisions are integer divisions. Each RGB channel rounds to nearest,
-with exact halves rounding up. If `D == 0`, write `(0,0,0,0)` instead of
-performing channel division. A zero-alpha source leaves a visible destination
-unchanged; over a zero-alpha destination it canonicalizes hidden RGB to zero.
-Full-source paint visits include those transparent pixels.
+Divisions are integer; RGB rounds nearest, with halves up. If `D == 0`,
+write `(0,0,0,0)`. Zero source alpha preserves a visible destination, but
+clears hidden RGB on a zero-alpha destination. Paint visits these pixels too.
 
-Every primitive, part blit and paint stores a rounded RGBA8 result before
-the next operation. Layers are never flattened or fused; grouping and order
-can change rounding. For example, `#11223380` on an empty source-over target
-stores `(17,34,51,128)`; adding `#ff000080` stores `(176,11,17,192)`.
+Each primitive, part blit and paint stores rounded RGBA8 before the next
+operation. Layers are never fused; grouping/order can change rounding.
+`#11223380` on empty source-over stores `(17,34,51,128)`; adding `#ff000080`
+stores `(176,11,17,192)`.
 
-Legacy remains exact: opaque replacement, floor RGB division for partial
-alpha, unchanged destination alpha and hidden RGB. Legacy part blits and
-paint skip zero-alpha source pixels. Existing binaries retain this behavior.
+Legacy keeps opaque replacement, floor RGB division for partial alpha,
+destination alpha and hidden RGB. Part blits/paint skip zero-alpha sources.
+Existing binaries keep this behavior.
 
-The namespace leaves an ordinary `paint(...)` helper available. An import alias
-named `surface` conflicts with the new namespace and receives a located
-diagnostic; rename that alias when migrating its source.
+An ordinary `paint(...)` helper remains valid. Import alias `surface`
+conflicts with the namespace and must be renamed; the diagnostic locates it.
 
 <!-- example: ../../examples/language/errors/reserved-layer.ips -->
 <!-- example: ../../examples/language/errors/reserved-sampler.ips -->
@@ -161,38 +147,32 @@ exhaust the normal fuel budget.
 
 ## Resources and compatibility
 
-At most 32 layer and clip scopes combined may be active across the complete helper/part call
-stack. Each capture reserves `128 + 4 * width * height` bytes from the shared
-64 MiB generation arena. Copies and mapping views charge no second buffer.
-Root canvas allocation retains its existing limits. Extra part canvases use the
-arena and release their allocation when the last handle expires. Existing part allocation, blit fuel,
-pixel rules, output transforms and RNG stay unchanged.
+At most 32 combined layer/clip scopes can span the helper/part stack.
+Captures reserve `128 + 4 * width * height` bytes in the shared 64 MiB arena.
+Copies/views share buffers. Root canvas limits stay unchanged. Extra part
+canvases use the arena until their last handle expires. Existing part costs,
+pixel rules, output transforms and RNG remain unchanged.
 
 Capture begin/end costs `2 + ceil(width*height*70/100)`; paint costs
-`ceil((1 + source_width*source_height)*60/100)`. These costs are reserved before
-allocation or scanning. Drawing inside a layer keeps the primitive's usual
-fuel cost. Each surface buffer releases when its last handle is destroyed;
-success or a trap clears the generation's remaining handles. A failed
-generation never publishes a partial image. The default fuel budget is
-25,000,000.
+`ceil((1 + source_width*source_height)*60/100)`, reserved before allocation
+or scanning. Primitives retain their usual fuel costs. Last-handle destruction
+frees buffers; success/traps clear remaining generation handles. Failures
+publish no partial image. Default fuel is 25,000,000.
 
-Layers use the file's type descriptor table. They do not add
-public C input/output enums or host layouts. Typed part outputs can retain
-layer/mask sources through the shared result
-resource table; see [structured outputs](assets.md#structured-outputs).
+Layers use type descriptors without new public C input/output enums or
+layouts. Typed part outputs can retain layer/mask sources in the shared
+result resource table; see [structured outputs](assets.md#structured-outputs).
 
 ## Masks from captured alpha
 
 <!-- builtin: mask.from -->
 
-Returns an immutable `mask` view of a layer's alpha, including partial coverage.
-It shares the RGBA8 buffer and mapping without scanning pixels or drawing again.
-Use opaque geometry in a layer when the mask should represent shape alone;
-legacy partial draws on an empty layer keep zero alpha. A mask can be copied,
-passed to a helper or returned. `mask name = expression` is a typed copy.
-Unassigned masks trap. Masks cannot be const, host inputs, geometry outputs or
-list/sampler elements, and have no arithmetic, comparisons or pixel reads.
-`mask` and `clip` are reserved in every name position.
+Returns an immutable `mask` view of layer alpha, including partial coverage,
+sharing buffer/mapping without scanning or rerendering. Use opaque geometry
+for shape masks: legacy partial draws on empty layers leave zero alpha.
+Copy, pass or return masks; `mask name = expression` types a copy. Unset masks
+trap. They cannot be const, inputs, geometry outputs or list/sampler elements,
+and have no arithmetic, comparisons or pixel reads. `mask`/`clip` are reserved.
 
 ## Coverage algebra
 
@@ -212,12 +192,10 @@ Uses `min(a, 255 - b)`, including partial alpha; this is not arithmetic subtract
 
 Uses `255 - a` inside the input's rectangle and zero outside that rectangle.
 
-Two-mask operations allocate the bounding rectangle of both input surfaces,
-at the active target's raster scale. Inputs keep their buffers and coverage.
-Masks are interpreted in the current asset's coordinates; exact D4 and existing
-part raster scales are supported, with no arbitrary resampling. Reads outside
-an input rectangle are zero. Nonfinite scales or unrepresentable bounds trap.
-The result stores one A8 byte per pixel, without a duplicate RGBA image.
+Two-mask operations allocate the inputs' bounding rectangle at the target
+raster scale, leaving inputs unchanged. Masks use current asset coordinates
+with exact D4/part scales, without arbitrary resampling. Outside reads are
+zero. Nonfinite scales/unrepresentable bounds trap. Results store A8 only.
 
 <!-- example: ../../examples/language/mask-algebra.ips -->
 
@@ -225,60 +203,51 @@ The result stores one A8 byte per pixel, without a duplicate RGBA image.
 
 <!-- builtin: mask.expand -->
 
-Takes the maximum coverage in the disk `dx*dx + dy*dy <= radius*radius`.
-The result includes a border of `radius` pixels outside the original rectangle,
-so an outline can extend beyond it.
+Takes maximum coverage in `dx*dx + dy*dy <= radius*radius`, adding a
+`radius`-pixel border so outlines can extend outside the input.
 
 <!-- builtin: mask.shrink -->
 
-Takes the minimum in the same disk, including zero outside the surface.
-Its rectangle remains the input rectangle. Radius is `i32` in **0–64**, measured
-in target pixels; radius zero preserves coverage. Constant bad radii reject at
-compilation; dynamic bad radii trap before scanning.
+Takes minimum coverage in the same disk, including outside zeros, and keeps
+the input rectangle. Radius is `i32` **0–64** target pixels; zero preserves
+coverage. Invalid constants fail compilation; invalid dynamic radii trap
+before scanning.
 
 <!-- builtin: mask.offset -->
 
-Moves the mapping by `dx`, `dy` integer target pixels without copying the buffer.
-The overload `mask.offset(source, offset: vec2)` evaluates each argument once
-and converts x/y with `int()` (truncate, saturate, NaN to zero).
-Offsets may move the whole mask off-canvas. Algebra and morphology retain those
-outside pixels, while painting only writes within the target.
+Moves the mapping by integer target pixels `dx`, `dy` without copying.
+`mask.offset(source, offset: vec2)` evaluates arguments once and converts
+x/y with `int()` (truncate, saturate, NaN to zero). Off-canvas pixels remain
+available to algebra/morphology; painting writes only inside the target.
 
 <!-- example: ../../examples/language/masked-badge.ips -->
 
 ## Clip scopes and painting masks
 
-`clip(region) { ... }` evaluates its mask once and limits writes on the current
-target. Helpers inherit the active clips. A layer capture, like a part, starts
-its own canvas without the parent's clips; they apply once where
-`surface.paint` paints the layer, even when it was captured inside the same
-clip. The parent likewise applies its clips once at a part's blit.
-The child's own clips can independently limit its image. Geometric outputs
-remain complete even when the image is clipped.
+`clip(region) { ... }` evaluates its mask once and limits target writes.
+Helpers inherit clips. Layers and parts start canvases without parent clips;
+those apply once at paint/blit. Child clips independently limit their image.
+Geometric outputs remain complete.
 
-Combine clip coverage from outer to inner, starting at 255, using
-`(a*b + 127)/255` at each step. Scale primitive/paint source alpha by the combined
-coverage with the same rounding, then use the active legacy/source-over kernel.
-Zero coverage skips the write entirely, preserving hidden RGB in both modes.
-`surface.paint(region, color=...)` first scales color alpha by mask coverage,
-then applies combined clip coverage. A mask requires a color; omitted blend
-inherits the destination mode. Source, color and static blend are evaluated in
-signature order, regardless of named argument order, without implicit RNG.
+Combine clips outer-to-inner from 255 with `(a*b + 127)/255`. Scale source
+alpha by that coverage with the same rounding, then use legacy/source-over.
+Zero coverage skips writes and preserves hidden RGB. `surface.paint(region,
+color=...)` scales color alpha by mask coverage, then clips. Masks require a
+color; omitted blend uses destination mode. Source, color and static blend
+evaluate in signature order, regardless of names, without implicit RNG.
 
-Weather runs its usual algorithm; each proposed write interpolates the old and
-proposed RGBA channels by combined clip coverage, rounding nearest with halves
-up. Coverage zero preserves the old pixel, and weather still preserves alpha.
-Normal scope exit, return, break and continue restore target, mode and clips in
-reverse entry order. A trap releases generation resources and publishes no image.
+Weather interpolates old/proposed RGBA by combined clip coverage, rounding
+nearest with halves up. Zero preserves the old pixel; alpha stays unchanged.
+Scope exit, return, break and continue restore target, mode and clips in
+reverse entry order. Traps release resources and publish no image.
 
-An A8 result reserves `128 + width*height` bytes. Sum dispatch (one),
-zeroed pixels and algebra output pixels or logical disk samples, then charge
-`ceil(units*40/100)` once for the whole instruction. This counts all disk samples even when an optimized
-scan stops early. Radius 1 has five samples; radius 64 has 12,853. `mask.from`
-and `offset` cost one without scanning; paint visits each source rectangle pixel.
-Every in-target attempted write charges one per active clip level, including
-zero coverage. Fuel is reserved before allocation or scanning. Shared views do
-not charge the full buffer again.
+A8 results reserve `128 + width*height` bytes. Fuel is `ceil(units*40/100)`:
+one dispatch plus zeroed pixels and algebra output pixels or logical disk
+samples. Count all disk samples even if scanning stops early: radius 1 has
+five; radius 64 has 12,853. `mask.from`/`offset` cost one without scanning;
+paint visits each source rectangle pixel. In-target attempted writes cost
+one per active clip level, even at zero coverage. Reserve fuel before
+allocation/scanning; shared views do not recharge buffers.
 
 <!-- example: ../../examples/language/errors/mask-radius.ips -->
 <!-- example: ../../examples/language/errors/clip-type.ips -->
@@ -290,35 +259,30 @@ not charge the full buffer again.
 
 ## Export regions from parts
 
-Declare `output mask region` or `output layer image` in a component and assign
-a matching handle. Its parent reads `child.outputs.region` or
-`child.outputs.image` after calling that direct child. Exporting does not paint:
-explicitly paint a layer or use a mask for clipping. Capture an entire part
-with `layer name { child.draw(...) }`; there is no `part.render`.
+Declare `output mask region` or `output layer image` and assign a matching
+handle. After calling a direct child, read `child.outputs.region` or
+`child.outputs.image`. Exports do not paint: paint layers or clip with masks
+explicitly. To capture a whole part, use `layer name { child.draw(...) }`;
+there is no `part.render`.
 
-Each write freezes a snapshot in the owner's caller coordinates, including
-that call's raster scale, placement and D4. Propagating through the parent's
-own output applies the next hierarchy level once. Local copies retain their
-buffer and mapping after slot replacements. A later call with no write retains
-the previous snapshot **and its previous placement**. Reading requires this
-frame's last-called part; an unwritten slot traps. A root resource output is
-also internal and is not host-readable.
+Writes freeze snapshots in the caller's coordinates, with scale, placement
+and D4. Propagating through a parent's output applies the next level once.
+Copies retain their buffer/mapping when slots change. Calls without a write
+keep the previous snapshot **and placement**. Reads require this frame's
+last-called part; unwritten slots trap. Root resource outputs stay internal.
 
 <!-- example: ../../examples/language/resource-exports.ips -->
 <!-- example: ../../examples/language/parts/exported-frame.ips -->
 <!-- example: ../../examples/language/parts/exported-patch.ips -->
 
-The format has a separate resource-export table. C API `output_count`, part
-output ranges and host indices count public structured slots, including
-`output list part` snapshots; internal mask/layer slots add none. Existing
-point/rect/circle tags and ABI layouts do not change. Internal resource slots
-reserve 64 bytes each in the generation arena. Views share a buffer, charge
-it once, and do not scan pixels. A write
-or read costs one instruction fuel and consumes no RNG. The last handle frees
-its surface; success and traps clear remaining generation resources. Handles
-are not host outputs. A [dynamic part snapshot](../../spec/part-exports-v0.9.md)
-can retain their captured buffer after generation; ordinary IPS handles cannot
-be passed into a later generation.
+Resource exports use a separate table. C API `output_count`, part ranges
+and host indices count public structured slots, including `output list part`,
+but not mask/layer slots. Existing geometry tags and ABI layouts stay unchanged.
+Internal slots reserve 64 bytes each; views share buffers without scanning.
+Reads/writes cost one instruction fuel and no RNG. The last handle frees
+its surface; generation cleanup clears remaining handles. A
+[dynamic part snapshot](../../spec/part-exports-v0.9.md) can retain buffers
+after generation; ordinary IPS handles cannot cross generations.
 
 <!-- example: ../../examples/language/errors/export-type.ips -->
 <!-- example: ../../examples/language/errors/export-list.ips -->

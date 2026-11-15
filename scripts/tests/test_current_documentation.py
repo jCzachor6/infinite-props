@@ -31,9 +31,14 @@ class CurrentDocumentationTest(unittest.TestCase):
         names = dict(re.findall(r'(?:fixed|dynamic)\(Opcode::(\w+), "([^"]+)"', registry))
         self.assertEqual(numbers.keys(), names.keys())
         # The normative index must include every extension, with no inferred components.
-        expected = {p.name for p in (ROOT / "spec").glob("*-v0.9.md") if p.name != "iprop-v0.9.md"}
+        expected = {p.name for line in ("0.9", "1.1") for p in (ROOT / "spec").glob(f"*-v{line}.md")
+                    if p.name != f"iprop-v{line}.md"}
         self.assertLessEqual(expected, set(self.components))
-        tables = "\n".join(re.findall(r"^\|.*Mnemonic.*\n(?:^\|.*\n)+", self.contract, re.M))
+        # Implementation stages land on develop before the product-version
+        # bump: list their authored wire contracts here until the release
+        # integration links them from the frozen index. None are pending.
+        development = "\n".join((ROOT / file).read_text(encoding="utf-8") for file in ())
+        tables = "\n".join(re.findall(r"^\|.*Mnemonic.*\n(?:^\|.*\n)+", self.contract + "\n" + development, re.M))
         documented = set(re.findall(r"\| (0x[0-9A-Fa-f]+) \| `?([a-z][a-z0-9_.]*)(?=[ `|])", tables))
         self.assertEqual(documented, {(number, names[name]) for name, number in numbers.items()})
 
@@ -75,11 +80,11 @@ class CurrentDocumentationTest(unittest.TestCase):
 
     def test_current_release_metadata_is_ready_without_creating_a_tag(self):
         release = metadata(ROOT, "v" + self.product, publishing=True)
-        self.assertEqual(release["product_version"], "1.0.0")
-        self.assertEqual(release["language_version"], "1.0.0")
-        self.assertEqual(release["c_api_version"], "0.6")
+        self.assertEqual(release["product_version"], "1.1.0")
+        self.assertEqual(release["language_version"], "1.1.0")
+        self.assertEqual(release["c_api_version"], "0.7")
         self.assertEqual(release["c_abi_soversion"], "0.5")
-        self.assertIn("migration-v1.0.md", release["notes"])
+        self.assertIn("migration-v1.1.md", release["notes"])
 
     def test_authored_documentation_links_and_fragments_resolve(self):
         paths = [ROOT / "README.md", ROOT / "CHANGELOG.md", *ROOT.glob("docs/**/*.md"),

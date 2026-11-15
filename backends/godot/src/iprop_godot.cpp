@@ -4,6 +4,7 @@
 #include "part_values.hpp"
 #include "../../ResultQueries.hpp"
 
+#include <godot_cpp/classes/canvas_texture.hpp>
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/image_texture.hpp>
 #include <godot_cpp/classes/texture2d.hpp>
@@ -135,6 +136,20 @@ void IpropAsset::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_work"), &IpropAsset::get_work);
     ClassDB::bind_method(D_METHOD("get_last_error"), &IpropAsset::get_last_error);
     ClassDB::bind_method(D_METHOD("get_resource", "id"), &IpropAsset::get_resource);
+    ClassDB::bind_method(D_METHOD("get_declared_images"), &IpropAsset::get_declared_images);
+    ClassDB::bind_method(D_METHOD("get_images"), &IpropAsset::get_images);
+    ClassDB::bind_method(D_METHOD("get_normal_image"), &IpropAsset::get_normal_image);
+    ClassDB::bind_method(D_METHOD("set_derive_normal", "enabled"), &IpropAsset::set_derive_normal);
+    ClassDB::bind_method(D_METHOD("get_derive_normal"), &IpropAsset::get_derive_normal);
+    ClassDB::bind_method(D_METHOD("set_normal_depth", "value"), &IpropAsset::set_normal_depth);
+    ClassDB::bind_method(D_METHOD("get_normal_depth"), &IpropAsset::get_normal_depth);
+    ClassDB::bind_method(D_METHOD("set_normal_rounding", "value"), &IpropAsset::set_normal_rounding);
+    ClassDB::bind_method(D_METHOD("get_normal_rounding"), &IpropAsset::get_normal_rounding);
+    ClassDB::bind_method(D_METHOD("set_normal_detail", "value"), &IpropAsset::set_normal_detail);
+    ClassDB::bind_method(D_METHOD("get_normal_detail"), &IpropAsset::get_normal_detail);
+    BIND_CONSTANT(IMAGE_NORMAL);
+    BIND_CONSTANT(SOURCE_AUTHORED);
+    BIND_CONSTANT(SOURCE_DERIVED);
 
     ADD_PROPERTY(PropertyInfo(Variant::VECTOR2I, "size"), "", "get_size");
     ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "origin"), "", "get_origin");
@@ -149,6 +164,13 @@ void IpropAsset::_bind_methods() {
     ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "resources"), "", "get_resources");
     ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "work"), "", "get_work");
     ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "last_error"), "", "get_last_error");
+    ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "declared_images"), "", "get_declared_images");
+    ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "images"), "", "get_images");
+    ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "normal_image", PROPERTY_HINT_RESOURCE_TYPE, "Image"), "", "get_normal_image");
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "derive_normal"), "set_derive_normal", "get_derive_normal");
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "normal_depth"), "set_normal_depth", "get_normal_depth");
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "normal_rounding"), "set_normal_rounding", "get_normal_rounding");
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "normal_detail"), "set_normal_detail", "get_normal_detail");
 }
 
 IpropAsset::IpropAsset() = default;
@@ -197,6 +219,8 @@ Error IpropAsset::load_file(const String& path) {
     output_slots_ = Array();
     resources_ = Array();
     work_ = Dictionary(); last_error_ = Dictionary();
+    images_ = Array();
+    normal_ = Ref<Image>();
     size_ = Vector2i(static_cast<int>(meta.size_x),
                      static_cast<int>(meta.size_y));
     origin_ = Vector2(meta.origin_x, meta.origin_y);
@@ -283,6 +307,57 @@ Error IpropAsset::set_input(const String& name, const Variant& value) {
     return OK;
 }
 
+Array IpropAsset::get_declared_images() const {
+    Array images;
+    if (program_ == nullptr) return images;
+    Failure failure;
+    uint32_t count = 0;
+    if (iprop_program_aux_image_count(program_, &count, failure.get()) != IPROP_EX_OK) {
+        failure.print("image query");
+        return images;
+    }
+    for (uint32_t i = 0; i < count; ++i) {
+        iprop_aux_image_info_ex info;
+        String name;
+        if (iprop_aux_image_info_ex_init(&info, sizeof(info)) != IPROP_EX_OK ||
+            iprop_program_aux_image_get(program_, i, &info, failure.get()) != IPROP_EX_OK ||
+            !decodeName(info.name, name)) {
+            failure.print("image query");
+            return Array();
+        }
+        Dictionary entry;
+        entry["index"] = static_cast<int64_t>(info.image_index);
+        entry["kind"] = static_cast<int64_t>(info.kind);
+        entry["name"] = name;
+        images.append(entry);
+    }
+    return images;
+}
+
+void IpropAsset::set_derive_normal(bool enabled) {
+    if (derive_normal_ == enabled) return;
+    derive_normal_ = enabled;
+    emit_changed();
+}
+
+void IpropAsset::set_normal_depth(double value) {
+    if (normal_depth_ == value) return;
+    normal_depth_ = value;
+    emit_changed();
+}
+
+void IpropAsset::set_normal_rounding(double value) {
+    if (normal_rounding_ == value) return;
+    normal_rounding_ = value;
+    emit_changed();
+}
+
+void IpropAsset::set_normal_detail(double value) {
+    if (normal_detail_ == value) return;
+    normal_detail_ = value;
+    emit_changed();
+}
+
 Error IpropAsset::reset_inputs() {
     if (parameters_ == nullptr) {
         UtilityFunctions::printerr("iprop: reset_inputs before load_file");
@@ -352,9 +427,16 @@ Ref<Image> IpropAsset::generate(int64_t seed, int64_t width, int64_t height, con
     options.seed = static_cast<uint32_t>(seed);
     options.size_x = static_cast<uint32_t>(width);
     options.size_y = static_cast<uint32_t>(height);
+    // The C API checks the request's ranges; a null request derives nothing.
+    iprop_derived_normal_ex request;
+    iprop_derived_normal_ex_init(&request, sizeof(request));
+    request.depth = static_cast<float>(normal_depth_);
+    request.rounding = static_cast<float>(normal_rounding_);
+    request.detail = static_cast<float>(normal_detail_);
     Failure failure;
     iprop_result* result = nullptr;
-    if (iprop_generate_controlled(program_, &options, parameters_, &execution, &result, failure.get()) != IPROP_EX_OK) {
+    if (iprop_generate_derived_normal(program_, &options, parameters_, &execution,
+                                      derive_normal_ ? &request : nullptr, &result, failure.get()) != IPROP_EX_OK) {
         last_error_ = failure.details();
         failure.print("generate");
         return Ref<Image>();
@@ -450,6 +532,34 @@ Ref<Image> IpropAsset::generate(int64_t seed, int64_t width, int64_t height, con
     candidate_work["budget"] = static_cast<int64_t>(stats.work_budget);
     candidate_work["remaining"] = static_cast<int64_t>(stats.work_remaining);
     candidate_work["used"] = static_cast<int64_t>(stats.work_used);
+    // Images published beside the main one, each an owned Godot Image.
+    std::vector<iprop::backend::AuxImage> auxiliary;
+    if (iprop::backend::copyAuxImages(result, auxiliary, failure.get()) != IPROP_EX_OK) return readFailure();
+    Array candidate_images;
+    Ref<Image> candidate_normal;
+    for (const auto& item : auxiliary) {
+        if (item.info.width > static_cast<uint32_t>(std::numeric_limits<int>::max()) ||
+            item.info.height > static_cast<uint32_t>(std::numeric_limits<int>::max()) ||
+            item.pixels.size() > static_cast<uint64_t>(std::numeric_limits<int64_t>::max())) return readFailure();
+        PackedByteArray data;
+        if (data.resize(static_cast<int64_t>(item.pixels.size())) != OK) return readFailure();
+        if (!item.pixels.empty()) std::memcpy(data.ptrw(), item.pixels.data(), item.pixels.size());
+        const Ref<Image> picture = Image::create_from_data(static_cast<int>(item.info.width),
+            static_cast<int>(item.info.height), false, Image::FORMAT_RGBA8, data);
+        if (picture.is_null() || picture->is_empty()) return readFailure();
+        String name;
+        if (!decodeName({item.name.data(), static_cast<uint32_t>(item.name.size())}, name)) return readFailure();
+        Dictionary entry;
+        entry["index"] = static_cast<int64_t>(item.info.image_index);
+        entry["kind"] = static_cast<int64_t>(item.info.kind);
+        entry["source"] = static_cast<int64_t>(item.info.source);
+        entry["name"] = name;
+        entry["image"] = picture;
+        candidate_images.append(entry);
+        if (candidate_normal.is_null() && item.info.kind == IPROP_AUX_IMAGE_NORMAL) candidate_normal = picture;
+    }
+    images_ = candidate_images;
+    normal_ = candidate_normal;
     outputs_ = candidate_outputs;
     part_outputs_ = candidate_parts;
     output_slots_ = candidate_slots;
@@ -490,7 +600,19 @@ void IpropSprite2D::refresh() {
         set_texture(Ref<Texture2D>());
         return;
     }
-    set_texture(ImageTexture::create_from_image(image));
+    const Ref<ImageTexture> colour = ImageTexture::create_from_image(image);
+    const Ref<Image> normal = asset_->get_normal_image();
+    if (normal.is_null()) {
+        set_texture(colour);
+        return;
+    }
+    // Light2D nodes light a CanvasTexture through its normal map. Godot reads
+    // normal maps as X+, Y+, Z+, which is how the runtime stores them.
+    Ref<CanvasTexture> lit;
+    lit.instantiate();
+    lit->set_diffuse_texture(colour);
+    lit->set_normal_texture(ImageTexture::create_from_image(normal));
+    set_texture(lit);
 }
 
 void IpropSprite2D::set_asset(const Ref<IpropAsset>& asset) {

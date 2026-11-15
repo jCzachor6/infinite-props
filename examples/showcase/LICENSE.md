@@ -20,5 +20,10 @@ Without written permission you may not:
   games;
 - sell, sublicense or publish them, or works derived from them.
 
+One exception, for the website's Catemon page (`catemon-1.iprop`): you may
+share the catemon images the page makes for you, unchanged, for personal and
+non-commercial use. Everything above still applies to the program itself and
+to any other use of its images.
+
 Licenses for using these props in your own projects will be offered in the
 Infinite Props asset store.

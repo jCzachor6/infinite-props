@@ -14,6 +14,13 @@ zero timeout disables the clock. Every generation, including legacy entries,
 retains the independent work guard. Fuel and the ABI 0.5 install identity are
 unchanged. New descriptors use the same sized-prefix/canary rules as existing
 queries; controlled failures preserve the caller's result pointer.
+
+API 0.7 adds `IPROP_CAP_AUX_IMAGES` and `IPROP_CAP_DERIVED_NORMAL`: a result
+carries a list of [auxiliary images](../../docs/c-api-aux-images.md), the
+first kind being the normal map of a prop that declares `output normal`, and
+`iprop_generate_derived_normal` can ask the runtime to derive one for a prop
+that does not. Existing structures, entry points and the ABI 0.5 install
+identity are unchanged.
 On Windows the static archive is named `ipropc_static` to avoid colliding
 with the DLL's import library. Shared consumers use the header's DLL import
 annotations; static consumers define `IPROP_CAPI_STATIC` (the CMake target
@@ -129,6 +136,12 @@ C++ linker, while its source is still compiled as C99.
   count, tight row stride, RGBA8 format and explicit top-left/legacy alpha
   semantics. The pointer and bytes match the unchanged legacy image view.
   See [image views](../../docs/c-api-images.md).
+- `iprop_result_aux_image_count/get/find` — sized borrowed views of the images
+  published beside the main one under `IPROP_CAP_AUX_IMAGES`: kind, source,
+  name and opaque top-left RGBA8 pixels of the main image's size.
+  `iprop_program_aux_image_count/get` list what a program declares, and
+  `iprop_generate_derived_normal` adds an opt-in derived normal image. See
+  [auxiliary images](../../docs/c-api-aux-images.md).
 
 - `iprop_result_output_count/get/find` — every generated slot in original
   global order, exact owner/name lookup and sized views of legacy pointers.
@@ -148,8 +161,8 @@ message.
    guarantees; the C++ runtime, compiler and tools are implementation
    details and may change freely.
 2. **Independent versions.** `IPROP_API_VERSION_MAJOR`/`_MINOR` describe
-   the header's API feature set, currently `0.5`. Product, source language,
-   binary format and ABI loader identity are separate contracts. API `0.4`/`0.5` use ABI line `0.5`; its migration intentionally removes
+   the header's API feature set, currently `0.7`. Product, source language,
+   binary format and ABI loader identity are separate contracts. API `0.4`–`0.7` use ABI line `0.5`; its migration intentionally removes
    variant/archetype fields and requires clients to rebuild.
 3. **Opaque handles.** `iprop_program`/`iprop_result` are incomplete
    types to consumers; their layout is private.
@@ -256,6 +269,9 @@ rejected with stable reasons before any value changes.
 `IPROP_CAP_GENERATE_EX` advertises checked generation from those validated
 parameters. Typed output value accessors receive capabilities only when
 implemented.
+`IPROP_CAP_AUX_IMAGES` advertises the auxiliary-image queries on programs and
+results, and `IPROP_CAP_DERIVED_NORMAL` the generation entry that can derive a
+normal image; see [auxiliary images](../../docs/c-api-aux-images.md).
 Cancellation, host memory limits and shared-handle concurrency are not
 advertised by this API. A larger API minor number alone does not imply
 those capabilities.

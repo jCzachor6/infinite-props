@@ -1,6 +1,6 @@
 # Python
 
-A Python 3.10+ package using stdlib `ctypes` and the native C API 0.6 / ABI 0.5.
+A Python 3.10+ package using stdlib `ctypes` and the native C API 0.7 / ABI 0.5.
 The runtime library is loaded separately; Pillow is an optional image-export
 dependency. See the [shared contract](../../docs/native-bindings.md).
 
@@ -61,6 +61,20 @@ hole indices. Tuples/bytes are immutable and survive native result/program
 destruction and later generations. The wrapper negotiates both capabilities
 and enables typed generation automatically.
 
+`image.normal` is the [normal map](../../docs/native-bindings.md#normal-maps-and-other-auxiliary-images)
+published with the image, or `None`; `image.images` lists every auxiliary
+image and `program.images` what the program declares. Each `AuxiliaryImage`
+has `kind`, `source` (`ImageSource.AUTHORED` or `DERIVED`), `name`, its size
+and owned `rgba` bytes, plus `to_pillow()`. `generate(derive_normal=True)`
+derives one for a prop that publishes none; pass
+`DerivedNormal(depth=..., rounding=..., detail=...)` to set its parameters.
+
+```python
+lit = program.generate(7, derive_normal=True)
+if lit.normal:
+    lit.normal.to_pillow().save("stone-normal.png")
+```
+
 `to_pillow()` copies top-left RGBA bytes and interprets stored channels as
 straight RGBA for presentation. Raw data retains the runtime's legacy
 destination alpha tag, as described in the shared guide.
@@ -72,8 +86,13 @@ for full typed data. No persisted result format is introduced.
 
 ```sh
 iprop-python stone.iprop stone.png --seed 7 --input 'tint=#8a9299'
+iprop-python stone.iprop stone.png --normal-output stone-normal.png --derive-normal
 # Equivalent: python3 -m infinite_props ...
 ```
+
+`--normal-output` also saves the normal map and fails before writing anything
+when the prop publishes none; `--derive-normal` asks the runtime to derive
+one. The JSON gains an `images` list only when an image was published.
 
 ## Verify
 

@@ -1,0 +1,437 @@
+{
+  "contract": "spec/named-seeds-v1.1.md",
+  "generator": "independent Python implementation of FNV-1a 32, the domain tags and splitmix32",
+  "text_domain": "iprop.seed.fork/text/v1",
+  "text_tag": "80d7e5dc",
+  "index_domain": "iprop.seed.fork/index/v1",
+  "index_tag": "986d7397",
+  "vectors": [
+    {
+      "base": "00000000",
+      "name": "leaves",
+      "result": "4b490890"
+    },
+    {
+      "base": "00000000",
+      "name": "",
+      "result": "482a6c4f"
+    },
+    {
+      "base": "00000000",
+      "name": "rim",
+      "result": "c7188ad6"
+    },
+    {
+      "base": "00000000",
+      "name": "Leaves",
+      "result": "6efe9489"
+    },
+    {
+      "base": "00000000",
+      "name": "zażółć",
+      "result": "fe3496aa"
+    },
+    {
+      "base": "00000000",
+      "name": "a\"b\\c\n",
+      "result": "cd629efc"
+    },
+    {
+      "base": "00000000",
+      "name": "12",
+      "result": "cb86f183"
+    },
+    {
+      "base": "00000000",
+      "index": 0,
+      "result": "c159cf34"
+    },
+    {
+      "base": "00000000",
+      "index": 1,
+      "result": "5fefacde"
+    },
+    {
+      "base": "00000000",
+      "index": -1,
+      "result": "6afb18c6"
+    },
+    {
+      "base": "00000000",
+      "index": 12,
+      "result": "ded86737"
+    },
+    {
+      "base": "00000000",
+      "index": 2147483647,
+      "result": "e678b1f1"
+    },
+    {
+      "base": "00000000",
+      "index": -2147483648,
+      "result": "7925e50b"
+    },
+    {
+      "base": "00000001",
+      "name": "leaves",
+      "result": "816d876d"
+    },
+    {
+      "base": "00000001",
+      "name": "",
+      "result": "614e186a"
+    },
+    {
+      "base": "00000001",
+      "name": "rim",
+      "result": "0431f72a"
+    },
+    {
+      "base": "00000001",
+      "name": "Leaves",
+      "result": "7a65fe83"
+    },
+    {
+      "base": "00000001",
+      "name": "zażółć",
+      "result": "08467b3d"
+    },
+    {
+      "base": "00000001",
+      "name": "a\"b\\c\n",
+      "result": "c07183da"
+    },
+    {
+      "base": "00000001",
+      "name": "12",
+      "result": "cbcfa34b"
+    },
+    {
+      "base": "00000001",
+      "index": 0,
+      "result": "57a2298b"
+    },
+    {
+      "base": "00000001",
+      "index": 1,
+      "result": "fd33c01e"
+    },
+    {
+      "base": "00000001",
+      "index": -1,
+      "result": "95fb9692"
+    },
+    {
+      "base": "00000001",
+      "index": 12,
+      "result": "7d3534fe"
+    },
+    {
+      "base": "00000001",
+      "index": 2147483647,
+      "result": "a6a8fc9d"
+    },
+    {
+      "base": "00000001",
+      "index": -2147483648,
+      "result": "6e835068"
+    },
+    {
+      "base": "00000007",
+      "name": "leaves",
+      "result": "6333835b"
+    },
+    {
+      "base": "00000007",
+      "name": "",
+      "result": "065fad84"
+    },
+    {
+      "base": "00000007",
+      "name": "rim",
+      "result": "ae8957ff"
+    },
+    {
+      "base": "00000007",
+      "name": "Leaves",
+      "result": "36f943eb"
+    },
+    {
+      "base": "00000007",
+      "name": "zażółć",
+      "result": "462a66bc"
+    },
+    {
+      "base": "00000007",
+      "name": "a\"b\\c\n",
+      "result": "e24dc04e"
+    },
+    {
+      "base": "00000007",
+      "name": "12",
+      "result": "7baf49b4"
+    },
+    {
+      "base": "00000007",
+      "index": 0,
+      "result": "e8c4e56a"
+    },
+    {
+      "base": "00000007",
+      "index": 1,
+      "result": "8f231443"
+    },
+    {
+      "base": "00000007",
+      "index": -1,
+      "result": "12c38c8f"
+    },
+    {
+      "base": "00000007",
+      "index": 12,
+      "result": "4aede6c7"
+    },
+    {
+      "base": "00000007",
+      "index": 2147483647,
+      "result": "160f288d"
+    },
+    {
+      "base": "00000007",
+      "index": -2147483648,
+      "result": "3cad8d5e"
+    },
+    {
+      "base": "7fffffff",
+      "name": "leaves",
+      "result": "1de8071a"
+    },
+    {
+      "base": "7fffffff",
+      "name": "",
+      "result": "85d8e45c"
+    },
+    {
+      "base": "7fffffff",
+      "name": "rim",
+      "result": "eca2f6c3"
+    },
+    {
+      "base": "7fffffff",
+      "name": "Leaves",
+      "result": "6b0db819"
+    },
+    {
+      "base": "7fffffff",
+      "name": "zażółć",
+      "result": "90a9dcba"
+    },
+    {
+      "base": "7fffffff",
+      "name": "a\"b\\c\n",
+      "result": "409b4468"
+    },
+    {
+      "base": "7fffffff",
+      "name": "12",
+      "result": "a9547aac"
+    },
+    {
+      "base": "7fffffff",
+      "index": 0,
+      "result": "eb26a364"
+    },
+    {
+      "base": "7fffffff",
+      "index": 1,
+      "result": "dd991829"
+    },
+    {
+      "base": "7fffffff",
+      "index": -1,
+      "result": "ec98919e"
+    },
+    {
+      "base": "7fffffff",
+      "index": 12,
+      "result": "73709258"
+    },
+    {
+      "base": "7fffffff",
+      "index": 2147483647,
+      "result": "7391fabb"
+    },
+    {
+      "base": "7fffffff",
+      "index": -2147483648,
+      "result": "beb4d08f"
+    },
+    {
+      "base": "80000000",
+      "name": "leaves",
+      "result": "ae82492e"
+    },
+    {
+      "base": "80000000",
+      "name": "",
+      "result": "8c2f1b51"
+    },
+    {
+      "base": "80000000",
+      "name": "rim",
+      "result": "08feb34d"
+    },
+    {
+      "base": "80000000",
+      "name": "Leaves",
+      "result": "b9356667"
+    },
+    {
+      "base": "80000000",
+      "name": "zażółć",
+      "result": "2ac658db"
+    },
+    {
+      "base": "80000000",
+      "name": "a\"b\\c\n",
+      "result": "e3eb5646"
+    },
+    {
+      "base": "80000000",
+      "name": "12",
+      "result": "0cecfcd2"
+    },
+    {
+      "base": "80000000",
+      "index": 0,
+      "result": "afd53ae9"
+    },
+    {
+      "base": "80000000",
+      "index": 1,
+      "result": "4244dcc6"
+    },
+    {
+      "base": "80000000",
+      "index": -1,
+      "result": "8fdf8537"
+    },
+    {
+      "base": "80000000",
+      "index": 12,
+      "result": "a64bdaa1"
+    },
+    {
+      "base": "80000000",
+      "index": 2147483647,
+      "result": "cb81daf9"
+    },
+    {
+      "base": "80000000",
+      "index": -2147483648,
+      "result": "566c4e81"
+    },
+    {
+      "base": "ffffffff",
+      "name": "leaves",
+      "result": "d7927265"
+    },
+    {
+      "base": "ffffffff",
+      "name": "",
+      "result": "33aa4e41"
+    },
+    {
+      "base": "ffffffff",
+      "name": "rim",
+      "result": "b986f6ba"
+    },
+    {
+      "base": "ffffffff",
+      "name": "Leaves",
+      "result": "443c66ad"
+    },
+    {
+      "base": "ffffffff",
+      "name": "zażółć",
+      "result": "53501834"
+    },
+    {
+      "base": "ffffffff",
+      "name": "a\"b\\c\n",
+      "result": "41aa578e"
+    },
+    {
+      "base": "ffffffff",
+      "name": "12",
+      "result": "a0095af6"
+    },
+    {
+      "base": "ffffffff",
+      "index": 0,
+      "result": "41846e5f"
+    },
+    {
+      "base": "ffffffff",
+      "index": 1,
+      "result": "e98b93d4"
+    },
+    {
+      "base": "ffffffff",
+      "index": -1,
+      "result": "667c0477"
+    },
+    {
+      "base": "ffffffff",
+      "index": 12,
+      "result": "34704a5d"
+    },
+    {
+      "base": "ffffffff",
+      "index": 2147483647,
+      "result": "9e2885e3"
+    },
+    {
+      "base": "ffffffff",
+      "index": -2147483648,
+      "result": "c47b44b7"
+    }
+  ],
+  "chains": [
+    {
+      "base": "00000007",
+      "keys": [
+        "clump",
+        3,
+        7
+      ],
+      "result": "613201b5"
+    },
+    {
+      "base": "00000007",
+      "keys": [
+        "clump",
+        7,
+        3
+      ],
+      "result": "29acae70"
+    },
+    {
+      "base": "00001234",
+      "keys": [
+        "leaf",
+        "x"
+      ],
+      "result": "2db2f986"
+    },
+    {
+      "base": "ffffffff",
+      "keys": [
+        -1,
+        "",
+        0
+      ],
+      "result": "2fd34f24"
+    }
+  ]
+}

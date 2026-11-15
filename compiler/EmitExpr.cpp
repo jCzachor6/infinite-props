@@ -150,9 +150,40 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
         if (current_->typeOf(*blur->sigma.value) == ips::ValueType::I32) ins(Opcode::I32ToF32);
         return emitMethod(expr);
     }
+    if (const auto* normal = std::get_if<ips::SurfaceNormal>(&expr)) {
+        emitExpr(*normal->receiver);
+        const auto number = [&](const ips::Expr& value) {
+            emitExpr(value);
+            if (current_->typeOf(value) == ips::ValueType::I32) ins(Opcode::I32ToF32);
+        };
+        number(*normal->depth.value);
+        if (normal->smoothing) number(*normal->smoothing->value);
+        else emitConst(0.0f);
+        // One instruction for both receivers: aux 1 reads a mask's coverage.
+        ins(Opcode::SurfaceNormal, current_->typeOf(*normal->receiver) == ips::ValueType::Mask ? u8{1} : u8{0});
+        return ips::ValueType::Layer;
+    }
     if (const auto* method = std::get_if<ips::ListMethod>(&expr)) {
         emitExpr(*method->receiver);
         return emitMethod(expr);
+    }
+    if (const auto* fork = std::get_if<ips::SeedFork>(&expr)) {
+        // Named seeds v1.1, by existing instructions only. The receiver, then
+        // the key, each once: hash32(base ^ salt), where a string's salt is
+        // known now and an index's is hash32(kForkIndexTag ^ index).
+        emitExpr(*fork->receiver);
+        const auto* label = std::get_if<ips::Literal>(fork->key.value.get());
+        if (label && label->kind == ips::Literal::Kind::String) {
+            emitConst(static_cast<i32>(ips::forkLabelSalt(label->text)));
+        } else {
+            emitExpr(*fork->key.value);
+            emitConst(static_cast<i32>(ips::kForkIndexTag));
+            ins(Opcode::I32Xor);
+            ins(Opcode::Hash);
+        }
+        ins(Opcode::I32Xor);
+        ins(Opcode::Hash);
+        return ips::ValueType::Seed;
     }
     if (const auto* pick = std::get_if<ips::SamplerPick>(&expr)) {
         emitExpr(*pick->receiver);
@@ -242,6 +273,7 @@ ips::ValueType Emitter::emitPartRead(const ips::Expr& expr) {
         ins(Opcode::PartGetMask, 0, resource());
         return ips::ValueType::Mask;
     case ips::OutputKind::Layer:
+    case ips::OutputKind::Normal:
         ins(Opcode::PartGetLayer, 0, resource());
         return ips::ValueType::Layer;
     case ips::OutputKind::Point:

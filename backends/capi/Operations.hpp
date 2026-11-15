@@ -31,9 +31,11 @@ void packResult(iprop_result& result, GenerationResult generation, const LoadedF
 // Runs the shared VM. With a parameter set, its values are passed by root-input
 // ID and `inputs.uniforms` must be empty: names were resolved once, when the
 // values were set. Without one, the VM resolves `inputs.uniforms` by name.
+// `derived` asks for a derived normal image when the program publishes none.
 void generateProgram(const iprop_program& program, const GenerationInputs& inputs,
                      iprop_result& result, ErrorContext& context,
-                     const iprop_parameters* parameters = nullptr);
+                     const iprop_parameters* parameters = nullptr,
+                     const DerivedNormalRequest* derived = nullptr);
 iprop_program_info_ex programInfo(const iprop_program& program) noexcept;
 iprop_meta legacyMeta(const iprop_program& program) noexcept;
 iprop_image resultImage(const iprop_result& result) noexcept;

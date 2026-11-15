@@ -1,0 +1,7 @@
+asset badDepth {
+    size 1x1
+    draw {
+        layer image {}
+        bumps = image.normal(-1.0)
+    }
+}

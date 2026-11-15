@@ -1,6 +1,7 @@
 #pragma once
 
 #include "iprop/Canvas.hpp"
+#include "iprop/NormalMap.hpp"
 #include "iprop/Outputs.hpp"
 #include "iprop/PartOutput.hpp"
 #include "iprop/Validator.hpp"
@@ -10,6 +11,7 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -47,6 +49,9 @@ struct NamedOutput {
 struct GenerationResult {
     Canvas image;
     std::vector<NamedOutput> outputs;
+    // Images published beside the main one, in publication order (spec normal
+    // maps v1.1). Empty unless the program or the host request produced one.
+    std::vector<AuxImage> images;
 
     const NamedOutput* find(std::string_view name) const;
 };
@@ -87,6 +92,11 @@ public:
 
     VM(const VM&) = delete;
     VM& operator=(const VM&) = delete;
+
+    // Asks for a normal image derived from the finished one when the program
+    // publishes none (spec normal maps v1.1). Call before run(). Throws a Trap
+    // with InvalidArgument at the Arguments stage for parameters out of range.
+    void deriveNormal(const DerivedNormalRequest& request);
 
     // Executes the entry function. Throws Trap on runtime errors.
     void run();

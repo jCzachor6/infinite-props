@@ -26,13 +26,17 @@ struct StackSignature {
     }
 };
 
-enum class AuxPolicy { Zero, PartTransform, SurfaceMode };
+// LayerMode: 0-2 composition, 3 direction capture. SurfaceKind: the receiver
+// of surface.normal, 0 layer or 1 mask.
+enum class AuxPolicy { Zero, PartTransform, LayerMode, SurfaceKind };
 
 // Intrinsic effects on validated source, excluding argument-expression effects
 // and execution-wide resource failures. Seeded computations do not use the
 // current stream; isolated calls restore it after their own draw/callee.
+// ReadInitial reads the seed the running asset or part call started with: it
+// never changes during that call, yet it is no compile-time constant.
 enum class RngEffect { None, ReadCurrent, AdvanceCurrent, PushSeededStream,
-    RestoreStream, SeededComputation, IsolatedSeededStream, SharedCallee, IsolatedCallee };
+    RestoreStream, SeededComputation, IsolatedSeededStream, SharedCallee, IsolatedCallee, ReadInitial };
 enum class EffectCheck : u16 { NumericRange = 1, StreamStackUnderflow = 2,
     PartRenderArguments = 4, Callee = 8, PartOutputMissing = 16,
     DivideByZero = 32, IntegerOverflow = 64, PartOutputContext = 128, IndexRange = 256, UnassignedHandle = 512, ScopeDepth = 1024 };

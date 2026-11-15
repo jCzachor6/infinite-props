@@ -1,13 +1,9 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- @head -->
 <title>.iprop Binary Format &amp; VM Specification · Infinite Props</title>
 <meta name="description" content="Explore the .iprop binary format: portable bytecode, metadata, named geometry, validation and bounded execution for reproducible procedural 2D assets.">
-<meta name="theme-color" content="#13161a">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/src/styles/site.css">
 </head>
 <body>
 <!-- @header get-started -->
@@ -30,10 +26,10 @@ It indexes the complete frozen contract set and its retained baseline. Earlier v
 <p>The format is unversioned: the four header bytes after the magic are reserved and must be
 zero in a file, in a compressed envelope and in its expanded payload, so files written before
 product 0.7 are rejected and need recompiling. The contract is the
-<a href="../spec/iprop-v1.0.md">1.0 specification</a>. Numerical, drawing, RNG and collection
+<a href="../spec/iprop-v1.1.md">1.1 specification</a>. Numerical, drawing, RNG and collection
 algorithms retain their specified behavior. Variants, archetypes and their implicit arguments
-are removed from metadata, bytecode signatures and host APIs. C clients rebuild for API 0.6 /
-ABI 0.5. The new fuel tariff and independent work/cancellation/deadline controls apply to older programs too.</p>
+are removed from metadata, bytecode signatures and host APIs. C clients build for API 0.7 /
+ABI 0.5; programs using normal maps or <code>seed.initial()</code> need a 1.1 runtime. The new fuel tariff and independent work/cancellation/deadline controls apply to older programs too.</p>
 
 <h2 id="layout">The file layout</h2>
 <pre><code>header (20 bytes)              magic "IPRP", reserved, flags, section count

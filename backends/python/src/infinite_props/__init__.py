@@ -11,7 +11,8 @@ from . import _native as n
 from ._native import IpropError
 
 __all__ = ["Program", "Color", "F32", "U32", "I32", "Input", "Metadata", "Output", "OutputKind", "Statistics", "GeneratedImage", "IpropError",
-    "Point", "PartSnapshot", "Resource", "Ring", "Region", "CancellationToken"]
+    "Point", "PartSnapshot", "Resource", "Ring", "Region", "CancellationToken",
+    "AuxiliaryImage", "DeclaredImage", "DerivedNormal", "ImageKind", "ImageSource"]
 
 
 def _integer(value, minimum, maximum):
@@ -223,6 +224,63 @@ class Statistics:
     work_used: int = 0
 
 
+class ImageKind(IntEnum):
+    NORMAL = 1
+
+
+class ImageSource(IntEnum):
+    AUTHORED = 1
+    DERIVED = 2
+
+
+@dataclass(frozen=True)
+class DeclaredImage:
+    """An auxiliary image a program can publish: the normal output of its root."""
+    index: int
+    kind: ImageKind
+    name: str
+
+
+@dataclass(frozen=True)
+class DerivedNormal:
+    """Request for a normal map derived from the finished image.
+
+    depth is the height of full coverage and rounding a Gaussian sigma, both
+    in image pixels; detail is the share of brightness in the height (0..1).
+    Zero selects each default: longer side / 16, longer side / 32 and 0.5.
+    """
+    depth: float = 0.0
+    rounding: float = 0.0
+    detail: float = 0.0
+
+
+@dataclass(frozen=True)
+class AuxiliaryImage:
+    """An image published beside the main one, owned by this result.
+
+    A normal map stores one direction per pixel: R is x rightward, G is y
+    upward, B is z toward the viewer, each byte b decoding as b / 127.5 - 1.
+    The bytes are linear data, not colour, and alpha is 255 everywhere
+    (alpha_mode == 2): use the main image's alpha for coverage.
+    """
+    index: int
+    kind: ImageKind
+    source: ImageSource
+    name: str
+    width: int
+    height: int
+    row_stride: int
+    pixel_format: int
+    alpha_mode: int
+    storage_origin: int
+    rgba: bytes
+
+    def to_pillow(self):
+        """The stored bytes as an RGBA image, for saving or inspection."""
+        from PIL import Image
+        return Image.frombytes("RGBA", (self.width, self.height), self.rgba)
+
+
 @dataclass(frozen=True)
 class GeneratedImage:
     width: int
@@ -235,6 +293,12 @@ class GeneratedImage:
     outputs: tuple[Output, ...]
     statistics: Statistics
     resources: tuple[Resource, ...] = ()
+    images: tuple[AuxiliaryImage, ...] = ()
+
+    @property
+    def normal(self):
+        """The normal map published with this image, or None."""
+        return next((image for image in self.images if image.kind == ImageKind.NORMAL), None)
 
     def resource(self, resource_id):
         """Resolve a result-local nonzero ID; invalid IDs are never indices."""
@@ -291,6 +355,13 @@ class Program:
                     value = U32(info.u32_default)
                 inputs.append(Input(info.input_index, n.text(info.name), value))
             self.inputs = tuple(inputs)
+            self._native.call("program_aux_image_count", self._handle, c.byref(count))
+            images = []
+            for index in range(count.value):
+                declared = n.sized(n.AuxInfo)
+                self._native.call("program_aux_image_get", self._handle, index, c.byref(declared))
+                images.append(DeclaredImage(declared.image_index, ImageKind(declared.kind), n.text(declared.name)))
+            self.images = tuple(images)
         except BaseException:
             self.close()
             raise
@@ -310,9 +381,18 @@ class Program:
     def cancellation_token(self):
         return CancellationToken(_native=self._native)
 
-    def generate(self, seed=0, *, inputs=None, width=0, height=0, work_limit=0, timeout_ns=0, cancellation=None):
+    def generate(self, seed=0, *, inputs=None, width=0, height=0, work_limit=0, timeout_ns=0, cancellation=None,
+                 derive_normal=None):
+        """Generate one image. derive_normal=True (or a DerivedNormal) asks the
+        runtime for a normal map when the program publishes none of its own."""
         for number in (seed, width, height):
             _integer(number, 0, 0xffffffff)
+        if derive_normal is True:
+            derive_normal = DerivedNormal()
+        elif derive_normal is False:
+            derive_normal = None
+        if derive_normal is not None and not isinstance(derive_normal, DerivedNormal):
+            raise TypeError("derive_normal must be a bool or a DerivedNormal")
         for number in (work_limit, timeout_ns):
             _integer(number, 0, 0xffffffffffffffff)
         if cancellation is not None and (not isinstance(cancellation, CancellationToken) or
@@ -349,8 +429,14 @@ class Program:
                 limits.work_limit, limits.timeout_ns = work_limit, timeout_ns
                 if cancellation is not None:
                     limits.cancellation = cancellation._handle.value
+                request = None
+                if derive_normal is not None:
+                    request = n.sized(n.DerivedNormal)
+                    request.depth, request.rounding, request.detail = (
+                        derive_normal.depth, derive_normal.rounding, derive_normal.detail)
                 result = c.c_void_p()
-                self._native.call("generate_controlled", self._handle, c.byref(options), parameters, c.byref(limits), c.byref(result))
+                self._native.call("generate_derived_normal", self._handle, c.byref(options), parameters, c.byref(limits),
+                                  c.byref(request) if request is not None else None, c.byref(result))
                 try:
                     return self._read_result(result)
                 finally:
@@ -381,10 +467,18 @@ class Program:
                 bool(slot.is_list), slot.element_count, bits, parts))
         self._native.call("result_resource_count", result, c.byref(count))
         resources = tuple(self._read_resource(result, resource_id) for resource_id in range(1, count.value + 1))
+        self._native.call("result_aux_image_count", result, c.byref(count))
+        images = []
+        for index in range(count.value):
+            view = n.sized(n.AuxImage)
+            self._native.call("result_aux_image_get", result, index, c.byref(view))
+            images.append(AuxiliaryImage(view.image_index, ImageKind(view.kind), ImageSource(view.source), n.text(view.name),
+                view.width, view.height, view.row_stride, view.pixel_format, view.alpha_mode, view.origin,
+                c.string_at(view.pixels, view.byte_count) if view.byte_count else b""))
         return GeneratedImage(image.width, image.height, image.row_stride, image.pixel_format, image.alpha_mode,
             image.origin, c.string_at(image.pixels, image.byte_count), tuple(outputs),
             Statistics(stats.fuel_budget, stats.fuel_remaining, stats.fuel_used, stats.image_byte_count, stats.output_element_count,
-                work.budget, work.remaining, work.used), resources)
+                work.budget, work.remaining, work.used), resources, tuple(images))
 
     def _read_part(self, result, slot, entry):
         value = n.sized(n.Part)

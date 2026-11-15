@@ -11,10 +11,18 @@ getting-started guide with the documentation, and the source page.
   `public/intro/tree.ips`, its part `clump.ips` and the 0.8 leaf material
   `foliage.ips` both import (a part takes the leaf colour and makes the
   material from it, since materials cannot be passed to parts); the tree
-  bulges its rim with smooth noise and opens gaps with a 0.9 `noise.mask`; shown and
+  bulges its rim with smooth noise and opens gaps with a 0.9 `noise.mask`; it
+  also publishes a normal map (`output normal relief`): the rings are drawn a
+  second time from the same point of the random stream, and `clump.ips`, asked
+  with `facing=1`, paints the direction each leaf faces instead of its colour,
+  so the map is as crisp as the leaves. The pointer carries a lamp over the
+  forest and the page shades every tree from its map (`src/home.ts`): ambient
+  light plus the lamp's by how squarely each pixel faces it, in ten steps of
+  brightness; without a pointer over the forest every tree stays as generated;
+  shown and
   downloadable beside a forest of 36 seeds (18 on a phone) with a re-roll
   button; recompile `public/intro/tree.iprop` with `ipc tree.ips -o tree.iprop`
-  after editing them, and paste the new source into the tabs in `index.html`), the games
+  after editing them: the tabs take the three sources at build time), the games
   showcase and the main features. The examples are the
   four weapons and three portrait packs under
   `examples/showcase/`, compiled binaries whose
@@ -35,13 +43,6 @@ getting-started guide with the documentation, and the source page.
   at full power, as silhouettes until hovered or tapped.
   Every weapon tile carries its loot rarity: common (plain), rare (soldier),
   epic (ornate) or legendary (ornate, enchanted and at glow power 4).
-  "Roll a legendary" in the hero opens a weapon case: a strip of 40 real
-  rolled weapons (fillers 45% common, 33% rare, 22% epic) runs under a
-  marker for 6.5 s and stops on a legendary one, then the win shows it big
-  with golden rays, its inputs, glow and tip. The next case is prepared in
-  idle time; with reduced motion the strip is skipped. The share link
-  `#roll/<weapon>/<seed>` reopens the same win, because the look follows from
-  the seed alone.
   First, right after "What is Infinite Props?" and before the tree example,
   **Butterfly benchmark** (its live results on the left of the model; above it on a
   phone) composes a 256×256
@@ -59,14 +60,6 @@ getting-started guide with the documentation, and the source page.
   `examples/showcase/butterfly-benchmark.json`; `prepare.sh` copies them with
   the existing showcase assets. The WASM build exports its actual VM fuel
   counters and supports web workers.
-  **Make It Swarm** generates 128 butterflies of 128×128 (64 on a phone) from
-  the `butterfly-*-128.iprop` parts in `examples/showcase/butterfly-swarm.json`,
-  which the worker loads on first use, then releases them all at once from the
-  stage butterfly. They fly (`src/swarm.ts`) at the benchmark's speeds, turn at
-  random, bounce off the edges of the middle 80% of the screen (all of it on a
-  phone) and, when their bodies touch, bounce apart or fly through each other.
-  After 5 s they fly off the screen. Reduced motion shows them at rest and
-  fades them away.
   **One strike, never the same twice**, between the forest and the live
   examples, plays `public/effects/lightning-strike.iprop`, the lightning strike
   from the iprop-asset-effects skill's examples (its source
@@ -85,6 +78,19 @@ getting-started guide with the documentation, and the source page.
   backends and the FAQ. A client-side section search sits in the docs
   sidebar (press `/`).
 - **Source** (`source.html`): the repository, the build and the layout.
+- **Catemon** (`catemon/index.html`, served as `/catemon/`): "What's your
+  Catemon?". A visitor types a name and meets its catemon, one of 27 kinds
+  drawn in the browser by `public/showcase/catemon-1.iprop` (`src/catemon.ts`,
+  `src/styles/catemon.css`). The seed is the 32-bit FNV-1a hash of the
+  season's prefix and the tidied name in lower case, so `/catemon/?name=Jakub`
+  is the same catemon everywhere and nothing is sent to a server; `?seed=123`
+  opens a plain seed, which is what "Surprise me" picks. The kinds, their
+  odds and their blurbs come from `showcase/catemon.json`. The page reveals
+  the catemon (at once with reduced motion), shares a 1080×1350 card drawn
+  on a canvas through the Web Share API or as a download with the link
+  copied, and keeps the first catemon of each kind in `localStorage`.
+  **Season 1 is frozen**: links name catemons by seed, so `catemon-1.iprop`
+  is never replaced (`examples/showcase/README.md`).
 - **Asset store**: available at [iprop.store](https://iprop.store/), linked from
   the navigation, footer and home-page buttons.
 
@@ -101,14 +107,20 @@ second copy under `reference/`.
 
 ## Shared chrome
 
-The header, the footer and the docs sidebar live in `templates/partials/`.
-A small Vite plugin (`vite.config.ts`) expands markers such as
-`<!-- @header home -->` at build time, marks the current page in the
-navigation and fills `{{BASE}}` and the version placeholders
+The shared lines of every `<head>`, the header, the footer, the docs sidebar
+and the repeated pieces of the home page (a tile, a forest cell) live in
+`templates/partials/`. A small Vite plugin (`vite.config.ts`) expands their
+markers at build time, partials within partials included:
+`<!-- @header home -->` marks the current page in the navigation,
+`<!-- @weapon-tile sword; Sword; sword -->` fills `{{1}}`, `{{2}}` and `{{3}}`,
+`<!-- @forest-tree *36 -->` repeats a partial, and
+`<!-- @code intro/tree.ips -->` includes that file from `public/`, highlighted.
+The plugin also fills `{{BASE}}` and the version placeholders
 (`{{PRODUCT_VERSION}}` from `package.json`, the rest from
-`public/docs/language-manifest.json`), so the navigation works without JS.
-All styles are in `src/styles/site.css`; `src/site.ts` makes the header
-opaque past the home hero and opens the mobile menu.
+`public/docs/language-manifest.json`), so the pages work without JS.
+The styles are in `src/styles/`; `src/site.ts` makes the header opaque past
+the home hero and opens the mobile menu, and `src/runtime.ts` starts the
+interpreter for the pages that draw props.
 
 ## Search and link previews
 
@@ -119,9 +131,13 @@ X/Twitter cards, crawl directives and JSON-LD to the static HTML. The home page
 identifies the website and software; documentation pages describe their content
 as technical articles. No client-side JavaScript is needed to read these tags.
 
+A page may have a card of its own (`SOCIAL` in `vite.config.ts`): the Catemon
+page uses `public/catemon/social-preview.png`. Every `?name=` link shares its
+one canonical URL, `/catemon/`, so search engines see a single page.
+
 The production build also emits `robots.txt` and `sitemap.xml`. Sitemap entries
 come from the same `PAGES` inventory as the Vite build; the home page uses `/`
-as its canonical URL. No synthetic modification dates are published.
+as its canonical URL, and a directory's `index.html` its directory. No synthetic modification dates are published.
 
 The shared 1200×630 card is `public/social-preview.png`. Its vector template is
 `templates/social-preview.svg`; regenerate it together with the README
@@ -173,11 +189,10 @@ this complete pipeline in its WASM job.
 | `templates/partials/` | the header, footer and docs sidebar |
 | `templates/language.html` | the presentation shell for the generated handbook |
 | `src/home.ts` | the live examples, the outputs card and the game slots |
-| `src/butterfly.ts` | benchmark and swarm controls, live averages and canvas-part flight animation |
-| `src/swarm.ts` | the swarm's steering model, free of the DOM |
+| `src/butterfly.ts` | benchmark controls, live averages and canvas-part flight animation |
 | `src/lightning.ts` | the animated lightning strike: its inputs, seed, views, playback and the next seed |
 | `public/lightning-worker.js` | WASM rendering of the strike's frames, three passes each |
-| `public/butterfly-worker.js` | three-part WASM generation of either butterfly model and measured fuel/time |
+| `public/butterfly-worker.js` | three-part WASM generation and measured fuel/time |
 | `src/site.ts` | the header and the mobile menu |
 | `src/styles/site.css` | every style of the site |
 | `scripts/build-docs.mjs` | Markdown rendering and generated search anchors |

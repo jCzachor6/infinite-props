@@ -8,7 +8,7 @@ import re
 from release_common import read_version_matrix
 from pathlib import PurePosixPath
 
-LANGUAGE_SCHEMA_VERSION = 6
+LANGUAGE_SCHEMA_VERSION = 7
 DIAGNOSTICS_SCHEMA_VERSION = 1
 DOCUMENTATION_SCHEMA_VERSION = 3
 VALUE_TYPES = {'i32', 'f32', 'color', 'vec2', 'distribution', 'circle', 'rect', 'void', 'T', 'palette<f32>', 'palette<color>', 'layer', 'mask'}
@@ -19,8 +19,10 @@ STEPPER_TYPES = {'stepper<' + item + '>' for item in ('i32', 'f32', 'color', 've
 DESCRIPTION_TYPES = SAMPLER_TYPES | STEPPER_TYPES
 LIST_TYPES = {'list<' + item + '>' for item in ({'i32', 'f32', 'color', 'vec2', 'distribution'} | DESCRIPTION_TYPES)}
 VALUE_TYPES |= LIST_TYPES | DESCRIPTION_TYPES
+VALUE_TYPES.add('seed')  # a source type (named seeds v1.1)
 RNG_EFFECTS = {'none', 'read_current', 'advance_current', 'push_seeded_stream', 'restore_stream',
-               'seeded_computation', 'isolated_seeded_stream', 'shared_callee_stream', 'isolated_callee_stream'}
+               'seeded_computation', 'isolated_seeded_stream', 'shared_callee_stream', 'isolated_callee_stream',
+               'read_initial'}
 TRAP_CHECKS = {'numeric_range', 'stream_stack_underflow', 'part_render_arguments', 'callee',
               'part_output_missing', 'part_output_context', 'divide_by_zero', 'integer_overflow', 'index_range', 'unassigned_handle', 'scope_depth'}
 EXITS = {'ok': 0, 'invalid_source': 1, 'cli_error': 2, 'internal_error': 3}
@@ -93,6 +95,9 @@ def ordered_signature(value, path, typed=True):
     for parameter in value['parameters']:
         obj(parameter, ['name', 'type'] if typed else ['name', 'required', 'positional'], path + '.parameter')
         names.append(text(parameter['name'], path + '.name', True))
+        # A seed parameter (named seeds v1.1) is an i32 slot that also takes a seed.
+        require('role' not in parameter or (parameter['role'] == 'seed' and parameter.get('type', 'i32') == 'i32'),
+                path + '.role')
         if typed:
             require(type(parameter['type']) is str and parameter['type'] in VALUE_TYPES, path + '.type')
         else:
@@ -111,6 +116,71 @@ def ordered_signature(value, path, typed=True):
     if typed:
         require(type(value.get('result')) is str and value['result'] in VALUE_TYPES, path + '.result')
         effects(value.get('effects'), path + '.effects')
+
+
+NAMED_SEEDS = {
+    'type': 'seed', 'type_keyword': 'contextual_type_position', 'representation': 'i32_bits_in_i32_slots',
+    'wire_type': False, 'seed_expression': 'current_stream_state_i32', 'initial_syntax': 'seed.initial()',
+    'initial_opcode': 'seed.initial',
+    'initial_value': {'root': 'generation_seed', 'helper': 'caller_value', 'part': 'seed_of_this_part_call',
+                      'stream_push': 'unchanged'},
+    'initial_constant': False, 'fork_syntax': '<i32 | seed>.fork(<string literal | i32>)',
+    'fork_named_argument': 'key', 'fork_receivers': ['i32', 'seed'], 'fork_result': 'seed',
+    'fork_evaluation': 'receiver_then_key_once', 'fork_rng': 'none', 'fork_lowering': 'existing_instructions',
+    'fork_mutates': False, 'fork_chain': 'ordered',
+    'label': 'string_literal_decoded_utf8_bytes_case_sensitive_no_normalization', 'label_hash': 'fnv1a32',
+    'index_type': 'i32', 'text_domain': 'iprop.seed.fork/text/v1', 'text_tag': 2161632732,
+    'index_domain': 'iprop.seed.fork/index/v1', 'index_tag': 2557309847,
+    'text_fork': 'hash32(base ^ hash32(text_tag ^ fnv1a32(label)))',
+    'index_fork': 'hash32(base ^ hash32(index_tag ^ index))', 'conversion': 'int(seed)',
+    'implicit_conversion': False, 'operators': ['==', '!='], 'other_seed_arguments': ['choose', 'part_call'],
+    'helper_parameters': True, 'helper_returns': True, 'locals': True, 'host_inputs': False, 'outputs': False,
+    'asset_constants': False, 'materials': False, 'palettes': False, 'collections': False, 'samplers': False,
+    'steppers': False, 'choices': False}
+
+
+def fnv1a32(data):
+    h = 2166136261
+    for byte in data:
+        h = ((h ^ byte) * 16777619) & 0xffffffff
+    return h
+
+
+def same_value(actual, wanted):
+    # Exact types too: a boolean is not accepted where a number is published.
+    if type(wanted) is dict:
+        return type(actual) is dict and actual.keys() == wanted.keys() and all(same_value(actual[k], wanted[k]) for k in wanted)
+    if type(wanted) is list:
+        return type(actual) is list and len(actual) == len(wanted) and all(same_value(a, w) for a, w in zip(actual, wanted))
+    if type(wanted) is bool or type(actual) is bool:
+        return type(actual) is type(wanted) and actual == wanted
+    return type(actual) in ({int, float} if type(wanted) is int else {type(wanted)}) and actual == wanted
+
+
+def read_named_seeds(value, rules):
+    named = obj(rules.get('named_seeds'), list(NAMED_SEEDS) + ['initial_effects', 'seed_parameters'], 'named seeds')
+    require(all(same_value(named[key], NAMED_SEEDS[key]) for key in NAMED_SEEDS), 'named seed policy')
+    # The tags are the FNV-1a 32 of their own domain strings.
+    require(named['text_tag'] == fnv1a32(named['text_domain'].encode()) and
+            named['index_tag'] == fnv1a32(named['index_domain'].encode()), 'named seed tags')
+    effects(named['initial_effects'], 'seed.initial effects')
+    require(named['initial_effects']['rng'] == 'read_initial' and not named['initial_effects']['writes_canvas'] and
+            not named['initial_effects']['writes_outputs'] and not named['initial_effects']['may_trap'], 'seed.initial effects')
+    builtins = {b['name']: b for b in value['builtins']}
+    seeded = strings(named['seed_parameters'], 'seed parameters', set(builtins), True)
+    for name, builtin in builtins.items():
+        roles = [p for o in builtin['overloads'] for p in o['parameters'] if p.get('role') == 'seed']
+        require((name in seeded) == bool(roles), 'seed parameter list: ' + name)
+    initial = builtins.get('seed.initial')
+    require(initial is not None and len(initial['overloads']) == 1, 'seed.initial builtin')
+    overload = initial['overloads'][0]
+    require(overload['parameters'] == [] and overload['result'] == 'seed' and overload.get('opcode') == 'seed.initial' and
+            overload['constant_evaluable'] is False and overload['effects'] == named['initial_effects'], 'seed.initial builtin')
+    conversions = [o for o in builtins['int']['overloads'] if o['parameters'][0]['type'] == 'seed']
+    require(len(conversions) == 1 and conversions[0]['result'] == 'i32' and 'opcode' not in conversions[0] and
+            conversions[0]['constant_evaluable'] is False, 'int(seed)')
+    require('seed' in rules['types']['storable'] and 'seed' in rules['types']['helper_parameters'] and
+            'seed' in rules['types']['helper_value_returns'], 'seed storage')
 
 
 def read_language(value):
@@ -199,7 +269,7 @@ def read_language(value):
     require(len(source_types) == len(set(source_types)), 'unique source input types')
     types = obj(rules['types'], ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry', 'point_value_type', 'implicit_widening', 'local_reassignment'], 'types')
     for key in ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry']:
-        strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else ({'i32', 'f32', 'color', 'vec2', 'distribution', 'layer', 'mask'} | LIST_TYPES | DESCRIPTION_TYPES | GEOMETRY_TYPES), True)
+        strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else ({'i32', 'f32', 'color', 'vec2', 'distribution', 'layer', 'mask', 'seed'} | LIST_TYPES | DESCRIPTION_TYPES | GEOMETRY_TYPES), True)
     if 'parameterized' in types:
         parameters = types['parameterized']
         require(type(parameters) is list and 1 <= len(parameters) <= 3, 'parameterized type descriptors')
@@ -351,6 +421,75 @@ def read_language(value):
         paint = next((b for b in value['builtins'] if b['name'] == 'surface.paint'), None)
         require(paint is not None and all(o['effects']['rng'] == 'none' and o['effects']['writes_canvas'] and
             'unassigned_handle' in o['effects']['may_trap'] and not o['constant_evaluable'] for o in paint['overloads']), 'surface paint effects')
+    if 'normal_maps' in rules:
+        normal = rules['normal_maps']
+        expected = {'output_syntax': 'output normal <name>', 'output_keyword': 'contextual',
+            'output_storage': 'flagged_layer_resource_export', 'outputs_per_asset': 1,
+            'output_value': 'direction_layer_checked_at_write', 'list_outputs': False,
+            'part_read': 'layer_in_caller_coordinates',
+            'publication': 'root_slot_painted_source_over_on_flat_after_success',
+            'published_alpha': 255, 'flat_rgba': [128, 128, 255, 255], 'publication_fuel': 0,
+            'axes': 'x_right_y_up_z_toward_viewer', 'byte': 'nearest_ties_away_from_zero_complement_negates',
+            'capture_syntax': 'layer <name>(encoding=surface.normal) { <statements> }',
+            'capture_mode': 'surface.source_over', 'capture_mode_code': 3, 'capture_alpha_option': False,
+            'encoding': 'buffer_property_not_a_type', 'paint': 'view_D4_reorients_vectors_with_pixels',
+            'weather': 'trap', 'dynamic_parts': False, 'blur': 'keeps_encoding',
+            'method_syntax': '<layer|mask>.normal(depth[, smoothing])',
+            'evaluation': 'receiver_then_depth_then_smoothing_once',
+            'depth_type': 'f32', 'minimum_depth': 0, 'depth_units': 'receiver_raster_pixels_of_full_coverage',
+            'smoothing_type': 'f32', 'minimum_smoothing': 0, 'maximum_smoothing': 64, 'default_smoothing': 0,
+            'smoothing_units': 'receiver_raster_pixels',
+            'height': {'mask': 'coverage', 'layer': 'red_times_alpha_over_255'}, 'height_layer_encoding': 'colour_only',
+            'result': 'direction_layer_with_receiver_extent_scale_placement_D4', 'result_alpha': 'receiver_coverage',
+            'border': 'nearest_edge', 'smoothing_kernel': 'blur_gaussian_binary64_no_rounding',
+            'slope': 'central_differences', 'maximum_radius': 192, 'opcode': 'surface.normal',
+            'receiver_codes': {'layer': 0, 'mask': 1},
+            'fuel': 'ceil_60_percent_one_plus_K_plus_W_H_times_5_plus_2_K',
+            'result_bytes': '128_plus_4_per_pixel', 'scratch_bytes': '8_times_W_H_plus_8_times_W_radius',
+            'scratch_release': 'success_and_error', 'preflight': 'fuel_and_shared_arena_before_filter',
+            'color_builtin': 'color.normal', 'color_axes': 'x_right_y_down_z_toward_viewer',
+            'color_lowering': 'existing_f32_instructions', 'color_constants': 'fold_to_one_color',
+            'color_fallback': 'flat_when_squared_length_zero_or_not_finite',
+            'color_constant_errors': ['zero_or_nonfinite_length', 'z_not_positive'],
+            'asset_constants': {'color.normal': True, 'normal_method': False}}
+        obj(normal, list(expected) + ['methods', 'effects'], 'normal map policy')
+        # Exact types too: a boolean is not accepted where a number is published.
+        def same(actual, wanted):
+            if type(wanted) is dict:
+                return type(actual) is dict and actual.keys() == wanted.keys() and all(same(actual[k], wanted[k]) for k in wanted)
+            if type(wanted) is list:
+                return type(actual) is list and len(actual) == len(wanted) and all(same(a, w) for a, w in zip(actual, wanted))
+            if type(wanted) is bool or type(actual) is bool:
+                return type(actual) is type(wanted) and actual == wanted
+            return type(actual) in ({int, float} if type(wanted) is int else {type(wanted)}) and actual == wanted
+        require(all(same(normal[key], expected[key]) for key in expected), 'normal map policy')
+        require(type(normal['methods']) is list and len(normal['methods']) == 4, 'normal method signatures')
+        signatures = set()
+        for method in normal['methods']:
+            obj(method, ['name', 'receiver', 'parameters', 'result', 'opcode',
+                'constant_evaluable', 'effects'], 'normal method')
+            require(method['name'] == 'normal' and method['receiver'] in {'layer', 'mask'} and
+                method['result'] == 'layer', 'normal method receiver')
+            require(method['parameters'] in ([{'name': 'depth', 'type': 'f32'}],
+                [{'name': 'depth', 'type': 'f32'}, {'name': 'smoothing', 'type': 'f32'}]), 'normal method signature')
+            require(method['opcode'] == 'surface.normal' and method['constant_evaluable'] is False, 'normal method lowering')
+            effects(method['effects'], 'normal method effects')
+            e = method['effects']
+            require(e['rng'] == 'none' and not e['writes_canvas'] and not e['writes_outputs'] and
+                set(e['may_trap']) == {'numeric_range', 'unassigned_handle'}, 'normal method effects')
+            signatures.add((method['receiver'], len(method['parameters'])))
+        require(signatures == {('layer', 1), ('layer', 2), ('mask', 1), ('mask', 2)}, 'unique normal method signatures')
+        effects(normal['effects'], 'normal map effects')
+        stored = next((b for b in value['builtins'] if b['name'] == 'color.normal'), None)
+        require(stored is not None and len(stored['overloads']) == 1, 'color.normal builtin')
+        overload = stored['overloads'][0]
+        require([p['name'] for p in overload['parameters']] == ['x', 'y', 'z'] and
+            all(p['type'] == 'f32' for p in overload['parameters']) and overload['result'] == 'color' and
+            overload['evaluation_order'] == ['x', 'y', 'z'] and overload['constant_evaluable'] is True and
+            'opcode' not in overload and overload['effects']['rng'] == 'none' and
+            not overload['effects']['writes_canvas'] and not overload['effects']['may_trap'], 'color.normal builtin')
+    if 'named_seeds' in rules:  # required by schema 7; reduced fixtures omit it
+        read_named_seeds(value, rules)
     if 'resource_exports' in rules:
         exports = rules['resource_exports']
         _strings_and_bools(exports, {

@@ -2,6 +2,7 @@
 
 #include <utility>
 
+#include "iprop/Compositor.hpp"
 #include "ips/Fold.hpp"
 #include "ips/Literals.hpp"
 
@@ -62,7 +63,9 @@ void Emitter::emitConst(const Value& value) {
     }
 }
 
-TemporaryLocals::Lease Emitter::temporary(ips::ValueType type) {
+TemporaryLocals::Lease Emitter::temporary(ips::ValueType source) {
+    // A seed waits in an i32 slot, like every other seed slot.
+    const auto type = ips::runtimeType(source);
     // Pool exhaustion stays a PoolLimit; only the local table is located here.
     if (type.needsDescriptor()) plan_.pools.addType(type);
     else if (type != ips::ValueType::I32 && type != ips::ValueType::F32 && type != ips::ValueType::Vec2 &&
@@ -150,7 +153,7 @@ void Emitter::emitStmt(const ips::Stmt& stmt) {
         }
         ins(Opcode::End);
     } else if (const auto* capture = std::get_if<ips::LayerStmt>(&stmt)) {
-        ins(Opcode::LayerBegin, static_cast<u8>(capture->alpha),
+        ins(Opcode::LayerBegin, capture->directions ? kDirectionLayerMode : static_cast<u8>(capture->alpha),
             static_cast<u16>(current_->slots.at(capture->name)));
         for (const auto& child : capture->body) emitStmt(child);
         ins(Opcode::End);
@@ -282,6 +285,7 @@ void Emitter::emitOutputWrite(const ips::Program* owner,
         ins(Opcode::OutMask, 0, resource());
         return;
     case ips::OutputKind::Layer:
+    case ips::OutputKind::Normal: // a flagged layer slot; the VM checks the encoding
         emitExpr(value);
         ins(Opcode::OutLayer, 0, resource());
         return;
