@@ -60,14 +60,6 @@ getting-started guide with the documentation, and the source page.
   `examples/showcase/butterfly-benchmark.json`; `prepare.sh` copies them with
   the existing showcase assets. The WASM build exports its actual VM fuel
   counters and supports web workers.
-  **Make It Swarm** generates 128 butterflies of 128×128 (64 on a phone) from
-  the `butterfly-*-128.iprop` parts in `examples/showcase/butterfly-swarm.json`,
-  which the worker loads on first use, then releases them all at once from the
-  stage butterfly. They fly (`src/swarm.ts`) at the benchmark's speeds, turn at
-  random, bounce off the edges of the middle 80% of the screen (all of it on a
-  phone) and, when their bodies touch, bounce apart or fly through each other.
-  After 5 s they fly off the screen. Reduced motion shows them at rest and
-  fades them away.
   **One strike, never the same twice**, between the forest and the live
   examples, plays `public/effects/lightning-strike.iprop`, the lightning strike
   from the iprop-asset-effects skill's examples (its source
@@ -197,11 +189,10 @@ this complete pipeline in its WASM job.
 | `templates/partials/` | the header, footer and docs sidebar |
 | `templates/language.html` | the presentation shell for the generated handbook |
 | `src/home.ts` | the live examples, the outputs card and the game slots |
-| `src/butterfly.ts` | benchmark and swarm controls, live averages and canvas-part flight animation |
-| `src/swarm.ts` | the swarm's steering model, free of the DOM |
+| `src/butterfly.ts` | benchmark controls, live averages and canvas-part flight animation |
 | `src/lightning.ts` | the animated lightning strike: its inputs, seed, views, playback and the next seed |
 | `public/lightning-worker.js` | WASM rendering of the strike's frames, three passes each |
-| `public/butterfly-worker.js` | three-part WASM generation of either butterfly model and measured fuel/time |
+| `public/butterfly-worker.js` | three-part WASM generation and measured fuel/time |
 | `src/site.ts` | the header and the mobile menu |
 | `src/styles/site.css` | every style of the site |
 | `scripts/build-docs.mjs` | Markdown rendering and generated search anchors |

@@ -141,7 +141,7 @@ replacement. See [0.9 to 1.0 migration](docs/language/migration-v1.0.md).
 
 ### Website
 
-- The butterfly benchmark and the swarm draw a new butterfly. Every wing is
+- The butterfly benchmark draws a new butterfly. Every wing is
   shaded scale by scale from its own polar coordinates, with veins in relief,
   an anti-aliased outline traced from its silhouette and soft shadows; the
   body is furred and shaded as bodies of revolution. The thirteen species
@@ -150,7 +150,7 @@ replacement. See [0.9 to 1.0 migration](docs/language/migration-v1.0.md).
   broad), and wear their natural colours a little under half the time. The three
   programs are 40 KB together; a 256x256 butterfly takes about 68 ms in
   WebAssembly on an Apple M-series Mac (113 ms at most over 1000 seeds, a
-  wing spending up to 10 million fuel), a 128x128 one about 23 ms. They are
+  wing spending up to 10 million fuel). They are
   written in the 1.0 language and need the larger default budget above.
 - The README's butterfly collection and the website's social preview are
   drawn again from the same sixteen seeds, so they show the new butterflies.
