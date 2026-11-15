@@ -1,8 +1,8 @@
 # Export contracts
 
-The development compiler exports source language **1.0.0** with product
-**1.0.0**, an unversioned format, C API **0.6** and ABI **0.5**. JSON protocol versions
-are independent: language-description schema **6**, diagnostic schema **1**
+The development compiler exports source language **1.1.0** with product
+**1.1.0**, an unversioned format, C API **0.7** and ABI **0.5**. JSON protocol versions
+are independent: language-description schema **7**, diagnostic schema **1**
 and documentation-manifest schema **3**.
 
 | Payload | Formal contract | Consumer |
@@ -41,6 +41,6 @@ Documentation manifest schema 3 replaces schema 2, which also required
 independent flat strings: `product_version` and `language_version`
 (major.minor.patch), plus `c_api_version` and `c_abi_soversion` (major.minor).
 Earlier schema-3 bundles may use major.minor for `language_version`.
-Current values are `1.0.0`, `1.0.0`, `0.6` and `0.5`. The file format is
+Current values are `1.1.0`, `1.1.0`, `0.7` and `0.5`. The file format is
 unversioned and has no field.
 SDK/Web manifests, preflight and CI/collector reports carry the same fields.

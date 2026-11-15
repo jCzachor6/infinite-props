@@ -1,6 +1,13 @@
 # Changelog
 
-## Unreleased
+## v1.1.0 — 2026-11-15
+
+Product/source and editor, website, Unity/Python packages: **1.1.0**.
+C API **0.7**, ABI/SONAME **0.5**; binary format remains unversioned.
+Language-description schema **7**. Nothing is renamed or removed: 1.0 sources
+compile to the same bytes, and existing `.iprop` files keep their image,
+outputs, RNG, fuel and work. See [1.0 to 1.1 migration](docs/language/migration-v1.1.md)
+and the [frozen contract set](spec/iprop-v1.1.md). Release/tag publication is separate.
 
 ### Normal maps for lit sprites (additive)
 
@@ -72,6 +79,19 @@ and the [contract](spec/named-seeds-v1.1.md).
 - **Verification.** Vectors from an independent implementation of FNV-1a 32,
   the domain tags and splitmix32 pin every fork; the website tree now forks
   its rim, gap and clump seeds by name.
+
+### Website
+
+- "What's your Catemon?" (`/catemon/`): a name, hashed in the browser, picks one
+  of 27 cat monsters drawn by the frozen program `catemon-1.iprop`; a card can be
+  shared or downloaded, and nothing is sent to a server.
+- The forest is lit: every tree publishes a normal map, and a lamp that follows
+  the pointer (or a tap) shades the canopy with it. The tree forks its seeds by
+  name.
+- The "Roll a legendary" weapon case and "Make It Swarm" with its 128x128
+  butterfly are gone; a `#roll/...` link opens the home page.
+- The handbook and the LLM reference are shorter, and the repeated page markup
+  is built from partials.
 
 ## v1.0.0 — 2026-11-10
 

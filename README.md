@@ -143,18 +143,19 @@ brings the language into your editor.
 
 | Start here | Go deeper |
 | :--- | :--- |
-| [Language handbook](docs/language/index.md) | [Format and VM specification](spec/iprop-v1.0.md) |
+| [Language handbook](docs/language/index.md) | [Format and VM specification](spec/iprop-v1.1.md) |
 | [Example recipes](examples/recipes/README.md) | [C API and ABI policy](docs/c-api-abi.md) |
 | [Compact LLM reference](docs/llm-reference.md) | [Export contracts](docs/export-contracts.md) |
 | [Building and installation](docs/building.md) | [CI and publication](docs/ci.md) |
 | [Website build](website/README.md) | [Changelog](CHANGELOG.md) |
 
-**Product 1.0.0 · Source language 1.0.0.** Binary format remains unversioned;
-C API 0.6 retains ABI/SONAME 0.5. Language 1.0 gives every construct one
-spelling and one rule: renamed builtins, one namespace for names, bitwise
-operators that bind tighter than comparisons and earlier errors, with no new
-feature. Existing `.iprop` files run as before; the compiler's default fuel
-budget is 25,000,000. See [0.9 to 1.0 migration](docs/language/migration-v1.0.md).
+**Product 1.1.0 · Source language 1.1.0.** Binary format remains unversioned;
+C API 0.7 retains ABI/SONAME 0.5. 1.1 adds normal maps, published beside the
+image from the same seed so engines can light a prop, and named seeds:
+`seed.initial().fork("leaves")` instead of hand-picked hash keys. Nothing is
+renamed or removed: 1.0 sources compile to the same bytes and existing
+`.iprop` files keep their image, outputs, RNG, fuel and work. See
+[1.0 to 1.1 migration](docs/language/migration-v1.1.md).
 
 ## License
 

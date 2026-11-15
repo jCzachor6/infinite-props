@@ -4,7 +4,7 @@ namespace iprop {
 
 // Library version, mirroring the project version in CMakeLists.txt.
 constexpr int versionMajor = 1;
-constexpr int versionMinor = 0;
+constexpr int versionMinor = 1;
 constexpr int versionPatch = 0;
 
 // Product version, independent of file, API and ABI versions.

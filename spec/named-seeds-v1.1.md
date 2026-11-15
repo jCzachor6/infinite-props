@@ -1,8 +1,7 @@
-# Named seeds — 1.1 implementation contract
+# Named seeds — 1.1 contract
 
-**Status:** Draft 1.1 extension, in development on top of
-[the 1.0 contract set](iprop-v1.0.md). Product and source version, the C API
-and the ABI stay as released until the release integration stage.
+**Status:** Frozen v1.1 extension, incorporated by [the normative contract set](iprop-v1.1.md)
+of product 1.1.0, on top of [the 1.0 contract set](iprop-v1.0.md).
 It builds on [the RNG contract](iprop-v0.8.md#12-seeded-primitives--exact-algorithms) and the
 [shared fuel tariff](fuel-v0.9.md). One opcode value is added.
 
