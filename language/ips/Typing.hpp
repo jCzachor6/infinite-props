@@ -39,6 +39,9 @@ struct PartOutput {
 struct PartInfo {
     std::vector<PartInput> inputs;
     std::vector<PartOutput> outputs;
+    // The import is a render asset (models v1.2); a model cannot use one as
+    // a skin and 3D parts do not exist yet.
+    bool model = false;
 };
 
 // The declared parameter types of a function, in declaration order (the
@@ -167,6 +170,11 @@ private:
                               const BuiltinSpec& signature);
     ValueType typeUserCall(const Identifier& name, const Call& call);
     ValueType typePartCall(const Call& call);
+    // `alias.draw(seed, inputs..., size = {w, h})` in a render asset: the
+    // imported draw asset generated as a texture (models v1.2).
+    ValueType typeSkinCall(const Call& call);
+    // Whether the asset being typed has `render` in place of `draw`.
+    bool modelAsset() const;
     ValueType typeVector(const VectorLit& vector);
     ValueType typeList(const ListLit& list, std::optional<ValueType> context);
     ValueType typeIndex(const Expr& expr, const Index& index);

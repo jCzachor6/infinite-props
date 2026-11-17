@@ -1,0 +1,41 @@
+// Woven cloth for a model: threads over and under, four units to a thread.
+// It repeats in both directions.
+asset weave {
+  size 32x32
+  input color dye = #8a2f2f
+  output normal relief
+
+  draw {
+    root = seed.initial()
+    rect(0, 0, 32, 32, color.shade(dye, -45))
+    for row in 0..8 {
+      for column in 0..8 {
+        tone = int(roll(root.fork(row).fork(column), -7.0, 7.0))
+        x = float(column) * 4.0
+        y = float(row) * 4.0
+        if ((row + column) % 2 == 0) {
+          rect(x + 0.5, y, 3, 4, color.shade(dye, tone + 9))
+        } else {
+          rect(x, y + 0.5, 4, 3, color.shade(dye, tone - 8))
+        }
+      }
+    }
+
+    // The thread on top is high; the cloth between threads is low.
+    layer height(alpha = surface.source_over) {
+      rect(0, 0, 32, 32, #505050)
+      for row in 0..8 {
+        for column in 0..8 {
+          x = float(column) * 4.0
+          y = float(row) * 4.0
+          if ((row + column) % 2 == 0) {
+            rect(x + 0.5, y, 3, 4, #ffffff)
+          } else {
+            rect(x, y + 0.5, 4, 3, #b0b0b0)
+          }
+        }
+      }
+    }
+    relief = height.normal(1.4, 0.7)
+  }
+}

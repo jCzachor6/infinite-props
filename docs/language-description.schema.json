@@ -3,7 +3,7 @@
   "properties": {
     "schema_version": {
       "type": "integer",
-      "const": 7,
+      "const": 8,
       "description": "Language export protocol version, independent of language and product versions."
     },
     "product_version": {
@@ -4584,6 +4584,1113 @@
             }
           },
           "additionalProperties": true
+        },
+        "models": {
+          "type": "object",
+          "description": "Models (spec models v1.2): what an asset with render { } adds to the language and what it leaves out. Required from schema 8. The contract is a preview: while `status` says so, any field here may change with a release.",
+          "properties": {
+            "status": {
+              "const": "preview",
+              "description": "Stability of everything under `models`: a preview is not frozen."
+            },
+            "contract": {
+              "const": "models-v1.2",
+              "description": "The specification of the model format and runtime, by its file name without the extension."
+            },
+            "entry": {
+              "const": "render",
+              "description": "The name of the entry block of a model asset."
+            },
+            "entry_syntax": {
+              "const": "render { <statements> }",
+              "description": "How the entry block is written; it has no parameters and returns nothing."
+            },
+            "entry_keyword": {
+              "const": "contextual",
+              "description": "`render` is an entry only when a block follows it inside an asset; elsewhere it is an ordinary name."
+            },
+            "asset_entries": {
+              "const": "exactly_one_of_draw_or_render",
+              "description": "An asset has `draw { }` or `render { }`, never both and never neither."
+            },
+            "file_extension": {
+              "const": ".iprop3d",
+              "description": "The extension ipc gives the compiled file of a model asset."
+            },
+            "file_magic": {
+              "const": "IP3D",
+              "description": "The first four bytes of a compiled model; a 2D runtime rejects the file there."
+            },
+            "page_opcode": {
+              "const": 15,
+              "description": "The opcode value that carries every model operation; its aux byte selects one."
+            },
+            "section_ids": {
+              "type": "object",
+              "description": "The sections only a model file has.",
+              "properties": {
+                "model": {
+                  "const": 12,
+                  "description": "The nominal size and the units per metre."
+                },
+                "skins": {
+                  "const": 13,
+                  "description": "The embedded 2D programs the model generates as textures."
+                }
+              },
+              "required": [
+                "model",
+                "skins"
+              ],
+              "additionalProperties": true
+            },
+            "size_syntax": {
+              "const": "size <width>x<height>x<depth>",
+              "description": "The size declaration of a model asset: three positive integers."
+            },
+            "size_meaning": {
+              "const": "nominal_box_in_model_units_never_clips",
+              "description": "The size is a declared box in model units, standing on the ground and centred on the vertical axis; geometry is never clipped to it."
+            },
+            "scale_syntax": {
+              "const": "scale <units per metre>",
+              "description": "The optional declaration of how many model units make a metre: a positive number literal."
+            },
+            "scale_keyword": {
+              "const": "contextual",
+              "description": "`scale` is a declaration only before a number inside an asset; elsewhere it is an ordinary name."
+            },
+            "default_scale": {
+              "const": 100,
+              "description": "Units per metre without a `scale` declaration: a unit is a centimetre."
+            },
+            "axes": {
+              "const": "right_handed_x_right_y_up_z_toward_viewer",
+              "description": "The coordinate system of a model."
+            },
+            "ground": {
+              "const": "y_zero",
+              "description": "A model stands on the plane y = 0."
+            },
+            "front": {
+              "const": "positive_z",
+              "description": "The side of a model that faces the viewer."
+            },
+            "winding": {
+              "const": "counterclockwise_from_outside",
+              "description": "The vertex order of every triangle."
+            },
+            "angle_unit": {
+              "const": "degrees",
+              "description": "The unit of the angles of `place`."
+            },
+            "geometry_kernel": {
+              "const": "binary64_no_fma_one_rounding_to_binary32_per_component",
+              "description": "How vertex data is computed, which makes it the same on every platform."
+            },
+            "inputs": {
+              "const": "render_only",
+              "description": "Inputs are visible in the entry block alone, as in a draw asset."
+            },
+            "origin": {
+              "const": false,
+              "description": "Whether a model asset may declare `origin`."
+            },
+            "outputs": {
+              "const": false,
+              "description": "Whether a model asset may declare outputs."
+            },
+            "layers": {
+              "const": false,
+              "description": "Whether a model asset may capture layers."
+            },
+            "clips": {
+              "const": false,
+              "description": "Whether a model asset may open clip blocks."
+            },
+            "model_parts": {
+              "const": false,
+              "description": "Whether a model asset may import another model asset."
+            },
+            "optimizer": {
+              "const": false,
+              "description": "Whether ipc optimizes a model program; `--no-opt` then changes nothing."
+            },
+            "types": {
+              "type": "array",
+              "description": "The two value types only a model asset has.",
+              "const": [
+                {
+                  "name": "vec3",
+                  "descriptor_code": 21,
+                  "literal": "{<x>, <y>, <z>}",
+                  "literal_elements": "numbers_widen_to_f32",
+                  "components": [
+                    "x",
+                    "y",
+                    "z"
+                  ],
+                  "component_type": "f32",
+                  "component_ops": [
+                    "vec3.x",
+                    "vec3.y",
+                    "vec3.z"
+                  ],
+                  "assignable_components": false,
+                  "operators": {
+                    "+": "vec3.add",
+                    "-": "vec3.sub",
+                    "*": "vec3.mul",
+                    "/": "vec3.div",
+                    "scalar": "vec3.scale",
+                    "unary -": "vec3.neg"
+                  },
+                  "scalar_operand": "right_of_multiply_and_divide_or_left_of_multiply",
+                  "random_range": "one_shared_position_then_mix",
+                  "random_range_op": "vec3.mix",
+                  "arithmetic": "binary32_per_component_as_vec2",
+                  "typed_zero": "zero_vector",
+                  "storage": {
+                    "locals": true,
+                    "helper_parameters": true,
+                    "helper_returns": true,
+                    "asset_constants": true,
+                    "host_inputs": false,
+                    "collections": false,
+                    "palettes": false
+                  }
+                },
+                {
+                  "name": "skin",
+                  "representation": "i32_record_number_from_one",
+                  "wire_type": false,
+                  "unassigned": "trap_when_used",
+                  "modifiers": "return_a_new_skin",
+                  "operators": false,
+                  "storage": {
+                    "locals": true,
+                    "helper_parameters": true,
+                    "helper_returns": true,
+                    "asset_constants": false,
+                    "host_inputs": false,
+                    "collections": false,
+                    "palettes": false
+                  }
+                }
+              ],
+              "items": {
+                "type": "object",
+                "description": "One type of a model asset.",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "The type name, as written after `:` or `->` and before a typed local or constant."
+                  },
+                  "descriptor_code": {
+                    "type": "integer",
+                    "description": "The type descriptor code in a model file."
+                  },
+                  "literal": {
+                    "type": "string",
+                    "description": "How a value is written."
+                  },
+                  "literal_elements": {
+                    "type": "string",
+                    "description": "Integer elements of the literal become f32."
+                  },
+                  "components": {
+                    "type": "array",
+                    "description": "The member names that read one component.",
+                    "items": {
+                      "type": "string",
+                      "description": "A member name."
+                    }
+                  },
+                  "component_type": {
+                    "type": "string",
+                    "description": "The type of a component."
+                  },
+                  "component_ops": {
+                    "type": "array",
+                    "description": "The model operation of each member read, in the order of `components`.",
+                    "items": {
+                      "type": "string",
+                      "description": "A model operation mnemonic."
+                    }
+                  },
+                  "assignable_components": {
+                    "type": "boolean",
+                    "description": "Whether a component can be assigned; a whole new value is assigned instead."
+                  },
+                  "operators": {
+                    "description": "The operators of the type and their model operations, or false for a type that takes none.",
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "+": {
+                            "type": "string",
+                            "description": "Component-wise sum."
+                          },
+                          "-": {
+                            "type": "string",
+                            "description": "Component-wise difference."
+                          },
+                          "*": {
+                            "type": "string",
+                            "description": "Component-wise product."
+                          },
+                          "/": {
+                            "type": "string",
+                            "description": "Component-wise quotient."
+                          },
+                          "scalar": {
+                            "type": "string",
+                            "description": "Scaling by a number."
+                          },
+                          "unary -": {
+                            "type": "string",
+                            "description": "Negation."
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      {
+                        "const": false
+                      }
+                    ]
+                  },
+                  "scalar_operand": {
+                    "type": "string",
+                    "description": "Where a number may stand beside a vector."
+                  },
+                  "random_range": {
+                    "type": "string",
+                    "description": "How `a to b` draws between two vectors: one stream draw picks a position and the result lies on the segment."
+                  },
+                  "random_range_op": {
+                    "type": "string",
+                    "description": "The model operation that mixes the two ends."
+                  },
+                  "arithmetic": {
+                    "type": "string",
+                    "description": "The numeric rules of the operators."
+                  },
+                  "typed_zero": {
+                    "type": "string",
+                    "description": "The value of a local whose first assignment never ran."
+                  },
+                  "storage": {
+                    "type": "object",
+                    "description": "Where a value of the type may be kept.",
+                    "properties": {
+                      "locals": {
+                        "type": "boolean",
+                        "description": "Local variables."
+                      },
+                      "helper_parameters": {
+                        "type": "boolean",
+                        "description": "Parameters of helpers."
+                      },
+                      "helper_returns": {
+                        "type": "boolean",
+                        "description": "Declared results of helpers."
+                      },
+                      "asset_constants": {
+                        "type": "boolean",
+                        "description": "`const` declarations."
+                      },
+                      "host_inputs": {
+                        "type": "boolean",
+                        "description": "`input` declarations."
+                      },
+                      "collections": {
+                        "type": "boolean",
+                        "description": "Elements of lists, samplers and steppers."
+                      },
+                      "palettes": {
+                        "type": "boolean",
+                        "description": "Elements of palettes."
+                      }
+                    },
+                    "additionalProperties": true
+                  },
+                  "representation": {
+                    "type": "string",
+                    "description": "What the program carries for a skin."
+                  },
+                  "wire_type": {
+                    "type": "boolean",
+                    "description": "Whether the format or a host has a type for it."
+                  },
+                  "unassigned": {
+                    "type": "string",
+                    "description": "What happens when a skin that was never assigned reaches a primitive or a modifier."
+                  },
+                  "modifiers": {
+                    "type": "string",
+                    "description": "A `skin.*` builtin never changes the skin it is given."
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "type_keywords": {
+              "const": "contextual_type_position",
+              "description": "`vec3` and `skin` name types only where a type is expected."
+            },
+            "types_in_draw_assets": {
+              "const": "compile_error",
+              "description": "What a draw asset gets for declaring one of these types."
+            },
+            "compound_of_three": {
+              "type": "object",
+              "description": "What `{a, b, c}` is in each kind of asset.",
+              "properties": {
+                "render": {
+                  "const": "vec3",
+                  "description": "In a model asset."
+                },
+                "draw": {
+                  "const": "circle",
+                  "description": "In a draw asset, where it is the value of a circle output."
+                }
+              },
+              "required": [
+                "render",
+                "draw"
+              ],
+              "additionalProperties": true
+            },
+            "builtins": {
+              "type": "array",
+              "description": "The builtins only a model asset has, with the overloads of the shared signature registry.",
+              "items": {
+                "$ref": "#/$defs/modelBuiltin",
+                "description": "One builtin."
+              },
+              "minItems": 1
+            },
+            "extended_builtins": {
+              "type": "array",
+              "description": "Builtins of the 2D table that gain overloads in a model asset: the added overloads alone.",
+              "items": {
+                "$ref": "#/$defs/modelBuiltin",
+                "description": "One builtin."
+              }
+            },
+            "unavailable_builtins": {
+              "type": "array",
+              "uniqueItems": true,
+              "description": "Builtins of the 2D table a model asset cannot call, because they need a canvas, a surface or 2D geometry.",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "description": "A builtin name."
+              }
+            },
+            "builtin_effects": {
+              "const": "writes_canvas_means_changes_the_model",
+              "description": "How to read `effects.writes_canvas` on a signature of a model asset."
+            },
+            "anchor": {
+              "const": "center_of_the_base",
+              "description": "Where the `at` of a primitive lies on the solid."
+            },
+            "place": {
+              "type": "object",
+              "description": "The placement block.",
+              "properties": {
+                "syntax": {
+                  "const": "place(<name> = <value>, ...) { <statements> }",
+                  "description": "How the block is written."
+                },
+                "keyword": {
+                  "const": "contextual_call_followed_by_a_block",
+                  "description": "`place` opens a block only as a call followed by one; a helper may have the name."
+                },
+                "named_only": {
+                  "const": true,
+                  "description": "Arguments are always named."
+                },
+                "minimum_arguments": {
+                  "const": 1,
+                  "description": "The fewest arguments a block takes."
+                },
+                "duplicate_arguments": {
+                  "const": false,
+                  "description": "Whether an argument may be given twice."
+                },
+                "arguments": {
+                  "type": "array",
+                  "description": "The arguments in their evaluation order.",
+                  "const": [
+                    {
+                      "name": "at",
+                      "types": [
+                        "vec3"
+                      ],
+                      "meaning": "origin_of_the_block_in_the_enclosing_space"
+                    },
+                    {
+                      "name": "yaw",
+                      "types": [
+                        "i32",
+                        "f32"
+                      ],
+                      "meaning": "degrees_about_y_positive_turns_z_toward_x"
+                    },
+                    {
+                      "name": "pitch",
+                      "types": [
+                        "i32",
+                        "f32"
+                      ],
+                      "meaning": "degrees_about_x_positive_turns_y_toward_z"
+                    },
+                    {
+                      "name": "roll",
+                      "types": [
+                        "i32",
+                        "f32"
+                      ],
+                      "meaning": "degrees_about_z_positive_turns_x_toward_y"
+                    },
+                    {
+                      "name": "scale",
+                      "types": [
+                        "i32",
+                        "f32",
+                        "vec3"
+                      ],
+                      "meaning": "positive_factor_or_one_per_axis"
+                    },
+                    {
+                      "name": "mirror_x",
+                      "types": [
+                        "i32"
+                      ],
+                      "meaning": "zero_or_one"
+                    },
+                    {
+                      "name": "mirror_y",
+                      "types": [
+                        "i32"
+                      ],
+                      "meaning": "zero_or_one"
+                    },
+                    {
+                      "name": "mirror_z",
+                      "types": [
+                        "i32"
+                      ],
+                      "meaning": "zero_or_one"
+                    }
+                  ],
+                  "items": {
+                    "type": "object",
+                    "description": "One argument.",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "The argument name."
+                      },
+                      "types": {
+                        "type": "array",
+                        "description": "The value types it accepts; an integer becomes f32.",
+                        "items": {
+                          "type": "string",
+                          "description": "A value type."
+                        }
+                      },
+                      "meaning": {
+                        "type": "string",
+                        "description": "What the value does."
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                },
+                "evaluation_order": {
+                  "type": "array",
+                  "description": "The order in which argument values are evaluated.",
+                  "const": [
+                    "at",
+                    "yaw",
+                    "pitch",
+                    "roll",
+                    "scale",
+                    "mirror_x",
+                    "mirror_y",
+                    "mirror_z"
+                  ],
+                  "items": {
+                    "type": "string",
+                    "description": "An argument name."
+                  }
+                },
+                "written_order_changes_evaluation": {
+                  "const": false,
+                  "description": "Whether the written order of the arguments matters."
+                },
+                "composition": {
+                  "const": "scale_and_mirror_then_roll_then_pitch_then_yaw_then_offset",
+                  "description": "The order in which one block applies its arguments to what it contains."
+                },
+                "right_angles": {
+                  "const": "exact",
+                  "description": "Turns by multiples of 90 degrees use no trigonometry."
+                },
+                "nesting": {
+                  "const": "inner_block_in_the_space_of_the_outer",
+                  "description": "How a block inside another block is positioned."
+                },
+                "mirror": {
+                  "const": "odd_count_reverses_winding_and_keeps_normals_outward",
+                  "description": "What mirroring does to the triangles."
+                },
+                "texture_mapping": {
+                  "const": "computed_in_the_block_so_scale_stretches_textures",
+                  "description": "Texture coordinates come from the sizes written inside the block, so a scaled block shows its textures scaled with it."
+                },
+                "maximum_open_scopes": {
+                  "const": 32,
+                  "description": "How many blocks may be open at once."
+                },
+                "scope_cleanup": {
+                  "type": "array",
+                  "description": "The ways of leaving a block that close it.",
+                  "const": [
+                    "end",
+                    "return",
+                    "break",
+                    "continue"
+                  ],
+                  "items": {
+                    "type": "string",
+                    "description": "A way of leaving."
+                  }
+                },
+                "begin_op": {
+                  "const": "place.begin",
+                  "description": "The model operation that opens the block."
+                },
+                "fuel": {
+                  "const": 25,
+                  "description": "The fuel of opening a block."
+                },
+                "effects": {
+                  "$ref": "#/$defs/effects",
+                  "description": "Intrinsic effects of opening a block."
+                }
+              },
+              "required": [
+                "syntax",
+                "keyword",
+                "named_only",
+                "minimum_arguments",
+                "duplicate_arguments",
+                "arguments",
+                "evaluation_order",
+                "written_order_changes_evaluation",
+                "composition",
+                "right_angles",
+                "nesting",
+                "mirror",
+                "texture_mapping",
+                "maximum_open_scopes",
+                "scope_cleanup",
+                "begin_op",
+                "fuel",
+                "effects"
+              ],
+              "additionalProperties": true
+            },
+            "skin_call": {
+              "type": "object",
+              "description": "The call that generates an imported draw asset as a texture.",
+              "properties": {
+                "syntax": {
+                  "const": "<alias>.draw(<seed>[, <input> = <value>, ...][, size = {<width>, <height>}])",
+                  "description": "How the call is written; it is an expression."
+                },
+                "target": {
+                  "const": "imported_asset_with_draw",
+                  "description": "What the alias must name."
+                },
+                "result": {
+                  "const": "skin",
+                  "description": "The type of the call."
+                },
+                "parameters": {
+                  "type": "array",
+                  "description": "The binder slots; `$uniform` stands for each input of the imported asset.",
+                  "const": [
+                    {
+                      "name": "seed",
+                      "required": true,
+                      "positional": true,
+                      "role": "seed"
+                    },
+                    {
+                      "name": "size",
+                      "required": false,
+                      "positional": false,
+                      "type": "vec2"
+                    },
+                    {
+                      "name": "$uniform",
+                      "required": false,
+                      "positional": false,
+                      "default": "input_declaration"
+                    }
+                  ],
+                  "items": {
+                    "type": "object",
+                    "description": "One slot.",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "The slot name."
+                      },
+                      "required": {
+                        "type": "boolean",
+                        "description": "The slot has no default."
+                      },
+                      "positional": {
+                        "type": "boolean",
+                        "description": "The slot accepts a positional argument."
+                      },
+                      "role": {
+                        "type": "string",
+                        "description": "Present on the seed slot, which takes an i32 or a seed."
+                      },
+                      "type": {
+                        "type": "string",
+                        "description": "The value type of the size slot."
+                      },
+                      "default": {
+                        "type": "string",
+                        "description": "An omitted input keeps the default of its declaration."
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                },
+                "evaluation_order": {
+                  "type": "array",
+                  "description": "The order in which the arguments are evaluated.",
+                  "const": [
+                    "$uniform",
+                    "seed",
+                    "size"
+                  ],
+                  "items": {
+                    "type": "string",
+                    "description": "A slot name."
+                  }
+                },
+                "size": {
+                  "const": "pixels_truncated_toward_zero_absent_selects_declared",
+                  "description": "How `size` selects the pixel size of the texture."
+                },
+                "maximum_side": {
+                  "const": 2048,
+                  "description": "The largest width or height of a texture."
+                },
+                "placement_arguments": {
+                  "const": false,
+                  "description": "Whether the call takes `at`, `rot` or mirrors, as a part call does."
+                },
+                "generation": {
+                  "const": "standard_2d_generation_of_the_embedded_program",
+                  "description": "How the texture is made: its pixels are the ones a host gets from the same program."
+                },
+                "fuel": {
+                  "const": "embedded_program_budget",
+                  "description": "Whose fuel budget the texture spends."
+                },
+                "reserved_fuel": {
+                  "const": 64,
+                  "description": "The fuel the model program pays for one call beyond its instruction."
+                },
+                "sharing": {
+                  "const": "same_program_seed_size_and_inputs_generate_once",
+                  "description": "When two calls give one texture."
+                },
+                "auxiliary_images": {
+                  "const": "published_with_the_texture",
+                  "description": "What happens to the images the program publishes beside its picture, such as a normal map."
+                },
+                "render_asset_target": {
+                  "const": false,
+                  "description": "Whether a model asset can be the target."
+                },
+                "draw_op": {
+                  "const": "skin.draw",
+                  "description": "The model operation of the call."
+                },
+                "effects": {
+                  "$ref": "#/$defs/effects",
+                  "description": "Intrinsic effects of the call."
+                }
+              },
+              "required": [
+                "syntax",
+                "target",
+                "result",
+                "parameters",
+                "evaluation_order",
+                "size",
+                "maximum_side",
+                "placement_arguments",
+                "generation",
+                "fuel",
+                "reserved_fuel",
+                "sharing",
+                "auxiliary_images",
+                "render_asset_target",
+                "draw_op",
+                "effects"
+              ],
+              "additionalProperties": true
+            },
+            "skin_defaults": {
+              "type": "object",
+              "description": "The skin a call returns, before any modifier.",
+              "properties": {
+                "mapping": {
+                  "const": "repeat",
+                  "description": "How the texture lies on a face."
+                },
+                "density": {
+                  "const": 1,
+                  "description": "Texels to a model unit."
+                },
+                "shift": {
+                  "type": "array",
+                  "description": "The offset of the texture in texels.",
+                  "const": [
+                    0,
+                    0
+                  ],
+                  "items": {
+                    "type": "integer",
+                    "description": "A component."
+                  }
+                },
+                "roughness": {
+                  "const": 0.8,
+                  "description": "Roughness, 0 to 1."
+                },
+                "metallic": {
+                  "const": 0,
+                  "description": "Metalness, 0 to 1."
+                },
+                "emission": {
+                  "const": 0,
+                  "description": "How strongly the texture glows."
+                },
+                "alpha": {
+                  "const": "opaque",
+                  "description": "How the alpha of the texture is used."
+                },
+                "cutoff": {
+                  "const": 0.5,
+                  "description": "The alpha below which a cutout pixel is not drawn."
+                },
+                "two_sided": {
+                  "const": false,
+                  "description": "Whether both sides of a face are drawn."
+                },
+                "crisp": {
+                  "const": false,
+                  "description": "Whether texels stay sharp squares instead of being filtered."
+                }
+              },
+              "required": [
+                "mapping",
+                "density",
+                "shift",
+                "roughness",
+                "metallic",
+                "emission",
+                "alpha",
+                "cutoff",
+                "two_sided",
+                "crisp"
+              ],
+              "additionalProperties": true
+            },
+            "mapping": {
+              "type": "object",
+              "description": "How a face gets its texture coordinates.",
+              "properties": {
+                "repeat": {
+                  "const": "face_units_times_density_plus_shift_over_declared_size",
+                  "description": "The repeating mapping: the texture tiles at a fixed number of texels to a unit."
+                },
+                "fit": {
+                  "const": "image_once_across_the_face",
+                  "description": "The fitting mapping, selected by skin.fit."
+                },
+                "uv_origin": {
+                  "const": "upper_left",
+                  "description": "The corner of the image that has the coordinates (0, 0)."
+                },
+                "unit": {
+                  "const": "one_texel_per_model_unit_at_density_one",
+                  "description": "The size of a texel on a model with the default skin."
+                }
+              },
+              "required": [
+                "repeat",
+                "fit",
+                "uv_origin",
+                "unit"
+              ],
+              "additionalProperties": true
+            },
+            "limits": {
+              "type": "object",
+              "description": "The limits of one generation and of one file.",
+              "properties": {
+                "vertices": {
+                  "const": 65536,
+                  "description": "Vertices of a model."
+                },
+                "triangles": {
+                  "const": 131072,
+                  "description": "Triangles of a model."
+                },
+                "textures": {
+                  "const": 32,
+                  "description": "Different textures of one generation."
+                },
+                "texels": {
+                  "const": 4194304,
+                  "description": "Pixels of all textures together."
+                },
+                "texture_side": {
+                  "const": 2048,
+                  "description": "Width or height of one texture."
+                },
+                "skin_records": {
+                  "const": 1024,
+                  "description": "Skins a generation makes, modifiers included."
+                },
+                "skin_programs": {
+                  "const": 64,
+                  "description": "Imported assets one model can use as skins."
+                },
+                "open_scopes": {
+                  "const": 32,
+                  "description": "Placement blocks open at once."
+                },
+                "sides": {
+                  "type": "object",
+                  "description": "The `sides` of round primitives.",
+                  "properties": {
+                    "minimum": {
+                      "const": 3,
+                      "description": "The least accepted value."
+                    },
+                    "maximum": {
+                      "const": 64,
+                      "description": "The greatest accepted value."
+                    }
+                  },
+                  "required": [
+                    "minimum",
+                    "maximum"
+                  ],
+                  "additionalProperties": true
+                },
+                "rings": {
+                  "type": "object",
+                  "description": "The `rings` of a sphere.",
+                  "properties": {
+                    "minimum": {
+                      "const": 2,
+                      "description": "The least accepted value."
+                    },
+                    "maximum": {
+                      "const": 32,
+                      "description": "The greatest accepted value."
+                    }
+                  },
+                  "required": [
+                    "minimum",
+                    "maximum"
+                  ],
+                  "additionalProperties": true
+                },
+                "profile_points": {
+                  "type": "object",
+                  "description": "Points of a lathe profile.",
+                  "properties": {
+                    "minimum": {
+                      "const": 2,
+                      "description": "The least accepted value."
+                    },
+                    "maximum": {
+                      "const": 64,
+                      "description": "The greatest accepted value."
+                    }
+                  },
+                  "required": [
+                    "minimum",
+                    "maximum"
+                  ],
+                  "additionalProperties": true
+                },
+                "outline_points": {
+                  "type": "object",
+                  "description": "Points of an extrude outline.",
+                  "properties": {
+                    "minimum": {
+                      "const": 3,
+                      "description": "The least accepted value."
+                    },
+                    "maximum": {
+                      "const": 256,
+                      "description": "The greatest accepted value."
+                    }
+                  },
+                  "required": [
+                    "minimum",
+                    "maximum"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "required": [
+                "vertices",
+                "triangles",
+                "textures",
+                "texels",
+                "texture_side",
+                "skin_records",
+                "skin_programs",
+                "open_scopes",
+                "sides",
+                "rings",
+                "profile_points",
+                "outline_points"
+              ],
+              "additionalProperties": true
+            },
+            "fuel": {
+              "type": "object",
+              "description": "What the model program pays.",
+              "properties": {
+                "instruction": {
+                  "const": 1,
+                  "description": "Fuel of every instruction."
+                },
+                "vertex": {
+                  "const": 6,
+                  "description": "What a primitive reserves for each vertex it emits."
+                },
+                "triangle": {
+                  "const": 2,
+                  "description": "What a primitive reserves for each triangle it emits."
+                },
+                "extrude_outline": {
+                  "const": "ceil_points_squared_over_3_or_over_2_with_a_bevel",
+                  "description": "What an extrude reserves for the checks and the triangulation of its outline, which grow with the square of its points."
+                },
+                "place_reserve": {
+                  "const": 24,
+                  "description": "What place.begin reserves beyond its instruction, for composing the scope."
+                },
+                "skin_draw_reserve": {
+                  "const": 64,
+                  "description": "What a skin call reserves beyond its instruction, also when it reuses a texture."
+                }
+              },
+              "required": [
+                "instruction",
+                "vertex",
+                "triangle",
+                "extrude_outline",
+                "place_reserve",
+                "skin_draw_reserve"
+              ],
+              "additionalProperties": true
+            },
+            "arena_bytes": {
+              "type": "object",
+              "description": "What a generation charges to its 64 MiB arena.",
+              "properties": {
+                "vertex": {
+                  "const": 48,
+                  "description": "Bytes of a vertex."
+                },
+                "triangle": {
+                  "const": 16,
+                  "description": "Bytes of a triangle."
+                },
+                "skin_record": {
+                  "const": 64,
+                  "description": "Bytes of a skin."
+                }
+              },
+              "required": [
+                "vertex",
+                "triangle",
+                "skin_record"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "required": [
+            "status",
+            "contract",
+            "entry",
+            "entry_syntax",
+            "entry_keyword",
+            "asset_entries",
+            "file_extension",
+            "file_magic",
+            "page_opcode",
+            "section_ids",
+            "size_syntax",
+            "size_meaning",
+            "scale_syntax",
+            "scale_keyword",
+            "default_scale",
+            "axes",
+            "ground",
+            "front",
+            "winding",
+            "angle_unit",
+            "geometry_kernel",
+            "inputs",
+            "origin",
+            "outputs",
+            "layers",
+            "clips",
+            "model_parts",
+            "optimizer",
+            "types",
+            "type_keywords",
+            "types_in_draw_assets",
+            "compound_of_three",
+            "builtins",
+            "extended_builtins",
+            "unavailable_builtins",
+            "builtin_effects",
+            "anchor",
+            "place",
+            "skin_call",
+            "skin_defaults",
+            "mapping",
+            "limits",
+            "fuel",
+            "arena_bytes"
+          ],
+          "additionalProperties": true
         }
       },
       "required": [
@@ -4595,7 +5702,8 @@
         "restrictions",
         "effect_order",
         "asset_constants",
-        "named_seeds"
+        "named_seeds",
+        "models"
       ],
       "additionalProperties": true,
       "description": "Source, binary storage and expression type mappings. Accepted source value categories and conversions."
@@ -5391,6 +6499,196 @@
       ],
       "additionalProperties": true,
       "description": "Source-language version; current exports include major, minor and patch. Earlier exports of this schema may omit patch."
+    },
+    "modelParameter": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Canonical binder slot name.",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "T",
+            "circle",
+            "color",
+            "distribution",
+            "f32",
+            "i32",
+            "palette<color>",
+            "palette<f32>",
+            "rect",
+            "vec2",
+            "void",
+            "list<i32>",
+            "list<f32>",
+            "list<color>",
+            "list<vec2>",
+            "list<distribution>",
+            "sampler<i32>",
+            "sampler<f32>",
+            "sampler<color>",
+            "sampler<vec2>",
+            "list<sampler<i32>>",
+            "list<sampler<f32>>",
+            "list<sampler<color>>",
+            "list<sampler<vec2>>",
+            "layer",
+            "mask",
+            "stepper<i32>",
+            "stepper<f32>",
+            "stepper<color>",
+            "stepper<vec2>",
+            "list<stepper<i32>>",
+            "list<stepper<f32>>",
+            "list<stepper<color>>",
+            "list<stepper<vec2>>",
+            "diagram2d",
+            "contours2d",
+            "regions2d",
+            "part2d",
+            "parts2d",
+            "seed",
+            "vec3",
+            "skin"
+          ],
+          "description": "Source value type of a model asset."
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "seed"
+          ],
+          "description": "Present on a seed parameter, which also takes a seed (named seeds v1.1)."
+        }
+      },
+      "required": [
+        "name",
+        "type"
+      ],
+      "additionalProperties": true,
+      "description": "A parameter of a signature of a model asset."
+    },
+    "modelSignature": {
+      "type": "object",
+      "properties": {
+        "parameters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/modelParameter",
+            "description": "Ordered binder parameters."
+          },
+          "description": "Parameters in binder declaration order."
+        },
+        "result": {
+          "type": "string",
+          "enum": [
+            "T",
+            "circle",
+            "color",
+            "distribution",
+            "f32",
+            "i32",
+            "palette<color>",
+            "palette<f32>",
+            "rect",
+            "vec2",
+            "void",
+            "list<i32>",
+            "list<f32>",
+            "list<color>",
+            "list<vec2>",
+            "list<distribution>",
+            "sampler<i32>",
+            "sampler<f32>",
+            "sampler<color>",
+            "sampler<vec2>",
+            "list<sampler<i32>>",
+            "list<sampler<f32>>",
+            "list<sampler<color>>",
+            "list<sampler<vec2>>",
+            "layer",
+            "mask",
+            "stepper<i32>",
+            "stepper<f32>",
+            "stepper<color>",
+            "stepper<vec2>",
+            "list<stepper<i32>>",
+            "list<stepper<f32>>",
+            "list<stepper<color>>",
+            "list<stepper<vec2>>",
+            "diagram2d",
+            "contours2d",
+            "regions2d",
+            "part2d",
+            "parts2d",
+            "seed",
+            "vec3",
+            "skin"
+          ],
+          "description": "Return value type; void produces no value."
+        },
+        "evaluation_order": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Parameter name.",
+            "minLength": 1
+          },
+          "description": "Permutation of parameter names defining effect evaluation order.",
+          "uniqueItems": true
+        },
+        "effects": {
+          "$ref": "#/$defs/effects",
+          "description": "Intrinsic operation effects."
+        },
+        "constant_evaluable": {
+          "type": "boolean",
+          "description": "Whether the intrinsic operation is allowed in const; all arguments must independently be constant."
+        },
+        "model_op": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The sub-operation of the model page the overload compiles to, by its mnemonic. It is no 2D opcode."
+        }
+      },
+      "required": [
+        "parameters",
+        "result",
+        "evaluation_order",
+        "effects",
+        "constant_evaluable",
+        "model_op"
+      ],
+      "additionalProperties": true,
+      "description": "An overload of a builtin of a model asset."
+    },
+    "modelBuiltin": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Registered builtin identifier."
+        },
+        "overloads": {
+          "type": "array",
+          "minItems": 1,
+          "description": "All fixed arities.",
+          "items": {
+            "$ref": "#/$defs/modelSignature",
+            "description": "One registered overload."
+          }
+        }
+      },
+      "required": [
+        "name",
+        "overloads"
+      ],
+      "additionalProperties": true,
+      "description": "A builtin of a model asset."
     }
   }
 }

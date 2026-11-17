@@ -1,0 +1,27 @@
+// The model of the C API tests: every input type, two textures of one skin
+// program and a surface for each material field.
+import tile from "tile.ips"
+
+asset crate {
+  size 12x10x8
+  scale 50
+
+  input f32 wide = 8
+  input color stain = #336699
+  input u32 extra = 1
+  input f32 rounding = 0.5
+
+  render {
+    // A fixed seed and size: the texture a host can generate on its own.
+    fixed = tile.draw(77, tint = stain, rounding = rounding, size = {32, 16})
+    seeded = tile.draw(seed.initial().fork("lid"))
+
+    box({0, 0, 0}, {wide, 4.0 to 6.0, 8}, fixed)
+    box({0, 6, 0}, {wide, 1, 8}, 0.25, skin.roughness(seeded, 0.25))
+    if (extra > 0) {
+      quad({-1, 8, 0}, {1, 8, 0}, {1, 10, 0}, {-1, 10, 0},
+           skin.two_sided(skin.cutout(skin.fit(fixed), 0.5)))
+      tri({2, 8, 0}, {4, 8, 0}, {3, 10, 0}, skin.crisp(skin.emission(skin.metallic(fixed, 0.75), 1.5)))
+    }
+  }
+}

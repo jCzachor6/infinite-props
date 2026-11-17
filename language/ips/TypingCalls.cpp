@@ -28,6 +28,8 @@ bool Typer::namesValue(const std::string& name) const {
 // The namespace whose functions take a value of this type first.
 std::string Typer::methodNamespace(ValueType type) {
     if (type == ValueType::Vec2) return "vec2";
+    if (type == ValueType::Vec3) return "vec3";
+    if (type == ValueType::Skin) return "skin";
     if (type == ValueType::Color) return "color";
     if (type == ValueType::Mask) return "mask";
     if (type == ValueType::Layer) return "surface";
@@ -47,9 +49,11 @@ ValueType Typer::typeCall(const Call& call) {
             return typeRamp(*name, call);
         }
         // A helper cannot share a builtin's name, so the name alone decides.
-        const auto builtin = builtinSpecs().find(name->name);
-        if (builtin != builtinSpecs().end()) {
-            return typeBuiltinCall(*name, call, builtin->second);
+        if (const auto* builtin = findBuiltin(name->name, modelAsset())) {
+            if (modelAsset() && !availableInModel(*builtin))
+                error(call.location, name->name + " draws pixels and a render asset has no canvas; "
+                                                  "import a draw asset and use it as a skin");
+            return typeBuiltinCall(*name, call, *builtin);
         }
         return typeUserCall(*name, call);
     }
@@ -72,15 +76,19 @@ ValueType Typer::typeMemberCall(const Call& call) {
         // Recognized static imports precede builtin spelling suggestions
         // (e.g. pot.draw resembles part.draw).
         if (path.segments.size() == 1 && path.segments[0] == "draw" && findPart(path.base))
-            return typePartCall(call);
-        const auto builtin = builtinSpecs().find(full);
-        if (builtin != builtinSpecs().end()) {
+            return modelAsset() ? typeSkinCall(call) : typePartCall(call);
+        if (const auto* builtin = findBuiltin(full, modelAsset())) {
+            if (modelAsset() && !availableInModel(*builtin))
+                error(path.location, full + " needs a canvas and a render asset has none; "
+                                            "import a draw asset and use it as a skin");
             Identifier synthetic{full, path.location};
-            return typeBuiltinCall(synthetic, call, builtin->second);
+            return typeBuiltinCall(synthetic, call, *builtin);
         }
+        if (!modelAsset() && modelBuiltinSpecs().contains(full))
+            error(path.location, full + " belongs to render assets; a draw asset has no 3D model");
         const auto former = formerBuiltinHint(full);
         const auto hint = former.empty() ? didYouMean(full, builtinNames()) : former;
-        if (isBuiltinNamespace(path.base) || (!hint.empty() && !namesValue(path.base)))
+        if (isBuiltinNamespace(path.base, modelAsset()) || (!hint.empty() && !namesValue(path.base)))
             error(path.location, "undefined builtin '" + full + "'" + hint);
     }
     // A call on a value: the language has only the statically resolved
@@ -90,13 +98,13 @@ ValueType Typer::typeMemberCall(const Call& call) {
         const auto receiver = typeOf(*member.object);
         const auto space = methodNamespace(receiver);
         std::string hint;
-        if (!space.empty() && builtinSpecs().contains(space + "." + member.name))
+        if (!space.empty() && findBuiltin(space + "." + member.name, modelAsset()))
             hint = "; write " + space + "." + member.name + "(...) with the value as its first argument";
-        else if (builtinSpecs().contains(member.name))
+        else if (findBuiltin(member.name, modelAsset()))
             hint = "; write " + member.name + "(...) with the value as an argument";
         error(member.location, std::string(typeName(receiver)) + " has no method '" + member.name + "'" + hint);
     }
-    return typePartCall(call);
+    return modelAsset() ? typeSkinCall(call) : typePartCall(call);
 }
 
 ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
@@ -190,6 +198,8 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
 ValueType Typer::typeUserCall(const Identifier& name, const Call& call) {
     if (name.name == "draw")
         error(call.location, "'draw' is an entry block; call a helper or an imported part instead");
+    if (modelAsset() && name.name == "render")
+        error(call.location, "'render' is an entry block; call a helper instead");
     // Resolving a helper checks its body on first use, which recurses here
     // for every call in a chain: the failure messages are built elsewhere.
     const std::optional<FunctionSurface> surface =
@@ -206,6 +216,8 @@ ValueType Typer::typeUserCall(const Identifier& name, const Call& call) {
 }
 
 void Typer::failUndefinedFunction(const Identifier& name, const Call& call) const {
+    if (!modelAsset() && modelBuiltinSpecs().contains(name.name))
+        error(call.location, name.name + " builds 3D geometry; it is available in a render asset");
     auto candidates = builtinNames();
     for (const auto& function : owner_->asset.functions)
         if (function.name != "draw") candidates.push_back(function.name);
@@ -290,6 +302,42 @@ ValueType Typer::typePartCall(const Call& call) {
     }
     (void)resolvePartTransform(bound);
     return ValueType::Void;
+}
+
+// `alias.draw(seed, inputs..., size = {w, h})` in a render asset (models
+// v1.2): the imported draw asset generated as it would be for a host.
+ValueType Typer::typeSkinCall(const Call& call) {
+    const Path path = flatten(*call.callee);
+    if (path.base.empty() || path.segments.size() != 1 || path.segments[0] != "draw")
+        error(path.location, "expected 'alias.draw(...)'");
+    const auto* skin = findPart(path.base);
+    if (skin == nullptr)
+        error(path.location, "'" + path.base + "' is not an imported asset" + didYouMean(path.base, partAliases()));
+    if (skin->model)
+        error(path.location, "'" + path.base + "' is a render asset; a skin comes from an asset with draw { }, "
+                                                "and 3D parts are not supported yet");
+    for (const auto& arg : call.args)
+        if (arg.name && (*arg.name == "at" || *arg.name == "rot" || *arg.name == "mirror_x" || *arg.name == "mirror_y"))
+            error(arg.location, "a skin has no placement; remove '" + *arg.name + "'");
+    const auto bound = bind(call, skinCallSignature(skin->inputs), path.base + ".draw");
+    const auto& args = bound.arguments;
+    checkSeedArgument(*args[kSkinSeedSlot]->value, "a skin's seed");
+    if (const auto* size = args[kSkinSizeSlot]) {
+        const auto got = typeOf(*size->value);
+        if (got != ValueType::Vec2)
+            error(locationOf(*size->value), "'size' must be a vec2 {width, height} in pixels, got " +
+                                                std::string(typeName(got)));
+    }
+    for (std::size_t i = 0; i < skin->inputs.size(); ++i) {
+        const auto* arg = args[kSkinFirstInput + i];
+        if (!arg) continue;
+        const auto& input = skin->inputs[i];
+        const auto got = typeOf(*arg->value);
+        if (!argFits(valueTypeOf(input.type), got))
+            error(locationOf(*arg->value), "input '" + input.name + "' of '" + path.base + "' must be " +
+                                               typeName(valueTypeOf(input.type)) + ", got " + typeName(got));
+    }
+    return ValueType::Skin;
 }
 
 } // namespace iprop::ips

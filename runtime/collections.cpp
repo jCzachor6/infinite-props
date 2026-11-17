@@ -103,6 +103,7 @@ const CapturedRangeData* descriptionData(const Value& value) {
 }
 
 TypeDescriptor valueType(const Value& value) {
+    if (std::holds_alternative<Vec3>(value)) return TypeDescriptor::Vec3;
     if (std::holds_alternative<Diagram2dValue>(value)) return TypeDescriptor::Diagram2d;
     if (std::holds_alternative<Contours2dValue>(value)) return TypeDescriptor::Contours2d;
     if (std::holds_alternative<Regions2dValue>(value)) return TypeDescriptor::Regions2d;
@@ -119,10 +120,11 @@ TypeDescriptor valueType(const Value& value) {
     return TypeDescriptor(static_cast<TypeDescriptor::Kind>(value.index()));
 }
 
-TypeDescriptor readTypeReference(Reader& reader, std::span<const TypeDescriptor> types) {
+TypeDescriptor readTypeReference(Reader& reader, std::span<const TypeDescriptor> types, bool vec3) {
     const auto at = reader.position();
     const auto code = reader.readU8();
     if (code <= static_cast<u8>(TypeDescriptor::Distribution)) return TypeDescriptor(static_cast<TypeDescriptor::Kind>(code));
+    if (vec3 && code == static_cast<u8>(TypeDescriptor::Vec3)) return TypeDescriptor::Vec3;
     if (code != kDescriptorReference) throw FormatError("unknown value type", at, ErrorReason::InvalidCode);
     const auto index = reader.readU16();
     if (index >= types.size()) throw FormatError("type descriptor index out of range", at, ErrorReason::InvalidCode);

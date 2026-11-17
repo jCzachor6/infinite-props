@@ -123,6 +123,7 @@ int runCompiler(int argc, char* argv[]) {
             if (json) return fail("--help cannot be combined with --diagnostics=json");
             std::cout << "ipc - compile .ips source into an .iprop binary\n\n"
                 << "Usage: ipc <file.ips> [-o <out.iprop>] [--debug|--strip] [--no-opt] [--no-compress] [--format <out.ips>]\n"
+                << "       an asset with 'render' compiles to a model, <file>.iprop3d by default\n"
                 << "       ipc <file.ips> --check [--diagnostics=json|text]\n"
                 << "       ipc <file.ips> --format <out.ips> --format-only\n"
                 << "       ipc --describe-language  (JSON language contracts)\n"
@@ -200,6 +201,8 @@ int runCompiler(int argc, char* argv[]) {
             }
             return iprop::ips::diagnosticExitCode(status);
         }
+        // A render asset is a model: its default output is <stem>.iprop3d.
+        if (result.model && !outputRequested && !output.empty()) output += "3d";
         if (!check) {
             std::string canonical;
             std::filesystem::path sourceDestination;

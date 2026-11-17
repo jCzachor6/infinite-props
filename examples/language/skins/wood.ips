@@ -1,0 +1,25 @@
+// Wood for a model: two boards down the image. It repeats in both
+// directions: the grain runs the whole height and no gap falls on an edge.
+asset wood {
+  size 32x32
+  input color tint = #a3713d
+  output normal relief
+
+  draw {
+    root = seed.initial()
+    rect(0, 0, 32, 32, tint)
+    for k in 0..14 {
+      streak = root.fork("grain").fork(k)
+      x = roll(streak.fork("x"), 0.0, 32.0)
+      rect(x, 0, 0.6, 32, color.shade(tint, int(roll(streak.fork("tone"), -20.0, -6.0))))
+    }
+    rect(15.5, 0, 1, 32, color.shade(tint, -55))
+
+    // White is high: the boards stand above the gap between them.
+    layer height(alpha = surface.source_over) {
+      rect(0, 0, 32, 32, #ffffff)
+      rect(15.5, 0, 1, 32, #404040)
+    }
+    relief = height.normal(1.5, 0.5)
+  }
+}

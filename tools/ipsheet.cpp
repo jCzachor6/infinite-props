@@ -1,4 +1,5 @@
 #include "ipsheet.hpp"
+#include "model_tools.hpp"
 #include "png.hpp"
 
 #include "iprop/VM.hpp"
@@ -8,12 +9,16 @@
 #include <cstdio>
 #include <fstream>
 #include <iostream>
+#include <map>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
 
 namespace iprop {
 namespace {
+
+using Overrides = std::vector<std::pair<std::string, std::string>>;
 
 bool parseU32(const std::string& text, u32& out) {
     if (text.empty()) {
@@ -33,6 +38,103 @@ bool parseU32(const std::string& text, u32& out) {
     return true;
 }
 
+// Fixed input overrides, each parsed per its declared type. Throws
+// std::invalid_argument (std::stof and std::stoull throw their own).
+std::map<std::string, UniformValue> readOverrides(const LoadedFile& loaded, const Overrides& overrides) {
+    std::map<std::string, UniformValue> uniforms;
+    for (const auto& [name, text] : overrides) {
+        const auto* declaration = loaded.meta.findInput(name, loaded.pool);
+        if (!declaration) throw std::invalid_argument("unknown uniform '" + name + "'");
+        UniformValue value;
+        value.type = declaration->type;
+        std::size_t end = 0;
+        if (value.type == InputType::Color) {
+            if ((text.size() != 7 && text.size() != 9) || text[0] != '#')
+                throw std::invalid_argument("colour must be #RRGGBB or #RRGGBBAA");
+            const auto number = std::stoull(text.substr(1), &end, 16);
+            if (end != text.size() - 1) throw std::invalid_argument("invalid colour");
+            const u32 rgba = static_cast<u32>(text.size() == 7 ? number << 8 | 255u : number);
+            value.color = {static_cast<u8>(rgba >> 24), static_cast<u8>(rgba >> 16),
+                           static_cast<u8>(rgba >> 8), static_cast<u8>(rgba)};
+        } else if (value.type == InputType::F32) {
+            value.f = std::stof(text, &end);
+            if (end != text.size()) throw std::invalid_argument("invalid f32");
+        } else if (!parseU32(text, value.u)) {
+            throw std::invalid_argument("invalid u32");
+        }
+        uniforms[name] = value;
+    }
+    return uniforms;
+}
+
+// The seed of a cell in its upper left corner: 3x5 digits, scaled.
+void drawSeed(std::vector<u8>& rgba, u32 sheetWidth, u32 left, u32 top, u32 seed, u32 scale) {
+    static constexpr u16 kDigits[10] = {0x7B6F, 0x2C97, 0x73E7, 0x73CF, 0x5BC9, 0x79CF, 0x79EF, 0x7249, 0x7BEF, 0x7BCF};
+    const std::string text = std::to_string(seed);
+    for (std::size_t i = 0; i < text.size(); ++i) {
+        const u16 glyph = kDigits[text[i] - '0'];
+        for (u32 row = 0; row < 5; ++row)
+            for (u32 column = 0; column < 3; ++column) {
+                if (!((glyph >> (14 - (row * 3 + column))) & 1)) continue;
+                for (u32 dy = 0; dy < scale; ++dy)
+                    for (u32 dx = 0; dx < scale; ++dx) {
+                        const std::size_t x = left + (static_cast<u32>(i) * 4 + column) * scale + dx;
+                        const std::size_t y = top + row * scale + dy;
+                        const std::size_t at = (y * sheetWidth + x) * 4;
+                        rgba[at] = rgba[at + 1] = rgba[at + 2] = 0xd8;
+                        rgba[at + 3] = 0xff;
+                    }
+            }
+    }
+}
+
+// A sheet of previews: one model per seed, each in a square cell.
+int modelSheet(const std::vector<u8>& bytes, const std::string& output, u32 seeds, u32 columns, u32 firstSeed,
+               const Overrides& overrides, const tools::PreviewOptions& view) {
+    model::LoadedModel loaded;
+    try {
+        loaded = model::loadModel(bytes);
+        model::validateModel(loaded);
+    } catch (const FormatError& error) {
+        std::cerr << "ipsheet: invalid .iprop3d at byte offset " << error.offset << ": " << error.what() << "\n";
+        return 1;
+    }
+    model::ModelInputs inputs;
+    try {
+        inputs.uniforms = readOverrides(loaded.file, overrides);
+    } catch (const std::exception& error) {
+        std::cerr << "ipsheet: " << error.what() << "\n";
+        return 1;
+    }
+    if (columns == 0) columns = seeds;
+    const u32 rows = (seeds + columns - 1) / columns;
+    const u32 cellW = view.width, cellH = view.height;
+    std::vector<u8> rgba(static_cast<std::size_t>(columns) * cellW * rows * cellH * 4, 0);
+    for (u32 s = 0; s < seeds; ++s) {
+        inputs.seed = firstSeed + s;
+        tools::Image cell;
+        try {
+            cell = tools::renderPreview(model::generateModel(loaded, inputs), view);
+        } catch (const FormatError& error) {
+            std::cerr << "ipsheet: generation of seed " << inputs.seed << " failed at byte offset " << error.offset
+                      << ": " << error.what() << "\n";
+            return 1;
+        }
+        const u32 cellX = s % columns, cellY = s / columns;
+        for (u32 y = 0; y < cellH; ++y)
+            std::copy_n(cell.rgba.begin() + static_cast<std::ptrdiff_t>(static_cast<std::size_t>(y) * cellW * 4), cellW * 4,
+                        rgba.begin() + static_cast<std::ptrdiff_t>(
+                            ((static_cast<std::size_t>(cellY) * cellH + y) * columns * cellW + static_cast<std::size_t>(cellX) * cellW) * 4));
+        if (cellW >= 96 && cellH >= 32) drawSeed(rgba, columns * cellW, cellX * cellW + 6, cellY * cellH + 6, inputs.seed, 2);
+    }
+    if (!tools::writePng(output, {columns * cellW, rows * cellH, std::move(rgba)})) {
+        std::cerr << "ipsheet: cannot write '" << output << "'\n";
+        return 1;
+    }
+    std::cout << "wrote " << output << " (" << seeds << " seeds, " << columns * cellW << "×" << rows * cellH << ")\n";
+    return 0;
+}
+
 } // namespace
 
 int ipsheetMain(int argc, char* argv[]) {
@@ -46,6 +148,9 @@ int ipsheetMain(int argc, char* argv[]) {
     // from the upper left through the normal image (a review preview).
     enum class Shown { Colour, Normal, Lit } shown = Shown::Colour;
     bool deriveNormal = false;
+    // Models (.iprop3d): every cell is a preview from a fixed camera.
+    tools::PreviewOptions view;
+    std::string modelOnly, imageOnly; // the first option given that fits one kind of file
 
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
@@ -66,7 +171,11 @@ int ipsheetMain(int argc, char* argv[]) {
                       << "  --image KIND   color (default), normal or lit: the image, its normal\n"
                       << "                 image, or the image lit from the upper left (a preview)\n"
                       << "  --derive-normal  derive a normal image when the program publishes none\n"
-                      << "  -o PATH        output PNG (default: sheet.png)\n";
+                      << "  -o PATH        output PNG (default: sheet.png)\n"
+                      << "A model (<file.iprop3d>) fills each cell with a preview and its seed:\n"
+                      << "  --cell N       cell size in pixels (default 256)\n"
+                      << "  --view YAW,PITCH  where the camera stands, in degrees (default 35,20)\n"
+                      << "  --background COLOR  cell background, #RRGGBB or #RRGGBBAA\n";
             return 0;
         } else if (arg == "--seed") {
             if (!parseU32(next("--seed"), firstSeed)) {
@@ -91,7 +200,37 @@ int ipsheetMain(int argc, char* argv[]) {
                 std::cerr << "ipsheet: bad --columns\n";
                 return 1;
             }
+        } else if (arg == "--cell") {
+            u32 cell = 0;
+            if (!parseU32(next("--cell"), cell) || cell < 16 || cell > 2048) {
+                std::cerr << "ipsheet: bad --cell (expected 16..2048)\n";
+                return 1;
+            }
+            view.width = view.height = cell;
+            if (modelOnly.empty()) modelOnly = arg;
+        } else if (arg == "--view") {
+            if (!tools::parseView(next("--view"), view)) {
+                std::cerr << "ipsheet: bad --view (expected YAW,PITCH in degrees)\n";
+                return 1;
+            }
+            if (modelOnly.empty()) modelOnly = arg;
+        } else if (arg == "--background") {
+            const std::string text = next("--background");
+            std::size_t end = 0;
+            unsigned long long number = 0;
+            try {
+                if ((text.size() != 7 && text.size() != 9) || text[0] != '#') throw std::invalid_argument("colour");
+                number = std::stoull(text.substr(1), &end, 16);
+                if (end != text.size() - 1) throw std::invalid_argument("colour");
+            } catch (const std::exception&) {
+                std::cerr << "ipsheet: bad --background (expected #RRGGBB or #RRGGBBAA)\n";
+                return 1;
+            }
+            const u32 rgba = static_cast<u32>(text.size() == 7 ? number << 8 | 255u : number);
+            view.background = {static_cast<u8>(rgba >> 24), static_cast<u8>(rgba >> 16), static_cast<u8>(rgba >> 8), static_cast<u8>(rgba)};
+            if (modelOnly.empty()) modelOnly = arg;
         } else if (arg == "--image") {
+            if (imageOnly.empty()) imageOnly = arg;
             const std::string kind = next("--image");
             if (kind == "color") shown = Shown::Colour;
             else if (kind == "normal") shown = Shown::Normal;
@@ -102,6 +241,7 @@ int ipsheetMain(int argc, char* argv[]) {
             }
         } else if (arg == "--derive-normal") {
             deriveNormal = true;
+            if (imageOnly.empty()) imageOnly = arg;
         } else if (arg == "-o" || arg == "--output") {
             output = next("--output");
         } else if (!arg.empty() && arg[0] == '-') {
@@ -125,6 +265,17 @@ int ipsheetMain(int argc, char* argv[]) {
         return 1;
     }
     std::vector<u8> bytes((std::istreambuf_iterator<char>(stream)), {});
+    if (tools::isModelFile(bytes)) {
+        if (!imageOnly.empty()) {
+            std::cerr << "ipsheet: " << imageOnly << " does not apply to a model\n";
+            return 1;
+        }
+        return modelSheet(bytes, output, seeds, columns, firstSeed, overrides, view);
+    }
+    if (!modelOnly.empty()) {
+        std::cerr << "ipsheet: " << modelOnly << " needs a model (.iprop3d)\n";
+        return 1;
+    }
     LoadedFile loaded;
     try {
         loaded = loadFile(bytes);
@@ -142,28 +293,7 @@ int ipsheetMain(int argc, char* argv[]) {
     const u32 cellH = loaded.meta.sizeY;
     GenerationInputs inputs;
     try {
-        for (const auto& [name, text] : overrides) {
-            const auto* declaration = loaded.meta.findInput(name, loaded.pool);
-            if (!declaration) throw std::invalid_argument("unknown uniform '" + name + "'");
-            UniformValue value;
-            value.type = declaration->type;
-            std::size_t end = 0;
-            if (value.type == InputType::Color) {
-                if ((text.size() != 7 && text.size() != 9) || text[0] != '#')
-                    throw std::invalid_argument("colour must be #RRGGBB or #RRGGBBAA");
-                const auto number = std::stoull(text.substr(1), &end, 16);
-                if (end != text.size() - 1) throw std::invalid_argument("invalid colour");
-                const u32 rgba = static_cast<u32>(text.size() == 7 ? number << 8 | 255u : number);
-                value.color = {static_cast<u8>(rgba >> 24), static_cast<u8>(rgba >> 16),
-                               static_cast<u8>(rgba >> 8), static_cast<u8>(rgba)};
-            } else if (value.type == InputType::F32) {
-                value.f = std::stof(text, &end);
-                if (end != text.size()) throw std::invalid_argument("invalid f32");
-            } else if (!parseU32(text, value.u)) {
-                throw std::invalid_argument("invalid u32");
-            }
-            inputs.uniforms[name] = value;
-        }
+        inputs.uniforms = readOverrides(loaded, overrides);
     } catch (const std::exception& error) {
         std::cerr << "ipsheet: " << error.what() << "\n";
         return 1;

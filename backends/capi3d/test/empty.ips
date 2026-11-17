@@ -1,0 +1,5 @@
+// A model without triangles, textures, inputs or skins.
+asset empty {
+  size 1x2x3
+  render { }
+}

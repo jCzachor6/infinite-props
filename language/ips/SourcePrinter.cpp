@@ -412,6 +412,17 @@ class SourcePrinter {
             } else if constexpr (std::is_same_v<T, ClipStmt>) {
                 out_ << "clip("; expression(*node.mask); out_ << ')';
                 block(node.body, level);
+            } else if constexpr (std::is_same_v<T, PlaceStmt>) {
+                out_ << "place(";
+                for (std::size_t i = 0; i < node.args.size(); ++i) {
+                    if (i) out_ << ", ";
+                    if (node.args[i].name) out_ << *node.args[i].name << " = ";
+                    expression(*node.args[i].value);
+                }
+                out_ << ')';
+                block(node.body, level);
+            } else {
+                static_assert(std::is_same_v<T, VarDecl>, "a new statement node must be printed");
             }
         }, stmt);
         out_.finishRange(); out_ << '\n'; range.close();
@@ -510,7 +521,13 @@ public:
         out_ << "asset " << asset.name << " {\n";
         if (asset.sizeX && asset.sizeY) {
             indent(1); SourceOutput::Scope range(out_, metadata(program, MetadataSyntax::Kind::Size), false);
-            out_ << "size " << (std::to_string(*asset.sizeX) + "x" + std::to_string(*asset.sizeY));
+            out_ << "size " << (std::to_string(*asset.sizeX) + "x" + std::to_string(*asset.sizeY) +
+                                (asset.sizeZ ? "x" + std::to_string(*asset.sizeZ) : std::string()));
+            out_.finishRange(); out_ << '\n'; range.close();
+        }
+        if (asset.scale) {
+            indent(1); SourceOutput::Scope range(out_, metadata(program, MetadataSyntax::Kind::Scale), false);
+            out_ << "scale "; expression(*asset.scale);
             out_.finishRange(); out_ << '\n'; range.close();
         }
         if (asset.originX && asset.originY) {
@@ -550,7 +567,8 @@ public:
             if (function.name == "draw" && (!function.params.empty() || function.returnType))
                 throw SourceError{function.location, "draw has no declared parameters or return type"};
             out_ << function.name;
-            if (function.name != "draw") {
+            // An entry block, `draw { }` or `render { }`, has no signature.
+            if (function.name != "draw" && !function.entry) {
                 out_ << '(';
                 for (std::size_t i = 0; i < function.params.size(); ++i) {
                     if (i) out_ << ", ";

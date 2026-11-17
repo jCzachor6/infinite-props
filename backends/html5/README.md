@@ -67,7 +67,9 @@ cp build/wasm/iprop.js build/wasm/iprop.wasm backends/html5/demo/
 - **Harness tests:** `node --test backends/html5/test/*.test.js` —
   tests all PNG filters, the pixel comparator and structured output
   normalization. The PNG decoder uses reconstructed left pixels for
-  Sub/Average/Paeth.
+  Sub/Average/Paeth. The three.js adapter is tested too where the website's
+  dependencies are installed (`npm --prefix website ci`), and skipped
+  elsewhere.
 
 ## API
 
@@ -117,6 +119,95 @@ The raw module function takes the request as a seventh argument:
 `fuel` contains the successful invocation's `budget`, `used` and `remaining`
 fuel units, read directly from the VM. Wall-clock time is measured
 by the host and is independent of these deterministic counts.
+
+## Models (preview)
+
+A second module, `iprop3d.js` + `iprop3d.wasm`, generates **3D models** from
+compiled `.iprop3d` files: see [models](../../docs/language/models.md) for
+writing one and [Infinite Props models](../../spec/models-v1.2.md) for the
+contract.
+It is built by the same CMake project, beside the 2D module and without
+adding a byte to it, and it is a superset: it also carries the 2D `generate`,
+so a page with models loads one module. Models are a preview: this API may
+change in any release until the models contract is frozen, and the web SDK
+archive does not carry the module yet; build it from source.
+
+| Path | What |
+| ---- | ---- |
+| `bindings3d.cpp`, `module_api3d.js` | the embind surface over the [model C API](../capi3d/README.md) |
+| `js/api3d.js` | the browser-facing wrapper (`Iprop3D.create`) |
+| `js/model-worker.js` | a worker that generates models off the main thread |
+| `js/three-adapter.js`, `.d.ts` | a result as three.js objects, and the types of a result |
+| `demo/model.html` | a viewer: orbit, seeds, the model's inputs, any `.iprop3d` you drop on it |
+| `test/model-conformance.js` | every vertex, index, material number and texture against the native tools, bit for bit |
+| `test/three-adapter.test.js` | the adapter without WebGL |
+
+```js
+const iprop3d = await Iprop3D.create("iprop3d.wasm");
+const bytes = new Uint8Array(await (await fetch("chair.iprop3d")).arrayBuffer());
+const model = iprop3d.load(bytes);                  // loaded and validated once
+const result = model.generate({ seed: 7, uniforms: { finish: 2 } });
+model.free();                                       // results stay valid
+```
+
+`model.size`, `model.unitsPerMeter`, `model.inputs` and `model.skinPrograms`
+describe the file. `generate` takes `{seed, uniforms, workLimit, timeoutMs,
+signal, cancelFlag}` with the rules of the 2D `generate`; the limits cover the
+model and every texture it generates. A result holds
+
+- `surfaces`: the triangles of one material each, as `positions`, `normals`,
+  `tangents`, `uvs` (`Float32Array`) and `indices` (`Uint32Array`), with
+  `texture`, `roughness`, `metallic`, `emission`, `alphaMode`
+  (`iprop3d.ALPHA_OPAQUE` or `ALPHA_CUTOUT`), `alphaCutoff`, `twoSided` and
+  `crisp`;
+- `textures`: `{key, name, width, height, assetWidth, assetHeight, repeats,
+  data, images, normal}` with `data` an RGBA `Uint8Array`, rows from the top.
+  Equal keys mean equal pixels, in any result of any model, so a page can keep
+  one GPU texture per key;
+- `bounds`, `size`, `unitsPerMeter`, `vertexCount`, `triangleCount`, `fuel`
+  and `work`.
+
+Geometry is right-handed with `+Y` up and counterclockwise front faces; UV
+`(0, 0)` is the upper left of the image; a tangent is `xyz` plus a sign `w`
+with `w * cross(normal, tangent)` pointing up the image. Every array is an
+owned copy, and `iprop3d.transferables(result)` lists their buffers for a
+zero-copy `postMessage`. Failures throw an `Error` with `status`, `reason`,
+`stage` and the location; a failure inside a texture names its skin program.
+`iprop3d.module.generate` is the raw 2D entry of the same module.
+
+**In a worker.** `js/model-worker.js` wraps the API: post `{type: "init",
+scripts, wasm}`, `{type: "load", model, bytes}` and `{type: "generate", model,
+request, options}`; it answers `ready`, `loaded` and `result` (or `error`),
+moving the arrays instead of copying them.
+
+**With three.js.** The conventions of a model are those of three.js, so the
+adapter converts nothing:
+
+```js
+import * as THREE from "three";
+import { toObject3D, disposeObject3D } from "./three-adapter.js";
+
+const textures = new Map();                  // one GPU texture per key, shared by the scene
+scene.add(toObject3D(result, THREE, { textures }));   // a Group in metres
+```
+
+**The viewer.** Copy the module next to the demo, sync the example chair and
+serve this directory:
+
+```sh
+cp build/wasm/iprop3d.js build/wasm/iprop3d.wasm backends/html5/demo/
+sh backends/html5/prepare.sh
+python3 -m http.server -d backends/html5 8000   # then open /demo/model.html
+```
+
+The viewer takes three.js from a CDN. `model.html?model=NAME.iprop3d&seed=7`
+opens another file beside the page.
+
+**Conformance.** `run-tests.js` runs the model suite whenever the build
+directory holds `iprop3d.js`: four models over several seeds and inputs must
+match `ipgen --dump` in every bit, a texture must equal the 2D `generate` of
+its skin program in the same module, failures must carry the native reason,
+stage and message, and the 2D golden entries must hold in the model module.
 
 ## Typed part results
 

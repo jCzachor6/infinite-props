@@ -505,6 +505,20 @@ for (const box of Array.from(document.querySelectorAll<HTMLElement>("[data-code-
     });
 }
 
+// ---- 3D: a room of chairs -------------------------------------------------------------------
+
+// The models section brings three.js and the model module with it, so both
+// load only when the section comes near the screen.
+const models = document.querySelector<HTMLElement>("[data-models]");
+if (models) {
+    const near = new IntersectionObserver((entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        near.disconnect();
+        void import("./models").then(({ startModels }) => startModels(models));
+    }, { rootMargin: "600px 0px" });
+    near.observe(models);
+}
+
 // ---- start -----------------------------------------------------------------------------------
 
 async function main() {

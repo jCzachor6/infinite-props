@@ -18,6 +18,12 @@ namespace iprop::ips {
 // Builds a part surface from an asset's declarations.
 PartInfo partInfoOf(const Asset& asset);
 
+// The units per metre a render asset declares with `scale` (models v1.2),
+// the default without the declaration, or null for a value that is not a
+// positive finite number.
+inline constexpr f32 kDefaultModelScale = 100.f; // a unit is a centimetre
+std::optional<f32> modelScale(const Asset& asset);
+
 // Layer and clip blocks each open a runtime surface scope, and the validator
 // bounds how deeply one function nests them. Throws at the block that would
 // open one scope too many while `open` scopes enclose it.

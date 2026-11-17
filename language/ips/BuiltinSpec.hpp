@@ -33,6 +33,8 @@ struct BuiltinOverload {
     std::optional<Opcode> opcode;
     ValueType result = ValueType::Void;
     BuiltinAdaptation adaptation = BuiltinAdaptation::Direct;
+    // A sub-operation of the model page in place of an opcode (models v1.2).
+    std::optional<u8> modelOp{};
 };
 // Argument reads refer to already evaluated values. Code emission and asset
 // constants share this expansion into existing VM operations.
@@ -54,6 +56,15 @@ struct BuiltinSpec {
 // Language contracts are distinct from VM stack contracts: coercions, overloads
 // and special lowerings belong here, without duplicating them in the emitter.
 const std::map<std::string, BuiltinSpec>& builtinSpecs();
+// The builtins only a render asset has (models v1.2): the primitives, the
+// vec3 functions and the skin modifiers. Kept apart from builtinSpecs() so
+// that a draw asset, and everything that describes the 2D language, sees none.
+const std::map<std::string, BuiltinSpec>& modelBuiltinSpecs();
+// The builtin a name reaches in an asset of this kind, or null.
+const BuiltinSpec* findBuiltin(std::string_view name, bool model);
+// Whether a builtin of the 2D table can run in a render asset: none of its
+// overloads needs a canvas, a surface or a 2D geometry handle.
+bool availableInModel(const BuiltinSpec& spec);
 // Receiver-first signatures for the statically resolved sampler method.
 // Kept separate from global builtin pick and shared by typing/docs/lowering.
 const BuiltinSpec& samplerPickSpec();
@@ -67,11 +78,11 @@ const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::span<const 
 bool variadicPolygon(const BuiltinSpec& spec, std::size_t arity);
 // A builtin function called by a bare name, such as `rect` or `ramp`. A helper
 // cannot take one of these names: its calls would resolve to the builtin.
-bool isBuiltinFunctionName(std::string_view name);
+bool isBuiltinFunctionName(std::string_view name, bool model = false);
 // The first segment of a dotted builtin or builtin constant, such as `noise`
 // or `surface`. An import alias cannot reuse one: `alias.draw(...)` and the
 // namespace's own members would share one spelling.
-bool isBuiltinNamespace(std::string_view name);
+bool isBuiltinNamespace(std::string_view name, bool model = false);
 // color.normal(x, y, z): the colour that stores a direction given in asset
 // coordinates (y downward), by the VM's own f32 operations in the order the
 // emitter lowers them (spec normal maps v1.1). `flat` reports the fallback

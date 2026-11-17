@@ -6,6 +6,8 @@
 #include "iprop/Samplers.hpp"
 #include "iprop/ListOperations.hpp"
 #include "iprop/math/Distribution.hpp"
+#include "iprop/model/Geometry.hpp"
+#include "iprop/model/Ops.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -23,6 +25,15 @@ bool constantBuiltin(const BuiltinSpec& spec, const BuiltinOverload& overload) {
     // No constant is a seed (named seeds v1.1), so nothing reads one either.
     if (!isStorable(overload.result) || overload.result == ValueType::Seed) return false;
     for (const auto& parameter : overload.params) if (parameter.type == ValueType::Seed) return false;
+    // Of the model page (models v1.2) only the vec3 functions are values;
+    // primitives and skins change the model being generated.
+    if (overload.modelOp) {
+        switch (static_cast<model::Op>(*overload.modelOp)) {
+        case model::Op::Vec3Len: case model::Op::Vec3Dot: case model::Op::Vec3Cross:
+        case model::Op::Vec3Normalize: case model::Op::Vec3Mix: return true;
+        default: return false;
+        }
+    }
     if (spec.lowering == BuiltinLowering::ListLength) return true;
     if (overload.opcode) return detail::isConstantOperation(*findOpcode(*overload.opcode));
     return spec.lowering == BuiltinLowering::Opcode || spec.lowering == BuiltinLowering::Round ||
@@ -250,9 +261,9 @@ private:
                 inspect(*bound.arguments[1]->value, dependencies);
                 return;
             }
-            const auto found = builtinSpecs().find(name);
-            if (found == builtinSpecs().end()) fail(call->location, "user helper and part calls are not allowed ('" + name + "')");
-            const auto& spec = found->second;
+            const auto* found = findBuiltin(name, isModel(program_.asset));
+            if (!found) fail(call->location, "user helper and part calls are not allowed ('" + name + "')");
+            const auto& spec = *found;
             if (std::none_of(spec.overloads.begin(), spec.overloads.end(), [&](const auto& o) { return constantBuiltin(spec, o); }))
                 fail(call->location, "'" + name + "' has RNG or generation effects and is not allowed");
             for (const auto& argument : call->args) inspect(*argument.value, dependencies);
@@ -357,6 +368,24 @@ private:
         throw std::logic_error("checked constant operation was not evaluated");
     }
 
+    // A vec3 function of the model page, by the code the model runtime runs.
+    Value modelOperation(model::Op op, const std::vector<Value>& args, const SourceLocation& at) const {
+        const auto v = [&](std::size_t i) { return std::get<Vec3>(args[i]); };
+        try {
+            switch (op) {
+            case model::Op::Vec3Len: return model::vec3Len(v(0));
+            case model::Op::Vec3Dot: return model::vec3Dot(v(0), v(1));
+            case model::Op::Vec3Cross: return model::vec3Cross(v(0), v(1));
+            case model::Op::Vec3Normalize: return model::vec3Normalize(v(0));
+            case model::Op::Vec3Mix: return model::vec3Mix(v(0), v(1), std::get<f32>(args[2]));
+            default: break;
+            }
+        } catch (const model::Violation& error) {
+            fail(at, error.what(), DiagnosticCode::AssetConstantValue);
+        }
+        fail(at, "this call changes the model and is not allowed");
+    }
+
     Value evaluate(const Expr& expression) {
         const auto at = locationOf(expression);
         if (std::holds_alternative<Literal>(expression)) {
@@ -401,13 +430,21 @@ private:
         if (const auto* member = std::get_if<Member>(&expression)) {
             if (const auto constant = builtinConstant(expression)) return *constant;
             const auto object = evaluate(*member->object);
+            if (const auto* v = std::get_if<Vec3>(&object)) return member->name == "x" ? v->x : member->name == "y" ? v->y : v->z;
             if (const auto* v = std::get_if<Vec2>(&object)) return member->name == "x" ? v->x : v->y;
             const auto c = std::get<Color>(object);
             const u8 channels[] = {c.r, c.g, c.b, c.a};
             return i32{channels[*colorChannel(member->name)]};
         }
-        if (const auto* vector = std::get_if<VectorLit>(&expression))
+        if (const auto* vector = std::get_if<VectorLit>(&expression)) {
+            // In a render asset three elements are a vec3 (models v1.2).
+            if (typer_.typeOf(expression) == ValueType::Vec3) {
+                const f32 x = number(evaluate(*vector->elements[0]));
+                const f32 y = number(evaluate(*vector->elements[1]));
+                return Vec3{x, y, number(evaluate(*vector->elements[2]))};
+            }
             return Vec2{number(evaluate(*vector->elements[0])), number(evaluate(*vector->elements[1]))};
+        }
         if (const auto* index = std::get_if<Index>(&expression)) {
             const auto* legacy = typer_.paletteRead(expression);
             const auto object = legacy ? Value{} : evaluate(*index->object);
@@ -426,15 +463,18 @@ private:
             const auto& bound = typer_.calls().at(call);
             if (name == "ramp") return sampleRamp(resolvedPalette(
                 std::get<Identifier>(*bound.arguments[0]->value)), number(evaluate(*bound.arguments[1]->value)));
-            const auto& spec = builtinSpecs().at(name);
+            const auto& spec = *findBuiltin(name, isModel(program_.asset));
             std::vector<ValueType> types;
             for (const auto* arg : bound.arguments) types.push_back(typer_.typeOf(*arg->value));
-            const auto& overload = *builtinOverload(spec, types);
+            const auto* chosen = builtinOverload(spec, types);
+            if (!chosen) fail(at, "'" + name + "' has no constant form for these arguments", DiagnosticCode::AssetConstantValue);
+            const auto& overload = *chosen;
             std::vector<Value> args(bound.arguments.size());
             for (const auto i : bound.signature.evaluationOrder) {
                 args[i] = evaluate(*bound.arguments[i]->value);
                 if (overload.params[i].type == ValueType::F32) args[i] = number(args[i]);
             }
+            if (overload.modelOp) return modelOperation(static_cast<model::Op>(*overload.modelOp), args, at);
             if (spec.lowering == BuiltinLowering::ListLength)
                 return static_cast<i32>(std::get<ListValue>(args[0]).data->elements.size());
             if (overload.adaptation != BuiltinAdaptation::Direct) {
@@ -482,6 +522,7 @@ private:
             const auto value = evaluate(*unary->operand);
             if (unary->op == Unary::Op::Not) return i32{std::get<i32>(value) == 0};
             if (unary->op == Unary::Op::BitNot) return operation(Opcode::I32Not, {value}, at);
+            if (const auto* v = std::get_if<Vec3>(&value)) return model::vec3Neg(*v);
             return operation(std::holds_alternative<Vec2>(value) ? Opcode::Vec2Neg :
                 std::holds_alternative<f32>(value) ? Opcode::F32Neg : Opcode::I32Neg, {value}, at);
         }
@@ -491,6 +532,29 @@ private:
         if (binary.op == Binary::Op::Or && std::get<i32>(left) != 0) return i32{1};
         Value right = evaluate(*binary.right);
         if (binary.op == Binary::Op::And || binary.op == Binary::Op::Or) return i32{std::get<i32>(right) != 0};
+        if (std::holds_alternative<Vec3>(left) || std::holds_alternative<Vec3>(right)) {
+            // As the emitter lowers them (models v1.2): two vectors, or a
+            // scalar on either side of * and on the right of /.
+            const auto* a = std::get_if<Vec3>(&left);
+            const auto* b = std::get_if<Vec3>(&right);
+            if (a && b) {
+                switch (binary.op) {
+                case Binary::Op::Add: return model::vec3Add(*a, *b);
+                case Binary::Op::Sub: return model::vec3Sub(*a, *b);
+                case Binary::Op::Mul: return model::vec3Mul(*a, *b);
+                case Binary::Op::Div: return model::vec3Div(*a, *b);
+                default: break;
+                }
+            } else if (a && binary.op == Binary::Op::Mul) {
+                return model::vec3Scale(*a, number(right));
+            } else if (a && binary.op == Binary::Op::Div) {
+                const f32 k = number(right);
+                return model::vec3Div(*a, Vec3{k, k, k});
+            } else if (b && binary.op == Binary::Op::Mul) {
+                return model::vec3Scale(*b, number(left));
+            }
+            throw std::logic_error("constant vec3 operation");
+        }
         const bool vector = std::holds_alternative<Vec2>(left) || std::holds_alternative<Vec2>(right);
         const bool floating = std::holds_alternative<f32>(left) || std::holds_alternative<f32>(right);
         if (vector) {

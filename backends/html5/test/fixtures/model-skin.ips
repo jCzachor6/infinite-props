@@ -1,0 +1,24 @@
+// The skin of the model conformance fixture: a panel with a raised frame
+// and a normal map. `rounding` above 64 is a runtime violation.
+asset panel {
+  size 24x16
+  input color tint = #7d8791
+  input f32 rounding = 0.6
+  output normal relief
+
+  draw {
+    root = seed.initial()
+    rect(0, 0, 24, 16, color.shade(tint, -30))
+    rect(2, 2, 20, 12, tint)
+    for i in 0..5 {
+      spot = root.fork(i)
+      rect(roll(spot.fork("x"), 3.0, 19.0), roll(spot.fork("y"), 3.0, 12.0), 2, 1,
+           color.shade(tint, int(roll(spot.fork("tone"), -25.0, 25.0))))
+    }
+    layer height(alpha = surface.source_over) {
+      rect(0, 0, 24, 16, #ffffff)
+      rect(2, 2, 20, 12, #707070)
+    }
+    relief = height.normal(1.5, rounding)
+  }
+}

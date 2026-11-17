@@ -4,6 +4,7 @@
 #   examples/plant.iprop             -> demo/
 #   tests/golden/noise.ipa           -> test/assets/noise.iprop
 #   tests/golden/shapes.ipa          -> test/assets/shapes.iprop
+#   examples/models/chair.ips        -> demo/chair.iprop3d (the model demo)
 # Run from the repository root.
 
 set -e
@@ -17,6 +18,8 @@ mkdir -p backends/html5/demo backends/html5/test/assets
 cp examples/portrait.iprop backends/html5/demo/portrait.iprop
 cp examples/plant.iprop backends/html5/demo/plant.iprop
 ./build/tools/ipc backends/html5/demo/assets/noise.ips -o backends/html5/demo/noise.iprop
+# The model demo (demo/model.html) shows the example chair.
+./build/tools/ipc examples/models/chair.ips -o backends/html5/demo/chair.iprop3d
 
 # Conformance assets stay the golden fixtures (seed-independent by design).
 cp examples/portrait.iprop backends/html5/test/assets/portrait.iprop

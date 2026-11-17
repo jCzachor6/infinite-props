@@ -19,6 +19,8 @@
 
 namespace iprop {
 
+namespace detail { class Extension; }
+
 // Host-supplied uniform override (spec §5.4).
 struct UniformValue {
     InputType type = InputType::Color;
@@ -92,6 +94,11 @@ public:
 
     VM(const VM&) = delete;
     VM& operator=(const VM&) = delete;
+
+    // Runs the program with an extended instruction set (the model VM, spec
+    // models v1.2). The extension is not owned and must outlive run(). Call
+    // before run(); a 2D host never does.
+    void extend(detail::Extension& extension);
 
     // Asks for a normal image derived from the finished one when the program
     // publishes none (spec normal maps v1.1). Call before run(). Throws a Trap

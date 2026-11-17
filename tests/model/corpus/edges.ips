@@ -1,0 +1,55 @@
+// A model of the corpus (tests/model/corpus_test.cpp): every argument takes
+// the general path of its kernel, and the seed chooses the numbers. Sides
+// not divisible by 4, angles that are no multiple of 90 degrees, a
+// non-uniform scale with mirrors, a crease near the bend of a joint, a
+// concave outline with a bevel, sizes that are no integers.
+import grid from "../../../examples/language/skins/grid.ips"
+
+asset edges {
+  size 90x60x60
+
+  render {
+    root = seed.initial()
+    tile = skin.shift(skin.density(grid.draw(root.fork("tile"), size = {24, 24}), roll(root.fork("density"), 0.7, 2.3)),
+                      {roll(root.fork("shift x"), -9.0, 9.0), roll(root.fork("shift y"), -9.0, 9.0)})
+    sides = choose(root.fork("sides"), 3, 5, 7, 11, 13, 17, 30, 63)
+    rings = choose(root.fork("rings"), 2, 3, 5, 9, 17, 31)
+
+    // Round solids in a turned, scaled and mirrored scope.
+    sx = roll(root.fork("scale x"), 0.35, 2.6)
+    sy = roll(root.fork("scale y"), 0.35, 2.6)
+    sz = roll(root.fork("scale z"), 0.35, 2.6)
+    flip = choose(root.fork("mirror"), 0, 1)
+    place(at = {-30.3, roll(root.fork("lift"), 0.0, 7.7), 2.25}, yaw = roll(root.fork("yaw"), -179.0, 179.0),
+          pitch = roll(root.fork("pitch"), -80.0, 80.0), roll = roll(root.fork("roll"), -45.0, 45.0),
+          scale = {sx, sy, sz}, mirror_x = flip, mirror_z = 1 - flip) {
+      cylinder({0, 0, 0}, roll(root.fork("radius"), 1.3, 4.7), 5.7, sides, tile)
+      cone({6.1, 0.5, -1.3}, 3.3, roll(root.fork("top"), 0.0, 2.9), 4.9, sides, tile)
+      band({-6.2, 0.25, 1.7}, 2.2, 3.4, 3.1, sides, skin.two_sided(tile))
+      sphere({0, 6.3, 0}, roll(root.fork("ball"), 1.1, 3.9), sides, rings, tile)
+    }
+
+    // A turned profile whose joints bend by about the crease.
+    crease = roll(root.fork("crease"), 8.0, 70.0)
+    place(at = {-10.7, 0, -4.4}, yaw = 33.3) {
+      lathe({0, 0, 0}, [{0, 0}, {4.1, 0}, {4.35, 2.2}, {3.15, 4.9}, {3.4, 7.3}, {2.05, 9.1}, {0, 9.1}], sides, crease, tile)
+    }
+
+    // A concave star of seven points, made thick with a bevel.
+    k = 10.0 * roll(root.fork("inner"), 0.62, 0.8)
+    star = [{10.0 * 1.0, 10.0 * 0.0}, {k * 0.9009689, k * 0.4338837}, {10.0 * 0.6234898, 10.0 * 0.7818315},
+             {k * 0.2225209, k * 0.9749279}, {10.0 * -0.2225209, 10.0 * 0.9749279}, {k * -0.6234898, k * 0.7818315},
+             {10.0 * -0.9009689, 10.0 * 0.4338837}, {k * -1.0, k * 0.0}, {10.0 * -0.9009689, 10.0 * -0.4338837},
+             {k * -0.6234898, k * -0.7818315}, {10.0 * -0.2225209, 10.0 * -0.9749279}, {k * 0.2225209, k * -0.9749279},
+             {10.0 * 0.6234898, 10.0 * -0.7818315}, {k * 0.9009689, k * -0.4338837}]
+    place(at = {8.9, 10.2, 1.3}, yaw = -21.7, scale = 0.83) {
+      extrude({0, 0, 0}, star, roll(root.fork("depth"), 2.1, 4.3), roll(root.fork("bevel"), 0.15, 0.6), tile)
+    }
+
+    // Boxes and flat pieces off the grid.
+    box({24.35, 0, -3.15}, {roll(root.fork("w"), 2.5, 9.3), 4.7, 3.9}, 0.35, tile)
+    place(at = {31.1, 0, 4.05}, pitch = roll(root.fork("lean"), -30.0, 30.0)) { box({0, 0, 0}, {3.3, 7.7, 2.1}, tile) }
+    quad({16.1, 0.3, 9.7}, {22.9, 0.1, 9.2}, {23.4, 6.6, 7.1}, {15.7, 6.9, 7.9}, skin.fit(tile))
+    tri({26.2, 0.2, 9.9}, {33.3, 0.6, 8.4}, {29.1, 8.1, 7.3}, skin.crisp(tile))
+  }
+}

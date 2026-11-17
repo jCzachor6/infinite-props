@@ -14,6 +14,11 @@ namespace and need unique names. `seed` and `draw` cannot be declared.
 <!-- llm: skip -->
 This example is intentionally rejected: an input and a helper share a name.
 
+<!-- llm: skip -->
+An asset with `render { ... }` in place of `draw` is a 3D model with a
+`size WxHxD`; it compiles to an `.iprop3d` file. See [models](models.md), a
+preview.
+
 The host supplies a seed, optional target dimensions and declared inputs.
 `draw` has no parameters or return type. Style/class selectors are ordinary
 inputs defined by the author; `v` and `a` have no implicit meaning.

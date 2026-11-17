@@ -128,6 +128,26 @@ Use the same `.iprop` program, seed and inputs across integrations.
 The [native binding contract](docs/native-bindings.md) documents the shared
 behavior of the Apple, Unity, Android and Python integrations.
 
+## Preview: 3D models
+
+An asset with `render` in place of `draw` builds a 3D model from solids, and
+the seed chooses its shape as well as its sizes. Other recipes, drawn as
+usual, become its textures.
+
+<p align="center">
+    <img src="examples/models/chair-sheet.png" alt="Sixteen chairs generated from one source by sixteen seeds: different legs, backs, arms, finishes and cushions." width="1024">
+</p>
+
+```sh
+build/tools/ipc examples/models/chair.ips -o build/chair.iprop3d
+build/tools/ipgen build/chair.iprop3d --seed 7 -o build/chair.glb
+```
+
+`examples/models` also has a crate, a barrel and a sword. Models run in the
+browser and in Godot today. They are a preview: the language and the
+`.iprop3d` format may still change. Start with the
+[models chapter](docs/language/models.md).
+
 ## A small language with a full toolbox
 
 | Build | Shape | Finish |

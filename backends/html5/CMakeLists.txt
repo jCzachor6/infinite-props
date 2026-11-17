@@ -4,7 +4,8 @@
 # Build (from the repository root):
 #   emcmake cmake -S backends/html5 -B build/wasm -DCMAKE_BUILD_TYPE=Release
 #   cmake --build build/wasm --parallel 4
-# Outputs: iprop.js, iprop.wasm in build/wasm.
+# Outputs: iprop.js, iprop.wasm in build/wasm, and the model module
+# iprop3d.js, iprop3d.wasm beside them (see the end of this file).
 
 cmake_minimum_required(VERSION 3.24)
 # Keep the C API's build identity tied to the authoritative root project.
@@ -60,6 +61,40 @@ target_link_options(iprop_html5 PRIVATE
     "-sALLOW_MEMORY_GROWTH=1"
     "-sNO_EXIT_RUNTIME=1")
 set_property(TARGET iprop_html5 APPEND PROPERTY LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/module_api.js")
+
+# The model module (preview): a second, separate output. It is a superset of
+# the module above (the 2D runtime, its C API and `generate`) plus the model
+# runtime and its C API, so a page with models loads one module. Nothing here
+# adds a byte to iprop.wasm. Outputs: iprop3d.js, iprop3d.wasm.
+include(../../cmake/ModelSources.cmake)
+add_library(iprop_model STATIC ${IPROP_MODEL_SOURCES})
+target_include_directories(iprop_model PUBLIC ../../model)
+target_link_libraries(iprop_model PUBLIC iprop_runtime)
+iprop_warnings(iprop_model)
+
+include(../../cmake/CApi3dSources.cmake)
+add_library(iprop_wasm_capi3d STATIC ${IPROP_CAPI3D_IMPLEMENTATION_SOURCES})
+target_include_directories(iprop_wasm_capi3d PUBLIC ../capi3d)
+target_link_libraries(iprop_wasm_capi3d PUBLIC iprop_wasm_capi PRIVATE iprop_model iprop_runtime)
+iprop_warnings(iprop_wasm_capi3d)
+
+add_executable(iprop3d_html5
+    bindings.cpp
+    bindings3d.cpp)
+target_link_libraries(iprop3d_html5 PRIVATE iprop_wasm_capi3d iprop_wasm_capi iprop_model iprop_runtime embind)
+set_target_properties(iprop3d_html5 PROPERTIES OUTPUT_NAME "iprop3d")
+# SHELL: keeps each flag with its file; CMake would merge the repeated flag.
+target_link_options(iprop3d_html5 PRIVATE
+    "SHELL:--pre-js ${CMAKE_CURRENT_SOURCE_DIR}/module_api.js"
+    "SHELL:--pre-js ${CMAKE_CURRENT_SOURCE_DIR}/module_api3d.js"
+    "-fwasm-exceptions"
+    "-sMODULARIZE=1"
+    "-sEXPORT_NAME=createIprop3dModule"
+    "-sENVIRONMENT=web,worker,node"
+    "-sALLOW_MEMORY_GROWTH=1"
+    "-sNO_EXIT_RUNTIME=1")
+set_property(TARGET iprop3d_html5 APPEND PROPERTY LINK_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/module_api.js" "${CMAKE_CURRENT_SOURCE_DIR}/module_api3d.js")
 
 # Test executable only: validates the shared geometry representation on WASM
 # before its public constructor operations land. No extra embind export.

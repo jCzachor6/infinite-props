@@ -86,13 +86,13 @@ DebugInfo parseDebug(std::span<const u8> data, const Section& section) {
     return info;
 }
 
-std::vector<u8> stripDebug(std::span<const u8> data) {
-    if (parseHeader(data).hasCompression()) {
-        const auto expanded = decompressFile(data);
-        if (!parseLayout(expanded).header.hasDebug()) return {data.begin(), data.end()};
-        return compressFile(stripDebug(expanded));
+std::vector<u8> stripDebug(std::span<const u8> data, const Dialect& dialect) {
+    if (parseHeader(data, OffsetSpace::Container, dialect).hasCompression()) {
+        const auto expanded = decompressFile(data, dialect);
+        if (!parseLayout(expanded, dialect).header.hasDebug()) return {data.begin(), data.end()};
+        return compressFile(stripDebug(expanded, dialect), dialect);
     }
-    const FileLayout layout = parseLayout(data);
+    const FileLayout layout = parseLayout(data, dialect);
     if (!layout.header.hasDebug()) {
         return std::vector<u8>(data.begin(), data.end());
     }
@@ -103,7 +103,7 @@ std::vector<u8> stripDebug(std::span<const u8> data) {
     }
 
     Writer file;
-    for (const u8 magic : kMagic) {
+    for (const u8 magic : dialect.magic) {
         file.writeU8(magic);
     }
     file.writeU32(0); // reserved

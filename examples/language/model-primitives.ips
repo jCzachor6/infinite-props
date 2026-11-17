@@ -1,0 +1,32 @@
+// Every primitive once, from left to right. `at`, the first argument of a
+// solid, is the middle of its base; the skin comes last.
+import grid from "skins/grid.ips"
+
+asset primitives {
+  size 172x16x12
+
+  render {
+    tile = skin.crisp(grid.draw(1))
+
+    box({-77, 0, 0}, {10, 10, 10}, tile)
+    box({-63, 0, 0}, {10, 10, 10}, 1.5, tile)                 // with bevelled edges
+    cylinder({-49, 0, 0}, 5.0, 12.0, 16, tile)                // radius, height, sides
+    cone({-35, 0, 0}, 5.0, 2.0, 12.0, 16, tile)               // lower and upper radius
+    band({-21, 0, 0}, 5.0, 4.0, 8.0, 16, skin.two_sided(tile)) // a cone without its caps
+    sphere({-7, 0, 0}, 5.5, 16, 8, tile)                      // radius, sides, rings
+
+    // A profile of {radius, height} points turned around the vertical axis.
+    // A crease in degrees rounds the joints that bend less than it.
+    lathe({7, 0, 0}, [{0, 0}, {4, 0}, {5, 3}, {2, 7}, {3, 12}, {0, 12}], 16, tile)
+    lathe({21, 0, 0}, [{0, 0}, {4, 0}, {5, 3}, {2, 7}, {3, 12}, {0, 12}], 16, 80.0, tile)
+
+    // An outline of {x, y} points, made `depth` thick from front to back.
+    extrude({35, 0, 0}, [{-5, 0}, {5, 0}, {5, 6}, {0, 11}, {-5, 6}], 4.0, tile)
+    extrude({49, 0, 0}, [{-5, 0}, {5, 0}, {5, 6}, {0, 11}, {-5, 6}], 4.0, 0.8, tile)
+
+    // Flat pieces from their corners, counterclockwise as you look at them:
+    // a quad from its lower left, a triangle from any corner.
+    quad({58, 0, 3}, {68, 0, 3}, {68, 10, -3}, {58, 10, -3}, tile)
+    tri({72, 0, 0}, {82, 0, 0}, {77, 10, 0}, tile)
+  }
+}

@@ -3,10 +3,12 @@
 #include "iprop/Code.hpp"
 #include "iprop/Consts.hpp"
 #include "iprop/Format.hpp"
+#include "iprop/Instruction.hpp"
 #include "iprop/Meta.hpp"
 #include "iprop/Collections.hpp"
 
 #include <span>
+#include <string>
 #include <vector>
 
 namespace iprop {
@@ -47,22 +49,56 @@ struct LoadedFile {
     LoadedFile& operator=(const LoadedFile&) = delete;
 
 private:
-    friend LoadedFile loadFile(std::span<const u8> data);
+    friend LoadedFile loadFile(std::span<const u8> data, const Dialect& dialect);
     std::vector<u8> storage;
 };
 
 // Parses a complete file: layout, consts, meta, code (Phases 3-5 rules).
-// Throws located FormatError on any structural violation.
-LoadedFile loadFile(std::span<const u8> data);
+// Throws located FormatError on any structural violation. A dialect's own
+// sections (above SectionId::Steppers) stay in the layout for its reader.
+LoadedFile loadFile(std::span<const u8> data, const Dialect& dialect = kPropDialect);
 bool hasPartOutputs(const LoadedFile& file) noexcept;
 void parseResourceExports(std::span<const u8> data, const Section& section, LoadedFile& file);
 void validateResourceOwnership(const LoadedFile& file);
+
+// The typed stack and labels of the function being validated, as an
+// instruction check of an extended instruction set may use them. They behave
+// exactly as the built-in checks do: nothing is checked in unreachable code.
+class InstructionCheck {
+public:
+    virtual void expect(ValueType type, const char* what) = 0;
+    virtual void push(ValueType type) = 0;
+    // Opens a scope label that the matching `end` closes; scopes of every
+    // kind share the limit of 32.
+    virtual void openScope() = 0;
+    [[noreturn]] virtual void fail(std::string message) = 0;
+    virtual const LoadedFile& file() const = 0;
+
+protected:
+    ~InstructionCheck() = default;
+};
+
+// An extended instruction set validated by another library (the model VM,
+// spec models v1.2). A 2D file is validated without one.
+class ValidationExtension {
+public:
+    // The required name of function 0.
+    virtual const char* entryName() const = 0;
+    // Whether a 2D instruction belongs to the extended set.
+    virtual bool admits(Opcode opcode) const = 0;
+    // Checks an instruction whose opcode the 2D set reserves. Returns false
+    // when the extended set does not define the opcode either.
+    virtual bool check(Instruction instruction, InstructionCheck& state) const = 0;
+
+protected:
+    ~ValidationExtension() = default;
+};
 
 // Static validation per spec §14, run to completion before any execution:
 // entry naming and signature, per-function structured control flow and stack
 // type checking (integer-only branch conditions), index ranges, reserved
 // opcodes, part function signatures and part-graph acyclicity. Throws a
 // located FormatError on the first violation; never mutates the file.
-void validate(const LoadedFile& file);
+void validate(const LoadedFile& file, const ValidationExtension* extension = nullptr);
 
 } // namespace iprop

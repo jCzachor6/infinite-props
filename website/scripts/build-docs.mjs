@@ -64,7 +64,9 @@ export function syncDocumentation(bundle, publicDir) {
     for (const directory of ["docs", "examples", "spec", "backends", "editor", "website", "tests"])
         if (fs.existsSync(path.join(bundle, directory)))
             fs.cpSync(path.join(bundle, directory), path.join(publicDir, directory), { recursive: true });
-    fs.copyFileSync(path.join(bundle, "LLM_REFERENCE.md"), path.join(publicDir, "LLM_REFERENCE.md"));
+    // The two references for coding agents: the language, and render assets (models).
+    for (const reference of ["LLM_REFERENCE.md", "LLM_REFERENCE_MODELS.md"])
+        fs.copyFileSync(path.join(bundle, reference), path.join(publicDir, reference));
     // Release notes link the root changelog from the offline docs payload.
     fs.rmSync(path.join(publicDir, "CHANGELOG.md"), { force: true });
     if (fs.existsSync(path.join(bundle, "CHANGELOG.md")))

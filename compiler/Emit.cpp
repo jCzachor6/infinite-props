@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "iprop/Compositor.hpp"
+#include "ips/BuiltinArguments.hpp"
 #include "ips/Fold.hpp"
 #include "ips/Literals.hpp"
 
@@ -20,7 +21,8 @@ void Emitter::ins(Opcode opcode, u8 aux, u16 operand) {
     // the branch depth to the enclosing while's labels. Every label-pushing
     // opcode has a matching End in the validated output, so the vector is
     // balanced and empty at every function boundary.
-    if (opcode == Opcode::If || opcode == Opcode::Block || opcode == Opcode::LayerBegin || opcode == Opcode::ClipBegin) {
+    if (opcode == Opcode::If || opcode == Opcode::Block || opcode == Opcode::LayerBegin || opcode == Opcode::ClipBegin ||
+        (opcode == model::kModelPage && aux == static_cast<u8>(model::Op::PlaceBegin))) {
         labelKinds_.push_back(0);
     } else if (opcode == Opcode::Loop) {
         labelKinds_.push_back(1);
@@ -29,6 +31,13 @@ void Emitter::ins(Opcode opcode, u8 aux, u16 operand) {
     }
     code_.push_back(Instruction{opcode, aux, operand});
     lines_.push_back(currentLine_);
+}
+
+void Emitter::page(model::Op op, u16 operand) { ins(model::kModelPage, static_cast<u8>(op), operand); }
+
+void Emitter::emitNumber(const ips::Expr& expr) {
+    emitExpr(expr);
+    if (current_->typeOf(expr) == ips::ValueType::I32) ins(Opcode::I32ToF32);
 }
 
 void Emitter::emitConst(const Value& value) {
@@ -44,6 +53,9 @@ void Emitter::emitConst(const Value& value) {
     } else if (const auto* vector = std::get_if<Vec2>(&value)) {
         emitConst(vector->x); emitConst(vector->y);
         ins(Opcode::Vec2Make);
+    } else if (const auto* point = std::get_if<Vec3>(&value)) {
+        emitConst(point->x); emitConst(point->y); emitConst(point->z);
+        page(model::Op::Vec3Make);
     } else if (const auto* list = std::get_if<ListValue>(&value)) {
         ins(Opcode::ConstList, 0, plan_.pools.addList(*list));
     } else if (const auto* sampler = std::get_if<SamplerValue>(&value)) {
@@ -69,7 +81,7 @@ TemporaryLocals::Lease Emitter::temporary(ips::ValueType source) {
     // Pool exhaustion stays a PoolLimit; only the local table is located here.
     if (type.needsDescriptor()) plan_.pools.addType(type);
     else if (type != ips::ValueType::I32 && type != ips::ValueType::F32 && type != ips::ValueType::Vec2 &&
-             type != ips::ValueType::Color && type != ips::ValueType::Distribution)
+             type != ips::ValueType::Color && type != ips::ValueType::Distribution && type != ips::ValueType::Vec3)
         throw std::logic_error("temporary requires a value type");
     try {
         return temporaries_.acquire(type);
@@ -161,6 +173,30 @@ void Emitter::emitStmt(const ips::Stmt& stmt) {
         emitExpr(*clip->mask);
         ins(Opcode::ClipBegin);
         for (const auto& child : clip->body) emitStmt(child);
+        ins(Opcode::End);
+    } else if (const auto* place = std::get_if<ips::PlaceStmt>(&stmt)) {
+        // The arguments are pushed in the bit order of the mask, whatever
+        // order the source names them in (spec models v1.2).
+        u16 mask = 0;
+        for (const auto& slot : ips::placeArguments()) {
+            for (const auto& arg : place->args) {
+                if (!arg.name || *arg.name != slot.name) continue;
+                const auto type = current_->typeOf(*arg.value);
+                if (slot.kind == ips::PlaceKind::Scale && type == ips::ValueType::Vec3) {
+                    emitExpr(*arg.value);
+                    mask |= model::kPlaceScale3;
+                } else if (slot.kind == ips::PlaceKind::Offset || slot.kind == ips::PlaceKind::Mirror) {
+                    emitExpr(*arg.value);
+                    mask |= slot.bit;
+                } else {
+                    emitNumber(*arg.value); // degrees or one factor: an f32
+                    mask |= slot.bit;
+                }
+            }
+        }
+        currentLine_ = static_cast<u32>(place->location.line);
+        page(model::Op::PlaceBegin, mask);
+        for (const auto& child : place->body) emitStmt(child);
         ins(Opcode::End);
     } else if (const auto* whileStmt = std::get_if<ips::WhileStmt>(&stmt)) {
         ins(Opcode::Block);

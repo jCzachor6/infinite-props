@@ -1,0 +1,11 @@
+// A skin that was never assigned cannot cover anything.
+import grid from "../skins/grid.ips"
+
+asset crate {
+  size 20x20x20
+  input u32 painted = 0
+  render {
+    if (painted == 1) { paint = grid.draw(1) }
+    box({0, 0, 0}, {20, 20, 20}, paint)
+  }
+}

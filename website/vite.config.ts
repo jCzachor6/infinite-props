@@ -42,8 +42,8 @@ function versions() {
 
 // An .ips source as highlighted HTML: comments, strings, colour literals with a
 // swatch, numbers, keywords and types. A name after a dot is left plain.
-const KEYWORDS = new Set("import from asset size origin const distribution draw to with layer for in input stepper return palette weighted material".split(" "));
-const TYPES = new Set(["i32", "f32", "color", "list"]);
+const KEYWORDS = new Set("import from asset size origin const distribution draw to with layer for in input stepper return palette weighted material render place scale".split(" "));
+const TYPES = new Set(["i32", "f32", "u32", "color", "list", "vec3", "skin"]);
 function highlight(source: string) {
     const token = /(\/\/[^\n]*)|("[^"\n]*")|(#[0-9a-fA-F]{3,8}\b)|(\b0x[0-9a-fA-F]+\b|\b\d+x\d+\b|\b\d+(?:\.\d+)?\b)|(?<![.\w])[A-Za-z_]\w*\b/g;
     const span = (kind: string, text: string, style = "") => `<span class="tok-${kind}"${style}>${text}</span>`;
@@ -168,10 +168,15 @@ function siteMetadata(): Plugin {
 export default defineConfig({
     base: "./",
     plugins: [sitePartials(), siteMetadata()],
+    // The models section imports the three.js adapter from the html5 backend.
+    server: { fs: { allow: [".."] } },
     build: {
         outDir: "dist",
         emptyOutDir: true,
         target: "es2020",
+        // The models section's chunk is three.js; it loads only when that
+        // section comes near the screen.
+        chunkSizeWarningLimit: 600,
         rollupOptions: {
             input: Object.fromEntries(Object.entries(PAGES).map(([name, file]) => [name, resolve(__dirname, file)])),
         },

@@ -2,6 +2,9 @@
 #include "json.hpp"
 
 #include "iprop/Validator.hpp"
+#include "iprop/model/Model.hpp"
+
+#include <algorithm>
 
 #include <fstream>
 #include <iostream>
@@ -13,8 +16,13 @@ namespace iprop {
 ValidationReport validateReport(std::span<const u8> bytes) {
     ValidationReport report;
     try {
-        const auto loaded = loadFile(bytes);
-        validate(loaded);
+        // A model file (spec models v1.2) is told by its magic.
+        if (bytes.size() >= 4 && std::equal(model::kModelDialect.magic, model::kModelDialect.magic + 4, bytes.begin())) {
+            model::validateModel(model::loadModel(bytes));
+        } else {
+            const auto loaded = loadFile(bytes);
+            validate(loaded);
+        }
         report.valid = true;
     } catch (const FormatError& error) {
         report.valid = false;
@@ -44,8 +52,8 @@ int ipvalMain(int argc, char* argv[]) {
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "-h" || arg == "--help") {
-            std::cout << "ipval - validate an .iprop binary\n\n"
-                      << "Usage: ipval [--json] <file.iprop>\n"
+            std::cout << "ipval - validate an .iprop binary or an .iprop3d model\n\n"
+                      << "Usage: ipval [--json] <file.iprop|file.iprop3d>\n"
                       << "Exit codes: 0 = valid, 1 = invalid, 2 = usage/I/O error.\n";
             return 0;
         }

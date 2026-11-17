@@ -1,0 +1,99 @@
+// A wooden barrel, one unit to a centimetre: staves turned around the
+// middle, iron hoops, heads set below the rims. The seed picks its height,
+// its belly, how many hoops it has, whether it is closed or an open tub and
+// whether it has a tap; `finish` fixes the wood and 0 leaves it to the seed.
+import wood  from "skins/oak.ips"
+import metal from "skins/iron.ips"
+
+asset barrel {
+  size 64x100x64
+  scale 100
+
+  input u32 finish = 0
+
+  palette finishes = [#a3713d, #7c4a27, #8a5a32, #5e3a22, #b08454]
+  palette irons    = [#4d5156, #3a3d40, #6a5b48]
+
+  render {
+    root = seed.initial()
+
+    // Proportions: the radius at the ends and at the belly, the staves'
+    // thickness and how far they stand above the heads.
+    tall  = roll(root.fork("height"), 62.0, 96.0)
+    end   = roll(root.fork("end"), 20.0, 26.0)
+    belly = end + roll(root.fork("belly"), 3.0, 7.5)
+    wall  = roll(root.fork("wall"), 1.4, 2.0)
+    chime = roll(root.fork("chime"), 1.5, 3.0)
+
+    hoops = choose(root.fork("hoops"), 2, 3, 3, 4, 4, 6)
+    tap   = choose(root.fork("tap"), 0, 0, 1)
+    open  = choose(root.fork("open"), 0, 0, 0, 1)        // no top head: an open tub
+
+    look = finish
+    if (finish == 0) { look = choose(root.fork("finish"), 1, 2, 2, 3, 4, 5) }
+    tint = finishes[look - 1]
+    // The staves are the boards of the oak skin, which run down the image
+    // and so up the barrel; 1.6 texels to a unit make them a hand wide.
+    staves = skin.density(skin.roughness(wood.draw(root.fork("staves"), tint = tint, size = {128, 128}), 0.8), 1.6)
+    iron = skin.metallic(skin.roughness(metal.draw(root.fork("iron"), tint = irons[choose(root.fork("iron tone"), 0, 0, 1, 2)],
+                                                    wear = roll(root.fork("wear"), 0.3, 1.0)), 0.5), 1.0)
+
+    // The wall of staves as one profile around its cross-section: down the
+    // inside under the bottom head, out along the bottom, up the belly,
+    // over the top rim and down the inside. The lathe closes its two ends
+    // with discs: the bottom head below, and the top head, or the floor of
+    // a tub, above. A crease of 25 degrees keeps the rims sharp and the
+    // belly round.
+    inner = end - wall
+    stop = tall - chime
+    if (open == 1) { stop = chime + 0.5 }
+    lathe({0, 0, 0}, [{inner, chime}, {inner, 0}, {end, 0},
+                      {lerp(end, belly, 0.55), tall * 0.12}, {lerp(end, belly, 0.85), tall * 0.28}, {belly, tall * 0.5},
+                      {lerp(end, belly, 0.85), tall * 0.72}, {lerp(end, belly, 0.55), tall * 0.88},
+                      {end, tall}, {inner, tall}, {inner, stop}], 28, 25.0, staves)
+
+    // Hoops: one near each rim, more toward the belly.
+    for i in 0..hoops {
+      y = lerp(tall * 0.05, tall * 0.9, float(i) / float(hoops - 1))
+      if (hoops >= 4 && i >= 1 && i <= hoops - 2) {
+        y = lerp(tall * 0.2, tall * 0.74, float(i - 1) / float(hoops - 3))
+      }
+      hoop(y, roll(root.fork("hoop").fork(i), 3.2, 4.4), end, belly, tall, iron)
+    }
+
+    // A tap low on the front.
+    if (tap == 1) {
+      y = tall * 0.2
+      r = radius(y, end, belly, tall)
+      place(at = {0, y, r - 1.0}, pitch = 90.0) {
+        cylinder({0, 0, 0}, 1.4, 6.0, 12, iron)
+        cylinder({0, 4.5, 0}, 1.9, 1.4, 12, iron)
+      }
+      place(at = {0, y + 1.2, r + 3.6}) { cylinder({0, 0, 0}, 0.6, 3.2, 8, iron) }
+    }
+  }
+
+  // The radius of the body at height y, read off the profile above, which
+  // is the same below and above the middle.
+  radius(y: f32, end: f32, belly: f32, tall: f32) -> f32 {
+    u = y / tall
+    if (u > 0.5) { u = 1.0 - u }
+    f = lerp(0.85, 1.0, (u - 0.28) / 0.22)
+    if (u < 0.12) {
+      f = 0.55 * u / 0.12
+    } else if (u < 0.28) {
+      f = lerp(0.55, 0.85, (u - 0.12) / 0.16)
+    }
+    return lerp(end, belly, f)
+  }
+
+  // An iron band around the body from y up, just outside the staves, with
+  // a narrow ring at each edge so it shows a thickness.
+  hoop(y: f32, width: f32, end: f32, belly: f32, tall: f32, s: skin) {
+    r0 = radius(y, end, belly, tall) + 0.5
+    r1 = radius(y + width, end, belly, tall) + 0.5
+    band({0, y, 0}, r0, r1, width, 28, s)
+    band({0, y, 0}, r0 - 0.5, r0, 0.01, 28, s)
+    band({0, y + width - 0.01, 0}, r1, r1 - 0.5, 0.01, 28, s)
+  }
+}

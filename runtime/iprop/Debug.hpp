@@ -44,6 +44,6 @@ u32 debugLineAt(std::span<const u8> data, const Section& section,
 // expanded first and may be recompressed after stripping. Returns the input
 // unchanged when there is no debug section. Throws FormatError for files
 // that do not parse.
-std::vector<u8> stripDebug(std::span<const u8> data);
+std::vector<u8> stripDebug(std::span<const u8> data, const Dialect& dialect = kPropDialect);
 
 } // namespace iprop

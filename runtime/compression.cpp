@@ -6,8 +6,8 @@
 
 namespace iprop {
 
-std::vector<u8> decompressFile(std::span<const u8> data) {
-    const auto header = parseHeader(data);
+std::vector<u8> decompressFile(std::span<const u8> data, const Dialect& dialect) {
+    const auto header = parseHeader(data, OffsetSpace::Container, dialect);
     if (!header.hasCompression()) return {data.begin(), data.end()};
     if (data.size() > kMaxCompressedFileSize)
         throw FormatError("compressed file exceeds size limit", 0, ErrorReason::Compression, ErrorStage::Load, OffsetSpace::Container);
@@ -36,21 +36,21 @@ std::vector<u8> decompressFile(std::span<const u8> data) {
         throw FormatError("invalid compressed stream or decoded size", kHeaderSize + 4, ErrorReason::Compression, ErrorStage::Load, OffsetSpace::Container);
     if (inputSize != stream.size())
         throw FormatError("trailing bytes after compressed stream", kHeaderSize + 4 + inputSize, ErrorReason::Compression, ErrorStage::Load, OffsetSpace::Container);
-    const auto inner = parseHeader(expanded, OffsetSpace::ExpandedFile);
+    const auto inner = parseHeader(expanded, OffsetSpace::ExpandedFile, dialect);
     if (inner.hasCompression()) throw FormatError("nested compressed files are forbidden", kHeaderSize + 4, ErrorReason::Compression, ErrorStage::Load, OffsetSpace::Container);
     if (inner.sectionCount != header.sectionCount || inner.hasDebug() != header.hasDebug())
         throw FormatError("compressed header does not match inner file", kHeaderSize + 4, ErrorReason::Compression, ErrorStage::Load, OffsetSpace::Container);
-    (void)parseLayout(expanded);
+    (void)parseLayout(expanded, dialect);
     return expanded;
 }
 
-std::vector<u8> compressFile(std::span<const u8> data) {
-    const auto header = parseHeader(data);
+std::vector<u8> compressFile(std::span<const u8> data, const Dialect& dialect) {
+    const auto header = parseHeader(data, OffsetSpace::Container, dialect);
     if (header.hasCompression()) {
-        (void)decompressFile(data);
+        (void)decompressFile(data, dialect);
         return {data.begin(), data.end()};
     }
-    (void)parseLayout(data);
+    (void)parseLayout(data, dialect);
     if (data.size() > kMaxCompressedFileSize) return {data.begin(), data.end()};
     uLongf size = compressBound(static_cast<uLong>(data.size()));
     std::vector<u8> stream(size);
@@ -59,7 +59,7 @@ std::vector<u8> compressFile(std::span<const u8> data) {
     if (kHeaderSize + 4 + size >= data.size()) return {data.begin(), data.end()};
     stream.resize(size);
     Writer encoded;
-    for (const auto magic : kMagic) encoded.writeU8(magic);
+    for (const auto magic : dialect.magic) encoded.writeU8(magic);
     encoded.writeU32(0); // reserved
     encoded.writeU32(header.flags | kFlagCompressed);
     encoded.writeU32(header.sectionCount);

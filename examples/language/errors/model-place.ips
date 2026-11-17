@@ -1,0 +1,11 @@
+// The arguments of place are named.
+import grid from "../skins/grid.ips"
+
+asset crate {
+  size 20x30x20
+  render {
+    place({0, 10, 0}) {
+      box({0, 0, 0}, {20, 20, 20}, grid.draw(1))
+    }
+  }
+}

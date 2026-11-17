@@ -99,6 +99,29 @@ struct LayerScope {
     RenderTarget savedTarget;
     bool isClip = false;
     std::size_t savedClipDepth = 0;
+    // A scope of an extended instruction set: closing it calls the extension.
+    bool isExtension = false;
+};
+
+struct Execution;
+
+// An extended instruction set that lives in another library (the model VM,
+// spec models v1.2). A 2D generation has none. It is consulted only where a
+// 2D program cannot arrive: at an opcode the 2D set reserves, and when a
+// scope it opened itself is closed.
+class Extension {
+public:
+    // Executes one instruction whose opcode no 2D group owns, including the
+    // advance of the instruction pointer. Returns false for an unknown one.
+    virtual bool step(Execution& ex, Instruction ins) = 0;
+    // Whether such an instruction opens a scope that the matching `end`
+    // closes; the control scan pairs it like `block`.
+    virtual bool opensScope(Instruction ins) const = 0;
+    // Closes the innermost scope this extension opened.
+    virtual void closeScope(Execution& ex) = 0;
+
+protected:
+    ~Extension() = default;
 };
 
 // All mutable execution state of one generation (spec §8.4). The public VM
@@ -141,6 +164,9 @@ struct Execution {
     // Finished call frames, kept for their storage: a helper call reuses the
     // locals, stack and label buffers of an earlier one.
     std::vector<Frame> spareFrames;
+
+    // Not owned; null for every 2D generation.
+    Extension* extension = nullptr;
 
     explicit Execution(const LoadedFile& f) : file(f) { resources.workBudget = workBudget; }
     Canvas& canvas() { return target.canvas(); }

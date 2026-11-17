@@ -12,10 +12,16 @@
 #include "iprop/Samplers.hpp"
 #include "iprop/Noise.hpp"
 #include "iprop/Geometry.hpp"
+#include "iprop/Surface.hpp"
+#include "iprop/model/Model.hpp"
+#include "iprop/model/Ops.hpp"
+#include "ips/Semantics.hpp"
 #include "../backends/capi/iprop.h"
 
 #include <algorithm>
+#include <iomanip>
 #include <ostream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <variant>
@@ -29,7 +35,8 @@ Json operationEffects(const OperationEffects& effects) {
     Json mayTrap = Json::array();
     for (const auto check : {EffectCheck::NumericRange, EffectCheck::StreamStackUnderflow,
         EffectCheck::PartRenderArguments, EffectCheck::Callee, EffectCheck::PartOutputMissing,
-        EffectCheck::DivideByZero, EffectCheck::IntegerOverflow, EffectCheck::PartOutputContext, EffectCheck::IndexRange, EffectCheck::UnassignedHandle}) {
+        EffectCheck::DivideByZero, EffectCheck::IntegerOverflow, EffectCheck::PartOutputContext, EffectCheck::IndexRange, EffectCheck::UnassignedHandle,
+        EffectCheck::ScopeDepth}) {
         if ((effects.checks & static_cast<u16>(check)) != 0) mayTrap.push_back(effectCheckName(check));
     }
     return Json::object({{"rng", rngEffectName(effects.rng)}, {"writes_canvas", effects.writesCanvas},
@@ -578,40 +585,54 @@ Json variadic(const std::string& name, const ips::BuiltinSpec& spec) {
     return out;
 }
 
+// One builtin with its fixed overloads as the binder sees them. `pageOnly`
+// keeps the overloads of the model page alone: what a render asset adds to a
+// builtin of the 2D table.
+Json builtinEntry(const std::string& name, const ips::BuiltinSpec& spec, bool pageOnly = false) {
+    Json overloads = Json::array();
+    for (const auto& overload : spec.overloads) {
+        if (pageOnly && !overload.modelOp) continue;
+        const ips::BuiltinSpec concrete{spec.lowering, {overload}};
+        const auto signature = ips::builtinCallSignature(concrete, overload.params.size(), {1,1}, name);
+        Json parameters = Json::array();
+        for (std::size_t i = 0; i < overload.params.size(); ++i) {
+            auto entry = parameter(signature.parameters[i].name, ips::typeName(overload.params[i].type));
+            if (overload.params[i].role == ips::ParameterRole::Seed) entry["role"] = "seed";
+            parameters.push_back(std::move(entry));
+        }
+        auto entry = Json::object({{"parameters", std::move(parameters)},
+            {"result", ips::typeName(overload.result)}, {"evaluation_order", evaluationOrder(signature)},
+            {"effects", operationEffects(ips::builtinEffects(spec, &overload))},
+            {"constant_evaluable", ips::constantBuiltin(spec, overload)}});
+        if (overload.opcode) {
+            const auto* opcode = findOpcode(*overload.opcode);
+            if (!opcode) throw std::logic_error("builtin has an unknown opcode");
+            entry["opcode"] = opcode->mnemonic;
+        }
+        if (overload.modelOp) {
+            // A sub-operation of the model page, never a 2D opcode.
+            const auto* operation = model::findOp(*overload.modelOp);
+            if (!operation) throw std::logic_error("builtin has an unknown model operation");
+            entry["model_op"] = operation->mnemonic;
+        }
+        if (overload.adaptation != ips::BuiltinAdaptation::Direct) {
+            Json expansion = Json::array();
+            for (const auto& step : ips::builtinExpansion(overload)) {
+                if (const auto* argument = std::get_if<std::size_t>(&step))
+                    expansion.push_back(Json::object({{"argument", overload.params[*argument].name}}));
+                else expansion.push_back(Json::object({{"opcode", findOpcode(std::get<Opcode>(step))->mnemonic}}));
+            }
+            entry["expansion"] = std::move(expansion);
+        }
+        overloads.push_back(std::move(entry));
+    }
+    return Json::object({{"name", name}, {"overloads", std::move(overloads)}});
+}
+
 Json builtins() {
     Json list = Json::array();
     for (const auto& [name, spec] : ips::builtinSpecs()) {
-        Json overloads = Json::array();
-        for (const auto& overload : spec.overloads) {
-            const ips::BuiltinSpec concrete{spec.lowering, {overload}};
-            const auto signature = ips::builtinCallSignature(concrete, overload.params.size(), {1,1}, name);
-            Json parameters = Json::array();
-            for (std::size_t i = 0; i < overload.params.size(); ++i) {
-                auto entry = parameter(signature.parameters[i].name, ips::typeName(overload.params[i].type));
-                if (overload.params[i].role == ips::ParameterRole::Seed) entry["role"] = "seed";
-                parameters.push_back(std::move(entry));
-            }
-            auto entry = Json::object({{"parameters", std::move(parameters)},
-                {"result", ips::typeName(overload.result)}, {"evaluation_order", evaluationOrder(signature)},
-                {"effects", operationEffects(ips::builtinEffects(spec, &overload))},
-                {"constant_evaluable", ips::constantBuiltin(spec, overload)}});
-            if (overload.opcode) {
-                const auto* opcode = findOpcode(*overload.opcode);
-                if (!opcode) throw std::logic_error("builtin has an unknown opcode");
-                entry["opcode"] = opcode->mnemonic;
-            }
-            if (overload.adaptation != ips::BuiltinAdaptation::Direct) {
-                Json expansion = Json::array();
-                for (const auto& step : ips::builtinExpansion(overload)) {
-                    if (const auto* argument = std::get_if<std::size_t>(&step))
-                        expansion.push_back(Json::object({{"argument", overload.params[*argument].name}}));
-                    else expansion.push_back(Json::object({{"opcode", findOpcode(std::get<Opcode>(step))->mnemonic}}));
-                }
-                entry["expansion"] = std::move(expansion);
-            }
-            overloads.push_back(std::move(entry));
-        }
-        auto builtin = Json::object({{"name", name}, {"overloads", std::move(overloads)}});
+        auto builtin = builtinEntry(name, spec);
         if (spec.lowering == ips::BuiltinLowering::Pick || spec.lowering == ips::BuiltinLowering::Choose ||
             spec.lowering == ips::BuiltinLowering::Polygon) {
             builtin["variadic"] = variadic(name, spec);
@@ -654,6 +675,165 @@ Json callRules() {
 Json version(unsigned major, unsigned minor) {
     return Json::object({{"major", major}, {"minor", minor}});
 }
+
+// A short decimal of a constant such as 0.8 or 100.
+Json decimal(f32 value) {
+    std::ostringstream text;
+    text << std::setprecision(6) << value;
+    return Json::number(text.str());
+}
+
+Json bounds(u64 minimum, u64 maximum) {
+    return Json::object({{"minimum", minimum}, {"maximum", maximum}});
+}
+
+// Models (spec models v1.2, a preview): what an asset with `render { }` adds
+// to the language and what it leaves out. Required from schema 8; every
+// field may still change while `status` is `preview`.
+Json models() {
+    using V = ips::ValueType;
+    Json added = Json::array(), extended = Json::array(), unavailable = Json::array();
+    for (const auto& [name, spec] : ips::modelBuiltinSpecs()) {
+        if (ips::builtinSpecs().contains(name)) extended.push_back(builtinEntry(name, spec, true));
+        else added.push_back(builtinEntry(name, spec));
+    }
+    for (const auto& [name, spec] : ips::builtinSpecs())
+        if (!ips::availableInModel(spec)) unavailable.push_back(name);
+
+    const auto mnemonic = [](model::Op op) { return model::findOp(static_cast<u8>(op))->mnemonic; };
+    const auto storage = [](bool constants) {
+        return Json::object({{"locals", true}, {"helper_parameters", true}, {"helper_returns", true},
+            {"asset_constants", constants}, {"host_inputs", false}, {"collections", false}, {"palettes", false}});
+    };
+    auto vec3 = Json::object({{"name", ips::typeName(V::Vec3)}, {"descriptor_code", static_cast<u8>(V::Vec3)},
+        {"literal", "{<x>, <y>, <z>}"}, {"literal_elements", "numbers_widen_to_f32"},
+        {"components", Json::array({"x", "y", "z"})}, {"component_type", ips::typeName(V::F32)},
+        {"component_ops", Json::array({mnemonic(model::Op::Vec3X), mnemonic(model::Op::Vec3Y), mnemonic(model::Op::Vec3Z)})},
+        {"assignable_components", false},
+        {"operators", Json::object({{"+", mnemonic(model::Op::Vec3Add)}, {"-", mnemonic(model::Op::Vec3Sub)},
+            {"*", mnemonic(model::Op::Vec3Mul)}, {"/", mnemonic(model::Op::Vec3Div)},
+            {"scalar", mnemonic(model::Op::Vec3Scale)}, {"unary -", mnemonic(model::Op::Vec3Neg)}})},
+        {"scalar_operand", "right_of_multiply_and_divide_or_left_of_multiply"},
+        {"random_range", "one_shared_position_then_mix"}, {"random_range_op", mnemonic(model::Op::Vec3Mix)},
+        {"arithmetic", "binary32_per_component_as_vec2"}, {"typed_zero", "zero_vector"},
+        {"storage", storage(true)}});
+    auto skin = Json::object({{"name", ips::typeName(V::Skin)}, {"representation", "i32_record_number_from_one"},
+        {"wire_type", false}, {"unassigned", "trap_when_used"}, {"modifiers", "return_a_new_skin"},
+        {"operators", false}, {"storage", storage(false)}});
+
+    Json placeArguments = Json::array(), placeOrder = Json::array();
+    for (const auto& argument : ips::placeArguments()) {
+        Json types = Json::array();
+        const char* meaning = "";
+        switch (argument.kind) {
+        case ips::PlaceKind::Offset:
+            types.push_back(ips::typeName(V::Vec3));
+            meaning = "origin_of_the_block_in_the_enclosing_space";
+            break;
+        case ips::PlaceKind::Degrees:
+            types.push_back(ips::typeName(V::I32));
+            types.push_back(ips::typeName(V::F32));
+            meaning = argument.bit == model::kPlaceYaw ? "degrees_about_y_positive_turns_z_toward_x"
+                : argument.bit == model::kPlacePitch ? "degrees_about_x_positive_turns_y_toward_z"
+                : "degrees_about_z_positive_turns_x_toward_y";
+            break;
+        case ips::PlaceKind::Scale:
+            types.push_back(ips::typeName(V::I32));
+            types.push_back(ips::typeName(V::F32));
+            types.push_back(ips::typeName(V::Vec3));
+            meaning = "positive_factor_or_one_per_axis";
+            break;
+        case ips::PlaceKind::Mirror:
+            types.push_back(ips::typeName(V::I32));
+            meaning = "zero_or_one";
+            break;
+        }
+        placeArguments.push_back(Json::object({{"name", std::string(argument.name)}, {"types", std::move(types)},
+            {"meaning", meaning}}));
+        placeOrder.push_back(std::string(argument.name));
+    }
+    OperationEffects placeEffects;
+    placeEffects.checks = static_cast<u16>(EffectCheck::NumericRange) | static_cast<u16>(EffectCheck::ScopeDepth);
+    auto place = Json::object({{"syntax", "place(<name> = <value>, ...) { <statements> }"},
+        {"keyword", "contextual_call_followed_by_a_block"}, {"named_only", true}, {"minimum_arguments", 1},
+        {"duplicate_arguments", false}, {"arguments", std::move(placeArguments)},
+        {"evaluation_order", std::move(placeOrder)}, {"written_order_changes_evaluation", false},
+        {"composition", "scale_and_mirror_then_roll_then_pitch_then_yaw_then_offset"},
+        {"right_angles", "exact"}, {"nesting", "inner_block_in_the_space_of_the_outer"},
+        {"mirror", "odd_count_reverses_winding_and_keeps_normals_outward"},
+        {"texture_mapping", "computed_in_the_block_so_scale_stretches_textures"}, {"maximum_open_scopes", kMaxSurfaceScopes},
+        {"scope_cleanup", Json::array({"end", "return", "break", "continue"})},
+        {"begin_op", mnemonic(model::Op::PlaceBegin)}, {"fuel", 1 + model::kPlaceFuel},
+        {"effects", operationEffects(placeEffects)}});
+
+    // The skin call: `$uniform` stands for each input of the imported asset.
+    const std::vector<ips::PartInput> placeholder{{ips::InputType::F32, "$uniform"}};
+    const auto call = ips::skinCallSignature(placeholder);
+    Json skinParameters = Json::array();
+    for (std::size_t i = 0; i < call.parameters.size(); ++i) {
+        const auto& p = call.parameters[i];
+        auto entry = Json::object({{"name", p.name}, {"required", p.required}, {"positional", p.positional}});
+        if (i == ips::kSkinSeedSlot) entry["role"] = "seed";
+        if (i == ips::kSkinSizeSlot) entry["type"] = ips::typeName(V::Vec2);
+        if (std::holds_alternative<const ips::InputDecl*>(call.defaults[i])) entry["default"] = "input_declaration";
+        skinParameters.push_back(std::move(entry));
+    }
+    auto skinCall = Json::object({{"syntax", "<alias>.draw(<seed>[, <input> = <value>, ...][, size = {<width>, <height>}])"},
+        {"target", "imported_asset_with_draw"}, {"result", ips::typeName(V::Skin)},
+        {"parameters", std::move(skinParameters)}, {"evaluation_order", evaluationOrder(call)},
+        {"size", "pixels_truncated_toward_zero_absent_selects_declared"},
+        {"maximum_side", model::kMaxTextureSide}, {"placement_arguments", false},
+        {"generation", "standard_2d_generation_of_the_embedded_program"},
+        {"fuel", "embedded_program_budget"}, {"reserved_fuel", model::kSkinDrawFuel},
+        {"sharing", "same_program_seed_size_and_inputs_generate_once"},
+        {"auxiliary_images", "published_with_the_texture"}, {"render_asset_target", false},
+        {"draw_op", mnemonic(model::Op::SkinDraw)}, {"effects", operationEffects(call.effects)}});
+
+    const auto& magic = model::kModelDialect.magic;
+    return Json::object({
+        {"status", "preview"}, {"contract", "models-v1.2"},
+        {"entry", "render"}, {"entry_syntax", "render { <statements> }"}, {"entry_keyword", "contextual"},
+        {"asset_entries", "exactly_one_of_draw_or_render"},
+        {"file_extension", ".iprop3d"}, {"file_magic", std::string(std::begin(magic), std::end(magic))},
+        {"page_opcode", static_cast<u8>(model::kModelPage)},
+        {"section_ids", Json::object({{"model", static_cast<u32>(model::kModelSection)},
+                                      {"skins", static_cast<u32>(model::kSkinsSection)}})},
+        {"size_syntax", "size <width>x<height>x<depth>"}, {"size_meaning", "nominal_box_in_model_units_never_clips"},
+        {"scale_syntax", "scale <units per metre>"}, {"scale_keyword", "contextual"},
+        {"default_scale", decimal(ips::kDefaultModelScale)},
+        {"axes", "right_handed_x_right_y_up_z_toward_viewer"}, {"ground", "y_zero"}, {"front", "positive_z"},
+        {"winding", "counterclockwise_from_outside"}, {"angle_unit", "degrees"},
+        {"geometry_kernel", "binary64_no_fma_one_rounding_to_binary32_per_component"},
+        {"inputs", "render_only"}, {"origin", false}, {"outputs", false}, {"layers", false}, {"clips", false},
+        {"model_parts", false}, {"optimizer", false},
+        {"types", Json::array({std::move(vec3), std::move(skin)})},
+        {"type_keywords", "contextual_type_position"}, {"types_in_draw_assets", "compile_error"},
+        {"compound_of_three", Json::object({{"render", ips::typeName(V::Vec3)}, {"draw", ips::typeName(V::Circle)}})},
+        {"builtins", std::move(added)}, {"extended_builtins", std::move(extended)},
+        {"unavailable_builtins", std::move(unavailable)},
+        {"builtin_effects", "writes_canvas_means_changes_the_model"},
+        {"anchor", "center_of_the_base"},
+        {"place", std::move(place)}, {"skin_call", std::move(skinCall)},
+        {"skin_defaults", Json::object({{"mapping", "repeat"}, {"density", decimal(model::kSkinDensity)},
+            {"shift", Json::array({0, 0})}, {"roughness", decimal(model::kSkinRoughness)},
+            {"metallic", decimal(model::kSkinMetallic)}, {"emission", decimal(model::kSkinEmission)},
+            {"alpha", "opaque"}, {"cutoff", decimal(model::kSkinCutoff)}, {"two_sided", false}, {"crisp", false}})},
+        {"mapping", Json::object({{"repeat", "face_units_times_density_plus_shift_over_declared_size"},
+            {"fit", "image_once_across_the_face"}, {"uv_origin", "upper_left"},
+            {"unit", "one_texel_per_model_unit_at_density_one"}})},
+        {"limits", Json::object({{"vertices", model::kMaxVertices}, {"triangles", model::kMaxTriangles},
+            {"textures", model::kMaxTextures}, {"texels", model::kMaxTexels},
+            {"texture_side", model::kMaxTextureSide}, {"skin_records", model::kMaxSkinRecords},
+            {"skin_programs", model::kMaxSkinPrograms}, {"open_scopes", kMaxSurfaceScopes},
+            {"sides", bounds(model::kMinSides, model::kMaxSides)}, {"rings", bounds(model::kMinRings, model::kMaxRings)},
+            {"profile_points", bounds(2, model::kMaxProfilePoints)},
+            {"outline_points", bounds(3, model::kMaxOutlinePoints)}})},
+        {"fuel", Json::object({{"instruction", 1}, {"vertex", model::kVertexFuel}, {"triangle", model::kTriangleFuel},
+            {"extrude_outline", "ceil_points_squared_over_3_or_over_2_with_a_bevel"},
+            {"place_reserve", model::kPlaceFuel}, {"skin_draw_reserve", model::kSkinDrawFuel}})},
+        {"arena_bytes", Json::object({{"vertex", model::kVertexBytes}, {"triangle", model::kTriangleBytes},
+            {"skin_record", model::kSkinRecordBytes}})}});
+}
 } // namespace
 
 void writeLanguageDescription(std::ostream& out, std::string_view productVersion) {
@@ -668,6 +848,7 @@ void writeLanguageDescription(std::ostream& out, std::string_view productVersion
     document["builtins"] = builtins();
     document["call_rules"] = callRules();
     document["source_rules"] = sourceRules();
+    document["source_rules"]["models"] = models();
     document["effect_rules"] = effectRules();
     // The complete document exists before output: a failure writes nothing.
     out << document.dump() << '\n';

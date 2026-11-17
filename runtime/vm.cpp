@@ -31,6 +31,7 @@ Value zeroValue(ValueType type) {
     case ValueType::Regions2d: return Value(Regions2dValue{});
     case ValueType::Part2d: return Value(Part2dValue{});
     case ValueType::Parts2d: return Value(Parts2dValue{});
+    case ValueType::Vec3: return Value(Vec3{});
     default: break;
     }
     return Value(i32{0});
@@ -337,7 +338,10 @@ void Execution::scanControl(u16 functionIndex) {
             info[opener].endIndex = i;
             break;
         }
-        default: break;
+        default:
+            // A scope of an extended instruction set pairs with `end` too.
+            if (extension && !findOpcode(ins.opcode) && extension->opensScope(ins)) appendWork(open, i, *workBudget);
+            break;
         }
     }
 }
@@ -499,6 +503,11 @@ VM::~VM() = default;
 VM::VM(VM&&) noexcept = default;
 VM& VM::operator=(VM&&) noexcept = default;
 
+void VM::extend(detail::Extension& extension) {
+    if (impl_->finished || impl_->failed || impl_->taken) throw std::logic_error("VM has already run");
+    impl_->ex.extension = &extension;
+}
+
 void VM::deriveNormal(const DerivedNormalRequest& request) {
     if (impl_->finished || impl_->failed || impl_->taken) throw std::logic_error("VM has already run");
     if (!validDerivedNormalRequest(request))
@@ -544,7 +553,7 @@ void VM::run() {
         // reservation pays only the increase of the rounded cumulative cost.
         ex.beginInstruction(ins.opcode);
         ex.spend(1);
-        if (!detail::step(ex, ins)) {
+        if (!detail::step(ex, ins) && !(ex.extension && ex.extension->step(ex, ins))) {
             ex.trap("reserved opcode", ErrorReason::RuntimeViolation);
         }
     }

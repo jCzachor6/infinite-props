@@ -1,0 +1,10 @@
+// The grain of the rail runs across it.
+import wood from "../skins/wood.ips"
+
+asset rail {
+  size 60x8x4
+  render {
+    oak = wood.draw(seed.initial().fork("oak"))
+    box({0, 0, 0}, {60, 6, 3}, 0.3, oak)
+  }
+}

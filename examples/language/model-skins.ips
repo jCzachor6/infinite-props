@@ -1,0 +1,32 @@
+// One texture under every modifier. A modifier returns a new skin and
+// leaves the skin it was given as it was.
+import grid from "skins/grid.ips"
+
+asset skins {
+  size 144x12x4
+
+  render {
+    root = seed.initial()
+    tile = grid.draw(root.fork("tile"))
+
+    panel(0, tile)                                  // repeats: one texel to a unit
+    panel(1, skin.density(tile, 2.0))               // two texels to a unit
+    panel(2, skin.fit(tile))                        // the whole image once on each face
+    panel(3, skin.shift(tile, {8, 8}))              // moved by half a tile
+    panel(4, skin.crisp(tile))                      // sharp texels
+    panel(5, skin.roughness(skin.metallic(tile, 1.0), 0.25))
+    panel(6, skin.emission(tile, 0.6))              // glows in its own colours
+
+    // More pixels of the same asset: sharper, and covering the same area.
+    panel(7, grid.draw(root.fork("tile"), tint = #a86f6f, size = {64, 64}))
+
+    // A cutout drops the pixels whose alpha is under the threshold, and a
+    // two-sided skin shows a flat piece from behind as well.
+    frame = skin.two_sided(skin.cutout(grid.draw(root.fork("frame"), open = 1), 0.5))
+    quad({56, 0, 0}, {68, 0, 0}, {68, 12, 0}, {56, 12, 0}, skin.fit(frame))
+  }
+
+  panel(i: i32, s: skin) {
+    box({float(i) * 16.0 - 72.0, 0, 0}, {12, 12, 2}, s)
+  }
+}

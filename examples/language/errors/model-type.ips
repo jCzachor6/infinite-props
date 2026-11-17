@@ -1,0 +1,10 @@
+// vec3 and skin are the types of render assets.
+asset badge {
+  size 16x16
+  draw {
+    dot({8, 8, 0})
+  }
+  dot(at: vec3) {
+    pixel(at.x, at.y, #ffffff)
+  }
+}

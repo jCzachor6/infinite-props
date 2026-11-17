@@ -74,6 +74,23 @@ CallSignature partCallSignature(std::span<const PartInput> inputs) {
     for (std::size_t i = kPartTransformBegin; i < kPartTransformEnd; ++i) result.defaults[i] = i32{0};
     return result;
 }
+CallSignature skinCallSignature(std::span<const PartInput> inputs) {
+    std::vector<std::string> names;
+    for (const auto& input : inputs) names.push_back(input.name);
+    auto result = ordered(skinParameters(names));
+    // Generating a texture runs an isolated stream and changes the model; it
+    // may fail in the imported program or on its size.
+    result.effects = {RngEffect::IsolatedCallee, true};
+    result.effects.checks = static_cast<u16>(EffectCheck::Callee) | static_cast<u16>(EffectCheck::NumericRange);
+    result.evaluationOrder.clear();
+    for (std::size_t i = 0; i < inputs.size(); ++i) {
+        result.evaluationOrder.push_back(kSkinFirstInput + i);
+        result.defaults[kSkinFirstInput + i] = inputs[i].declaration;
+    }
+    result.evaluationOrder.push_back(kSkinSeedSlot);
+    result.evaluationOrder.push_back(kSkinSizeSlot);
+    return result;
+}
 BoundCallPlan bindCall(const Call& call, CallSignature signature, std::string_view function) {
     auto arguments = bindArguments(call, signature.parameters, function);
     return {std::move(signature), std::move(arguments)};
@@ -93,8 +110,9 @@ std::optional<BoundCallPlan> sourceCallPlan(const Program& program, const Call& 
         } catch (const SourceError&) { /* no layer overload binds these arguments */ }
         return bindCall(call, surfacePaintCallSignature(call, ValueType::Mask), name);
     }
-    if (const auto found = builtinSpecs().find(name); found != builtinSpecs().end())
-        return bindCall(call, builtinCallSignature(found->second, call, name), name);
+    const bool model = isModel(program.asset);
+    if (const auto* found = findBuiltin(name, model))
+        return bindCall(call, builtinCallSignature(*found, call, name), name);
     if (name == "ramp") return bindCall(call, rampCallSignature(), name);
     for (const auto& function : program.asset.functions) {
         if (name == function.name && name != "draw")
@@ -106,7 +124,7 @@ std::optional<BoundCallPlan> sourceCallPlan(const Program& program, const Call& 
             std::vector<PartInput> inputs;
             for (const auto& input : found->second->asset.inputs)
                 inputs.push_back({input.type, input.name, &input});
-            return bindCall(call, partCallSignature(inputs), name);
+            return bindCall(call, model ? skinCallSignature(inputs) : partCallSignature(inputs), name);
         }
     }
     return std::nullopt;

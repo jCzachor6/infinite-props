@@ -184,6 +184,25 @@
     {"file": "errors/normal-direction.ips", "expect": "compile-error", "message": "color.normal needs a finite nonzero direction with z > 0"},
     {"file": "errors/normal-encoding.ips", "expect": "compile-error", "message": "a layer takes either 'alpha' or 'encoding', not both"},
     {"file": "traps/normal-colour-layer.ips", "expect": "trap", "message": "normal output needs a direction layer"},
-    {"file": "traps/normal-smoothing.ips", "expect": "trap", "message": "normal smoothing must be finite and in 0..64"}
+    {"file": "traps/normal-smoothing.ips", "expect": "trap", "message": "normal smoothing must be finite and in 0..64"},
+    {"file": "stool.ips", "expect": "pass"},
+    {"file": "skins/wood.ips", "expect": "pass"},
+    {"file": "skins/cloth.ips", "expect": "pass"},
+    {"file": "skins/grid.ips", "expect": "pass"},
+    {"file": "model-primitives.ips", "expect": "pass"},
+    {"file": "model-place.ips", "expect": "pass"},
+    {"file": "model-skins.ips", "expect": "pass"},
+    {"file": "model-vectors.ips", "expect": "pass"},
+    {"file": "style/model-skin-per-part.ips", "expect": "pass"},
+    {"file": "style/model-grain.ips", "expect": "pass"},
+    {"file": "errors/model-canvas.ips", "expect": "compile-error", "message": "rect draws pixels and a render asset has no canvas"},
+    {"file": "errors/model-size.ips", "expect": "compile-error", "message": "a render asset needs 'size WxHxD'"},
+    {"file": "errors/model-place.ips", "expect": "compile-error", "message": "place takes named arguments only"},
+    {"file": "errors/model-type.ips", "expect": "compile-error", "message": "type 'vec3' belongs to a render asset"},
+    {"file": "errors/model-input.ips", "expect": "compile-error", "message": "input 'tall' is only visible inside 'render'"},
+    {"file": "errors/model-import.ips", "expect": "compile-error", "message": "'stool' is a render asset"},
+    {"file": "traps/model-bevel.ips", "expect": "trap", "message": "bevel must be positive and less than half the shortest side"},
+    {"file": "traps/model-skin.ips", "expect": "trap", "message": "skin is unassigned"},
+    {"file": "traps/model-roughness.ips", "expect": "trap", "message": "skin roughness must be in 0..1"}
   ]
 }

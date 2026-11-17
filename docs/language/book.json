@@ -21,6 +21,7 @@
     "composition.md",
     "surfaces.md",
     "relief.md",
+    "models.md",
     "idioms.md",
     "tooling.md",
     "grammar.md",
@@ -29,6 +30,7 @@
     "migration-v0.8.md",
     "migration-v0.9.md",
     "migration-v1.0.md",
-    "migration-v1.1.md"
+    "migration-v1.1.md",
+    "migration-v1.2.md"
   ]
 }

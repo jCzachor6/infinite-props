@@ -23,9 +23,13 @@ namespace iprop {
 // instances, and a `draw` that returns a value. A program compiled without
 // checkAsset also gets located errors for unstorable slots and for layer/clip
 // blocks nested past the runtime scope stack.
+// An entry with `render` is a model (models v1.2): `parts` then names its
+// direct imports and `skins` holds the compiled .iprop of each, by alias. The
+// result is a validated .iprop3d file.
 std::vector<u8> compileProgram(
     const ips::Program& entry,
     const std::map<std::string, const ips::Program*>& parts,
-    bool optimize = true, const std::map<std::string, std::string>& partSources = {});
+    bool optimize = true, const std::map<std::string, std::string>& partSources = {},
+    const std::map<std::string, std::vector<u8>>& skins = {});
 
 } // namespace iprop

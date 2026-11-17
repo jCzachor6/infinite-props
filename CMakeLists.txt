@@ -52,12 +52,14 @@ endif()
 # Directory layout follows README.md §14: each component is a top-level
 # directory (runtime/, tools/, language/, compiler/, backends/, ...).
 add_subdirectory(runtime)
+add_subdirectory(model)
 add_subdirectory(language)
 add_subdirectory(compiler)
 add_subdirectory(tools)
 include(cmake/LanguageDocs.cmake)
 add_subdirectory(benchmarks)
 add_subdirectory(backends/capi)
+add_subdirectory(backends/capi3d)
 add_subdirectory(backends/sfml)
 add_subdirectory(backends/godot)
 

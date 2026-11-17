@@ -1,6 +1,7 @@
 // The GDExtension entry point (task 8.1).
 
 #include "iprop_godot.hpp"
+#include "iprop_model_godot.hpp"
 
 #include <gdextension_interface.h>
 
@@ -19,6 +20,9 @@ void initialize_module(ModuleInitializationLevel p_level) {
     GDREGISTER_CLASS(iprop_godot::IpropCancellation);
     GDREGISTER_CLASS(iprop_godot::IpropAsset);
     GDREGISTER_CLASS(iprop_godot::IpropSprite2D);
+    // Models (preview).
+    GDREGISTER_CLASS(iprop_godot::IpropModel);
+    GDREGISTER_CLASS(iprop_godot::IpropModelInstance3D);
 }
 
 void uninitialize_module(ModuleInitializationLevel p_level) {

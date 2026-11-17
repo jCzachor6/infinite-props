@@ -10,7 +10,7 @@ const {outputBits}=require("./harness.js");
 
 function run(iprop, tool, directory) {
     const catalogue = JSON.parse(execFileSync(tool("ipc"), ["--describe-language"], {encoding:"utf8"}));
-    assert.equal(catalogue.schema_version, 7);
+    assert.equal(catalogue.schema_version, 8);
     const declarations = [], runtime = [], observations = [];
     let overloads = 0;
     for (const builtin of catalogue.builtins) for (const signature of builtin.overloads) {

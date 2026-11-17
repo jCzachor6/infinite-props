@@ -229,6 +229,65 @@
     </div>
   </section>
 
+  <section class="section models" id="models" aria-labelledby="models-title" data-models>
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">A preview of 3D</p>
+        <h2 class="section-title" id="models-title">One program, <b>a room of chairs</b></h2>
+        <p class="lead">The same idea with one more dimension. A program with <code>render</code> builds a shape from boxes, cones and turned profiles, and the seed picks the legs, the back, the stretchers and the cushion. Its textures are ordinary props: <code>oak.ips</code> draws the planks with their normal map, <code>weave.ips</code> the cloth. Every chair here is the same file, generated in your browser.</p>
+      </div>
+      <figure class="tile models__stage">
+        <div class="tile__file"><span>chair.iprop3d</span><span data-models-size>3.2 KB</span></div>
+        <canvas role="img" aria-label="Six chairs, each generated from its own seed, turning under a lamp" data-models-canvas></canvas>
+        <ol class="models__seeds" aria-hidden="true" data-models-seeds></ol>
+      </figure>
+      <div class="models__controls">
+        <fieldset class="strike__field">
+          <legend>Wood <code>finish</code></legend>
+          <div class="strike__choices">
+            <label title="Picked by the seed"><input type="radio" name="models-finish" value="0" checked><span>Seed</span></label>
+            <label class="strike__swatch" style="--swatch: #c79c63" title="Light oak"><input type="radio" name="models-finish" value="1" aria-label="Light oak"><span></span></label>
+            <label class="strike__swatch" style="--swatch: #a3713d" title="Honey oak"><input type="radio" name="models-finish" value="2" aria-label="Honey oak"><span></span></label>
+            <label class="strike__swatch" style="--swatch: #7c4a27" title="Chestnut"><input type="radio" name="models-finish" value="3" aria-label="Chestnut"><span></span></label>
+            <label class="strike__swatch" style="--swatch: #4b2f1f" title="Walnut"><input type="radio" name="models-finish" value="4" aria-label="Walnut"><span></span></label>
+            <label class="strike__swatch" style="--swatch: #d9d5c9" title="White paint"><input type="radio" name="models-finish" value="5" aria-label="White paint"><span></span></label>
+            <label class="strike__swatch" style="--swatch: #5f8a96" title="Blue paint"><input type="radio" name="models-finish" value="6" aria-label="Blue paint"><span></span></label>
+          </div>
+        </fieldset>
+        <fieldset class="strike__field">
+          <legend>Cushion <code>fabric</code></legend>
+          <div class="strike__choices">
+            <label title="Picked by the seed"><input type="radio" name="models-fabric" value="0" checked><span>Seed</span></label>
+            <label class="strike__swatch" style="--swatch: #8a2f2f" title="Red"><input type="radio" name="models-fabric" value="1" aria-label="Red"><span></span></label>
+            <label class="strike__swatch" style="--swatch: #2f4f7a" title="Blue"><input type="radio" name="models-fabric" value="2" aria-label="Blue"><span></span></label>
+            <label class="strike__swatch" style="--swatch: #3f6b45" title="Green"><input type="radio" name="models-fabric" value="3" aria-label="Green"><span></span></label>
+            <label class="strike__swatch" style="--swatch: #b08a3a" title="Mustard"><input type="radio" name="models-fabric" value="4" aria-label="Mustard"><span></span></label>
+            <label class="strike__swatch" style="--swatch: #5c416e" title="Plum"><input type="radio" name="models-fabric" value="5" aria-label="Plum"><span></span></label>
+            <label class="strike__swatch" style="--swatch: #c8c0ae" title="Linen"><input type="radio" name="models-fabric" value="6" aria-label="Linen"><span></span></label>
+          </div>
+        </fieldset>
+        <div class="models__foot">
+          <p class="strike__note">One <code>.iprop3d</code> of <span data-models-size>3.2 KB</span>: every chair is one seed, generated right here in a worker and lit by three.js. Move the pointer over the room and the lamp follows. Models are a preview and may still change.</p>
+          <button class="btn" type="button" data-models-roll disabled>Roll new chairs</button>
+        </div>
+      </div>
+      <p class="strike__status" data-models-status role="status" hidden></p>
+      <div class="code-tabs models__code" data-code-tabs>
+        <div class="code-tabs__bar">
+          <div role="tablist" aria-label="The chair's source files">
+          <button class="code-tabs__tab" type="button" role="tab" id="code-tab-chair" aria-controls="code-panel-chair" aria-selected="true" data-file="models/chair.ips">chair.ips</button>
+          <button class="code-tabs__tab" type="button" role="tab" id="code-tab-oak" aria-controls="code-panel-oak" aria-selected="false" tabindex="-1" data-file="models/skins/oak.ips">oak.ips <small>skin</small></button>
+          <button class="code-tabs__tab" type="button" role="tab" id="code-tab-weave" aria-controls="code-panel-weave" aria-selected="false" tabindex="-1" data-file="models/skins/weave.ips">weave.ips <small>skin</small></button>
+          </div>
+          <a class="code-tabs__download" href="models/chair.ips" download data-code-download>Download</a>
+        </div>
+        <pre class="code-sample" role="tabpanel" id="code-panel-chair" aria-labelledby="code-tab-chair" tabindex="0"><code><!-- @code models/chair.ips --></code></pre>
+        <pre class="code-sample" role="tabpanel" id="code-panel-oak" aria-labelledby="code-tab-oak" tabindex="0" hidden><code><!-- @code models/skins/oak.ips --></code></pre>
+        <pre class="code-sample" role="tabpanel" id="code-panel-weave" aria-labelledby="code-tab-weave" tabindex="0" hidden><code><!-- @code models/skins/weave.ips --></code></pre>
+      </div>
+    </div>
+  </section>
+
   <section class="section section--band" id="examples">
     <div class="container">
       <div class="section-head">

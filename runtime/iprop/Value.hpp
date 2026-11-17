@@ -53,9 +53,11 @@ using Contours2dValue = GeometryValue<TypeDescriptor::Kind::Contours2d>;
 using Regions2dValue = GeometryValue<TypeDescriptor::Kind::Regions2d>;
 using Part2dValue = GeometryValue<TypeDescriptor::Kind::Part2d, DynamicPartData>;
 using Parts2dValue = GeometryValue<TypeDescriptor::Kind::Parts2d, DynamicPartsData>;
+// Vec3 is last: the indices of the 2D alternatives are part of valueType().
 using Value = std::variant<i32, f32, Color, Vec2, Distribution, ListValue, ListBuilder, SamplerValue,
                            PointDistributionBuilder, LayerValue, MaskValue, StepperValue,
-                           Diagram2dValue, Contours2dValue, Regions2dValue, Part2dValue, Parts2dValue>;
+                           Diagram2dValue, Contours2dValue, Regions2dValue, Part2dValue, Parts2dValue,
+                           Vec3>;
 
 enum class SamplerMode : u8 { Constant, Uniform, With };
 // Both descriptions share storage and validation, but have distinct Value

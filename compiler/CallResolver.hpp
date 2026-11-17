@@ -40,6 +40,14 @@ struct PartCall {
     // pushed as two coordinates; defaults are already resolved values.
     std::vector<std::variant<PlannedArgument, Value, Placement>> arguments;
 };
+// `alias.draw(...)` of a model (models v1.2): a texture of the imported asset.
+struct SkinCall {
+    u32 program;
+    // The inputs in declaration order, supplied or at their default.
+    std::vector<std::variant<PlannedArgument, Value>> inputs;
+    PlannedArgument seed;
+    const ips::Expr* size = nullptr; // a vec2 of pixels; null: the declared size
+};
 struct RampCall {
     const ips::ResolvedPalette* palette;
     PlannedArgument position;
@@ -47,7 +55,7 @@ struct RampCall {
 };
 struct ResolvedCall {
     ips::SourceLocation location;
-    std::variant<BuiltinCall, UserCall, PartCall, RampCall, SelectionCall> target;
+    std::variant<BuiltinCall, UserCall, PartCall, RampCall, SelectionCall, SkinCall> target;
 };
 
 // Lowers frontend-bound calls to coercions, defaults and table indices.
@@ -62,5 +70,6 @@ private:
     const PlannedFunction& function_;
     PlannedArgument argument(const ips::Expr& expression, ips::ValueType expected) const;
     PartCall part(const ips::Call& call, const std::string& path) const;
+    SkinCall skin(const ips::Call& call, const std::string& alias) const;
 };
 } // namespace iprop::compiler

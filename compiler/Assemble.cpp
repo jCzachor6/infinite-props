@@ -7,7 +7,9 @@
 #include "iprop/Constants.hpp"
 #include "iprop/OpcodeSpec.hpp"
 #include "iprop/Validator.hpp"
+#include "iprop/model/Model.hpp"
 #include "ips/Fold.hpp"
+#include "ips/Semantics.hpp"
 
 namespace iprop::compiler {
 
@@ -73,11 +75,14 @@ std::vector<u8> Assembler::assemble() {
     const ips::Asset& asset = plan_.entry->asset;
 
     // ---- meta section (spec §4) ----
+    // A model has no canvas: its meta keeps the layout with a 1x1 size and
+    // its declared size goes to the model section (spec models v1.2).
+    const bool model = plan_.model;
     Writer meta;
-    meta.writeU32(*asset.sizeX);
-    meta.writeU32(*asset.sizeY);
-    meta.writeF32(asset.originX ? foldOrigin(*asset.originX) : 0.f);
-    meta.writeF32(asset.originY ? foldOrigin(*asset.originY) : 0.f);
+    meta.writeU32(model ? 1u : *asset.sizeX);
+    meta.writeU32(model ? 1u : *asset.sizeY);
+    meta.writeF32(!model && asset.originX ? foldOrigin(*asset.originX) : 0.f);
+    meta.writeF32(!model && asset.originY ? foldOrigin(*asset.originY) : 0.f);
     meta.writeU64(kDefaultFuelBudget);
     meta.writeU16(0);       // emission: no offset/radius/colour
     for (int i = 0; i < 6; ++i) {
@@ -244,11 +249,22 @@ std::vector<u8> Assembler::assemble() {
         for (const auto& function : plan_.functions)
             exports.writeU32(function.partOwner.value_or(kRootParent));
     }
+    Writer modelSection, skinsSection;
+    if (model) {
+        const f32 size[3] = {static_cast<f32>(*asset.sizeX), static_cast<f32>(*asset.sizeY), static_cast<f32>(*asset.sizeZ)};
+        const auto scale = ips::modelScale(asset);
+        if (!scale) error(asset.scaleLocation, "'scale' must be a positive number of units per metre");
+        model::writeModelSection(modelSection, size, *scale);
+        std::vector<model::SkinEntry> entries;
+        for (const auto& skin : plan_.skins) entries.push_back({plan_.pools.indexOf(skin.alias), skin.bytes});
+        model::writeSkinsSection(skinsSection, entries);
+    }
     const u32 sectionCount = 4 + (plan_.parts.empty() ? 0u : 1u) + (types.size() ? 1u : 0u) +
-        (collections.size() ? 1u : 0u) + (samplers.size() ? 1u : 0u) + (steppers.size() ? 1u : 0u) + (distributions.size() ? 1u : 0u) + (exports.size() ? 1u : 0u);
+        (collections.size() ? 1u : 0u) + (samplers.size() ? 1u : 0u) + (steppers.size() ? 1u : 0u) + (distributions.size() ? 1u : 0u) + (exports.size() ? 1u : 0u) +
+        (model ? 2u : 0u);
     // ---- file (spec §2) ----
     Writer file;
-    for (const u8 magic : kMagic) {
+    for (const u8 magic : model ? model::kModelDialect.magic : kPropDialect.magic) {
         file.writeU8(magic);
     }
     file.writeU32(0);          // reserved
@@ -272,6 +288,10 @@ std::vector<u8> Assembler::assemble() {
     if (distributions.size()) section(static_cast<u32>(SectionId::Distributions), distributions.data());
     if (exports.size()) section(static_cast<u32>(SectionId::ResourceExports), exports.data());
     if (steppers.size()) section(static_cast<u32>(SectionId::Steppers), steppers.data());
+    if (model) {
+        section(static_cast<u32>(model::kModelSection), modelSection.data());
+        section(static_cast<u32>(model::kSkinsSection), skinsSection.data());
+    }
     section(static_cast<u32>(SectionId::Debug), debug.data());
     file.writeBytes(meta.data());
     file.writeBytes(consts.data());
@@ -283,6 +303,8 @@ std::vector<u8> Assembler::assemble() {
     file.writeBytes(distributions.data());
     file.writeBytes(exports.data());
     file.writeBytes(steppers.data());
+    file.writeBytes(modelSection.data());
+    file.writeBytes(skinsSection.data());
     file.writeBytes(debug.data());
     return file.data();
 }

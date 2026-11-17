@@ -1,0 +1,9 @@
+// A model declares three sizes: width, height and depth.
+import grid from "../skins/grid.ips"
+
+asset crate {
+  size 20x20
+  render {
+    box({0, 0, 0}, {20, 20, 20}, grid.draw(1))
+  }
+}

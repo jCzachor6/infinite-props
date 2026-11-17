@@ -1,0 +1,189 @@
+// A wooden chair, one unit to a centimetre. The seed picks the proportions,
+// the legs, the back, the stretchers, the arms and the cushion; `finish` and
+// `fabric` fix the wood and the cloth, and 0 leaves them to the seed.
+import wood  from "skins/oak.ips"
+import cloth from "skins/weave.ips"
+
+asset chair {
+  size 60x104x60
+  scale 100
+
+  input u32 finish = 0
+  input u32 fabric = 0
+
+  palette finishes = [#c79c63, #a3713d, #7c4a27, #4b2f1f, #d9d5c9, #5f8a96]
+  palette fabrics  = [#8a2f2f, #2f4f7a, #3f6b45, #b08a3a, #5c416e, #c8c0ae]
+
+  render {
+    root = seed.initial()
+
+    // Proportions.
+    w = roll(root.fork("width"), 38.0, 48.0)
+    d = roll(root.fork("depth"), 36.0, 44.0)
+    h = roll(root.fork("height"), 42.0, 48.0)
+    t = roll(root.fork("leg"), 3.2, 4.6)
+    board = roll(root.fork("board"), 2.4, 3.4)
+    inset = roll(root.fork("inset"), 0.8, 2.4)
+    backHeight = roll(root.fork("back"), 38.0, 52.0)
+    lean = roll(root.fork("lean"), 4.0, 11.0)
+
+    // Features.
+    legStyle = choose(root.fork("legs"), 0, 1, 2)          // square, tapered, turned
+    backStyle = choose(root.fork("back style"), 0, 1, 2, 3) // slats, ladder, panel, spindles
+    stretchers = choose(root.fork("stretchers"), 0, 1, 1, 2) // none, H, box
+    arms = choose(root.fork("arms"), 0, 0, 0, 1)
+    cushion = choose(root.fork("cushion"), 0, 1)
+
+    // Skins: the same oak as planks for wide parts and as one piece for thin.
+    look = finish
+    if (finish == 0) { look = choose(root.fork("finish"), 1, 2, 2, 3, 3, 4, 5, 6) }
+    dye = fabric
+    if (fabric == 0) { dye = choose(root.fork("fabric"), 1, 2, 3, 4, 5, 6) }
+    tint = finishes[look - 1]
+    planks = skin.roughness(wood.draw(root.fork("planks"), tint = tint, size = {128, 128}), 0.6)
+    solid = skin.roughness(wood.draw(root.fork("solid"), tint = tint, planks = 0, size = {128, 128}), 0.6)
+    // Three texels of cloth to a unit: a thread is a little over a centimetre.
+    weave = skin.density(skin.roughness(cloth.draw(root.fork("cloth"), dye = fabrics[dye - 1], size = {128, 128}), 0.95), 3.0)
+
+    px = w * 0.5 - t * 0.5 - inset      // the legs stand at (+-px, +-pz)
+    pz = d * 0.5 - t * 0.5 - inset
+    under = h - board                   // the underside of the seat
+
+    // Legs.
+    for i in 0..4 {
+      x = px
+      z = pz
+      if (i % 2 == 1) { x = -px }
+      if (i >= 2) { z = -pz }
+      leg({x, 0, z}, t, under, legStyle, solid)
+    }
+
+    // Aprons under the seat, between the legs.
+    apron = roll(root.fork("apron"), 4.5, 6.5)
+    barX({-px, under - apron * 0.5, pz}, px * 2.0, apron, 1.8, solid)
+    barX({-px, under - apron * 0.5, -pz}, px * 2.0, apron, 1.8, solid)
+    barZ({px, under - apron * 0.5, -pz}, pz * 2.0, apron, 1.8, solid)
+    barZ({-px, under - apron * 0.5, -pz}, pz * 2.0, apron, 1.8, solid)
+
+    // Stretchers near the floor.
+    if (stretchers > 0) {
+      low = roll(root.fork("stretcher height"), 9.0, 16.0)
+      rung({px, low, -pz}, pz * 2.0, 1, legStyle, solid)
+      rung({-px, low, -pz}, pz * 2.0, 1, legStyle, solid)
+      if (stretchers == 1) {
+        rung({-px, low, 0}, px * 2.0, 0, legStyle, solid)
+      } else {
+        rung({-px, low + 3.0, pz}, px * 2.0, 0, legStyle, solid)
+        rung({-px, low + 3.0, -pz}, px * 2.0, 0, legStyle, solid)
+      }
+    }
+
+    // The seat and its cushion.
+    box({0, under, 0}, {w, board, d}, 0.6, planks)
+    if (cushion == 1) {
+      box({0, h, 0.5}, {w - 5.0, 3.2, d - 6.0}, 1.3, weave)
+    }
+
+    // The back leans from the rear legs.
+    place(at = {0, h, -pz}, pitch = -lean) {
+      back(px, t, backHeight, backStyle, legStyle, root.fork("back parts"), solid, planks)
+    }
+
+    // Arms: the front legs rise to carry them.
+    if (arms == 1) {
+      rise = roll(root.fork("arm height"), 18.0, 23.0)
+      for side in 0..2 {
+        x = px
+        if (side == 1) { x = -px }
+        post({x, h, pz}, t * 0.85, rise, legStyle, solid)
+        barZ({x, h + rise + 1.2, -pz - 1.0}, pz * 2.0 + t, 2.4, t + 1.6, solid)
+      }
+    }
+  }
+
+  // One leg from the floor to `height`.
+  leg(at: vec3, t: f32, height: f32, style: i32, s: skin) {
+    r = t * 0.5
+    if (style == 0) {
+      box(at, {t, height, t}, 0.35, s)
+    } else if (style == 1) {
+      cone(at, r * 0.62, r, height, 10, s)
+    } else {
+      lathe(at, [{0, 0}, {r * 0.55, 0}, {r * 0.85, height * 0.04}, {r * 0.5, height * 0.1},
+                 {r * 0.64, height * 0.32}, {r * 0.98, height * 0.62}, {r * 0.58, height * 0.7},
+                 {r, height * 0.75}, {r, height}], 12, 40.0, s)
+    }
+  }
+
+  // A post above the seat: square for square legs, else round.
+  post(at: vec3, t: f32, height: f32, style: i32, s: skin) {
+    if (style == 0) {
+      box(at, {t, height, t}, 0.3, s)
+    } else {
+      cone(at, t * 0.5, t * 0.4, height, 10, s)
+    }
+  }
+
+  // A bar of `length` from `start` toward +X, built upright and laid down so
+  // that the grain runs along it. `start` is the middle of its end.
+  barX(start: vec3, length: f32, tall: f32, deep: f32, s: skin) {
+    place(at = start, roll = -90.0) { box({0, 0, 0}, {tall, length, deep}, 0.3, s) }
+  }
+
+  // The same toward +Z.
+  barZ(start: vec3, length: f32, tall: f32, wide: f32, s: skin) {
+    place(at = start, pitch = 90.0) { box({0, 0, 0}, {wide, length, tall}, 0.3, s) }
+  }
+
+  // A stretcher: a square bar for square legs, else a round rung.
+  rung(start: vec3, length: f32, alongZ: i32, style: i32, s: skin) {
+    if (style == 0) {
+      if (alongZ == 1) { barZ(start, length, 2.2, 1.6, s) } else { barX(start, length, 2.2, 1.6, s) }
+    } else if (alongZ == 1) {
+      place(at = start, pitch = 90.0) { cylinder({0, 0, 0}, 0.9, length, 8, s) }
+    } else {
+      place(at = start, roll = -90.0) { cylinder({0, 0, 0}, 0.9, length, 8, s) }
+    }
+  }
+
+  // The back in its own leaning space: the posts stand at (+-px, 0, 0).
+  back(px: f32, t: f32, height: f32, style: i32, legStyle: i32, parts: seed, solid: skin, planks: skin) {
+    rail = roll(parts.fork("rail"), 5.0, 8.0)
+    over = roll(parts.fork("overhang"), 0.5, 2.5)
+    inner = px * 2.0 - t
+    post({px, 0, 0}, t, height - rail, legStyle, solid)
+    post({-px, 0, 0}, t, height - rail, legStyle, solid)
+    barX({-px - t * 0.5 - over, height - rail * 0.5, 0}, px * 2.0 + t + over * 2.0, rail, t * 0.8, solid)
+
+    if (style == 0) {
+      // Slats between a lower rail and the top rail.
+      low = roll(parts.fork("low"), 8.0, 13.0)
+      count = choose(parts.fork("count"), 2, 3, 3, 4)
+      width = inner / float(count) * roll(parts.fork("slat"), 0.45, 0.7)
+      barX({-px, low, 0}, px * 2.0, 3.6, 1.6, solid)
+      for i in 0..count {
+        x = inner * ((float(i) + 0.5) / float(count) - 0.5)
+        box({x, low + 1.8, 0}, {width, height - rail - low - 1.8, 1.2}, 0.25, solid)
+      }
+    } else if (style == 1) {
+      // A ladder back.
+      count = choose(parts.fork("count"), 2, 3, 3, 4)
+      tall = roll(parts.fork("rung"), 3.6, 5.6)
+      for i in 0..count {
+        y = 9.0 + (height - rail - 12.0) * (float(i) + 0.5) / float(count)
+        barX({-px, y, 0}, px * 2.0, tall, 1.5, solid)
+      }
+    } else if (style == 2) {
+      // A panel.
+      low = roll(parts.fork("low"), 5.0, 10.0)
+      box({0, low, 0}, {inner + 1.0, height - rail - low + 0.5, 1.4}, 0.3, planks)
+    } else {
+      // Spindles.
+      count = choose(parts.fork("count"), 4, 5, 6, 7)
+      for i in 0..count {
+        x = inner * ((float(i) + 0.5) / float(count) - 0.5)
+        cylinder({x, 0, 0}, 0.8, height - rail, 8, solid)
+      }
+    }
+  }
+}

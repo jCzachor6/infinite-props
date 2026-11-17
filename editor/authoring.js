@@ -2,11 +2,24 @@
 const { execFile } = require("child_process");
 const { compilerIdentity } = require("./formatting");
 
+// What a hover and a completion say about a name that only an asset with render has.
+const RENDER_ONLY = "// in an asset with render";
+
 // Signatures and namespace constants come from the selected compiler, never a second catalogue.
 function entries(catalogue) {
-    if (catalogue.schema_version !== 7) throw new Error("unsupported language catalogue");
-    const result = catalogue.builtins.map(b => ({ name: b.name, signatures: [...b.overloads, ...(b.variadic ? [b.variadic] : [])].map(o =>
-        `${b.name}(${o.parameters.map(p => `${p.name}: ${p.type}`).join(", ")}${o === b.variadic ? ", ..." : ""}) -> ${o.result}`) }));
+    if (catalogue.schema_version !== 8) throw new Error("unsupported language catalogue");
+    const signature = (name, o, variadic) =>
+        `${name}(${o.parameters.map(p => `${p.name}: ${p.type}`).join(", ")}${variadic ? ", ..." : ""}) -> ${o.result}`;
+    // Models (a preview): the builtins of render assets, and the overloads
+    // such an asset adds to builtins of the 2D table.
+    const models = catalogue.source_rules.models;
+    const extended = new Map(models.extended_builtins.map(b => [b.name, b.overloads]));
+    const result = catalogue.builtins.map(b => ({ name: b.name, signatures: [
+        ...b.overloads.map(o => signature(b.name, o)),
+        ...(b.variadic ? [signature(b.name, b.variadic, true)] : []),
+        ...(extended.get(b.name) || []).map(o => signature(b.name, o) + "  " + RENDER_ONLY)] }));
+    models.builtins.forEach(b => result.push({ name: b.name, note: RENDER_ONLY,
+        signatures: b.overloads.map(o => signature(b.name, o)) }));
     const constants = new Set(catalogue.source_rules.surfaces?.alpha_modes || []);
     function visit(value) {
         if (!value || typeof value !== "object") return;
@@ -18,7 +31,13 @@ function entries(catalogue) {
     visit(catalogue.source_rules);
     constants.forEach(name => result.push({ name, signatures: [], kind: "Constant" }));
     catalogue.source_rules.types.storable.forEach(name => result.push({ name, signatures: [], kind: "TypeParameter" }));
+    models.types.forEach(type => result.push({ name: type.name, note: RENDER_ONLY, signatures: [], kind: "TypeParameter" }));
     return result;
+}
+
+// The lines a completion or a hover shows for an entry.
+function describe(entry) {
+    return [...(entry.note ? [entry.note] : []), ...entry.signatures].join("\n");
 }
 
 function registerAuthoring(vscode, context, compiler) {
@@ -43,7 +62,7 @@ function registerAuthoring(vscode, context, compiler) {
                 if (token.isCancellationRequested) return [];
                 return items.map(entry => {
                     const item = new vscode.CompletionItem(entry.name, vscode.CompletionItemKind[entry.kind || "Function"]);
-                    item.detail = entry.signatures.join("\n");
+                    item.detail = describe(entry);
                     item.range = document.getWordRangeAtPosition(position, word);
                     return item;
                 });
@@ -57,10 +76,10 @@ function registerAuthoring(vscode, context, compiler) {
                 const item = (await catalogue(document)).find(item => item.name === document.getText(range));
                 if (!item || token.isCancellationRequested) return;
                 const text = new vscode.MarkdownString();
-                text.appendCodeblock(item.signatures.join("\n") || item.name, "ips");
+                text.appendCodeblock(describe(item) || item.name, "ips");
                 return new vscode.Hover(text, range);
             } catch { return; }
         }
     }));
 }
-module.exports = { entries, registerAuthoring };
+module.exports = { entries, describe, registerAuthoring };

@@ -98,6 +98,18 @@ std::string functionNamespace(const std::string& functionName);
 struct Plan {
     const ips::Program* entry = nullptr;
 
+    // A model (models v1.2): the entry has `render`. Its imports are the draw
+    // assets it generates as textures: compiled on their own, in import
+    // order. A model has no part instances.
+    bool model = false;
+    struct Skin {
+        std::string alias;
+        const ips::Program* program = nullptr;
+        std::vector<u8> bytes; // the complete .iprop of the import
+    };
+    std::vector<Skin> skins;
+    std::map<std::string, u32> skinIndex;
+
     std::vector<const ips::Program*> parts;
     std::vector<PartInstance> instances; // parallel to parts
     std::map<std::string, u32> partIndex; // by alias path
@@ -141,9 +153,12 @@ struct Plan {
 // annotations and does not retain callbacks into the Planner or Typer.
 class Planner {
 public:
+    // `skins` holds the compiled program of every import of a model entry,
+    // by alias; `parts` then names the same imports, for their declarations.
     Planner(const ips::Program& entry,
             const std::map<std::string, const ips::Program*>& parts,
-            const std::map<std::string, std::string>& partSources = {});
+            const std::map<std::string, std::string>& partSources = {},
+            const std::map<std::string, std::vector<u8>>& skins = {});
 
     std::unique_ptr<Plan> plan();
 
@@ -151,6 +166,7 @@ private:
     const ips::Program& entry_;
     const std::map<std::string, const ips::Program*>& parts_;
     std::map<std::string, std::string> partSources_;
+    std::map<std::string, std::vector<u8>> skins_;
 
     std::unique_ptr<Plan> plan_;
     std::map<std::string, ips::PartInfo> surfaces_;

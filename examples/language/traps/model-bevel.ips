@@ -1,0 +1,11 @@
+// A bevel must leave something of the shortest side: here it is as wide
+// as half the board's thickness, which is only known while running.
+import grid from "../skins/grid.ips"
+
+asset board {
+  size 30x4x10
+  input f32 thick = 2.0
+  render {
+    box({0, 0, 0}, {30, thick, 10}, 1.0, grid.draw(1))
+  }
+}

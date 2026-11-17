@@ -10,8 +10,8 @@ namespace iprop {
 namespace {
 
 // Reads one §6.1 type byte; throws a located error for unknown codes.
-ValueType readValueType(Reader& reader, const char* what, std::span<const TypeDescriptor> types) {
-    try { return readTypeReference(reader, types); }
+ValueType readValueType(Reader& reader, const char* what, std::span<const TypeDescriptor> types, bool vec3) {
+    try { return readTypeReference(reader, types, vec3); }
     catch (const FormatError& error) {
         if (std::string_view(error.what()) == "unknown value type")
             throw FormatError(std::string("unknown ") + what + " type", error.offset, ErrorReason::InvalidCode);
@@ -21,7 +21,7 @@ ValueType readValueType(Reader& reader, const char* what, std::span<const TypeDe
 
 } // namespace
 
-CodeSection parseCode(std::span<const u8> data, const Section& section, const ConstPool& pool, std::span<const TypeDescriptor> types) {
+CodeSection parseCode(std::span<const u8> data, const Section& section, const ConstPool& pool, std::span<const TypeDescriptor> types, bool vec3) {
     if (section.id != SectionId::Code) {
         throw FormatError("not a code section", section.offset, ErrorReason::InvalidCode);
     }
@@ -55,17 +55,17 @@ CodeSection parseCode(std::span<const u8> data, const Section& section, const Co
         const u16 paramCount = reader.readU16();
         function.params.reserve(paramCount);
         for (u16 p = 0; p < paramCount; ++p) {
-            function.params.push_back(readValueType(reader, "parameter", types));
+            function.params.push_back(readValueType(reader, "parameter", types, vec3));
         }
         const u16 resultCount = reader.readU16();
         function.results.reserve(resultCount);
         for (u16 p = 0; p < resultCount; ++p) {
-            function.results.push_back(readValueType(reader, "result", types));
+            function.results.push_back(readValueType(reader, "result", types, vec3));
         }
         const u16 localCount = reader.readU16();
         function.locals.reserve(localCount);
         for (u16 p = 0; p < localCount; ++p) {
-            function.locals.push_back(readValueType(reader, "local", types));
+            function.locals.push_back(readValueType(reader, "local", types, vec3));
         }
         if (function.params.size() + function.locals.size() > kMaxLocals) {
             throw FormatError("too many locals", entryStarts.back(), ErrorReason::InvalidCode);

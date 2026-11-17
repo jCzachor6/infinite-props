@@ -1,0 +1,27 @@
+// Woven cloth for a model: threads over and under, four pixels to a thread.
+asset cloth {
+  size 16x16
+  input color dye = #8a2f2f
+  output normal relief
+
+  draw {
+    root = seed.initial()
+    rect(0, 0, 16, 16, color.shade(dye, -40))
+    layer height(alpha = surface.source_over) {
+      rect(0, 0, 16, 16, #505050)
+      for row in 0..4 {
+        for column in 0..4 {
+          rect(float(column) * 4.0 + 0.5, float(row) * 4.0 + 0.5, 3, 3, #ffffff)
+        }
+      }
+    }
+    for row in 0..4 {
+      for column in 0..4 {
+        tone = int(roll(root.fork(row).fork(column), -6.0, 6.0))
+        if ((row + column) % 2 == 0) { tone = tone + 12 }
+        rect(float(column) * 4.0 + 0.5, float(row) * 4.0 + 0.5, 3, 3, color.shade(dye, tone))
+      }
+    }
+    relief = height.normal(1.2, 0.6)
+  }
+}

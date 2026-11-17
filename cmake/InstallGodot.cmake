@@ -4,12 +4,14 @@ install(TARGETS iprop_godot
 install(FILES
     ${IPROP_GODOT_PROJECT}/project.godot ${IPROP_GODOT_PROJECT}/demo.gd
     ${IPROP_GODOT_PROJECT}/demo.tscn ${IPROP_GODOT_PROJECT}/conformance.gd
+    ${IPROP_GODOT_PROJECT}/model-demo.gd ${IPROP_GODOT_PROJECT}/model-demo.tscn
     ${IPROP_GODOT_PROJECT}/iprop.gdextension
     DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/godot)
 # Package only the configured demo inputs, not stale files in the build tree.
 install(FILES
     ${IPROP_GODOT_PROJECT}/assets/plant.iprop
     ${IPROP_GODOT_PROJECT}/assets/portrait.iprop
+    ${IPROP_GODOT_PROJECT}/assets/chair.iprop3d
     DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/godot/assets)
 install(FILES ${IPROP_GODOT_PROJECT}/.godot/extension_list.cfg
     DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/godot/.godot)

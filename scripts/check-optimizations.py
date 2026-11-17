@@ -89,6 +89,12 @@ def main():
                         else:
                             meta = json.loads(generated.stdout)
                             meta.pop("fuel", None)  # source optimizations reduce instruction cost
+                            # A model (.iprop3d): a texture key covers the bytes of its skin
+                            # program, which the optimizer changes, and the summary names
+                            # its own preview file. Pixels and geometry must still match.
+                            meta.pop("preview", None)
+                            for texture in meta.get("textures", []):
+                                texture.pop("key", None)
                             outcomes.append({"status": 0, "meta": meta,
                                              "image": hashlib.sha256(png.read_bytes()).hexdigest()})
                     if outcomes[0] != outcomes[1]:

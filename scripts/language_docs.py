@@ -27,6 +27,8 @@ STEPPER_METHODS = re.compile(r"^<!-- stepper-methods -->$", re.M)
 LIST_METHODS = re.compile(r"^<!-- list-methods -->$", re.M)
 SURFACE_METHODS = re.compile(r"^<!-- surface-methods -->$", re.M)
 NORMAL_METHODS = re.compile(r"^<!-- normal-methods -->$", re.M)
+# The overloads a render asset adds to builtins of the 2D table (models v1.2).
+MODEL_EXTENSIONS = re.compile(r"^<!-- model-extensions -->$", re.M)
 
 def method_signatures(methods):
     lines = ['| Receiver | Method | Result |', '| --- | --- | --- |']
@@ -38,6 +40,16 @@ def method_signatures(methods):
 
 def sampler_signatures(language):
     return method_signatures(language['source_rules']['samplers']['methods'])
+
+
+def model_builtins(language):
+    """The builtins only a render asset has, by name (source_rules.models)."""
+    return {b["name"]: b for b in language["source_rules"].get("models", {}).get("builtins", [])}
+
+
+def documented_builtins(language):
+    """Every builtin the handbook describes: those of both kinds of asset."""
+    return {**{b["name"]: b for b in language["builtins"]}, **model_builtins(language)}
 
 
 def require(condition, message):
@@ -112,7 +124,10 @@ def signatures(builtin):
     for overload in builtin["overloads"]:
         params = ", ".join(p["name"] + ": " + p["type"] for p in overload["parameters"])
         signature = builtin["name"] + "(" + params + ") -> " + overload["result"]
-        lines.append(f"| `{signature}` | {overload.get('opcode', 'compiler lowering')} |")
+        # A builtin of a render asset is a sub-operation of the model page.
+        instruction = overload.get("opcode") or ("model " + overload["model_op"] if "model_op" in overload
+                                                else "compiler lowering")
+        lines.append(f"| `{signature}` | {instruction} |")
     if variadic := builtin.get("variadic"):
         params = ", ".join(p["name"] + ": " + p["type"] for p in variadic["parameters"])
         lines.append(f"| `{builtin['name']}({params}, ...) -> {variadic['result']}` | compiler lowering |")
@@ -168,7 +183,7 @@ def sources(root, language):
                 require(unquote(url.fragment) in anchors, "Missing Markdown anchor: " + destination)
     require(navigation == chapters[1:], "Handbook contents must link every chapter in book order")
     require(set(referenced) == set(registered), "Every registered example must be included in the handbook")
-    expected = {b["name"] for b in language["builtins"]}
+    expected = set(documented_builtins(language))
     require(set(described) == expected and len(described) == len(expected),
             "Builtin descriptions differ from compiler: missing=" + str(sorted(expected - set(described))) +
             ", extra/duplicate=" + str(sorted(set(described) - expected)))
@@ -194,12 +209,15 @@ def resources(root):
     files += list((root / "tests/reference").glob("dynamic-parts-reference.js"))
     files += [p for p in (root / "docs").glob("*.md") if not p.name.startswith("language-v")]
     files += list((root / "docs").glob("*.schema.json"))
-    files += [root / "docs/llm-reference.json"]
+    files += [root / "docs/llm-reference.json", root / "docs/llm-reference-models.json"]
+    # Models (a preview): the handbook links the larger example and its skins.
+    files += list((root / "examples/models").rglob("*.ips"))
     # Integration guides link the same contracts in standalone docs, websites
     # and installed SDKs. Include their linked C examples for offline use.
     files += list((root / "backends").glob("*/README.md"))
-    if (root / "backends/capi/iprop.h").is_file():
-        files.append(root / "backends/capi/iprop.h")
+    for header in ("backends/capi/iprop.h", "backends/capi3d/iprop3d.h"):
+        if (root / header).is_file():
+            files.append(root / header)
     files += [root / name for name in ("backends/ResultQueries.hpp", "backends/sfml/src/Host.hpp", "backends/sfml/src/Render.hpp")
               if (root / name).is_file()]
     # Ship the binding source packages with their linked guides. Never absorb
@@ -251,7 +269,7 @@ def build(compiler, destination, root=ROOT, llm_sections=None, llm_symbols=None,
     minor = handbook_version(language)
     info = identity(root, version)
     info.update(match_versions(described_versions(language), versions(root)))
-    builtins = {b["name"]: b for b in language["builtins"]}
+    builtins = documented_builtins(language)
     output, inputs = {}, {}
 
     def record(path):
@@ -279,6 +297,8 @@ def build(compiler, destination, root=ROOT, llm_sections=None, llm_symbols=None,
         content = LIST_METHODS.sub(lambda _: method_signatures(language['source_rules']['collections']['methods']), content)
         content = SURFACE_METHODS.sub(lambda _: method_signatures(language['source_rules']['surfaces']['methods']), content)
         content = NORMAL_METHODS.sub(lambda _: method_signatures(language['source_rules']['normal_maps']['methods']), content)
+        content = MODEL_EXTENSIONS.sub(lambda _: "\n\n".join(
+            signatures(b) for b in language["source_rules"]["models"]["extended_builtins"]), content)
         expanded[chapter] = content
         output[chapter.relative_to(root).as_posix()] = content
 
@@ -308,9 +328,14 @@ def build(compiler, destination, root=ROOT, llm_sections=None, llm_symbols=None,
     output[f"docs/language-v{minor}.md"] = combined
     output["docs/language.json"] = json.dumps(language, ensure_ascii=False, indent=2) + "\n"
     require((root / "docs/llm-reference.json").is_file(), "Documentation requires docs/llm-reference.json")
-    from llm_reference import render
+    require((root / "docs/llm-reference-models.json").is_file(), "Documentation requires docs/llm-reference-models.json")
+    from llm_reference import MODELS_CONFIG, render
     output["LLM_REFERENCE.md"], llm_checks = render(root, language, authored, cases, info, compiler,
                                                  llm_sections, llm_symbols, llm_max_bytes)
+    # Render assets have their own reference and budget; the selections of
+    # the command line apply to the first one.
+    output["LLM_REFERENCE_MODELS.md"], model_checks = render(root, language, authored, cases, info, compiler,
+                                                              config_name=MODELS_CONFIG)
     # Ship linked sources, integration guides and numerical contracts offline.
     for file in resources(root):
         output[record(file)] = read(file)
@@ -341,6 +366,8 @@ def build(compiler, destination, root=ROOT, llm_sections=None, llm_symbols=None,
     # Execution evidence belongs to the check report, not a new manifest schema.
     if llm_checks:
         info["llm_reference_checks"] = llm_checks
+    if model_checks:
+        info["llm_models_reference_checks"] = model_checks
     return info
 
 
@@ -365,9 +392,10 @@ def verify_contents(load, version=None, commit=None, root=None, clean=False):
         require(digest(load(member_name(name))) == expected, "Documentation file changed: " + name)
     language = read_language(parse_json(load("docs/language.json")))
     require(language["product_version"] == manifest["product_version"] and
-            len(language["builtins"]) == manifest["builtin_count"], "Documentation catalog differs")
+            len(documented_builtins(language)) == manifest["builtin_count"], "Documentation catalog differs")
     match_versions(manifest, described_versions(language))
-    required_contracts = {"LLM_REFERENCE.md", "docs/llm-reference.json"}
+    required_contracts = {"LLM_REFERENCE.md", "docs/llm-reference.json",
+                          "LLM_REFERENCE_MODELS.md", "docs/llm-reference-models.json"}
     for name, schema_version in (("language-description", LANGUAGE_SCHEMA_VERSION), ("compiler-diagnostics", 1),
                                  ("documentation-manifest", DOCUMENTATION_SCHEMA_VERSION)):
         path = "docs/" + name + ".schema.json"
@@ -384,7 +412,8 @@ def verify_contents(load, version=None, commit=None, root=None, clean=False):
     cases = json.loads(load("examples/language/cases.json"))["cases"]
     require(len(cases) == manifest["example_count"], "Documentation example count differs")
     minor = handbook_version(language)
-    required = set(manifest["source_files"]) | {"docs/language.json", f"docs/language-v{minor}.md", "LLM_REFERENCE.md"}
+    required = set(manifest["source_files"]) | {"docs/language.json", f"docs/language-v{minor}.md", "LLM_REFERENCE.md",
+                                                "LLM_REFERENCE_MODELS.md"}
     require(set(manifest["files"]) == required, "Documentation manifest omits or adds payload files")
     verify_links(load, manifest["files"].keys())
     if root is not None:
@@ -429,7 +458,7 @@ def verify_archive(file, prefix, version, commit, root=ROOT):
 def check_examples(compiler, language, cases, root=ROOT):
     generator = compiler.parent / ("ipgen.exe" if compiler.suffix == ".exe" else "ipgen")
     covered, results = set(), []
-    names = {b["name"] for b in language["builtins"]}
+    names = set(documented_builtins(language))
     with tempfile.TemporaryDirectory(prefix="iprop-language-examples-") as temporary:
         for number, (source, case) in enumerate(cases.items()):
             binary = Path(temporary) / f"{number}.iprop"
@@ -486,8 +515,9 @@ def main():
                          llm_symbols=args.llm_symbols, llm_max_bytes=args.llm_max_bytes)
         if args.report_dir:
             write_json(args.report_dir / "language-docs.json", {**identity(ROOT, language["product_version"]),
-                       "passed": True, "builtin_count": len(language["builtins"]), "examples": results,
-                       "llm_reference_checks": info.get("llm_reference_checks", [])})
+                       "passed": True, "builtin_count": len(documented_builtins(language)), "examples": results,
+                       "llm_reference_checks": info.get("llm_reference_checks", []),
+                       "llm_models_reference_checks": info.get("llm_models_reference_checks", [])})
     print(f"Language documentation: PASS {info['product_version']} ({info['builtin_count']} builtins, {info['example_count']} examples)")
 
 

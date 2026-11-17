@@ -1,0 +1,13 @@
+// An input is visible in render alone; a helper takes it as a parameter.
+import grid from "../skins/grid.ips"
+
+asset post {
+  size 4x40x4
+  input f32 tall = 30.0
+  render {
+    build(grid.draw(1))
+  }
+  build(s: skin) {
+    box({0, 0, 0}, {4, tall, 4}, s)
+  }
+}

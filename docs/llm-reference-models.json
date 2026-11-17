@@ -1,0 +1,256 @@
+{
+  "document": {
+    "title": ".ips models LLM reference",
+    "preface": [
+      "This reference adds render assets, which build 3D models, to the [.ips LLM reference](LLM_REFERENCE.md). Read that one for the language itself and for writing skins, which are ordinary draw assets. Models are a preview: they may change in any release.",
+      "Follow the opening sections and their examples when writing models. API demos teach calls, not the style of a model."
+    ],
+    "links": [
+      {
+        "label": "Language reference",
+        "path": "LLM_REFERENCE.md"
+      },
+      {
+        "label": "Model contract",
+        "path": "spec/models-v1.2.md"
+      }
+    ],
+    "asset": "render",
+    "lead": [
+      "models",
+      "writing",
+      "style"
+    ]
+  },
+  "maximum_bytes": 65536,
+  "defaults": {
+    "max_bytes": 65536,
+    "sections": [
+      "models",
+      "writing",
+      "style",
+      "vectors",
+      "skins",
+      "primitives",
+      "placing",
+      "limits",
+      "tools",
+      "builtins",
+      "diagnostics"
+    ],
+    "symbols": [
+      "box",
+      "skin.fit"
+    ]
+  },
+  "sections": [
+    {
+      "id": "models",
+      "title": "Render assets: models from solids and skins",
+      "chapter": "models.md",
+      "parts": [
+        {
+          "heading": "Models"
+        },
+        {
+          "heading": "At a glance"
+        },
+        {
+          "heading": "A render asset"
+        },
+        {
+          "heading": "Space and units"
+        }
+      ],
+      "examples": [
+        "stool.ips",
+        "skins/wood.ips",
+        "skins/cloth.ips"
+      ]
+    },
+    {
+      "id": "writing",
+      "title": "Write good models (required style)",
+      "chapter": "models.md",
+      "parts": [
+        {
+          "heading": "Writing good models"
+        }
+      ]
+    },
+    {
+      "id": "vectors",
+      "title": "Points and directions",
+      "chapter": "models.md",
+      "parts": [
+        {
+          "heading": "Points and directions"
+        },
+        {
+          "heading": "More overloads of lerp"
+        }
+      ],
+      "demos": [
+        "model-vectors.ips"
+      ]
+    },
+    {
+      "id": "skins",
+      "title": "Skins",
+      "chapter": "models.md",
+      "parts": [
+        {
+          "heading": "Skins"
+        },
+        {
+          "heading": "Generating a skin"
+        },
+        {
+          "heading": "How a skin covers a face"
+        },
+        {
+          "heading": "Skin modifiers"
+        }
+      ],
+      "demos": [
+        "skins/grid.ips",
+        "model-skins.ips"
+      ]
+    },
+    {
+      "id": "primitives",
+      "title": "Primitives",
+      "chapter": "models.md",
+      "parts": [
+        {
+          "heading": "Primitives"
+        }
+      ],
+      "demos": [
+        "model-primitives.ips"
+      ]
+    },
+    {
+      "id": "placing",
+      "title": "Placing parts",
+      "chapter": "models.md",
+      "parts": [
+        {
+          "heading": "Placing parts"
+        }
+      ],
+      "demos": [
+        "model-place.ips"
+      ]
+    },
+    {
+      "id": "limits",
+      "title": "Limits and failures",
+      "chapter": "models.md",
+      "parts": [
+        {
+          "heading": "Limits and failures"
+        }
+      ]
+    },
+    {
+      "id": "tools",
+      "title": "Compile, look, use",
+      "chapter": "models.md",
+      "parts": [
+        {
+          "heading": "Compile, look, use"
+        }
+      ]
+    }
+  ],
+  "diagnostic_pairs": [
+    {
+      "id": "model-canvas",
+      "title": "Paint in a skin, not in render",
+      "file": "errors/model-canvas.ips",
+      "diagnostic_code": "IPS-TYPE-001",
+      "explanation": "A render asset has no canvas. Import an asset that draws and cover a solid with it.",
+      "replacements": [
+        {
+          "before": "asset crate {",
+          "after": "import grid from \"../skins/grid.ips\"\n\nasset crate {"
+        },
+        {
+          "before": "    rect(0, 0, 20, 20, #a3713d)",
+          "after": "    box({0, 0, 0}, {20, 20, 20}, grid.draw(seed.initial(), tint = #a3713d))"
+        }
+      ]
+    },
+    {
+      "id": "model-place",
+      "title": "Name the arguments of place",
+      "file": "errors/model-place.ips",
+      "diagnostic_code": "IPS-TYPE-001",
+      "explanation": "Every argument of place is named, so a block reads without counting positions.",
+      "replacements": [
+        {
+          "before": "place({0, 10, 0})",
+          "after": "place(at = {0, 10, 0})"
+        }
+      ]
+    },
+    {
+      "id": "model-input",
+      "title": "Pass an input to a helper",
+      "file": "errors/model-input.ips",
+      "diagnostic_code": "IPS-TYPE-001",
+      "explanation": "Inputs are visible in render alone. Pass the value through a typed helper parameter.",
+      "replacements": [
+        {
+          "before": "build(grid.draw(1))",
+          "after": "build(grid.draw(1), tall)"
+        },
+        {
+          "before": "build(s: skin) {",
+          "after": "build(s: skin, tall: f32) {"
+        }
+      ]
+    }
+  ],
+  "style_pairs": [
+    {
+      "id": "skin-per-part",
+      "title": "Generate a skin once",
+      "file": "style/model-skin-per-part.ips",
+      "explanation": "Five textures to generate and to keep in memory; one oak covers the legs and the top alike.",
+      "replacements": [
+        {
+          "before": "    root = seed.initial()\n",
+          "after": "    root = seed.initial()\n    oak = wood.draw(root.fork(\"oak\"))\n"
+        },
+        {
+          "before": "wood.draw(root.fork(\"leg\").fork(i))",
+          "after": "oak"
+        },
+        {
+          "before": "wood.draw(root.fork(\"top\"))",
+          "after": "oak"
+        }
+      ]
+    },
+    {
+      "id": "grain",
+      "title": "Lay a part down so that its grain follows it",
+      "file": "style/model-grain.ips",
+      "explanation": "Written lying down, the rail shows its boards across; built upright and laid down, they run along it.",
+      "replacements": [
+        {
+          "before": "    box({0, 0, 0}, {60, 6, 3}, 0.3, oak)",
+          "after": "    place(at = {-30, 3, 0}, roll = -90.0) { box({0, 0, 0}, {6, 60, 3}, 0.3, oak) }"
+        }
+      ]
+    }
+  ],
+  "hints": {
+    "box": "Give furniture and crates a small bevel (0.3 to 1.0); a sharp edge looks drawn rather than made.",
+    "cylinder": "8 sides for a rung, 16 to 24 for a seat or a barrel.",
+    "quad": "Give a flat piece that is seen from behind a two-sided skin.",
+    "skin.fit": "For one picture on one face; leave materials such as wood repeating."
+  }
+}

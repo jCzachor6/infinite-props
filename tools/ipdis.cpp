@@ -6,11 +6,14 @@
 #include "iprop/Instruction.hpp"
 #include "iprop/Meta.hpp"
 #include "iprop/Validator.hpp"
+#include "iprop/model/Model.hpp"
 
+#include <algorithm>
 #include <cstdio>
 #include <bit>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <map>
 #include <set>
 #include <sstream>
@@ -394,6 +397,13 @@ int ipdisMain(int argc, char* argv[]) {
         return 2;
     }
     const std::vector<u8> bytes((std::istreambuf_iterator<char>(stream)), {});
+    // A model (spec models v1.2) has instructions and sections the assembly
+    // language does not cover yet: say so instead of "not an .iprop file".
+    const auto& magic = model::kModelDialect.magic;
+    if (bytes.size() >= 4 && std::equal(std::begin(magic), std::end(magic), bytes.begin())) {
+        std::cerr << "ipdis: " << input << ": this is an .iprop3d model; ipdis does not read models yet\n";
+        return 1;
+    }
     try {
         std::cout << (source ? disassembleWithSource(bytes) : disassemble(bytes));
     } catch (const FormatError& error) {

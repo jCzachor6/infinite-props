@@ -11,6 +11,7 @@
 
 #include "iprop/Instruction.hpp"
 #include "iprop/Value.hpp"
+#include "iprop/model/Ops.hpp"
 #include "ips/Ast.hpp"
 #include "ips/Types.hpp"
 #include "Plan.hpp"
@@ -85,6 +86,11 @@ private:
     ips::ValueType emitBuiltin(const BuiltinCall& call);
     ips::ValueType emitSelection(const SelectionCall& call);
     void emitPartCall(const PartCall& call);
+    void emitSkinCall(const SkinCall& call);
+    // An instruction of the model page (models v1.2).
+    void page(model::Op op, u16 operand = 0);
+    // A value as f32: an i32 widens.
+    void emitNumber(const ips::Expr& expr);
 
     struct PartRead {
         std::string alias; // the instance's alias path

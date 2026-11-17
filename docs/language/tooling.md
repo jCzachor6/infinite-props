@@ -26,7 +26,8 @@ for field meanings and executable acceptance cases.
 
 The documentation build also generates `LLM_REFERENCE.md`, the complete
 language for coding agents: the idioms chapter first, then the handbook's
-language chapters, every builtin and checked registered examples. See
+language chapters, every builtin and checked registered examples, and
+`LLM_REFERENCE_MODELS.md`, the same for [models](models.md). See
 [reference generation](../llm-reference.md) for its budget, selection and
 validated rejection/repair pairs.
 
@@ -117,6 +118,38 @@ production defaults. Optimization folds eligible constants, removes unused
 pure computations and compacts pools/locals while preserving image/output bits,
 RNG order, drawing effects and runtime traps. `--no-opt` exposes the reference
 lowering; emitted instruction counts and total fuel may differ.
+
+## Models
+
+An asset with `render` compiles to a [model](models.md), a preview. The same
+tools take it; they tell a model from an image by the file itself, not by
+its name.
+
+- `ipc chair.ips` writes `chair.iprop3d`, with the compiled skins inside it.
+  `--check`, `--diagnostics=json`, `--format`, `--debug` and compression work
+  as for any source. A model program is not optimized yet, so `--no-opt`
+  changes only the embedded skins.
+- `ipval chair.iprop3d` validates the model and every embedded skin.
+- `ipgen chair.iprop3d --seed 7` writes `chair-7.glb`, a binary glTF with
+  its textures inside, and prints the size, the bounds, the vertex, triangle
+  and fuel counts, the inputs, the textures and the surfaces as JSON. An
+  output path ending in `.png` writes a picture instead, and `--preview PATH`
+  writes one beside the model. `--preview-size WxH`, `--view YAW,PITCH` and
+  `--background COLOR` set the picture; `--skins-dir DIR` writes every
+  texture and its normal image; `--dump` prints every vertex, index and image
+  hash with floats as their bits, for comparing two runtimes. `--seed`,
+  `--uniform`, `--work-limit`, `--timeout-ms` and `--work-stats` work as for
+  an image. `--size`, `--normal-output` and `--derive-normal` belong to
+  images and are rejected.
+- `ipsheet chair.iprop3d --seeds 16 --columns 4` draws a grid of previews
+  with their seeds. `--cell N` sets the cell size and `--view` and
+  `--background` the picture.
+
+The picture comes from a small software renderer inside the tools. It is a
+review aid: its pixels are not part of any contract and may change. The
+`.glb` holds exactly what a host generates.
+
+`ipa` and `ipdis` do not read model files yet.
 
 ## Diagnostics
 

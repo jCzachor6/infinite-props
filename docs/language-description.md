@@ -2,7 +2,9 @@
 
 `ipc --describe-language` writes one JSON document describing the implemented
 source contract. It needs no input file and writes no artifacts. It uses
-`schema_version: 7`, which adds the source type `seed`, the `read_initial` effect,
+`schema_version: 8`, which adds the required `source_rules.models` rules: what
+an asset with `render` adds to the language and what it leaves out (models
+v1.2, a preview). Schema 7 added the source type `seed`, the `read_initial` effect,
 parameters with `"role": "seed"` and the `source_rules.named_seeds` rules (named
 seeds v1.1). Schema 6 finalized discounted fuel formulas and execution-wide
 work/cancellation/deadline traps. Schema 5 added geometry/dynamic-part handle types.
@@ -35,6 +37,23 @@ Schema 6 describes the constant policy, parameterized lists, samplers/steppers,
 point distributions, surfaces, collection limits and receiver-first methods.
 Source language 0.8 adds the optional `materials` object without changing
 schema 4. See [0.8 migration](language/migration-v0.8.md).
+
+## Migrating schema 7 to 8
+
+Require schema 8 and read the required `source_rules.models`. Everything
+that schema 7 published is unchanged: the top-level `builtins`, the type
+lists of `source_rules.types` and every other rule set describe an asset
+with `draw`, as before. The builtins and types that only an asset with
+`render` has are listed inside `models` and nowhere else, so a reader that
+handles draw assets alone needs the new version number and nothing more.
+
+Inside `models`, signatures have the shape of the top-level ones with two
+differences: parameter and result types may also be `vec3` and `skin`, and
+an overload names a `model_op`, a sub-operation of the model page, in place
+of an `opcode`. `effects.writes_canvas` there means that the call changes
+the model. The object describes a preview: while its `status` is `preview`,
+its fields may change with a release without another schema version, and a
+consumer that depends on them should also check `product_version`.
 
 ## Migrating schema 6 to 7
 
@@ -88,6 +107,7 @@ identified by `source_type`.
 | `collections.methods` | Optional seventeen receiver-first signatures for `.distinct()` and `.sort()`, from the shared frontend registry. Each records its same-list result, empty parameters, opcode, `constant_evaluable` flag and intrinsic effects. These are separate from global builtins and reserved keywords. |
 | `surfaces.methods` | Optional receiver-first `.blur(sigma: f32)` signatures for layer and mask, from `surfaceMethodSpecs`. Each records its same-surface result, opcode, minor 7, false `constant_evaluable` and intrinsic effects. The method name is separate from global builtins and reserved keywords. |
 | `surfaces.blur` | Optional Gaussian kernel, sigma range/units, evaluation order, premultiplied alpha, edge extension, preserved mapping, zero identity, fuel, scratch memory and preflight policies. Appears with `surfaces.methods`; both satisfy the complete contract when present. |
+| `models` | Models, required from schema 8 and a preview: the entry block `render`, the file extension and magic, the `size` and `scale` declarations, the coordinate conventions, the types `vec3` and `skin` with where each may be stored, the builtins only a render asset has (`builtins`), the overloads it adds to 2D builtins (`extended_builtins`), the 2D builtins it cannot call (`unavailable_builtins`), the `place` block with its arguments, evaluation and composition order, the skin call with its slots, the defaults of a new skin and how it maps, and the limits, fuel and arena charges of one generation. |
 | `named_seeds` | Named seeds, required from schema 7: the source type `seed` and its `i32` representation, `seed.initial()` with its opcode, per-context values and `read_initial` effects, the `.fork` syntax, receivers, key kinds, evaluation order, lowering, domain tags and formulas, the `int(seed)` conversion and `==`/`!=`, the builtins with seed parameters, and every place a seed may not appear. |
 | `normal_maps` | Optional normal-map rules, additive to schema 6: the contextual `output normal` declaration and its flagged layer slot, publication of the root's slot onto a flat image, the stored axes and byte encoding, the direction capture and its aux code, vector re-orientation on paint, the four `.normal` signatures with their depth/smoothing ranges and units, height sources, fuel and scratch memory, and the `color.normal` builtin with its axes, lowering, constant folding and fallback. |
 | `normal_maps.methods` | Four receiver-first `.normal(depth[, smoothing])` signatures for layer and mask, from `surfaceMethodSpecs`. Each returns a layer through the one `surface.normal` instruction, with false `constant_evaluable` and intrinsic effects. `surfaces.methods` keeps listing `.blur` alone. |
@@ -299,6 +319,18 @@ and where seeds may and may not appear. `seed.initial` and `int(seed)` are
 ordinary builtins with `constant_evaluable: false`; `.fork` has no opcode
 because it expands to existing instructions. Parameters that take a seed
 carry `"role": "seed"`, as do `choose`'s seed and a part call's seed.
+
+`source_rules.models`, required from schema 8, describes the
+[model contract](../spec/models-v1.2.md), a preview. `builtins` holds the
+names only a render asset has, each with the overloads of the shared
+signature registry; `extended_builtins` holds the overloads a render asset
+adds to a builtin of the 2D table (the `vec3` form of `lerp`); and
+`unavailable_builtins` names the 2D builtins that need a canvas, a surface or
+2D geometry, which a render asset rejects. The three lists come from the
+tables the compiler binds calls with, the `place` arguments from the table
+its checker and its emitter share, and the limits from the model runtime's
+constants. The top-level `builtins` and `source_rules.types` stay those of a
+draw asset: `vec3` and `skin` appear in neither.
 
 The optional `source_rules.resource_exports` policy describes internal mask/layer
 slots, direct-child and last-called-part reads, immutable snapshots, no-write

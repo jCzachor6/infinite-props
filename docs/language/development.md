@@ -18,7 +18,15 @@ come from `ipc --describe-language`, including variadic forms. Adding a builtin
 requires an explanation and executable example; missing/duplicate descriptions
 fail documentation checks.
 
-`LLM_REFERENCE.md` quotes whole chapters for coding agents. Put
+A builtin that only an asset with `render` has is described the same way,
+in [models](models.md): its signatures come from `source_rules.models` and
+its example is a render asset. `<!-- model-extensions -->` expands to the
+overloads a render asset adds to builtins of the 2D language.
+
+`LLM_REFERENCE.md` quotes whole chapters for coding agents;
+`LLM_REFERENCE_MODELS.md` does the same for models, from its own selection
+and budget. A paragraph about models in another chapter belongs under
+`<!-- llm: skip -->`, so that the first reference stays about images. Put
 `<!-- llm: skip -->` on the line directly above a paragraph that only matters
 to the documentation itself, implementations or other hosts, such as a note
 about an example the reference does not show; the paragraph stays in the book

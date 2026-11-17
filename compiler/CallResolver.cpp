@@ -34,8 +34,8 @@ ResolvedCall CallResolver::resolve(const ips::Call& call) const {
         return {call.location, std::move(result)};
     }
     const auto ns = functionNamespace(function_.name);
-    if (const auto found = ips::builtinSpecs().find(name); found != ips::builtinSpecs().end()) {
-        const auto& spec = found->second;
+    if (const auto* found = ips::findBuiltin(name, plan_.model)) {
+        const auto& spec = *found;
         std::vector<T> types;
         for (const auto* arg : args) types.push_back(function_.typeOf(*arg->value));
         if (spec.lowering == ips::BuiltinLowering::Pick || spec.lowering == ips::BuiltinLowering::Choose) {
@@ -60,8 +60,10 @@ ResolvedCall CallResolver::resolve(const ips::Call& call) const {
         }
         return {call.location, std::move(result)};
     }
-    if (std::holds_alternative<ips::Member>(*call.callee))
+    if (std::holds_alternative<ips::Member>(*call.callee)) {
+        if (plan_.model) return {call.location, skin(call, name.substr(0, name.find('.')))};
         return {call.location, part(call, ns + name.substr(0, name.find('.')))};
+    }
     const auto id = plan_.functionId(name, ns);
     if (!id) throw ips::SourceError{call.location, "unknown function '" + name + "'"};
     const auto& callee = plan_.functions[*id];
@@ -69,6 +71,23 @@ ResolvedCall CallResolver::resolve(const ips::Call& call) const {
     for (const auto i : bound.signature.evaluationOrder)
         result.arguments.push_back(argument(*args[i]->value, ips::valueTypeOf(callee.ast->params[i].type)));
     return {call.location, std::move(result)};
+}
+
+SkinCall CallResolver::skin(const ips::Call& call, const std::string& alias) const {
+    SkinCall result{};
+    result.program = plan_.skinIndex.at(alias);
+    const auto& bound = function_.boundCalls.at(&call);
+    const auto& inputs = plan_.skins[result.program].program->asset.inputs;
+    const auto& args = bound.arguments;
+    for (std::size_t i = 0; i < inputs.size(); ++i) {
+        const std::size_t slot = ips::kSkinFirstInput + i;
+        if (const auto* supplied = args[slot])
+            result.inputs.emplace_back(argument(*supplied->value, ips::valueTypeOf(inputs[i].type)));
+        else result.inputs.emplace_back(plan_.inputDefaults.at(&inputs[i]).value);
+    }
+    result.seed = argument(*args[ips::kSkinSeedSlot]->value, ips::ValueType::I32);
+    if (const auto* size = args[ips::kSkinSizeSlot]) result.size = size->value.get();
+    return result;
 }
 
 PartCall CallResolver::part(const ips::Call& call, const std::string& path) const {

@@ -48,11 +48,12 @@ struct ControlFrame {
 
 // Per-function stack/label type checking over structured control flow
 // (spec §9/§14). Blocks are statement-level; no block results in v0.1.
-class FunctionValidator {
+class FunctionValidator final : private InstructionCheck {
 public:
     FunctionValidator(const LoadedFile& file, const Function& function,
-                      const std::vector<SlotInfo>& slots, u32 functionIndex)
-        : file_(file), fn_(function), slots_(slots), functionIndex_(functionIndex) {}
+                      const std::vector<SlotInfo>& slots, u32 functionIndex,
+                      const ValidationExtension* extension = nullptr)
+        : file_(file), fn_(function), slots_(slots), functionIndex_(functionIndex), extension_(extension) {}
 
     void run() {
         // The loader admits only the current format version, so every
@@ -68,7 +69,14 @@ public:
         for (std::size_t i = 0; i < count; ++i) {
             const auto ins = decodeInstruction(fn_.code.subspan(i * 4, 4));
             const auto* spec = findOpcode(ins.opcode);
-            if (!spec) fail(i, "reserved opcode");
+            if (!spec) {
+                // Only an extended instruction set defines such an opcode.
+                at_ = i;
+                if (extension_ && extension_->check(ins, *this)) continue;
+                fail(i, "reserved opcode");
+            }
+            if (extension_ && !extension_->admits(ins.opcode))
+                fail(i, std::string(spec->mnemonic) + " is not available in this instruction set");
             if (spec->aux == AuxPolicy::Zero && ins.aux != 0) {
                 fail(i, "aux byte must be zero");
             }
@@ -104,9 +112,24 @@ private:
     const Function& fn_;
     const std::vector<SlotInfo>& slots_;
     u32 functionIndex_;
+    const ValidationExtension* extension_ = nullptr;
+    std::size_t at_ = 0; // the instruction an extension is checking
     std::vector<ValueType> stack_;
     std::vector<ControlFrame> labels_;
     bool reachable_ = true;
+
+    // InstructionCheck, for the extension's instructions.
+    void expect(ValueType type, const char* what) override { expect(at_, type, what); }
+    void push(ValueType type) override { push(at_, type); }
+    void openScope() override {
+        if (static_cast<std::size_t>(std::count_if(labels_.begin(), labels_.end(), [](const auto& label) {
+            return label.kind != Opcode::Block && label.kind != Opcode::Loop && label.kind != Opcode::If;
+        })) >= kMaxSurfaceScopes) fail(at_, "scope depth exceeds 32");
+        // The kind only has to differ from block, loop and if.
+        labels_.push_back({Opcode::Nop, stack_, reachable_});
+    }
+    [[noreturn]] void fail(std::string message) override { fail(at_, std::move(message)); }
+    const LoadedFile& file() const override { return file_; }
 
     [[noreturn]] void fail(std::size_t instruction, std::string message) const {
         throw FormatError(std::move(message), ErrorReason::InvalidInstruction, ErrorStage::Validate,
@@ -655,26 +678,27 @@ ErrorLocation functionLocation(const LoadedFile& file, const Function& function)
     return location;
 }
 
-void checkEntry(const LoadedFile& file) {
+// `name` is "draw" for a 2D file; an extended instruction set names its own.
+void checkEntry(const LoadedFile& file, const std::string& name) {
     const auto& entry = file.code.entry();
-    if (entry.isAnonymous() || file.pool.strings[entry.nameIndex] != "draw") {
-        throw FormatError("entry function must be named 'draw'", ErrorReason::InvalidSignature, ErrorStage::Validate,
+    if (entry.isAnonymous() || file.pool.strings[entry.nameIndex] != name) {
+        throw FormatError("entry function must be named '" + name + "'", ErrorReason::InvalidSignature, ErrorStage::Validate,
             functionLocation(file, entry));
     }
     const std::size_t expected = file.meta.inputs.size();
     if (entry.params.size() != expected) {
-        throw FormatError("draw signature mismatch: parameter count", ErrorReason::InvalidSignature, ErrorStage::Validate,
+        throw FormatError(name + " signature mismatch: parameter count", ErrorReason::InvalidSignature, ErrorStage::Validate,
             functionLocation(file, entry));
     }
     for (std::size_t i = 0; i < expected; ++i) {
         const ValueType want = typeOf(file.meta.inputs[i]);
         if (entry.params[i] != want) {
-            throw FormatError("draw signature mismatch: parameter type", ErrorReason::InvalidSignature, ErrorStage::Validate,
+            throw FormatError(name + " signature mismatch: parameter type", ErrorReason::InvalidSignature, ErrorStage::Validate,
                 functionLocation(file, entry));
         }
     }
     if (!entry.results.empty()) {
-        throw FormatError("draw must have no results", ErrorReason::InvalidSignature, ErrorStage::Validate,
+        throw FormatError(name + " must have no results", ErrorReason::InvalidSignature, ErrorStage::Validate,
             functionLocation(file, entry));
     }
 }
@@ -812,14 +836,14 @@ void checkPartHierarchy(const LoadedFile& file, const std::vector<SlotInfo>& slo
 
 } // namespace
 
-LoadedFile loadFile(std::span<const u8> data) {
+LoadedFile loadFile(std::span<const u8> data, const Dialect& dialect) {
     LoadedFile file;
     // The file owns its buffer: spans stay valid for the LoadedFile's whole
     // lifetime (and after moves), independent of the caller's buffer.
-    file.containerHeader = parseHeader(data);
-    file.storage = decompressFile(data);
+    file.containerHeader = parseHeader(data, OffsetSpace::Container, dialect);
+    file.storage = decompressFile(data, dialect);
     const auto bytes = std::span<const u8>(file.storage);
-    file.layout = parseLayout(bytes);
+    file.layout = parseLayout(bytes, dialect);
     file.pool = parseConsts(bytes, *file.layout.find(SectionId::Const));
     file.meta = parseMeta(bytes, *file.layout.find(SectionId::Meta), file.pool);
     if (const auto* types = file.layout.find(SectionId::Types))
@@ -834,7 +858,7 @@ LoadedFile loadFile(std::span<const u8> data) {
         file.collections.steppers = parseStepperPool(bytes, *steppers, file.collections, budget);
     if (const auto* lists = file.layout.find(SectionId::Collections))
         file.collections.lists = parseCollectionPool(bytes, *lists, file.collections, budget);
-    file.code = parseCode(bytes, *file.layout.find(SectionId::Code), file.pool, file.collections.types);
+    file.code = parseCode(bytes, *file.layout.find(SectionId::Code), file.pool, file.collections.types, dialect.vec3);
     if (const auto* parts = file.layout.find(SectionId::Parts)) {
         parsePartInstances(bytes, *parts, file.pool, file.code);
     }
@@ -843,12 +867,12 @@ LoadedFile loadFile(std::span<const u8> data) {
     return file;
 }
 
-void validate(const LoadedFile& file) {
-    checkEntry(file);
+void validate(const LoadedFile& file, const ValidationExtension* extension) {
+    checkEntry(file, extension ? extension->entryName() : "draw");
     checkPartSignatures(file);
     const auto slots = buildSlots(file);
     for (std::size_t index = 0; index < file.code.functions.size(); ++index) {
-        FunctionValidator(file, file.code.functions[index], slots, static_cast<u32>(index)).run();
+        FunctionValidator(file, file.code.functions[index], slots, static_cast<u32>(index), extension).run();
     }
     checkPartAcyclicity(file);
     checkPartHierarchy(file, slots);

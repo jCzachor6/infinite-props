@@ -1,7 +1,7 @@
 # Generating the .ips LLM reference
 
 The normal documentation build generates `LLM_REFERENCE.md` beside the full
-handbook. Native SDK installation copies it into `share/iprop/`, where its
+handbook, and `LLM_REFERENCE_MODELS.md` for [render assets](#the-models-reference). Native SDK installation copies it into `share/iprop/`, where its
 handbook/catalog/example links resolve offline. It records the product,
 source-language, binary-format, C API and ABI versions separately, together
 with the source commit and dirty/release status. It is generated content;
@@ -75,3 +75,40 @@ The generated file, selection configuration and source explanations/examples
 are covered by the existing documentation manifest hashes. `language_docs.py
 check` writes execution evidence to its report. Archive/source verification
 uses the existing export schemas; this task adds no new export-schema contract.
+
+## The models reference
+
+`LLM_REFERENCE_MODELS.md` teaches [models](language/models.md), the assets
+with `render`. It is a second document with its own selection,
+`docs/llm-reference-models.json`, and its own budget of **65,536 bytes**
+(64 KiB), so the first reference keeps its size and an agent that writes
+only images reads nothing about 3D. It builds on the first one: the language
+itself, and skins, which are ordinary draw assets, are taught there.
+
+Both documents come from the same renderer and the same checks. A selection
+file may carry a `document` object that adapts it:
+
+| Field | Meaning |
+| --- | --- |
+| `title` | The heading of the document |
+| `preface` | The opening paragraphs |
+| `links` | Further links beside the handbook and the catalog, each a `label` and a `path` inside the documentation tree |
+| `asset` | `draw` (the default) or `render`: whose builtins the `builtins` and `symbols` sections list and whose compiler rules are generated |
+| `lead` | The section ids that come before the compiler rules; `idioms` and `style` by default |
+
+With `"asset": "render"` the builtin list holds the builtins that only a
+render asset has, followed by the overloads it adds to 2D builtins, and the
+compiler rules are sentences generated from `source_rules.models`: the entry
+and its declarations, the axes, the two types, the arguments and order of
+`place`, the skin call, the defaults of a new skin, the limits and the 2D
+builtins a render asset cannot call. The first reference lists no builtin of
+render assets.
+
+The models reference opens with the chapter's introduction, its complete
+example and the rules of style with their before/after pairs. Its sections
+are `models`, `writing`, `vectors`, `skins`, `primitives`, `placing`,
+`limits` and `tools`. The `--llm-sections`, `--llm-symbols` and
+`--llm-max-bytes` options select the first reference only; the second is
+always built from its file's defaults. Its examples, repairs and style pairs
+are checked, compiled and generated like the others, and the manifest owns
+both documents.

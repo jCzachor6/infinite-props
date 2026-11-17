@@ -1,0 +1,10 @@
+// Roughness is a number from 0 to 1.
+import grid from "../skins/grid.ips"
+
+asset crate {
+  size 20x20x20
+  input f32 wear = 1.5
+  render {
+    box({0, 0, 0}, {20, 20, 20}, skin.roughness(grid.draw(1), wear))
+  }
+}

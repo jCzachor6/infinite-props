@@ -1,0 +1,7 @@
+// A render asset has no canvas: drawing belongs in an imported skin.
+asset crate {
+  size 20x20x20
+  render {
+    rect(0, 0, 20, 20, #a3713d)
+  }
+}

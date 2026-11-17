@@ -9,9 +9,14 @@
 #include <set>
 #include <utility>
 
+#include "ips/BuiltinArguments.hpp"
 #include "ips/BuiltinSpec.hpp"
+#include "ips/Literals.hpp"
 #include "ips/Typing.hpp"
 #include "iprop/Surface.hpp"
+
+#include <cmath>
+#include <cstring>
 
 namespace iprop::ips {
 namespace {
@@ -48,6 +53,11 @@ public:
         if (!recover([&] { checkImports(); }) || !checkAssetDecls()) return;
         const Function* draw = findFunction("draw");
         recover([&] {
+            if (model_) {
+                // `render { }` is the entry of a model; it cannot have `draw` too.
+                if (draw != nullptr) error(draw->location, "an asset has either 'draw' or 'render', not both");
+                return;
+            }
             if (draw == nullptr)
                 error(program_.asset.location, "missing 'draw { ... }' entry block");
             if (!draw->params.empty())
@@ -67,6 +77,8 @@ private:
     Typer typer_;
     std::vector<SourceError>& diagnostics_;
     std::size_t limit_;
+    // The asset has `render { }`: a model (models v1.2).
+    const bool model_ = isModel(program_.asset);
 
     std::map<std::string, const Function*> functions_;
     std::map<std::string, std::optional<ValueType>> returnTypes_;
@@ -76,6 +88,21 @@ private:
     const Function* current_ = nullptr;
     std::uint32_t loopDepth_ = 0;
     std::uint32_t surfaceDepth_ = 0; // open layer/clip blocks
+
+    // vec3 and skin are the types of render assets (models v1.2), and in M1
+    // neither is an element of a collection.
+    void checkModelType(const ParamType& type, const SourceLocation& at) {
+        const auto modelKind = [](TypeDescriptor t) { return t == ValueType::Vec3 || t == ValueType::Skin; };
+        if (type.isParameterized()) {
+            const auto item = type.item();
+            const auto inner = item.isParameterized() ? item.item() : item;
+            if (modelKind(inner))
+                error(at, std::string("a collection cannot hold '") + typeName(inner) + "' values");
+            return;
+        }
+        if (modelKind(type) && !model_)
+            error(at, std::string("type '") + typeName(type) + "' belongs to a render asset; this asset has 'draw'");
+    }
 
     [[noreturn]] void error(const SourceLocation& at, std::string message) {
         throw SourceError{at, std::move(message), {}, DiagnosticCode::TypeError,
@@ -131,6 +158,8 @@ private:
             for (const auto& child : capture->body) markInvalidBindings(child);
         } else if (const auto* clip = std::get_if<ClipStmt>(&stmt)) {
             for (const auto& child : clip->body) markInvalidBindings(child);
+        } else if (const auto* place = std::get_if<PlaceStmt>(&stmt)) {
+            for (const auto& child : place->body) markInvalidBindings(child);
         }
     }
 
@@ -142,17 +171,24 @@ private:
             if (import.alias == "seed")
                 error(import.location, "'seed' is a reserved name");
             // `noise.fbm(...)` and `noise.draw(...)` would share one spelling.
-            if (isBuiltinNamespace(import.alias))
+            if (isBuiltinNamespace(import.alias, model_))
                 error(import.location, "import alias '" + import.alias + "' conflicts with the " +
                                            import.alias + " namespace; rename the alias");
             if (!seen.insert(import.alias).second) {
                 error(import.location,
                       "duplicate import alias '" + import.alias + "'");
             }
-            if (parts_.find(import.alias) == parts_.end()) {
+            const auto part = parts_.find(import.alias);
+            if (part == parts_.end()) {
                 error(import.location,
                       "imported part '" + import.alias + "' was not provided");
             }
+            // A model has no canvas for a parent to draw, and a model cannot
+            // be a texture: only an asset with draw { } is imported.
+            if (part->second.model)
+                error(import.location, "'" + import.alias + "' is a render asset; " +
+                    (model_ ? "a skin comes from an asset with draw { }, and 3D parts are not supported yet"
+                            : "a draw asset cannot use a 3D model as a part"));
         }
     }
 
@@ -163,7 +199,25 @@ private:
         recover([&] {
             if (!program_.asset.sizeX.has_value())
                 error(program_.asset.location, "missing 'size' declaration");
+            if (model_ && !program_.asset.sizeZ.has_value())
+                error(program_.asset.location, "a render asset needs 'size WxHxD': width, height and depth");
+            if (!model_ && program_.asset.sizeZ.has_value())
+                error(program_.asset.location, "'size WxHxD' belongs to a render asset; a draw asset is 'size WxH'");
         });
+        recover([&] {
+            if (!program_.asset.scale) return;
+            if (!model_) error(program_.asset.scaleLocation, "'scale' belongs to a render asset");
+            const auto value = modelScale(program_.asset);
+            if (!value) error(program_.asset.scaleLocation, "'scale' must be a positive number of units per metre");
+        });
+        if (model_) {
+            recover([&] {
+                if (program_.asset.originX)
+                    error(program_.asset.location, "a render asset has no 'origin'; it stands on its base");
+                if (!program_.asset.outputs.empty())
+                    error(program_.asset.outputs.front().location, "outputs of a render asset are not supported yet");
+            });
+        }
         bool namespaceValid = true;
 
         // The name and what declared it, for the message of a later clash.
@@ -219,19 +273,26 @@ private:
             if (atLimit()) return false;
             const bool valid = recover([&] {
                 // A call by that name always reaches the builtin.
-                if (isBuiltinFunctionName(function.name))
+                if (isBuiltinFunctionName(function.name, model_))
                     error(function.location, "function '" + function.name +
                                                  "' has the name of a builtin; choose another name");
                 declare("function", function.name, function.location, "a function");
                 functions_.emplace(function.name, &function);
+                if (function.returnType) checkModelType(*function.returnType, function.location);
                 std::set<std::string> parameters;
                 for (const auto& param : function.params) {
+                    checkModelType(param.type, param.location);
                     if (param.name == "seed") error(param.location, "'seed' is a reserved name");
                     if (!parameters.insert(param.name).second)
                         error(param.location, "duplicate parameter '" + param.name + "'");
                 }
             });
             namespaceValid = valid && namespaceValid;
+        }
+
+        for (const auto& constant : program_.asset.constants) {
+            if (atLimit()) return false;
+            namespaceValid = recover([&] { checkModelType(constant.type, constant.location); }) && namespaceValid;
         }
 
         bool paletteDeclarationsValid = true;
@@ -316,7 +377,7 @@ private:
 
         current_ = &function;
         try {
-            typer_.enterFunction(program_, function, function.name == "draw");
+            typer_.enterFunction(program_, function, &function == entryFunction(program_.asset));
             for (const auto& stmt : function.body) {
                 if (atLimit()) break;
                 checkRecoveringStmt(stmt);
@@ -363,6 +424,8 @@ private:
                 if (alwaysReturns(capture->body)) return true;
             } else if (const auto* clip = std::get_if<ClipStmt>(&stmt)) {
                 if (alwaysReturns(clip->body)) return true;
+            } else if (const auto* place = std::get_if<PlaceStmt>(&stmt)) {
+                if (alwaysReturns(place->body)) return true;
             }
         }
         return false;
@@ -395,7 +458,12 @@ private:
             --loopDepth_;
         } else if (const auto* forStmt = std::get_if<ForStmt>(&stmt)) {
             checkFor(*forStmt);
+        } else if (const auto* place = std::get_if<PlaceStmt>(&stmt)) {
+            checkPlace(*place);
         } else if (const auto* capture = std::get_if<LayerStmt>(&stmt)) {
+            if (model_)
+                error(capture->location, "a layer captures drawing and a render asset has no canvas; "
+                                         "import a draw asset and use it as a skin");
             if (findOutput(capture->name) || findInput(capture->name) || findPalette(capture->name) ||
                 findAssetConstant(program_, capture->name) || isParam(capture->name) || capture->name == "seed")
                 error(capture->location, "layer result '" + capture->name + "' must be a writable local");
@@ -410,6 +478,7 @@ private:
                 error(capture->location, "layer result '" + capture->name + "' conflicts with a local of type " + typeName(existing->second));
             typer_.declareLocal(capture->name, ValueType::Layer);
         } else if (const auto* clip = std::get_if<ClipStmt>(&stmt)) {
+            if (model_) error(clip->location, "clip limits drawing and a render asset has no canvas");
             const auto type = typer_.typeOf(*clip->mask);
             if (type != ValueType::Mask)
                 error(locationOf(*clip->mask), "clip requires mask, got " + std::string(typeName(type)));
@@ -430,6 +499,43 @@ private:
                 error(cont->location, "'continue' outside a loop");
             }
         }
+    }
+
+    // `place(at =, yaw =, pitch =, roll =, scale =, mirror_x =, mirror_y =,
+    // mirror_z =) { ... }`: named arguments, each at most once, one at least.
+    void checkPlace(const PlaceStmt& place) {
+        if (!model_) error(place.location, "place positions 3D geometry; it is available in a render asset");
+        if (place.args.empty())
+            error(place.location, "place needs at least one of " + placeArgumentNames());
+        std::set<std::string> seen;
+        for (const auto& arg : place.args) {
+            if (!arg.name) error(arg.location, "place takes named arguments only, such as at = {x, y, z}");
+            const std::string& name = *arg.name;
+            if (!seen.insert(name).second) error(arg.location, "duplicate argument '" + name + "'");
+            const ValueType got = typer_.typeOf(*arg.value, name == "at" ? std::optional(ValueType::Vec3) : std::nullopt);
+            const auto need = [&](bool fits, const char* what) {
+                if (!fits) error(locationOf(*arg.value), "'" + name + "' must be " + what + ", got " + typeName(got));
+            };
+            const auto* known = findPlaceArgument(name);
+            if (!known) error(arg.location, "unknown argument '" + name + "'; place takes " + placeArgumentNames());
+            switch (known->kind) {
+            case PlaceKind::Offset: need(got == ValueType::Vec3, "a vec3 {x, y, z}"); break;
+            case PlaceKind::Degrees: need(isNumeric(got), "a number of degrees"); break;
+            case PlaceKind::Scale: need(isNumeric(got) || got == ValueType::Vec3, "a number or a vec3"); break;
+            case PlaceKind::Mirror: need(got == ValueType::I32, "0 or 1"); break;
+            }
+        }
+        // The scopes of one function share the validator's limit; the same
+        // counter serves layers and clips in a draw asset.
+        if (surfaceDepth_ >= kMaxSurfaceScopes)
+            throw SourceError{place.location, "place blocks nest deeper than " + std::to_string(kMaxSurfaceScopes) +
+                " scopes", {}, DiagnosticCode::ResourceLimit, DiagnosticStage::Typing};
+        ++surfaceDepth_;
+        for (const auto& child : place.body) {
+            if (atLimit()) break;
+            checkRecoveringStmt(child);
+        }
+        --surfaceDepth_;
     }
 
     void checkFor(const ForStmt& forStmt) {
@@ -492,8 +598,8 @@ private:
             }
             return;
         }
-        if (current_->name == "draw") {
-            error(ret.location, "'draw' cannot return a value");
+        if (current_ == entryFunction(program_.asset)) {
+            error(ret.location, std::string("'") + entryName(program_.asset) + "' cannot return a value");
         }
         const ValueType type = typer_.typeOf(*ret.value, current_->returnType);
         if (!isStorable(type)) {
@@ -545,6 +651,7 @@ private:
         if (decl.name == "seed") {
             error(decl.location, "'seed' is a reserved name");
         }
+        if (decl.declaredType) checkModelType(*decl.declaredType, decl.location);
         std::optional<ValueType> context = decl.declaredType;
         if (const auto found = typer_.locals().find(decl.name); found != typer_.locals().end()) context = found->second;
         const ValueType type = typer_.typeOf(*decl.value, context);
@@ -641,8 +748,27 @@ void checkSurfaceScope(std::size_t open, const SourceLocation& at, DiagnosticSta
             " surface scopes", {}, DiagnosticCode::ResourceLimit, stage};
 }
 
+std::optional<f32> modelScale(const Asset& asset) {
+    if (!asset.scale) return kDefaultModelScale;
+    const auto* literal = std::get_if<Literal>(asset.scale.get());
+    if (!literal) return std::nullopt;
+    f32 value = 0.f;
+    if (literal->kind == Literal::Kind::Int) {
+        u32 bits = 0;
+        if (!parseIntBits(literal->text, bits)) return std::nullopt;
+        value = static_cast<f32>(bits);
+    } else if (literal->kind == Literal::Kind::Float) {
+        u32 bits = 0;
+        if (!parseFloatBits(literal->text, bits)) return std::nullopt;
+        std::memcpy(&value, &bits, sizeof(value));
+    } else return std::nullopt;
+    if (!std::isfinite(value) || !(value > 0.f)) return std::nullopt;
+    return value;
+}
+
 PartInfo partInfoOf(const Asset& asset) {
     PartInfo info;
+    info.model = isModel(asset);
     for (const auto& input : asset.inputs) {
         info.inputs.push_back(PartInput{input.type, input.name, &input});
     }

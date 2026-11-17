@@ -145,6 +145,12 @@ public:
         return json;
     }
     static Json object(std::initializer_list<std::pair<std::string, Json>> members = {});
+    // A number from its decimal text, written as given.
+    static Json number(std::string_view decimal) {
+        Json json;
+        json.text_ = std::string(decimal);
+        return json;
+    }
 
     // An object member, appended as null when absent.
     Json& operator[](std::string_view key) {

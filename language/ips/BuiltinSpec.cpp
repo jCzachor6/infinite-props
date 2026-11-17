@@ -1,4 +1,5 @@
 #include "ips/BuiltinSpec.hpp"
+#include "iprop/model/Ops.hpp"
 #include "iprop/Samplers.hpp"
 #include "iprop/ListOperations.hpp"
 #include "iprop/VmInternals.hpp"
@@ -415,24 +416,120 @@ std::optional<ValueType> selectionType(std::span<const ValueType> arguments) {
     return result;
 }
 
-bool isBuiltinFunctionName(std::string_view name) {
-    return name == "ramp" || (name.find('.') == std::string_view::npos && builtinSpecs().contains(std::string(name)));
+const std::map<std::string, BuiltinSpec>& modelBuiltinSpecs() {
+    static const auto table = [] {
+        using V = ValueType;
+        using M = model::Op;
+        const auto op = [](std::vector<BuiltinParameter> params, M operation, V result = V::Void) {
+            BuiltinOverload overload{std::move(params), std::nullopt, result};
+            overload.modelOp = static_cast<u8>(operation);
+            return overload;
+        };
+        const auto spec = [](std::vector<BuiltinOverload> overloads) {
+            return BuiltinSpec(BuiltinLowering::Opcode, std::move(overloads));
+        };
+        const BuiltinParameter at{"at", V::Vec3}, skin{"skin", V::Skin}, sides{"sides", V::I32};
+        const V points = V::list(V::Vec2);
+        std::map<std::string, BuiltinSpec> result;
+        result.emplace("box", spec({op({at, {"size", V::Vec3}, skin}, M::Box),
+                                    op({at, {"size", V::Vec3}, {"bevel", V::F32}, skin}, M::BoxBevel)}));
+        result.emplace("cylinder", spec({op({at, {"radius", V::F32}, {"height", V::F32}, sides, skin}, M::Cylinder)}));
+        result.emplace("cone", spec({op({at, {"r0", V::F32}, {"r1", V::F32}, {"height", V::F32}, sides, skin}, M::Cone)}));
+        result.emplace("band", spec({op({at, {"r0", V::F32}, {"r1", V::F32}, {"height", V::F32}, sides, skin}, M::Band)}));
+        result.emplace("sphere", spec({op({at, {"radius", V::F32}, sides, {"rings", V::I32}, skin}, M::Sphere)}));
+        result.emplace("lathe", spec({op({at, {"profile", points}, sides, skin}, M::Lathe),
+                                      op({at, {"profile", points}, sides, {"crease", V::F32}, skin}, M::LatheCrease)}));
+        result.emplace("extrude", spec({op({at, {"outline", points}, {"depth", V::F32}, skin}, M::Extrude),
+                                        op({at, {"outline", points}, {"depth", V::F32}, {"bevel", V::F32}, skin},
+                                           M::ExtrudeBevel)}));
+        result.emplace("quad", spec({op({{"a", V::Vec3}, {"b", V::Vec3}, {"c", V::Vec3}, {"d", V::Vec3}, skin}, M::Quad)}));
+        result.emplace("tri", spec({op({{"a", V::Vec3}, {"b", V::Vec3}, {"c", V::Vec3}, skin}, M::Tri)}));
+
+        result.emplace("vec3.len", spec({op({{"v", V::Vec3}}, M::Vec3Len, V::F32)}));
+        result.emplace("vec3.dot", spec({op({{"a", V::Vec3}, {"b", V::Vec3}}, M::Vec3Dot, V::F32)}));
+        result.emplace("vec3.cross", spec({op({{"a", V::Vec3}, {"b", V::Vec3}}, M::Vec3Cross, V::Vec3)}));
+        result.emplace("vec3.normalize", spec({op({{"v", V::Vec3}}, M::Vec3Normalize, V::Vec3)}));
+        // lerp keeps its 2D overloads and gains the vec3 one.
+        auto lerp = builtinSpecs().at("lerp");
+        lerp.overloads.push_back(op({{"a", V::Vec3}, {"b", V::Vec3}, {"t", V::F32}}, M::Vec3Mix, V::Vec3));
+        result.emplace("lerp", std::move(lerp));
+
+        const auto number = [&](const char* name, const char* parameter, M operation) {
+            result.emplace(name, spec({op({skin, {parameter, V::F32}}, operation, V::Skin)}));
+        };
+        // `density` is a reserved word, so the argument has another name.
+        number("skin.density", "texels", M::SkinDensity);
+        number("skin.roughness", "roughness", M::SkinRoughness);
+        number("skin.metallic", "metallic", M::SkinMetallic);
+        number("skin.emission", "emission", M::SkinEmission);
+        number("skin.cutout", "threshold", M::SkinCutout);
+        result.emplace("skin.shift", spec({op({skin, {"offset", V::Vec2}}, M::SkinShift, V::Skin)}));
+        result.emplace("skin.fit", spec({op({skin}, M::SkinFit, V::Skin)}));
+        result.emplace("skin.two_sided", spec({op({skin}, M::SkinTwoSided, V::Skin)}));
+        result.emplace("skin.crisp", spec({op({skin}, M::SkinCrisp, V::Skin)}));
+        return result;
+    }();
+    return table;
 }
 
-bool isBuiltinNamespace(std::string_view name) {
-    static const auto spaces = [] {
-        // Namespaces that only hold constants have no entry in the table.
-        std::set<std::string> result{"surface", "noise", "voronoi", "contour"};
-        for (const auto& [full, spec] : builtinSpecs()) {
+const BuiltinSpec* findBuiltin(std::string_view name, bool model) {
+    const std::string key(name);
+    if (model) {
+        const auto& table = modelBuiltinSpecs();
+        if (const auto found = table.find(key); found != table.end()) return &found->second;
+    }
+    const auto& table = builtinSpecs();
+    const auto found = table.find(key);
+    return found == table.end() ? nullptr : &found->second;
+}
+
+bool availableInModel(const BuiltinSpec& spec) {
+    if (spec.lowering == BuiltinLowering::Polygon || spec.lowering == BuiltinLowering::SurfacePaint) return false;
+    for (const auto& overload : spec.overloads) {
+        if (overload.opcode && !model::admits(*overload.opcode)) return false;
+        const auto bound = [](ValueType type) { return type == ValueType::Layer || type == ValueType::Mask || type.isGeometry(); };
+        if (bound(overload.result)) return false;
+        for (const auto& parameter : overload.params) if (bound(parameter.type)) return false;
+    }
+    return true;
+}
+
+bool isBuiltinFunctionName(std::string_view name, bool model) {
+    if (name == "ramp" || name.find('.') != std::string_view::npos) return name == "ramp";
+    return builtinSpecs().contains(std::string(name)) || (model && modelBuiltinSpecs().contains(std::string(name)));
+}
+
+bool isBuiltinNamespace(std::string_view name, bool model) {
+    static const auto collect = [](const std::map<std::string, BuiltinSpec>& table, std::set<std::string> result) {
+        for (const auto& [full, spec] : table) {
             (void)spec;
             if (const auto dot = full.find('.'); dot != std::string::npos) result.insert(full.substr(0, dot));
         }
         return result;
-    }();
-    return spaces.contains(std::string(name));
+    };
+    // Namespaces that only hold constants have no entry in the table.
+    static const auto spaces = collect(builtinSpecs(), {"surface", "noise", "voronoi", "contour"});
+    static const auto modelSpaces = collect(modelBuiltinSpecs(), {});
+    return spaces.contains(std::string(name)) || (model && modelSpaces.contains(std::string(name)));
 }
 
 OperationEffects builtinEffects(const BuiltinSpec& spec, const BuiltinOverload* overload) {
+    if (overload && overload->modelOp) {
+        // The vec3 functions are pure; everything else changes the model.
+        // A skin argument may be unassigned and a number out of its range.
+        OperationEffects effects;
+        const auto op = static_cast<model::Op>(*overload->modelOp);
+        effects.writesCanvas = op >= model::Op::PlaceBegin;
+        const auto check = [&](EffectCheck value) { effects.checks = static_cast<u16>(effects.checks | static_cast<u16>(value)); };
+        bool skin = false, number = false;
+        for (const auto& parameter : overload->params) {
+            skin |= parameter.type == ValueType::Skin;
+            number |= parameter.type != ValueType::Skin;
+        }
+        if (skin) check(EffectCheck::UnassignedHandle);
+        if (op == model::Op::Vec3Normalize || (skin && number)) check(EffectCheck::NumericRange);
+        return effects;
+    }
     if (overload && overload->opcode) {
         const auto* opcode = findOpcode(*overload->opcode);
         if (!opcode) throw std::logic_error("builtin effects refer to an unknown opcode");

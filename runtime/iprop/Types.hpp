@@ -55,6 +55,16 @@ struct Vec2 {
     constexpr bool operator==(const Vec2&) const = default;
 };
 
+// Three binary32 components in one slot. Only a model program (the extended
+// VM, spec models v1.2) has values of this type; a 2D file cannot declare one.
+struct Vec3 {
+    f32 x = 0.f;
+    f32 y = 0.f;
+    f32 z = 0.f;
+
+    constexpr bool operator==(const Vec3&) const = default;
+};
+
 // A distribution description (spec v0.5 §4.1): a family and its binary32
 // parameters. None is the typed default of a slot that was never assigned.
 enum class DistributionFamily : u8 { None = 0, Gaussian = 1, Triangular = 2, Beta = 3, Weighted = 4, Density = 5 };

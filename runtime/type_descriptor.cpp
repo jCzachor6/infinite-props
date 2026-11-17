@@ -30,6 +30,8 @@ const char* kindName(Kind kind) {
     case Kind::Part2d: return "part2d";
     case Kind::Parts2d: return "parts2d";
     case Kind::Seed: return "seed";
+    case Kind::Vec3: return "vec3";
+    case Kind::Skin: return "skin";
     }
     return "?";
 }

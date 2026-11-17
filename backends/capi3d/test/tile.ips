@@ -1,0 +1,18 @@
+// The skin of the C API model fixtures: a tile with a raised panel. A
+// `rounding` above 64 is a runtime violation of the normal conversion.
+asset tile {
+  size 16x8
+  input color tint = #8a5a2b
+  input f32 rounding = 0.5
+  output normal relief
+
+  draw {
+    rect(0, 0, 16, 8, tint)
+    rect(1, 1, 6, 6, color.shade(tint, 20))
+    layer height(alpha = surface.source_over) {
+      rect(0, 0, 16, 8, #404040)
+      rect(1, 1, 6, 6, #ffffff)
+    }
+    relief = height.normal(2.0, rounding)
+  }
+}

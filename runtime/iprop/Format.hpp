@@ -43,12 +43,26 @@ struct FileLayout {
     const Section* find(SectionId id) const;
 };
 
+// The file family a reader admits. Every function defaults to the 2D format;
+// the model runtime, a separate library, passes its own dialect (spec models
+// v1.2). A dialect changes what is accepted, never how an accepted byte is read.
+struct Dialect {
+    u8 magic[4];
+    u32 lastSection; // the highest admitted section id
+    bool vec3;       // admits the vec3 type code in function signatures
+};
+inline constexpr Dialect kPropDialect{{kMagic[0], kMagic[1], kMagic[2], kMagic[3]},
+                                      static_cast<u32>(SectionId::Steppers), false};
+
 // Parses the fixed header (including version/flags/count/reserved checks).
-Header parseHeader(std::span<const u8> data, OffsetSpace space = OffsetSpace::Container);
+Header parseHeader(std::span<const u8> data, OffsetSpace space = OffsetSpace::Container,
+                   const Dialect& dialect = kPropDialect);
 
 // Parses and validates an expanded file header and section table.
 // Compressed envelopes must first pass through decompressFile().
 // Throws FormatError with a file offset on every violation of spec §2/§14.
-FileLayout parseLayout(std::span<const u8> data);
+// Sections above SectionId::Steppers that the dialect admits are listed in
+// the layout and left to the dialect's own reader.
+FileLayout parseLayout(std::span<const u8> data, const Dialect& dialect = kPropDialect);
 
 } // namespace iprop

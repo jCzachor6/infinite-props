@@ -35,6 +35,39 @@ function checkLinks(directory) {
     return pages;
 }
 
+// The models section: the model module with its API and worker, the chair's
+// sources as the page shows them, and the chair compiled from them. What the
+// site's own module generates is, bit for bit, what the native tool does.
+async function checkModels(home) {
+    assert.ok(home.includes("data-models"), "the home page has no models section");
+    for (const file of ["iprop3d.js", "iprop3d.wasm", "api3d.js", "model-worker.js", "models/chair.iprop3d"])
+        assert.ok(fs.existsSync(path.join(site, file)), `missing ${file}`);
+    for (const source of ["chair.ips", "skins/oak.ips", "skins/weave.ips"]) {
+        assert.deepEqual(fs.readFileSync(path.join(site, "models", source)), fs.readFileSync(path.join(root, "examples/models", source)),
+                         `stale model source: ${source}`);
+    }
+    for (const input of ["models-finish", "models-fabric"])
+        assert.equal([...home.matchAll(new RegExp(`name="${input}"`, "g"))].length, 7, `${input}: the seed and six choices`);
+    const { dumped, difference } = require("../../backends/html5/test/model-conformance.js");
+    const Module = await require(path.join(site, "iprop3d.js"))({ locateFile: () => path.join(site, "iprop3d.wasm") });
+    const iprop3d = await require(path.join(site, "api3d.js"))(() => Promise.resolve(Module)).create("");
+    const file = path.join(site, "models/chair.iprop3d");
+    const model = iprop3d.load(new Uint8Array(fs.readFileSync(file)));
+    assert.deepEqual(model.inputs.map(input => input.name), ["finish", "fabric"]);
+    let chairs = 0;
+    for (const seed of [1, 7, 26, 99999]) for (const finish of [0, 4]) for (const fabric of [0, 6]) {
+        const native = spawnSync(generator, [file, "--seed", String(seed), "--uniform", `finish=${finish}`, "--uniform", `fabric=${fabric}`,
+            "--dump", "-o", path.join(os.tmpdir(), "iprop-website-unused.glb")], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+        assert.equal(native.status, 0, native.stderr || String(native.error));
+        const found = difference(dumped(model.generate({ seed, uniforms: { finish, fabric } }), seed), JSON.parse(native.stdout));
+        assert.equal(found, null, `chair seed ${seed} finish ${finish} fabric ${fabric}: ${found}`);
+        chairs++;
+    }
+    model.free();
+    fs.rmSync(path.join(os.tmpdir(), "iprop-website-unused.glb"), { force: true });
+    return chairs;
+}
+
 async function main() {
     const pages = checkLinks(site);
     assert.equal(pages, 8);
@@ -62,7 +95,8 @@ async function main() {
     const docs = JSON.parse(fs.readFileSync(path.join(site, "docs/language-manifest.json"), "utf8"));
     assert.equal(docs.schema_version, 3);
     const catalogue = JSON.parse(fs.readFileSync(path.join(site, "docs/language.json"), "utf8"));
-    assert.equal(catalogue.schema_version, 7);
+    assert.equal(catalogue.schema_version, 8);
+    assert.equal(catalogue.source_rules.models.status, "preview");
     assert.equal(catalogue.source_rules.asset_constants.evaluation, "compile_time");
     const version = JSON.parse(fs.readFileSync(path.join(root, "website/package.json"), "utf8")).version;
     assert.equal(docs.product_version, version);
@@ -144,7 +178,8 @@ async function main() {
         }
     } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
     const butterflies = await checkButterflyWorker(site);
-    console.log(`website release smoke: PASS (${pages} pages, local links/search anchors, ${docs.builtin_count} documented builtins, ${docs.example_count} language examples, ${specs.length} spec, 24 recipes, ${showcase.length} showcase assets, ${comparisons} exact native/WASM images, ${butterflies} HTTP/HTTPS butterflies with asset integrity checks)`);
+    const chairs = await checkModels(home);
+    console.log(`website release smoke: PASS (${pages} pages, local links/search anchors, ${docs.builtin_count} documented builtins, ${docs.example_count} language examples, ${specs.length} spec, 24 recipes, ${showcase.length} showcase assets, ${comparisons} exact native/WASM images, ${butterflies} HTTP/HTTPS butterflies with asset integrity checks, ${chairs} bit-exact native/WASM chairs)`);
 }
 
 main().catch(error => { console.error(error); process.exit(1); });

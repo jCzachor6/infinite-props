@@ -1,5 +1,69 @@
 # Changelog
 
+## Unreleased
+
+### 3D models from `render { }` (preview, additive)
+
+An asset with `render` in place of `draw` builds a 3D model and compiles to
+an `.iprop3d` file. The seed chooses the shape, so one source gives a chair
+with four kinds of back; the surfaces wear **skins**, ordinary draw assets
+generated as textures with their normal maps. Existing sources compile to
+identical bytecode and existing programs keep their image, outputs, RNG,
+fuel and work. See [models](docs/language/models.md), the
+[1.1 to 1.2 migration](docs/language/migration-v1.2.md) and the
+[contract](spec/models-v1.2.md).
+
+Models are a **preview**: the language, the file format and the host
+interfaces may change in any release until the contract is frozen.
+
+- **Language.** `render { ... }`, `size WxHxD` and `scale N`; the types `vec3`
+  and `skin`; `alias.draw(seed, inputs..., size = {w, h})` as an expression
+  that returns a skin, and nine `skin.*` modifiers; the primitives `box`,
+  `cylinder`, `cone`, `band`, `sphere`, `lathe`, `extrude`, `quad` and `tri`;
+  `place(at =, yaw =, pitch =, roll =, scale =, mirror_x =, ...) { ... }`.
+  None of the new words is reserved, and in a draw asset all of them stay
+  ordinary names.
+- **Format and VM.** A model file starts with `IP3D` and carries two more
+  sections, the model's declared size and its embedded skin programs. Opcode
+  `0x0F` holds the model operations and stays reserved in a `.iprop` file.
+  The model runtime is a separate library that extends the VM; a texture is
+  a standard 2D generation of an embedded program, so its bytes are the ones
+  a host gets from that program alone. A 2D runtime rejects a model file at
+  its first four bytes.
+- **Fuel.** A model instruction costs one unit; a primitive reserves 6 more
+  for each vertex and 2 for each triangle, an extrude outline of `n` points
+  `ceil(n*n/3)` (`ceil(n*n/2)` with a bevel), a placement 24 and a skin call
+  64. The prices follow measurements against plain instructions and the 2D
+  raster kernels; a texture spends the fuel of its own program. See the
+  [contract](spec/models-v1.2.md#accounting-and-limits).
+- **Determinism.** Vertices, indices and textures are the same on every
+  platform, bit for bit. A corpus of 41 generations pins the SHA-256 of
+  every compiled file, surface array and texture; native builds and the WASM
+  module are checked against the same pins.
+- **Examples.** A chair, a crate, a barrel and a sword in `examples/models`,
+  each with several shapes chosen by the seed, and their skins: oak, cloth,
+  metal, leather and a blade with its fuller.
+- **Hosts.** A separate C header, `iprop3d.h` (API 0.1, static library, no
+  ABI promise yet); `iprop3d.wasm` with `Iprop3D`, a worker and a three.js
+  adapter beside an unchanged `iprop.wasm`; `IpropModel` and
+  `IpropModelInstance3D` in the Godot extension. The 2D C API stays **0.7**
+  on ABI **0.5**, and the other bindings have no model interface yet. See
+  [models in C](docs/c-api-models.md).
+- **Tools.** `ipc` writes `.iprop3d`; `ipval` validates it; `ipgen` writes a
+  binary glTF, a picture, the textures or an exact dump; `ipsheet` draws a
+  grid of seeds. `ipa` and `ipdis` do not read model files yet, and model
+  programs are not optimized yet.
+- **Language description.** `ipc --describe-language` uses schema **8**: the
+  required `source_rules.models` describes render assets, and everything
+  schema 7 published is unchanged. See
+  [the language description](docs/language-description.md#migrating-schema-7-to-8).
+- **Documentation.** A handbook chapter with executed examples, and a second
+  reference for coding agents, `LLM_REFERENCE_MODELS.md`, with its own
+  budget.
+- **Website and editor.** A models section with six chairs under a movable
+  lamp; the editor highlights the additions, completes the builtins of
+  render assets and previews a model.
+
 ## v1.1.0 — 2026-11-15
 
 Product/source and editor, website, Unity/Python packages: **1.1.0**.

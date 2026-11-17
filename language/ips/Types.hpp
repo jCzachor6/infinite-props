@@ -21,6 +21,8 @@ const char* typeName(ValueType type);
 std::string typePhrase(ValueType type);
 // Contextual type spellings remain ordinary identifiers outside declarations.
 std::optional<ValueType> geometryType(std::string_view name);
+// `vec3` and `skin`, the types of a render asset (models v1.2).
+std::optional<ValueType> modelType(std::string_view name);
 
 bool isNumeric(ValueType type);
 

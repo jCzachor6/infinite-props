@@ -343,7 +343,119 @@ def main():
         assert report['diagnostics'][0]['message'] == \
             'import cycle: child.ips -> parts/grandchild.ips -> child.ips', report
 
-    print(f'Language contract: versions, profile and {len(cases) + 4} acceptance cases passed')
+        # Models (v1.2, a preview): the rule set against what the compiler
+        # accepts in an asset with render { } and rejects in one with draw { }.
+        models = rules['models']
+        assert models['status'] == 'preview' and models['entry'] == 'render' and models['file_magic'] == 'IP3D'
+        assert not {'render', 'place', 'scale', 'vec3', 'skin'} & set(rules['reserved_keywords'])
+        flat = {b['name'] for b in description['builtins']}
+        added = {b['name']: b for b in models['builtins']}
+        assert set(added) == {'box', 'cylinder', 'cone', 'band', 'sphere', 'lathe', 'extrude', 'quad', 'tri',
+            'vec3.len', 'vec3.dot', 'vec3.cross', 'vec3.normalize', 'skin.density', 'skin.fit', 'skin.shift',
+            'skin.roughness', 'skin.metallic', 'skin.emission', 'skin.cutout', 'skin.two_sided', 'skin.crisp'}
+        assert [b['name'] for b in models['extended_builtins']] == ['lerp']
+        assert {'rect', 'pixel', 'poly', 'surface.paint', 'mask.from', 'noise.mask', 'part.draw', 'voronoi'} <= \
+            set(models['unavailable_builtins']) < flat
+        assert not {'sin', 'lerp', 'roll', 'choose', 'hash', 'noise.fbm', 'color.shade', 'seed.initial', 'list.len'} & \
+            set(models['unavailable_builtins'])
+        assert [a['name'] for a in models['place']['arguments']] == models['place']['evaluation_order']
+        assert [t['name'] for t in models['types']] == ['vec3', 'skin']
+
+        (root / 'tile.ips').write_text('asset tile {size 8x8 input color tint=#fff input f32 gap=1 draw{rect(0,0,8,gap,tint)}}')
+        (root / 'solid.ips').write_text('asset solid {size 8x8x8 render{}}')
+        model_cases = 0
+
+        def model(name, body, accepted, declarations=''):
+            nonlocal model_cases
+            model_cases += 1
+            return check(name, 'import tile from "tile.ips" asset t {size 8x8x8 ' + declarations + ' ' + body + '}', accepted)
+
+        def flat_asset(name, body, accepted):
+            nonlocal model_cases
+            model_cases += 1
+            return check(name, 'asset t {size 8x8 ' + body + '}', accepted)
+
+        model('empty render block', 'render{}', True)
+        # Every exported signature binds: one call per overload, arguments by type.
+        values = {'vec3': '{1,2,3}', 'vec2': '{1,2}', 'f32': '0.5', 'i32': '8', 'skin': 's',
+                  'list<vec2>': '[{2,0},{2,2},{0,2}]'}
+        for builtin in [*models['builtins'], *models['extended_builtins']]:
+            for number, overload in enumerate(builtin['overloads']):
+                call = builtin['name'] + '(' + ','.join(values[p['type']] for p in overload['parameters']) + ')'
+                named = builtin['name'] + '(' + ','.join(p['name'] + '=' + values[p['type']]
+                                                         for p in reversed(overload['parameters'])) + ')'
+                for form in (call, named):
+                    model(f"{builtin['name']} overload {number}", 'render{s=tile.draw(1);' +
+                          (form if overload['result'] == 'void' else 'x=' + form) + '}', True)
+        for name in models['unavailable_builtins']:
+            report = model(name + ' needs a canvas', 'render{' + name + '()}', False)
+            assert 'render asset' in report['diagnostics'][0]['message'], report
+        for name in added:
+            report = flat_asset(name + ' needs a render asset', 'draw{' + name + '()}', False)
+            assert 'render asset' in report['diagnostics'][0]['message'], report
+        for type_name in ('vec3', 'skin'):
+            flat_asset(type_name + ' is no type of a draw asset', 'draw{} f(p:' + type_name + '){}', False)
+            flat_asset(type_name + ' stays an ordinary name in a draw asset', 'draw{' + type_name + '=1}', True)
+        flat_asset('render and place stay helper names in a draw asset',
+                   'draw{render(1);place(2)} render(n:i32){pixel(n,n,#fff)} place(n:i32){pixel(n,n,#fff)}', True)
+        flat_asset('three numbers are a circle in a draw asset', 'output circle c draw{c={1,2,3}}', True)
+        model('three numbers are a vec3 in a render asset', 'render{p={1,2,3};z=p.z+p.x+p.y}', True)
+        model('vec3 arithmetic and range', 'render{p={1,2,3};q=(p+p-p)*p/p*2/2;r=2*q;n=-r;t=p to q}', True)
+        model('vec3 has three components', 'render{p={1,2,3};w=p.w}', False)
+        model('vec3 components are read-only', 'render{p={1,2,3};p.x=2.0}', False)
+        model('vec3 and vec2 do not mix', 'render{p={1,2,3}+{1,2}}', False)
+        model('vec3 constants, parameters and results', 'render{p=move(up)} move(p:vec3)->vec3{return p+up}', True,
+              'const vec3 up=vec3.normalize({0,2,0})')
+        model('skin parameters and results', 'render{box({0,0,0},{1,1,1},dull(tile.draw(seed)))} '
+              'dull(s:skin)->skin{return skin.roughness(s,1)}', True)
+        model('skin constants rejected', 'render{}', False, 'const skin s=tile.draw(1)')
+        model('collections of vec3 rejected', 'render{} f(ps:list<vec3>){}', False)
+        model('collections of skins rejected', 'render{} f(ss:list<skin>){}', False)
+        model('host inputs of vec3 rejected', 'render{}', False, 'input vec3 at={0,0,0}')
+        for argument in models['place']['arguments']:
+            for type_name in argument['types']:
+                value = {'vec3': '{1,2,3}', 'f32': '1.5', 'i32': '1'}[type_name]
+                model(f"place {argument['name']} takes {type_name}", 'render{place(' + argument['name'] + '=' + value + '){}}', True)
+        model('place order is free', 'render{place(mirror_x=1,scale=2,roll=1,pitch=2,yaw=3,at={0,1,0}){}}', True)
+        model('place needs an argument', 'render{place(){}}', False)
+        model('place arguments are named', 'render{place({0,1,0}){}}', False)
+        model('place rejects unknown arguments', 'render{place(tilt=1){}}', False)
+        model('place rejects duplicates', 'render{place(yaw=1,yaw=2){}}', False)
+        model('place at is a vec3', 'render{place(at={1,2}){}}', False)
+        model('place mirror is an integer', 'render{place(mirror_x=1.0){}}', False)
+        model('place nests and leaves by return', 'render{build()} build(){place(yaw=90){place(at={0,1,0}){return;}}}', True)
+        flat_asset('place needs a render asset', 'draw{place(yaw=1){}}', False)
+        model('skin call with inputs and size', 'render{s=tile.draw(seed.initial().fork("a"),gap=2,tint=#000,size={16,16})}', True)
+        model('skin seed is required', 'render{s=tile.draw(size={8,8})}', False)
+        model('skin seed is the only positional argument', 'render{s=tile.draw(1,#000)}', False)
+        model('skin size is a vec2', 'render{s=tile.draw(1,size=16)}', False)
+        model('skin input type', 'render{s=tile.draw(1,tint=1)}', False)
+        model('skin has no placement', 'render{s=tile.draw(1,at={0,0})}', False)
+        model('skin is no method receiver', 'render{s=tile.draw(1).fit()}', False)
+        model('skin is not a number', 'render{s=tile.draw(1)+1}', False)
+        nonlocal_model = 'import solid from "solid.ips" asset t {size 8x8x8 render{}}'
+        check('a render asset is no skin', nonlocal_model, False)
+        check('a render asset is no part', 'import solid from "solid.ips" asset t {size 8x8 draw{}}', False)
+        model('inputs are visible in render', 'render{x=tall+1.0}', True, 'input f32 tall=2')
+        model('inputs are not visible in helpers', 'render{f()} f(){x=tall}', False, 'input f32 tall=2')
+        model('palettes, constants and ramp work in render', 'render{c=ramp(tones,0.5);d=tones[k]}', True,
+              'palette tones=[#000,#fff] const i32 k=1')
+        model('scalar builtins work in render', 'render{a=sin(1.0)+noise.fbm(1.0,2.0,3,4)+roll(seed.initial(),0.0,1.0);'
+              'b=hash(1)+choose(1,2,3)+list.len([1,2]);c=color.shade(#888,10);d=vec2.len({3,4})}', True)
+        model('outputs rejected', 'render{}', False, 'output point top')
+        model('origin rejected', 'render{}', False, 'origin 1,1')
+        model('layers rejected', 'render{layer image{}}', False)
+        model('clips rejected', 'render{clip(m){}}', False)
+        model('both entries rejected', 'draw{} render{}', False)
+        model('entry is no helper', 'render{render()}', False)
+        check('render needs a depth', 'asset t {size 8x8 render{}}', False)
+        check('draw has no depth', 'asset t {size 8x8x8 draw{}}', False)
+        check('scale is a positive number', 'asset t {size 8x8x8 scale 0 render{}}', False)
+        check('scale belongs to render', 'asset t {size 8x8 scale 32 draw{}}', False)
+        check('scale in units per metre', 'asset t {size 8x8x8 scale 32.5 render{}}', True)
+        model_cases += 7
+
+    print(f'Language contract: versions, profile and {len(cases) + 4 + model_cases} acceptance cases passed')
 
 
 if __name__ == '__main__':

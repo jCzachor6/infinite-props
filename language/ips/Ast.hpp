@@ -304,12 +304,20 @@ struct ClipStmt {
     std::vector<Stmt> body;
     SourceLocation location;
 };
+// `place(at = {0, 4, 0}, yaw = 90.0) { ... }` in a render asset: a placement
+// scope (models v1.2). Everything its body builds is moved, turned, scaled or
+// mirrored together. The arguments are named.
+struct PlaceStmt {
+    std::vector<Arg> args;
+    std::vector<Stmt> body;
+    SourceLocation location;
+};
 
 struct Stmt
     : std::variant<VarDecl, ExprStmt, IfStmt, WhileStmt, ReturnStmt,
-                   BreakStmt, ContinueStmt, ForStmt, LayerStmt, ClipStmt> {
+                   BreakStmt, ContinueStmt, ForStmt, LayerStmt, ClipStmt, PlaceStmt> {
     using std::variant<VarDecl, ExprStmt, IfStmt, WhileStmt, ReturnStmt,
-                       BreakStmt, ContinueStmt, ForStmt, LayerStmt, ClipStmt>::variant;
+                       BreakStmt, ContinueStmt, ForStmt, LayerStmt, ClipStmt, PlaceStmt>::variant;
     TokenRange sourceRange{};
 };
 
@@ -377,6 +385,9 @@ struct Function {
     std::vector<Stmt> body;
     SourceLocation location;
     TokenRange sourceRange{};
+    // Written as a block without parameters: `draw { }` or `render { }`. A
+    // helper may still be called `render(...)`.
+    bool entry = false;
 };
 
 // `import hair from "hair.ips"`
@@ -413,6 +424,11 @@ struct Asset {
 
     std::optional<std::uint32_t> sizeX;
     std::optional<std::uint32_t> sizeY;
+    // A render asset (models v1.2) declares `size WxHxD`: width, height, depth.
+    std::optional<std::uint32_t> sizeZ;
+    // `scale N`: model units per metre, a positive number literal.
+    std::unique_ptr<Expr> scale;
+    SourceLocation scaleLocation{};
     std::unique_ptr<Expr> originX;
     std::unique_ptr<Expr> originY;
 
@@ -448,6 +464,23 @@ struct Program {
     // Owning token/trivia snapshot; compiler and debug printers ignore it.
     std::vector<Token> sourceTokens{};
 };
+
+// The entry block of an asset: `render` makes it a model (models v1.2),
+// `draw` a 2D prop. Null when the asset has neither.
+inline const Function* entryFunction(const Asset& asset) {
+    for (const auto& function : asset.functions)
+        if (function.name == "render" && function.entry) return &function;
+    for (const auto& function : asset.functions)
+        if (function.name == "draw") return &function;
+    return nullptr;
+}
+inline bool isModel(const Asset& asset) {
+    for (const auto& function : asset.functions)
+        if (function.name == "render" && function.entry) return true;
+    return false;
+}
+// The name the entry block has in this asset: "render" or "draw".
+inline const char* entryName(const Asset& asset) { return isModel(asset) ? "render" : "draw"; }
 
 // The source location of any expression node (for semantic diagnostics).
 inline SourceLocation locationOf(const Expr& expr) {

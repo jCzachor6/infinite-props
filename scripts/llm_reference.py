@@ -10,6 +10,9 @@ from urllib.parse import unquote, urlsplit
 
 
 CONFIG = 'docs/llm-reference.json'
+# Render assets (models v1.2) have their own reference with its own budget:
+# the handbook chapter, the builtins only a model has and its compiler rules.
+MODELS_CONFIG = 'docs/llm-reference-models.json'
 
 
 def require(condition, message):
@@ -28,7 +31,7 @@ def excerpt(root, chapter, text, heading, paragraphs, skip=0, fences=(), optiona
     # Method signatures are already generated in compiler_rules for every
     # selection. Their handbook placeholder is not prose or a second table.
     text = text.replace('<!-- sampler-methods -->', '').replace('<!-- stepper-methods -->', '').replace('<!-- surface-methods -->', '')
-    text = text.replace('<!-- normal-methods -->', '')
+    text = text.replace('<!-- normal-methods -->', '').replace('<!-- model-extensions -->', '')
     found = headings(text)
     matches = [h for h in found if h['title'] == heading]
     require(len(matches) == 1, 'missing or ambiguous handbook heading: ' + heading)
@@ -88,22 +91,32 @@ def signature_lines(name, builtin):
     return lines
 
 
-def builtin_catalog(root, language, authored, hints):
+def model_builtins(language):
+    """The builtins only a render asset has, by name (source_rules.models)."""
+    return {builtin['name']: builtin for builtin in language['source_rules'].get('models', {}).get('builtins', [])}
+
+
+def builtin_catalog(root, language, authored, hints, models=False):
     # Every builtin once, in handbook order: its exported signatures and the
-    # first paragraph of the handbook text that follows its directive.
-    builtins = {builtin['name']: builtin for builtin in language['builtins']}
+    # first paragraph of the handbook text that follows its directive. A draw
+    # asset and a render asset each have their own catalogue.
+    flat = {builtin['name']: builtin for builtin in language['builtins']}
+    builtins, other = (model_builtins(language), flat) if models else (flat, model_builtins(language))
     require(set(hints) <= set(builtins), 'hint for an unknown builtin: ' + ', '.join(sorted(set(hints) - set(builtins))))
-    lines, seen = ['## Builtins', '',
-        'Every builtin of this compiler, grouped by handbook chapter: exported signatures, '
-        'then the first paragraph of its handbook description.', ''], set()
+    intro = ('Every builtin that only a render asset has, grouped by handbook chapter: exported signatures, '
+             'then the first paragraph of its handbook description.' if models else
+             'Every builtin of this compiler, grouped by handbook chapter: exported signatures, '
+             'then the first paragraph of its handbook description.')
+    lines, seen = ['## Builtins', '', intro, ''], set()
     for chapter, text in authored.items():
-        found = BUILTIN.findall(text)
-        if not found:
+        if not [name for name in BUILTIN.findall(text) if name not in other]:
             continue
         lines += ['### ' + headings(text)[0]['title'], '']
         code = code_lines(text)
         for match in BUILTIN.finditer(text):
             name = match.group(1)
+            if name in other:
+                continue
             require(name in builtins and name not in seen, 'unknown or repeated builtin description: ' + name)
             seen.add(name)
             start = text.count('\n', 0, match.end()) + 1
@@ -119,6 +132,13 @@ def builtin_catalog(root, language, authored, hints):
                 lines.append('Style: ' + hints[name])
             lines += [rewrite_links(blocks[0], resolver(root, chapter)), '']
     require(seen == set(builtins), 'builtins missing from the handbook: ' + ', '.join(sorted(set(builtins) - seen)))
+    if models:
+        extended = language['source_rules']['models']['extended_builtins']
+        if extended:
+            lines += ['### Builtins of the 2D language with more overloads', '']
+            for builtin in extended:
+                lines += signature_lines(builtin['name'], builtin)
+            lines.append('')
     return lines
 
 
@@ -227,6 +247,66 @@ def compiler_rules(language, covered=()):
     return lines
 
 
+def model_rules(language):
+    """The rules of a render asset in plain sentences, from --describe-language."""
+    models = language['source_rules']['models']
+    place, call, limits, fresh = models['place'], models['skin_call'], models['limits'], models['skin_defaults']
+    fuel = models['fuel']
+    types = {item['name']: item for item in models['types']}
+    vec3 = types['vec3']
+
+    def between(name):
+        return f"{limits[name]['minimum']}-{limits[name]['maximum']}"
+
+    def slot(parameter):
+        kind = ('required' if parameter['required'] else 'optional') + (' positional' if parameter['positional'] else ' named-only')
+        return ('each input of the imported asset' if parameter['name'] == '$uniform' else parameter['name']) + ' (' + kind + ')'
+
+    kept = [name for name, allowed in vec3['storage'].items() if allowed]
+    lines = ['## Compiler rules for render assets', '',
+        f"An asset with `{models['entry']} {{ }}` in place of `draw {{ }}` is a model: ipc writes `{models['file_extension']}`. "
+        f"It declares `{models['size_syntax']}` in model units and may declare `{models['scale_syntax']}` "
+        f"(default {models['default_scale']}). Status: {models['status']}.",
+        'Axes: +X right, +Y up, +Z toward the viewer. A model stands on y = 0 and faces +Z; triangles are '
+        'counterclockwise seen from outside; angles are degrees. The `at` of every primitive is the centre of its base.',
+        f"`vec3` is written `{vec3['literal']}`, reads {', '.join('.' + name for name in vec3['components'])} as "
+        f"{vec3['component_type']} and takes + - * / with another vec3, * and / with a number on its right, * with a "
+        'number on its left, and unary minus. `a to b` between two vec3 values picks one point on the segment. '
+        f"A vec3 may be kept in: {', '.join(name.replace('_', ' ') for name in kept)}.",
+        '`skin` is what a skin call returns. It takes no operator; the `skin.*` builtins return a new skin and leave '
+        'theirs unchanged. A skin may be a local, a helper parameter and a helper result, never a constant. '
+        'Using a skin that was never assigned traps. Neither type is a host input or an element of a list, '
+        'sampler, stepper or palette, and both are compile errors as declared types in a draw asset.',
+        f"`{place['syntax']}` takes named arguments only, at least {place['minimum_arguments']}: " +
+        '; '.join(f"{argument['name']} ({' or '.join(argument['types'])})" for argument in place['arguments']) +
+        '. Their values evaluate in that order, however they are written. One block scales and mirrors what it '
+        'contains, then rolls (about Z), pitches (about X), yaws (about Y) and moves it to `at`; a block inside '
+        f"another works in the space of the outer one. At most {place['maximum_open_scopes']} blocks are open at once. "
+        'A scaled block stretches its textures with it.',
+        f"A skin call is `{call['syntax']}` on an imported asset that has `draw`: " +
+        '; '.join(slot(parameter) for parameter in call['parameters']) +
+        f". It evaluates {', '.join('the inputs' if name == '$uniform' else name for name in call['evaluation_order'])} "
+        f"in that order and returns a {call['result']}. The texture is the picture a host would generate from that asset, "
+        'with its normal map if it declares one, under the fuel budget of that asset. The same asset, seed, size and '
+        f"inputs give one texture, however often they are called. A side is at most {call['maximum_side']} pixels.",
+        f"A new skin repeats at {fresh['density']} texel to a model unit and has roughness {fresh['roughness']}, "
+        f"metallic {fresh['metallic']}, emission {fresh['emission']}; it is {fresh['alpha']}, one-sided and filtered.",
+        f"Limits of one model: {limits['vertices']} vertices, {limits['triangles']} triangles, {limits['textures']} "
+        f"textures and {limits['texels']} texels in all, {limits['skin_records']} skins. `sides` is {between('sides')}, "
+        f"`rings` {between('rings')}, a lathe profile {between('profile_points')} points and an extrude outline "
+        f"{between('outline_points')} points. Every instruction costs {fuel['instruction']} fuel unit; a primitive adds "
+        f"{fuel['vertex']} for each vertex and {fuel['triangle']} for each triangle it emits, an extrude outline of n points "
+        f"adds ceil(n*n/3) (ceil(n*n/2) with a bevel), a place block {fuel['place_reserve']} and a skin call "
+        f"{fuel['skin_draw_reserve']}. A texture spends the fuel of its own asset.",
+        'Not callable in a render asset, because they need a canvas, a surface or 2D geometry: ' +
+        ', '.join(models['unavailable_builtins']) + '.',
+        'Not available in a render asset: ' + ', '.join(name.replace('_', ' ') for name in
+            ('outputs', 'origin', 'layers', 'clips', 'model_parts') if not models[name]) +
+        '. Everything else of the language works as in a draw asset: inputs, constants, palettes, materials, '
+        'helpers, control flow, named seeds, random ranges, lists, samplers, steppers and scalar builtins.', '']
+    return lines
+
+
 def correction(pair, original):
     result = original
     for edit in pair['replacements']:
@@ -260,13 +340,21 @@ def execute(compiler, source, directory, name):
     require(generated.returncode == 0 and image.is_file(), 'example execution failed: ' + str(source) + '\n' + generated.stderr)
 
 
-def render(root, language, authored, cases, identity, compiler, sections=None, symbols=None, max_bytes=None):
+def render(root, language, authored, cases, identity, compiler, sections=None, symbols=None, max_bytes=None,
+           config_name=CONFIG):
     root = root.resolve()
-    config = json.loads((root / CONFIG).read_text(encoding='utf-8'))
+    config = json.loads((root / config_name).read_text(encoding='utf-8'))
+    # `document` adapts the one renderer to a second reference: its title and
+    # opening lines, further links, which asset kind's builtins and rules it
+    # lists and the sections that lead before the rules.
+    document = config.get('document', {})
+    require(set(document) <= {'title', 'preface', 'links', 'asset', 'lead'}, 'unknown document setting')
+    models = document.get('asset', 'draw') == 'render'
+    require(document.get('asset', 'draw') in ('draw', 'render'), 'document asset must be draw or render')
     entries = {entry['id']: entry for entry in config['sections']}
     reserved = {'symbols', 'builtins', 'style', 'diagnostics'}
     require(len(entries) == len(config['sections']) and not reserved & entries.keys(), 'duplicate/reserved section id')
-    builtins = {builtin['name']: builtin for builtin in language['builtins']}
+    builtins = model_builtins(language) if models else {builtin['name']: builtin for builtin in language['builtins']}
     sections = select(sections, config['defaults']['sections'], [*entries, *sorted(reserved)], 'section')
     symbols = select(symbols, config['defaults']['symbols'], builtins, 'symbol')
     budget = config['defaults']['max_bytes'] if max_bytes is None else max_bytes
@@ -278,15 +366,24 @@ def render(root, language, authored, cases, identity, compiler, sections=None, s
         value = language[key]
         return '.'.join(str(int(value[part])) for part in ('major', 'minor', 'patch') if part in value)
 
-    lines = ['# .ips LLM reference', '',
-        'Generated from the handbook, compiler export and registered examples. Do not edit this artifact.', '',
-        'Follow the opening idioms when writing props. API demos teach calls on small canvases, '
-        'not prop style. Later sections cover the full language.', '',
+    preface = document.get('preface', ['Follow the opening idioms when writing props. API demos teach calls on small canvases, '
+                                       'not prop style. Later sections cover the full language.'])
+    links = [f'[Full handbook](docs/language-v{minor}.md)', '[Compiler catalog](docs/language.json)']
+    for link in document.get('links', []):
+        require((root / link['path']).is_file() or link['path'] in ('LLM_REFERENCE.md', 'LLM_REFERENCE_MODELS.md'),
+                'missing reference link: ' + link['path'])
+        links.append('[' + link['label'] + '](' + link['path'] + ')')
+    lines = ['# ' + document.get('title', '.ips LLM reference'), '',
+        'Generated from the handbook, compiler export and registered examples. Do not edit this artifact.', '']
+    for paragraph in preface:
+        lines += [paragraph, '']
+    lines += [
         f"Product {language['product_version']} · source language {version('language_version')} · C API {version('c_api_version')} · ABI {version('abi_version')}",
         f"Commit: `{identity['source_commit'] or 'source archive'}` · {identity['status']} · dirty: {str(identity['working_tree_dirty']).lower()}",
         f"Budget: {budget} UTF-8 bytes (no truncation). Sections: {', '.join(sections) or 'none'}. Symbols: {', '.join(symbols) if 'symbols' in sections and symbols else 'none'}.", '',
-        f'[Full handbook](docs/language-v{minor}.md) · [Compiler catalog](docs/language.json)', '']
-    rules_lines = compiler_rules(language, sections)
+        ' · '.join(links), '']
+    rules_lines = model_rules(language) if models else compiler_rules(language, sections)
+    lead = document.get('lead', ['idioms', 'style'])
     example_paths, repairs = [], []
 
     style = []
@@ -306,7 +403,7 @@ def render(root, language, authored, cases, identity, compiler, sections=None, s
     rules_pending = True
 
     for selected in sections:
-        if rules_pending and selected not in ('idioms', 'style'):
+        if rules_pending and selected not in lead:
             lines += rules_lines
             rules_pending = False
         if selected == 'symbols':
@@ -327,7 +424,7 @@ def render(root, language, authored, cases, identity, compiler, sections=None, s
                 lines.append('')
             lines += ['Argument effects and execution-wide resource failures remain separate from intrinsic summaries.', '']
         elif selected == 'builtins':
-            lines += builtin_catalog(root, language, authored, config.get('hints', {}))
+            lines += builtin_catalog(root, language, authored, config.get('hints', {}), models)
         elif selected == 'style':
             lines += ['## Before and after', '',
                       'Each program below compiles and runs but breaks one rule of the idioms; write the corrected form.', '']
@@ -371,7 +468,8 @@ def render(root, language, authored, cases, identity, compiler, sections=None, s
                     lines += ['[Handbook section](' + link + ')', '']
                 if not body:
                     continue
-                if part['heading'] != title:
+                # A part named like its chapter or its section needs no heading of its own.
+                if part['heading'] not in (title, entry['title']):
                     lines += ['### ' + part['heading'], '']
                 lines += [body, '']
             for name in entry.get('examples', []):

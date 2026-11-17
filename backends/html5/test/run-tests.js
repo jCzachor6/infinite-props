@@ -61,7 +61,21 @@ async function main() {
     const work = executionLimits.run(iprop, workTool);
     const worker = await executionLimits.workerCancellation(iprop, workTool);
     const compression = require("./compression-conformance.js").run(iprop, toolsDir);
-    report({ passed: result.passed && native.passed, golden: result, native, compression, executionLimits: { ...work, worker } });
+    // The model module (preview) is a second output of the same build and a
+    // superset of iprop.wasm: the golden entries must hold in it too. A build
+    // without it, such as the packaged web SDK, runs the suites above alone.
+    const modelModule = path.join(buildDir, "iprop3d.js");
+    let models = null;
+    if (fs.existsSync(modelModule)) {
+        const Module3d = await require(modelModule)({ locateFile: function () { return path.join(buildDir, "iprop3d.wasm"); } });
+        const flat = await require(path.join(root, "js", "api.js"))(() => Promise.resolve(Module3d)).create("");
+        const golden = await conformance.run(flat, fetchBytes);
+        if (!golden.passed) throw new Error("the model module fails the 2D golden entries: " + golden.failures.join("; "));
+        const iprop3d = await require(path.join(root, "js", "api3d.js"))(() => Promise.resolve(Module3d)).create("");
+        models = require("./model-conformance.js").run(iprop3d, toolsDir);
+    }
+    report({ passed: result.passed && native.passed, golden: result, native, compression, executionLimits: { ...work, worker },
+        ...(models ? { models } : {}) });
     if (result.passed && native.passed) {
         console.log("conformance: PASS (" + conformance.GOLDEN.length + " entries)");
         console.log("native/WASM compression: PASS (" + compression.images + " exact current images; " + compression.rejections + " matching rejected envelopes)");
@@ -161,6 +175,12 @@ async function main() {
             native.namedSeeds.rejections + " bytecode rejections)");
         console.log("public WASM shared part fixtures: PASS (" + native.partExportsV09.sharedBindingScenes + " complete C++/C scenes and independent lifetime)");
         console.log("native/WASM work limits: PASS (" + work.pipelines + " pipelines; " + work.nativePairs + " exact C/native/WASM counters; worker cancellation inside noise.mask)");
+        if (models) console.log("native/WASM models: PASS (" + models.models + " models; " + models.generations +
+            " exact generations of " + models.vertices + " vertices and " + models.textures + " textures; " +
+            models.skins + " skins equal to the 2D generate of the same module; " + models.encodings + " encodings; " +
+            models.traps + " matching failures; " + models.corpus + " corpus cases equal to their " + models.pins +
+            " native pins; 2D golden entries hold in the model module)");
+        else console.log("native/WASM models: not built (no iprop3d.js in " + buildDir + ")");
         if (publishCorpus) publishCorpus();
         process.exit(0);
     }

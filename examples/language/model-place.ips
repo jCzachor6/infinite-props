@@ -1,0 +1,33 @@
+// place moves, turns, scales and mirrors everything its block builds.
+import grid from "skins/grid.ips"
+
+asset placed {
+  size 116x24x24
+
+  render {
+    tile = skin.crisp(grid.draw(1))
+
+    place(at = {-48, 0, 0}) { mark(tile) }                    // moved
+    place(at = {-34, 0, 0}, yaw = 90.0) { mark(tile) }        // turned about the vertical axis
+    place(at = {-24, 6, 0}, roll = -90.0) { mark(tile) }      // laid down toward +X
+    place(at = {-4, 0, 0}, scale = 1.6) { mark(tile) }        // larger
+    place(at = {20, 0, 0}, scale = 1.6, mirror_x = 1) { mark(tile) } // and its mirror image
+
+    // Blocks nest: each post is built in a space already turned around the
+    // middle of the ring, so one line places all six.
+    place(at = {44, 0, 0}) {
+      for i in 0..6 {
+        place(yaw = 60.0 * float(i)) {
+          place(at = {0, 0, 8}, pitch = -15.0) { cone({0, 0, 0}, 1.2, 0.6, 12.0, 8, tile) }
+        }
+      }
+    }
+  }
+
+  // An L that shows which way a block points: it stands along +Y and its
+  // foot points toward +X.
+  mark(s: skin) {
+    box({0, 0, 0}, {2, 10, 2}, s)
+    box({3, 0, 0}, {4, 2, 2}, s)
+  }
+}

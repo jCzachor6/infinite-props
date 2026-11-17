@@ -8,7 +8,7 @@ import re
 from release_common import read_version_matrix
 from pathlib import PurePosixPath
 
-LANGUAGE_SCHEMA_VERSION = 7
+LANGUAGE_SCHEMA_VERSION = 8
 DIAGNOSTICS_SCHEMA_VERSION = 1
 DOCUMENTATION_SCHEMA_VERSION = 3
 VALUE_TYPES = {'i32', 'f32', 'color', 'vec2', 'distribution', 'circle', 'rect', 'void', 'T', 'palette<f32>', 'palette<color>', 'layer', 'mask'}
@@ -20,6 +20,9 @@ DESCRIPTION_TYPES = SAMPLER_TYPES | STEPPER_TYPES
 LIST_TYPES = {'list<' + item + '>' for item in ({'i32', 'f32', 'color', 'vec2', 'distribution'} | DESCRIPTION_TYPES)}
 VALUE_TYPES |= LIST_TYPES | DESCRIPTION_TYPES
 VALUE_TYPES.add('seed')  # a source type (named seeds v1.1)
+# The types of a render asset (models v1.2). They appear only in the
+# signatures under source_rules.models, never in the 2D lists.
+MODEL_VALUE_TYPES = VALUE_TYPES | {'vec3', 'skin'}
 RNG_EFFECTS = {'none', 'read_current', 'advance_current', 'push_seeded_stream', 'restore_stream',
                'seeded_computation', 'isolated_seeded_stream', 'shared_callee_stream', 'isolated_callee_stream',
                'read_initial'}
@@ -88,7 +91,7 @@ def effects(value, path):
     strings(value['may_trap'], path + '.may_trap', TRAP_CHECKS)
 
 
-def ordered_signature(value, path, typed=True):
+def ordered_signature(value, path, typed=True, types=VALUE_TYPES):
     obj(value, ['parameters'], path)
     require(type(value['parameters']) is list, path + '.parameters')
     names = []
@@ -99,7 +102,7 @@ def ordered_signature(value, path, typed=True):
         require('role' not in parameter or (parameter['role'] == 'seed' and parameter.get('type', 'i32') == 'i32'),
                 path + '.role')
         if typed:
-            require(type(parameter['type']) is str and parameter['type'] in VALUE_TYPES, path + '.type')
+            require(type(parameter['type']) is str and parameter['type'] in types, path + '.type')
         else:
             boolean(parameter['required'], path + '.required')
             boolean(parameter['positional'], path + '.positional')
@@ -114,8 +117,41 @@ def ordered_signature(value, path, typed=True):
     order = strings(value.get('evaluation_order'), path + '.evaluation_order')
     require(len(order) == len(names) and set(order) == set(names), path + ' evaluation permutation')
     if typed:
-        require(type(value.get('result')) is str and value['result'] in VALUE_TYPES, path + '.result')
+        require(type(value.get('result')) is str and value['result'] in types, path + '.result')
         effects(value.get('effects'), path + '.effects')
+
+
+def read_builtin(builtin, types=VALUE_TYPES):
+    """One builtin with its fixed overloads and optional variadic form; returns its name."""
+    obj(builtin, ['name', 'overloads'], 'builtin')
+    name = text(builtin['name'], 'builtin.name', True)
+    require(type(builtin['overloads']) is list and (builtin['overloads'] or 'variadic' in builtin), 'builtin.overloads')
+    for signature in builtin['overloads']:
+        ordered_signature(signature, 'overload', types=types)
+        boolean(signature.get('constant_evaluable'), 'constant_evaluable')
+        if 'opcode' in signature:
+            text(signature.get('opcode'), 'opcode', True)
+        if 'expansion' in signature:
+            steps = signature['expansion']
+            require(type(steps) is list and bool(steps), 'overload.expansion')
+            parameters = {p['name'] for p in signature['parameters']}
+            for step in steps:
+                require(type(step) is dict and set(step) in ({'argument'}, {'opcode'}), 'expansion step')
+                if 'argument' in step:
+                    require(text(step['argument'], 'expansion argument', True) in parameters, 'expansion argument')
+                else:
+                    text(step['opcode'], 'expansion opcode', True)
+    if 'variadic' in builtin:
+        signature = builtin['variadic']
+        ordered_signature(signature, 'variadic', types=types)
+        require(signature.get('constant_evaluable') is False, 'variadic constant_evaluable')
+        integer(signature.get('minimum_arguments'), 'minimum_arguments', 1)
+        require(signature['minimum_arguments'] == len(signature['parameters']), 'variadic minimum template arity')
+        require(type(signature.get('repeat')) is str and signature['repeat'] in {'choices', 'coordinate_pairs'}, 'variadic repeat')
+        if signature['repeat'] == 'choices':
+            strings(signature.get('choice_types'), 'choice_types', VALUE_TYPES, True)
+            require(signature.get('choice_evaluation') == 'eager_once_before_selection_rng', 'choice_evaluation')
+    return name
 
 
 NAMED_SEEDS = {
@@ -183,6 +219,223 @@ def read_named_seeds(value, rules):
             'seed' in rules['types']['helper_value_returns'], 'seed storage')
 
 
+# Models (spec models v1.2): the fixed part of source_rules.models. The rule
+# set describes a preview, so a release may change these values together with
+# the compiler; a reader that pins them learns of the change here.
+MODELS = {'status': 'preview',
+ 'contract': 'models-v1.2',
+ 'entry': 'render',
+ 'entry_syntax': 'render { <statements> }',
+ 'entry_keyword': 'contextual',
+ 'asset_entries': 'exactly_one_of_draw_or_render',
+ 'file_extension': '.iprop3d',
+ 'file_magic': 'IP3D',
+ 'page_opcode': 15,
+ 'section_ids': {'model': 12, 'skins': 13},
+ 'size_syntax': 'size <width>x<height>x<depth>',
+ 'size_meaning': 'nominal_box_in_model_units_never_clips',
+ 'scale_syntax': 'scale <units per metre>',
+ 'scale_keyword': 'contextual',
+ 'default_scale': 100,
+ 'axes': 'right_handed_x_right_y_up_z_toward_viewer',
+ 'ground': 'y_zero',
+ 'front': 'positive_z',
+ 'winding': 'counterclockwise_from_outside',
+ 'angle_unit': 'degrees',
+ 'geometry_kernel': 'binary64_no_fma_one_rounding_to_binary32_per_component',
+ 'inputs': 'render_only',
+ 'origin': False,
+ 'outputs': False,
+ 'layers': False,
+ 'clips': False,
+ 'model_parts': False,
+ 'optimizer': False,
+ 'types': [{'name': 'vec3',
+            'descriptor_code': 21,
+            'literal': '{<x>, <y>, <z>}',
+            'literal_elements': 'numbers_widen_to_f32',
+            'components': ['x', 'y', 'z'],
+            'component_type': 'f32',
+            'component_ops': ['vec3.x', 'vec3.y', 'vec3.z'],
+            'assignable_components': False,
+            'operators': {'+': 'vec3.add',
+                          '-': 'vec3.sub',
+                          '*': 'vec3.mul',
+                          '/': 'vec3.div',
+                          'scalar': 'vec3.scale',
+                          'unary -': 'vec3.neg'},
+            'scalar_operand': 'right_of_multiply_and_divide_or_left_of_multiply',
+            'random_range': 'one_shared_position_then_mix',
+            'random_range_op': 'vec3.mix',
+            'arithmetic': 'binary32_per_component_as_vec2',
+            'typed_zero': 'zero_vector',
+            'storage': {'locals': True,
+                        'helper_parameters': True,
+                        'helper_returns': True,
+                        'asset_constants': True,
+                        'host_inputs': False,
+                        'collections': False,
+                        'palettes': False}},
+           {'name': 'skin',
+            'representation': 'i32_record_number_from_one',
+            'wire_type': False,
+            'unassigned': 'trap_when_used',
+            'modifiers': 'return_a_new_skin',
+            'operators': False,
+            'storage': {'locals': True,
+                        'helper_parameters': True,
+                        'helper_returns': True,
+                        'asset_constants': False,
+                        'host_inputs': False,
+                        'collections': False,
+                        'palettes': False}}],
+ 'type_keywords': 'contextual_type_position',
+ 'types_in_draw_assets': 'compile_error',
+ 'compound_of_three': {'render': 'vec3', 'draw': 'circle'},
+ 'builtin_effects': 'writes_canvas_means_changes_the_model',
+ 'anchor': 'center_of_the_base',
+ 'place': {'syntax': 'place(<name> = <value>, ...) { <statements> }',
+           'keyword': 'contextual_call_followed_by_a_block',
+           'named_only': True,
+           'minimum_arguments': 1,
+           'duplicate_arguments': False,
+           'arguments': [{'name': 'at',
+                          'types': ['vec3'],
+                          'meaning': 'origin_of_the_block_in_the_enclosing_space'},
+                         {'name': 'yaw',
+                          'types': ['i32', 'f32'],
+                          'meaning': 'degrees_about_y_positive_turns_z_toward_x'},
+                         {'name': 'pitch',
+                          'types': ['i32', 'f32'],
+                          'meaning': 'degrees_about_x_positive_turns_y_toward_z'},
+                         {'name': 'roll',
+                          'types': ['i32', 'f32'],
+                          'meaning': 'degrees_about_z_positive_turns_x_toward_y'},
+                         {'name': 'scale',
+                          'types': ['i32', 'f32', 'vec3'],
+                          'meaning': 'positive_factor_or_one_per_axis'},
+                         {'name': 'mirror_x', 'types': ['i32'], 'meaning': 'zero_or_one'},
+                         {'name': 'mirror_y', 'types': ['i32'], 'meaning': 'zero_or_one'},
+                         {'name': 'mirror_z', 'types': ['i32'], 'meaning': 'zero_or_one'}],
+           'evaluation_order': ['at', 'yaw', 'pitch', 'roll', 'scale', 'mirror_x', 'mirror_y', 'mirror_z'],
+           'written_order_changes_evaluation': False,
+           'composition': 'scale_and_mirror_then_roll_then_pitch_then_yaw_then_offset',
+           'right_angles': 'exact',
+           'nesting': 'inner_block_in_the_space_of_the_outer',
+           'mirror': 'odd_count_reverses_winding_and_keeps_normals_outward',
+           'texture_mapping': 'computed_in_the_block_so_scale_stretches_textures',
+           'maximum_open_scopes': 32,
+           'scope_cleanup': ['end', 'return', 'break', 'continue'],
+           'begin_op': 'place.begin',
+           'fuel': 25,
+           'effects': {'rng': 'none',
+                       'writes_canvas': False,
+                       'writes_outputs': False,
+                       'summary': 'intrinsic',
+                       'may_trap': ['numeric_range', 'scope_depth']}},
+ 'skin_call': {'syntax': '<alias>.draw(<seed>[, <input> = <value>, ...][, size = {<width>, <height>}])',
+               'target': 'imported_asset_with_draw',
+               'result': 'skin',
+               'parameters': [{'name': 'seed', 'required': True, 'positional': True, 'role': 'seed'},
+                              {'name': 'size', 'required': False, 'positional': False, 'type': 'vec2'},
+                              {'name': '$uniform',
+                               'required': False,
+                               'positional': False,
+                               'default': 'input_declaration'}],
+               'evaluation_order': ['$uniform', 'seed', 'size'],
+               'size': 'pixels_truncated_toward_zero_absent_selects_declared',
+               'maximum_side': 2048,
+               'placement_arguments': False,
+               'generation': 'standard_2d_generation_of_the_embedded_program',
+               'fuel': 'embedded_program_budget',
+               'reserved_fuel': 64,
+               'sharing': 'same_program_seed_size_and_inputs_generate_once',
+               'auxiliary_images': 'published_with_the_texture',
+               'render_asset_target': False,
+               'draw_op': 'skin.draw',
+               'effects': {'rng': 'isolated_callee_stream',
+                           'writes_canvas': True,
+                           'writes_outputs': False,
+                           'summary': 'intrinsic',
+                           'may_trap': ['numeric_range', 'callee']}},
+ 'skin_defaults': {'mapping': 'repeat',
+                   'density': 1,
+                   'shift': [0, 0],
+                   'roughness': 0.8,
+                   'metallic': 0,
+                   'emission': 0,
+                   'alpha': 'opaque',
+                   'cutoff': 0.5,
+                   'two_sided': False,
+                   'crisp': False},
+ 'mapping': {'repeat': 'face_units_times_density_plus_shift_over_declared_size',
+             'fit': 'image_once_across_the_face',
+             'uv_origin': 'upper_left',
+             'unit': 'one_texel_per_model_unit_at_density_one'},
+ 'limits': {'vertices': 65536,
+            'triangles': 131072,
+            'textures': 32,
+            'texels': 4194304,
+            'texture_side': 2048,
+            'skin_records': 1024,
+            'skin_programs': 64,
+            'open_scopes': 32,
+            'sides': {'minimum': 3, 'maximum': 64},
+            'rings': {'minimum': 2, 'maximum': 32},
+            'profile_points': {'minimum': 2, 'maximum': 64},
+            'outline_points': {'minimum': 3, 'maximum': 256}},
+ 'fuel': {'instruction': 1,
+          'vertex': 6,
+          'triangle': 2,
+          'extrude_outline': 'ceil_points_squared_over_3_or_over_2_with_a_bevel',
+          'place_reserve': 24,
+          'skin_draw_reserve': 64},
+ 'arena_bytes': {'vertex': 48, 'triangle': 16, 'skin_record': 64}}
+
+
+def read_models(value, rules):
+    models = obj(rules.get('models'), list(MODELS) + ['builtins', 'extended_builtins', 'unavailable_builtins'], 'models')
+    for key in MODELS:
+        require(same_value(models[key], MODELS[key]), 'models.' + key)
+    for part in ('place', 'skin_call'):
+        effects(models[part]['effects'], 'models.' + part + '.effects')
+    flat = {builtin['name']: builtin for builtin in value['builtins']}
+
+    def page(builtin):
+        # Every overload is a sub-operation of the model page, never a 2D opcode.
+        name = read_builtin(builtin, MODEL_VALUE_TYPES)
+        require('variadic' not in builtin and bool(builtin['overloads']), 'model builtin overloads: ' + name)
+        for overload in builtin['overloads']:
+            require('opcode' not in overload and 'expansion' not in overload, 'model builtin lowering: ' + name)
+            text(overload.get('model_op'), 'model_op', True)
+        return name
+
+    require(type(models['builtins']) is list and bool(models['builtins']), 'models.builtins')
+    added = [page(builtin) for builtin in models['builtins']]
+    require(len(added) == len(set(added)) and not set(added) & set(flat), 'model builtin names')
+    require(type(models['extended_builtins']) is list, 'models.extended_builtins')
+    extended = [page(builtin) for builtin in models['extended_builtins']]
+    require(len(extended) == len(set(extended)) and set(extended) <= set(flat), 'extended builtin names')
+    for builtin in models['extended_builtins']:
+        # An added overload takes or returns a type the 2D builtin does not have.
+        require(all(({p['type'] for p in overload['parameters']} | {overload['result']}) & {'vec3', 'skin'}
+                    for overload in builtin['overloads']), 'extended overload types: ' + builtin['name'])
+    unavailable = strings(models['unavailable_builtins'], 'models.unavailable_builtins', set(flat), True)
+    require(not set(unavailable) & set(extended), 'an unavailable builtin is not extended')
+    # A primitive ends with its skin and changes the model; a pure vec3
+    # function does neither.
+    for builtin in models['builtins']:
+        for overload in builtin['overloads']:
+            skins = [p['type'] == 'skin' for p in overload['parameters']]
+            require(overload['effects']['rng'] == 'none' and not overload['effects']['writes_outputs'],
+                    'model builtin effects: ' + builtin['name'])
+            require(overload['effects']['writes_canvas'] == any(skins), 'model builtin writes: ' + builtin['name'])
+            require(('unassigned_handle' in overload['effects']['may_trap']) == any(skins),
+                    'model builtin skin check: ' + builtin['name'])
+            if overload['result'] == 'void':
+                require(skins and skins[-1], 'a primitive ends with its skin: ' + builtin['name'])
+
+
 def read_language(value):
     obj(value, ['schema_version', 'product_version', 'builtins', 'language_version',
                 'c_api_version', 'abi_version', 'source_rules', 'effect_rules', 'call_rules'], 'language')
@@ -195,36 +448,7 @@ def read_language(value):
                 value['c_abi_soversion'] == f"{int(value['abi_version']['major'])}.{int(value['abi_version']['minor'])}",
                 'c_abi_soversion matches abi_version')
     require(type(value['builtins']) is list and bool(value['builtins']), 'builtins')
-    names = []
-    for builtin in value['builtins']:
-        obj(builtin, ['name', 'overloads'], 'builtin')
-        names.append(text(builtin['name'], 'builtin.name', True))
-        require(type(builtin['overloads']) is list and (builtin['overloads'] or 'variadic' in builtin), 'builtin.overloads')
-        for signature in builtin['overloads']:
-            ordered_signature(signature, 'overload')
-            boolean(signature.get('constant_evaluable'), 'constant_evaluable')
-            if 'opcode' in signature:
-                text(signature.get('opcode'), 'opcode', True)
-            if 'expansion' in signature:
-                steps = signature['expansion']
-                require(type(steps) is list and bool(steps), 'overload.expansion')
-                parameters = {p['name'] for p in signature['parameters']}
-                for step in steps:
-                    require(type(step) is dict and set(step) in ({'argument'}, {'opcode'}), 'expansion step')
-                    if 'argument' in step:
-                        require(text(step['argument'], 'expansion argument', True) in parameters, 'expansion argument')
-                    else:
-                        text(step['opcode'], 'expansion opcode', True)
-        if 'variadic' in builtin:
-            signature = builtin['variadic']
-            ordered_signature(signature, 'variadic')
-            require(signature.get('constant_evaluable') is False, 'variadic constant_evaluable')
-            integer(signature.get('minimum_arguments'), 'minimum_arguments', 1)
-            require(signature['minimum_arguments'] == len(signature['parameters']), 'variadic minimum template arity')
-            require(type(signature.get('repeat')) is str and signature['repeat'] in {'choices', 'coordinate_pairs'}, 'variadic repeat')
-            if signature['repeat'] == 'choices':
-                strings(signature.get('choice_types'), 'choice_types', VALUE_TYPES, True)
-                require(signature.get('choice_evaluation') == 'eager_once_before_selection_rng', 'choice_evaluation')
+    names = [read_builtin(builtin) for builtin in value['builtins']]
     require(len(names) == len(set(names)), 'unique builtin names')
     rules = obj(value['source_rules'], ['inputs', 'types', 'locals', 'visibility', 'asset_constants', 'named_calls', 'restrictions', 'effect_order'], 'source_rules')
     if 'reserved_keywords' in rules:
@@ -490,6 +714,8 @@ def read_language(value):
             not overload['effects']['writes_canvas'] and not overload['effects']['may_trap'], 'color.normal builtin')
     if 'named_seeds' in rules:  # required by schema 7; reduced fixtures omit it
         read_named_seeds(value, rules)
+    if 'models' in rules:  # required by schema 8; reduced fixtures omit it
+        read_models(value, rules)
     if 'resource_exports' in rules:
         exports = rules['resource_exports']
         _strings_and_bools(exports, {

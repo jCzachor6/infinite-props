@@ -39,6 +39,8 @@ struct SourceCompilationResult {
     std::map<std::string, std::vector<std::string>> imports;
     std::vector<CompilationDiagnostic> diagnostics;
     std::vector<u8> bytes; // validated executable; empty for failure or an allowed material entry
+    // The entry has `render`: `bytes` is an .iprop3d model (models v1.2).
+    bool model = false;
 
     bool succeeded() const noexcept { return status == SourceCompilationStatus::Success; }
 };

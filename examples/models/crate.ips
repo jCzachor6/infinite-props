@@ -1,0 +1,135 @@
+// A wooden crate, one unit to a centimetre. The seed picks its proportions,
+// which way the boards run, its frame, braces, iron corners and handles;
+// `finish` fixes the wood and 0 leaves it to the seed.
+import wood  from "skins/oak.ips"
+import metal from "skins/iron.ips"
+
+asset crate {
+  size 84x68x68
+  scale 100
+
+  input u32 finish = 0
+
+  palette finishes = [#c79c63, #a3713d, #7c4a27, #8c8577, #b5a184]
+  palette irons    = [#5d6166, #3f4246, #6e6253]
+
+  render {
+    root = seed.initial()
+
+    // Proportions.
+    w = roll(root.fork("width"), 44.0, 76.0)
+    h = roll(root.fork("height"), 30.0, 60.0)
+    d = roll(root.fork("depth"), 36.0, 60.0)
+    t = roll(root.fork("batten"), 3.0, 4.5)
+
+    // Features.
+    across = choose(root.fork("boards"), 0, 1)             // boards run up, or across
+    frame  = choose(root.fork("frame"), 0, 1, 1, 2)        // none, end frames, every edge
+    brace  = choose(root.fork("brace"), 0, 1, 1, 2)        // none, a diagonal, a cross
+    corners = choose(root.fork("corners"), 0, 0, 1)        // iron corner caps
+    handles = choose(root.fork("handles"), 0, 1)           // iron bars on the ends
+
+    // Skins: planks for the walls, one piece for the battens, iron.
+    look = finish
+    if (finish == 0) { look = choose(root.fork("finish"), 1, 2, 2, 3, 4, 5) }
+    tint = finishes[look - 1]
+    planks = skin.roughness(wood.draw(root.fork("planks"), tint = tint, size = {128, 128}), 0.75)
+    solid = skin.roughness(wood.draw(root.fork("solid"), tint = color.shade(tint, -14), planks = 0), 0.7)
+    // Iron only when something wears it: a texture is made and handed to
+    // the host whenever its call runs.
+    ironTone = irons[choose(root.fork("iron tone"), 0, 0, 1, 2)]
+    if (corners == 1 || handles == 1) {
+      iron = skin.metallic(skin.roughness(metal.draw(root.fork("iron"), tint = ironTone,
+                                                      wear = roll(root.fork("wear"), 0.2, 0.9)), 0.45), 1.0)
+    }
+
+    // The walls: one box, its boards turned across by laying it down.
+    if (across == 1) {
+      place(at = {-w * 0.5, h * 0.5, 0}, roll = -90.0) { box({0, 0, 0}, {h, w, d}, 0.4, planks) }
+    } else {
+      box({0, 0, 0}, {w, h, d}, 0.4, planks)
+    }
+
+    // Battens centred on the edges, a little above the lid so no face
+    // lies in the plane of a wall.
+    top = h + t * 0.4
+    if (frame >= 1) {
+      for i in 0..4 {
+        x = w * 0.5
+        z = d * 0.5
+        if (i % 2 == 1) { x = -x }
+        if (i >= 2) { z = -z }
+        box({x, 0, z}, {t, top, t}, 0.3, solid)
+      }
+      for side in 0..2 {
+        z = d * 0.5
+        if (side == 1) { z = -z }
+        barX({-w * 0.5, t * 0.5, z}, w, t, t, solid)
+        barX({-w * 0.5, top - t * 0.5, z}, w, t, t, solid)
+      }
+    }
+    if (frame == 2) {
+      for side in 0..2 {
+        x = w * 0.5
+        if (side == 1) { x = -x }
+        barZ({x, t * 0.5, -d * 0.5}, d, t, t, solid)
+        barZ({x, top - t * 0.5, -d * 0.5}, d, t, t, solid)
+      }
+    }
+
+    // Braces on the long faces, between the rails of a frame.
+    if (frame >= 1 && brace >= 1) {
+      inner = w - t
+      tall = top - t * 2.0
+      length = sqrt(inner * inner + tall * tall)
+      angle = atan2(tall, inner) * 57.29578
+      for side in 0..2 {
+        z = d * 0.5 + t * 0.25
+        if (side == 1) { z = -z }
+        place(at = {-inner * 0.5, t, z}, roll = angle - 90.0) { box({0, 0, 0}, {t * 0.9, length, t * 0.6}, 0.25, solid) }
+        if (brace == 2) {
+          place(at = {inner * 0.5, t, z}, roll = 90.0 - angle) { box({0, 0, 0}, {t * 0.9, length, t * 0.6}, 0.25, solid) }
+        }
+      }
+    }
+
+    // Iron caps over the eight corners.
+    if (corners == 1) {
+      c = t * 1.6
+      for i in 0..8 {
+        x = w * 0.5
+        z = d * 0.5
+        y = 0.0
+        if (i % 2 == 1) { x = -x }
+        if ((i / 2) % 2 == 1) { z = -z }
+        if (i >= 4) { y = top - c }
+        box({x, y - 0.2, z}, {c, c + 0.4, c}, 0.3, iron)
+      }
+    }
+
+    // A bar handle on each end, on two small blocks.
+    if (handles == 1) {
+      reach = d * 0.3
+      y = top * 0.7
+      for side in 0..2 {
+        x = w * 0.5 + t * 0.5 + 1.6
+        out = 1.0
+        if (side == 1) { x = -x; out = -1.0 }
+        place(at = {x, y, -reach}, pitch = 90.0) { cylinder({0, 0, 0}, 0.9, reach * 2.0, 10, iron) }
+        box({x - out * 1.2, y - 1.6, -reach}, {2.6, 3.2, 2.2}, 0.3, iron)
+        box({x - out * 1.2, y - 1.6, reach}, {2.6, 3.2, 2.2}, 0.3, iron)
+      }
+    }
+  }
+
+  // A bar of `length` from `start` toward +X, built upright and laid down so
+  // that the grain runs along it. `start` is the middle of its end.
+  barX(start: vec3, length: f32, tall: f32, deep: f32, s: skin) {
+    place(at = start, roll = -90.0) { box({0, 0, 0}, {tall, length, deep}, 0.3, s) }
+  }
+
+  // The same toward +Z.
+  barZ(start: vec3, length: f32, tall: f32, wide: f32, s: skin) {
+    place(at = start, pitch = 90.0) { box({0, 0, 0}, {wide, length, tall}, 0.3, s) }
+  }
+}

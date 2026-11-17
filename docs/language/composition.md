@@ -12,6 +12,11 @@ level's placement/D4 once; host indices still count geometry only.
 
 <!-- example: ../../examples/language/composition.ips -->
 
+<!-- llm: skip -->
+In an asset with `render` an import is not a part: `alias.draw(seed)` is an
+expression that returns the imported asset as a [skin](models.md#skins), a
+texture for a 3D model.
+
 `alias.draw(seed = seed, at = {x, y}, uniforms...)` requires an `i32` or
 [`seed`](random.md#named-seeds) (positional or named) and named placement.
 Inside the part, `seed.initial()` returns that call's seed. Transforms/input overrides are

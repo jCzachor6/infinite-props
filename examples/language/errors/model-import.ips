@@ -1,0 +1,9 @@
+// A skin comes from an asset that has draw; a model cannot be imported.
+import stool from "../stool.ips"
+
+asset room {
+  size 100x60x100
+  render {
+    seat = stool.draw(seed.initial())
+  }
+}

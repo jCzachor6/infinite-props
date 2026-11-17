@@ -1,5 +1,6 @@
 #include "ips/BuiltinArguments.hpp"
 #include "ips/Suggestions.hpp"
+#include "iprop/model/Ops.hpp"
 
 #include <algorithm>
 #include <set>
@@ -103,6 +104,41 @@ std::vector<ArgumentParameter> partParameters(std::span<const std::string> unifo
     };
     for (const auto& name : uniforms) result.push_back({name,false,false});
     return result;
+}
+
+std::vector<ArgumentParameter> skinParameters(std::span<const std::string> uniforms) {
+    std::vector<ArgumentParameter> result{{"seed"}, {"size", false, false}};
+    for (const auto& name : uniforms) result.push_back({name, false, false});
+    return result;
+}
+
+std::span<const PlaceArgument> placeArguments() {
+    static constexpr PlaceArgument arguments[] = {
+        {"at", PlaceKind::Offset, model::kPlaceAt},
+        {"yaw", PlaceKind::Degrees, model::kPlaceYaw},
+        {"pitch", PlaceKind::Degrees, model::kPlacePitch},
+        {"roll", PlaceKind::Degrees, model::kPlaceRoll},
+        {"scale", PlaceKind::Scale, model::kPlaceScale},
+        {"mirror_x", PlaceKind::Mirror, model::kPlaceMirrorX},
+        {"mirror_y", PlaceKind::Mirror, model::kPlaceMirrorY},
+        {"mirror_z", PlaceKind::Mirror, model::kPlaceMirrorZ},
+    };
+    return arguments;
+}
+
+const PlaceArgument* findPlaceArgument(std::string_view name) {
+    for (const auto& argument : placeArguments())
+        if (argument.name == name) return &argument;
+    return nullptr;
+}
+
+std::string placeArgumentNames() {
+    std::string names;
+    for (const auto& argument : placeArguments()) {
+        if (!names.empty()) names += ", ";
+        names += argument.name;
+    }
+    return names;
 }
 
 std::vector<const Arg*> partArguments(const Call& call,

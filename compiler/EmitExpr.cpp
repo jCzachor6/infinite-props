@@ -51,6 +51,12 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
         return ips::ValueType::Distribution;
     }
     if (const auto* vector = std::get_if<ips::VectorLit>(&expr)) {
+        // In a render asset three numbers are a vec3 (models v1.2).
+        if (current_->typeOf(expr) == ips::ValueType::Vec3) {
+            for (const auto& element : vector->elements) emitNumber(*element);
+            page(model::Op::Vec3Make);
+            return ips::ValueType::Vec3;
+        }
         // A {x, y} literal in a value context becomes the vec2; the
         // 3/4-element compounds only flow into output writes.
         if (vector->elements.size() != 2) {
@@ -74,7 +80,9 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
         const auto type = current_->typeOf(expr);
         if (type == ips::ValueType::F32) {
             emitExpr(*member.object);
-            ins(member.name == "x" ? Opcode::Vec2X : Opcode::Vec2Y);
+            if (current_->typeOf(*member.object) == ips::ValueType::Vec3)
+                page(member.name == "x" ? model::Op::Vec3X : member.name == "y" ? model::Op::Vec3Y : model::Op::Vec3Z);
+            else ins(member.name == "x" ? Opcode::Vec2X : Opcode::Vec2Y);
             return ips::ValueType::F32;
         }
         if (type == ips::ValueType::I32) {
@@ -106,7 +114,7 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
         // follows all of their effects.
         const auto type = current_->typeOf(expr);
         const bool integer = type == ips::ValueType::I32;
-        const bool ends = type == ips::ValueType::Color || type == ips::ValueType::Vec2;
+        const bool ends = type == ips::ValueType::Color || type == ips::ValueType::Vec2 || type == ips::ValueType::Vec3;
         for (const auto* bound : {range->lower.get(), range->upper.get()}) {
             emitExpr(*bound);
             if (!integer && !ends && current_->typeOf(*bound) == ips::ValueType::I32) ins(Opcode::I32ToF32);
@@ -122,7 +130,8 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
         } else {
             ins(integer ? Opcode::RngInt : Opcode::RngFloat);
         }
-        if (ends) ins(type == ips::ValueType::Color ? Opcode::ColorMixRgba : Opcode::Vec2Mix);
+        if (type == ips::ValueType::Vec3) page(model::Op::Vec3Mix);
+        else if (ends) ins(type == ips::ValueType::Color ? Opcode::ColorMixRgba : Opcode::Vec2Mix);
         return type;
     }
     if (const auto* capture = std::get_if<ips::SamplerCapture>(&expr)) {
@@ -297,12 +306,46 @@ ips::ValueType Emitter::emitBinary(const ips::Binary& bin) {
                        rightType == ips::ValueType::F32;
     const bool vec2op = leftType == ips::ValueType::Vec2 ||
                         rightType == ips::ValueType::Vec2;
+    const bool vec3op = leftType == ips::ValueType::Vec3 || rightType == ips::ValueType::Vec3;
 
     switch (bin.op) {
     case ips::Binary::Op::Add:
     case ips::Binary::Op::Sub:
     case ips::Binary::Op::Mul:
     case ips::Binary::Op::Div: {
+        if (vec3op) {
+            // vec3 follows vec2 (models v1.2): both sides vectors, or a
+            // scalar on the right of * and /, or on the left of *. Operands
+            // evaluate left to right; a scalar waits in a local.
+            const bool leftVector = leftType == ips::ValueType::Vec3, rightVector = rightType == ips::ValueType::Vec3;
+            if (leftVector && rightVector) {
+                emitExpr(*bin.left);
+                emitExpr(*bin.right);
+                page(bin.op == ips::Binary::Op::Add ? model::Op::Vec3Add : bin.op == ips::Binary::Op::Sub ? model::Op::Vec3Sub
+                      : bin.op == ips::Binary::Op::Mul ? model::Op::Vec3Mul : model::Op::Vec3Div);
+            } else if (leftVector && bin.op == ips::Binary::Op::Mul) {
+                emitExpr(*bin.left);
+                emitNumber(*bin.right);
+                page(model::Op::Vec3Scale);
+            } else if (leftVector) {
+                // v / s divides every component by s.
+                emitExpr(*bin.left);
+                emitNumber(*bin.right);
+                const auto scalar = temporary(ips::ValueType::F32);
+                ins(Opcode::LocalSet, 0, scalar.index());
+                for (int i = 0; i < 3; ++i) ins(Opcode::LocalGet, 0, scalar.index());
+                page(model::Op::Vec3Make);
+                page(model::Op::Vec3Div);
+            } else {
+                emitNumber(*bin.left);
+                const auto scalar = temporary(ips::ValueType::F32);
+                ins(Opcode::LocalSet, 0, scalar.index());
+                emitExpr(*bin.right);
+                ins(Opcode::LocalGet, 0, scalar.index());
+                page(model::Op::Vec3Scale);
+            }
+            return ips::ValueType::Vec3;
+        }
         if (vec2op) {
             const bool rightIsVector = rightType == ips::ValueType::Vec2;
             if (bin.op == ips::Binary::Op::Mul && rightIsVector &&
@@ -459,7 +502,9 @@ ips::ValueType Emitter::emitUnary(const ips::Unary& un) {
     emitExpr(*un.operand);
     switch (un.op) {
     case ips::Unary::Op::Neg:
-        if (operand == ips::ValueType::Vec2) {
+        if (operand == ips::ValueType::Vec3) {
+            page(model::Op::Vec3Neg);
+        } else if (operand == ips::ValueType::Vec2) {
             ins(Opcode::Vec2Neg);
         } else {
             ins(operand == ips::ValueType::F32 ? Opcode::F32Neg

@@ -1,4 +1,5 @@
 #include "Plan.hpp"
+#include "iprop/model/Ops.hpp"
 #include "ips/BuiltinSpec.hpp"
 #include "ips/Fold.hpp"
 #include "ips/Imports.hpp"
@@ -42,10 +43,12 @@ const ips::ResolvedPalette& Plan::palette(const ips::Program& owner, const ips::
 
 Planner::Planner(const ips::Program& entry,
                  const std::map<std::string, const ips::Program*>& parts,
-                 const std::map<std::string, std::string>& partSources)
-    : entry_(entry), parts_(parts), partSources_(partSources),
+                 const std::map<std::string, std::string>& partSources,
+                 const std::map<std::string, std::vector<u8>>& skins)
+    : entry_(entry), parts_(parts), partSources_(partSources), skins_(skins),
       plan_(std::make_unique<Plan>()) {
     plan_->entry = &entry;
+    plan_->model = ips::isModel(entry.asset);
 }
 
 std::string Plan::sourcePath(const ips::Program* owner) const {
@@ -101,6 +104,7 @@ std::unique_ptr<Plan> Planner::plan() {
     // Surfaces are keyed by alias path; the Typer prefixes its namespace.
     for (std::size_t i = 0; i < plan_->parts.size(); ++i)
         surfaces_.emplace(plan_->instances[i].path, ips::partInfoOf(plan_->parts[i]->asset));
+    for (const auto& skin : plan_->skins) surfaces_.emplace(skin.alias, ips::partInfoOf(skin.program->asset));
     typer_ = std::make_unique<ips::Typer>(surfaces_);
     typer_->resolveFunction = [this](const std::string& name,
                                      const ips::SourceLocation& at,
@@ -132,6 +136,8 @@ std::unique_ptr<Plan> Planner::plan() {
     };
     prepareDefaults(entry_);
     for (const auto* part : plan_->parts) prepareDefaults(*part);
+    // A skin call pushes the default of every input it does not override.
+    for (const auto& skin : plan_->skins) prepareDefaults(*skin.program);
     planFunctions();
     registerNames();
 
@@ -190,6 +196,27 @@ void Planner::planParts() {
     for (u32 slot = 0; slot < plan_->rootSlots.size(); ++slot)
         plan_->rootSlotIndex.emplace(plan_->rootSlots[slot].name, slot);
 
+    if (plan_->model) {
+        // The imports of a model are its skins, not parts of one executable.
+        for (const auto& import : entry_.imports) {
+            if (std::find(entry_.materialImportAliases.begin(), entry_.materialImportAliases.end(),
+                          import.alias) != entry_.materialImportAliases.end())
+                continue;
+            const auto program = parts_.find(import.alias);
+            const auto bytes = skins_.find(import.alias);
+            if (program == parts_.end() || bytes == skins_.end())
+                throw ips::SourceError{import.location, "imported asset '" + import.alias + "' was not provided",
+                    {}, ips::DiagnosticCode::PlanError, ips::DiagnosticStage::Planning};
+            if (plan_->skins.size() >= model::kMaxSkinPrograms)
+                throw ips::SourceError{import.location, "a model imports at most " +
+                    std::to_string(model::kMaxSkinPrograms) + " skin assets", {},
+                    ips::DiagnosticCode::ResourceLimit, ips::DiagnosticStage::Planning};
+            plan_->skinIndex.emplace(import.alias, static_cast<u32>(plan_->skins.size()));
+            plan_->skins.push_back({import.alias, program->second, bytes->second});
+        }
+        return;
+    }
+
     // Instances in preorder of import order: a flat source keeps its import
     // order, and each child directly follows its parent's earlier children.
     const auto expand = [&](auto&& self, const ips::Program& owner, const std::string& prefix,
@@ -237,7 +264,7 @@ void Planner::planFunctions() {
     // compile with the helper silently unused.
     const auto rejectBuiltinNames = [](const ips::Program& owner, const std::string& source) {
         for (const auto& function : owner.asset.functions)
-            if (ips::isBuiltinFunctionName(function.name))
+            if (ips::isBuiltinFunctionName(function.name, ips::isModel(owner.asset)))
                 throw ips::SourceError{function.location, "function '" + function.name +
                     "' has the name of a builtin; choose another name", source,
                     ips::DiagnosticCode::PlanError, ips::DiagnosticStage::Planning};
@@ -247,16 +274,18 @@ void Planner::planFunctions() {
         rejectBuiltinNames(*plan_->parts[i], plan_->instances[i].source);
     // Table order: draw first, then the entry's other functions in
     // declaration order, then each part's functions.
+    // The entry block is `render` in a model and `draw` otherwise.
     std::vector<std::string> planned;
+    const ips::Function* entry = ips::entryFunction(entry_.asset);
     for (const auto& function : entry_.asset.functions) {
-        if (function.name == "draw") {
-            planned.push_back("draw");
-            registry_.emplace("draw", &function);
-            registryDrawLike_.emplace("draw", true);
+        if (&function == entry) {
+            planned.push_back(function.name);
+            registry_.emplace(function.name, &function);
+            registryDrawLike_.emplace(function.name, true);
         }
     }
     for (const auto& function : entry_.asset.functions) {
-        if (function.name != "draw") {
+        if (&function != entry) {
             planned.push_back(function.name);
             registry_.emplace(function.name, &function);
             registryDrawLike_.emplace(function.name, false);
@@ -323,6 +352,7 @@ void Planner::registerNames() {
     for (const auto& instance : plan_->instances) {
         plan_->pools.addString(instance.path);
     }
+    for (const auto& skin : plan_->skins) plan_->pools.addString(skin.alias);
 }
 
 // Prepares one function: fills its params, discovers locals in
@@ -477,6 +507,13 @@ void Planner::prepareFunctionBody(const std::string& name) {
                 typer_->typeOf(*clip->mask);
                 enterSurfaceScope(clip->location);
                 self(self, clip->body);
+                --surfaceScopes;
+            } else if (const auto* place = std::get_if<ips::PlaceStmt>(&stmt)) {
+                for (const auto& arg : place->args)
+                    typer_->typeOf(*arg.value, arg.name && *arg.name == "at"
+                                                   ? std::optional(ips::ValueType::Vec3) : std::nullopt);
+                enterSurfaceScope(place->location);
+                self(self, place->body);
                 --surfaceScopes;
             }
         }

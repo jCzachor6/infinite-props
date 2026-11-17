@@ -37,6 +37,11 @@ Locals and parameters may reuse builtin names: `rect = 2` does not hide
 <!-- llm: skip -->
 This example is intentionally rejected: `sqrt` is a builtin.
 
+<!-- llm: skip -->
+An asset with `render` has more builtins: the primitives such as `box` and
+the namespaces `vec3` and `skin`. Those names stay free for helpers, locals
+and import aliases in an asset with `draw`; see [models](models.md).
+
 ## Literals
 
 - Integers: decimal or `0x`/`0X` hexadecimal, stored as 32-bit patterns

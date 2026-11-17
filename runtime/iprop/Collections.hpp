@@ -28,7 +28,8 @@ struct CollectionPool {
     std::vector<Distribution> distributions;
 };
 
-TypeDescriptor readTypeReference(Reader& reader, std::span<const TypeDescriptor> types);
+// `vec3` admits the vec3 type code of the model dialect (spec models v1.2).
+TypeDescriptor readTypeReference(Reader& reader, std::span<const TypeDescriptor> types, bool vec3 = false);
 // The index of a parameterized type in a descriptor table; a writer that
 // lost the descriptor has a bug, so a missing type throws std::logic_error.
 u16 typeDescriptorIndex(TypeDescriptor type, std::span<const TypeDescriptor> types);

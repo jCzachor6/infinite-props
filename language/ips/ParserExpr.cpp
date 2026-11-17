@@ -230,8 +230,10 @@ std::unique_ptr<Expr> ParserImpl::parsePostfixAfter(std::unique_ptr<Expr> expr) 
     for (;;) {
         if (match(TokenKind::Dot)) {
             const auto* base = std::get_if<Identifier>(expr.get());
+            // `skin.density` is a modifier of the model page (models v1.2).
             const Token name = base && ((base->name == "mask" && kind() == TokenKind::KeywordFrom) ||
-                ((base->name == "noise" || base->name == "regions" || base->name == "part") && kind() == TokenKind::KeywordMask)) ?
+                ((base->name == "noise" || base->name == "regions" || base->name == "part") && kind() == TokenKind::KeywordMask) ||
+                (base->name == "skin" && kind() == TokenKind::KeywordDensity)) ?
                 advance() : expectName("a member name after '.'");
             expr = node(
                 Member{std::move(expr), name.text, name.location});

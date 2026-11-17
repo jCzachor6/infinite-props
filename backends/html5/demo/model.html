@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="cache-control" content="no-cache">
+<title>iprop — models in the browser</title>
+<style>
+  :root {
+    --bg: #10161d;
+    --panel: #17212b;
+    --line: #2b3a46;
+    --text: #dce4ea;
+    --dim: #8aa4ae;
+    --accent: #90c5b9;
+    --warn: #e0a14a;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    display: grid;
+    grid-template-rows: auto 1fr;
+  }
+  header { padding: 1.1rem 1.5rem 0.9rem; border-bottom: 1px solid var(--line); }
+  h1 { font-size: 1.05rem; font-weight: 600; margin: 0; }
+  h1 .dim { color: var(--accent); }
+  .sub { color: var(--dim); font-size: 0.78rem; margin-top: 0.3rem; }
+  main { display: grid; grid-template-columns: 1fr 19rem; min-height: 0; }
+  .stage { position: relative; min-height: 0; overflow: hidden; }
+  .stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  .stage canvas:active { cursor: grabbing; }
+  .stage.is-over { outline: 2px dashed var(--accent); outline-offset: -8px; }
+  #status {
+    position: absolute; left: 1rem; bottom: 0.8rem; right: 1rem;
+    color: var(--dim); font-size: 0.78rem; pointer-events: none;
+  }
+  #status.error { color: var(--warn); }
+  aside {
+    background: var(--panel); border-left: 1px solid var(--line);
+    padding: 1rem 1.1rem 1.5rem; overflow-y: auto; font-size: 0.8rem;
+  }
+  aside h2 { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); margin: 1.2rem 0 0.5rem; }
+  aside h2:first-child { margin-top: 0; }
+  .row { display: flex; align-items: center; gap: 0.45rem; margin-bottom: 0.45rem; }
+  .row label { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .type { color: var(--dim); font-size: 0.7rem; }
+  button, .file {
+    font: inherit; font-size: 0.8rem; color: #0c1218; background: var(--accent);
+    border: none; border-radius: 5px; padding: 0.4rem 0.7rem; cursor: pointer;
+  }
+  button:hover, .file:hover { filter: brightness(1.12); }
+  button.quiet { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+  input[type=number], input[type=text] {
+    font: inherit; font-size: 0.8rem; width: 6.5rem; color: var(--text);
+    background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 0.3rem 0.4rem;
+  }
+  input[type=color] { width: 2.4rem; height: 1.7rem; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); }
+  input[type=file] { display: none; }
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 0.2rem 0.8rem; margin: 0; }
+  dt { color: var(--dim); }
+  dd { margin: 0; text-align: right; }
+  .note { color: var(--dim); line-height: 1.5; }
+  .swatches { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+  .swatches canvas { width: 3.6rem; height: 3.6rem; image-rendering: pixelated; border: 1px solid var(--line); border-radius: 3px; background: #0b1016; }
+  @media (max-width: 52rem) { main { grid-template-columns: 1fr; grid-template-rows: 60vh auto; } aside { border-left: none; border-top: 1px solid var(--line); } }
+</style>
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.187.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<header>
+  <h1>iprop <span class="dim">models</span> — one <code>.iprop3d</code>, a new shape for every seed</h1>
+  <div class="sub">Generated in a worker by the WASM module, drawn with three.js. Drag to turn, scroll to zoom, ← → for the next seed. Drop an <code>.iprop3d</code> file to view it.</div>
+</header>
+<main>
+  <div class="stage" id="stage">
+    <canvas id="view"></canvas>
+    <div id="status">Loading…</div>
+  </div>
+  <aside>
+    <h2>Model</h2>
+    <div class="row"><label id="model-name">chair.iprop3d</label><label class="file" for="file">Open…</label><input type="file" id="file" accept=".iprop3d"></div>
+    <h2>Seed</h2>
+    <div class="row">
+      <button class="quiet" id="previous" title="Previous seed">←</button>
+      <input type="number" id="seed" min="0" max="4294967295" step="1" value="0">
+      <button class="quiet" id="next" title="Next seed">→</button>
+      <button id="random">Random</button>
+    </div>
+    <h2>Inputs</h2>
+    <div id="inputs"><div class="note">None.</div></div>
+    <h2>Light</h2>
+    <div class="row"><label for="light">Follows the pointer</label><input type="checkbox" id="light" checked></div>
+    <h2>This generation</h2>
+    <dl>
+      <dt>Vertices</dt><dd id="stat-vertices">–</dd>
+      <dt>Triangles</dt><dd id="stat-triangles">–</dd>
+      <dt>Surfaces</dt><dd id="stat-surfaces">–</dd>
+      <dt>Textures</dt><dd id="stat-textures">–</dd>
+      <dt>Size</dt><dd id="stat-size">–</dd>
+      <dt>Generated in</dt><dd id="stat-time">–</dd>
+    </dl>
+    <h2>Textures</h2>
+    <div class="swatches" id="swatches"></div>
+  </aside>
+</main>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { toObject3D, disposeObject3D } from "../js/three-adapter.js";
+
+const $ = id => document.getElementById(id);
+const status = (text, error = false) => { $("status").textContent = text; $("status").classList.toggle("error", error); };
+
+// ---- the scene: a floor, a key light with shadows and soft room light ----
+const canvas = $("view");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x10161d);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.45;
+
+const camera = new THREE.PerspectiveCamera(32, 1, 0.05, 100);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI * 0.495;
+
+const key = new THREE.DirectionalLight(0xfff1dd, 3.2);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.radius = 5;
+key.shadow.bias = -0.0004;
+key.shadow.normalBias = 0.01;
+scene.add(key, key.target);
+
+const floor = new THREE.Mesh(new THREE.CircleGeometry(6, 64),
+    new THREE.MeshStandardMaterial({ color: 0x1a232d, roughness: 0.95, metalness: 0 }));
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// ---- the model: a worker generates, the page swaps the object in ----
+const worker = new Worker("../js/model-worker.js");
+const absolute = path => new URL(path, location.href).href;
+worker.postMessage({ type: "init", scripts: [absolute("iprop3d.js"), absolute("../js/api3d.js")], wasm: absolute("iprop3d.wasm") });
+
+const textures = new Map();   // one GPU texture per key, across seeds
+let object = null, model = null, request = 0, framed = false;
+const uniforms = {};
+
+function generate() {
+    if (!model) return;
+    const seed = Math.min(4294967295, Math.max(0, Math.floor(Number($("seed").value) || 0)));
+    $("seed").value = seed;
+    worker.postMessage({ type: "generate", model: "current", request: ++request, options: { seed, uniforms } });
+}
+
+function load(bytes, name) {
+    $("model-name").textContent = name;
+    framed = false;
+    for (const name of Object.keys(uniforms)) delete uniforms[name];
+    worker.postMessage({ type: "load", model: "current", bytes }, [bytes.buffer]);
+}
+
+// The inputs a model declares, as controls. A cleared field returns the
+// input to its default.
+function showInputs(inputs) {
+    const list = $("inputs");
+    list.textContent = "";
+    if (!inputs.length) { list.innerHTML = '<div class="note">None.</div>'; return; }
+    for (const input of inputs) {
+        const row = document.createElement("div");
+        row.className = "row";
+        const label = document.createElement("label");
+        label.textContent = input.name;
+        label.title = input.name + " (" + input.type + ", default " + input.default + ")";
+        const field = document.createElement("input");
+        if (input.type === "color") {
+            field.type = "color";
+            field.value = input.default.slice(0, 7);
+            field.addEventListener("input", () => { uniforms[input.name] = field.value; generate(); });
+        } else {
+            field.type = "number";
+            field.placeholder = String(input.default);
+            if (input.type === "u32") { field.min = "0"; field.step = "1"; } else field.step = "any";
+            field.addEventListener("input", () => {
+                if (field.value === "" || !Number.isFinite(Number(field.value))) delete uniforms[input.name];
+                else uniforms[input.name] = input.type === "u32" ? Math.max(0, Math.floor(Number(field.value))) : Number(field.value);
+                generate();
+            });
+        }
+        const type = document.createElement("span");
+        type.className = "type";
+        type.textContent = input.type;
+        row.append(label, type, field);
+        list.append(row);
+    }
+}
+
+function showTextures(result) {
+    const list = $("swatches");
+    list.textContent = "";
+    for (const texture of result.textures) {
+        for (const image of [texture, texture.normal].filter(Boolean)) {
+            const swatch = document.createElement("canvas");
+            swatch.width = image.width;
+            swatch.height = image.height;
+            swatch.title = texture.name + (image === texture ? "" : " (normal)") + ", " + image.width + "×" + image.height + ", key " + texture.key;
+            const pixels = new Uint8ClampedArray(image.data.length);
+            pixels.set(image.data);
+            // Shown opaque: an opaque surface ignores the image's alpha.
+            if (image === texture) for (let i = 3; i < pixels.length; i += 4) pixels[i] = 255;
+            swatch.getContext("2d").putImageData(new ImageData(pixels, image.width, image.height), 0, 0);
+            list.append(swatch);
+        }
+    }
+}
+
+// The camera looks at the middle of the nominal size, from far enough to see it whole.
+function frame(result) {
+    const scale = 1 / result.unitsPerMeter;
+    const [width, height, depth] = result.size.map(value => value * scale);
+    const reach = Math.max(width, height, depth);
+    controls.target.set(0, height * 0.45, 0);
+    camera.position.set(reach * 1.25, height * 0.95, reach * 1.9);
+    camera.near = reach / 100;
+    camera.far = reach * 60;
+    camera.updateProjectionMatrix();
+    controls.minDistance = reach * 0.6;
+    controls.maxDistance = reach * 6;
+    const shadow = key.shadow.camera;
+    shadow.left = shadow.bottom = -reach * 1.2;
+    shadow.right = shadow.top = reach * 1.2;
+    shadow.near = 0.01;
+    shadow.far = reach * 12;
+    shadow.updateProjectionMatrix();
+    key.target.position.copy(controls.target);
+    aimLight(0.35, 0.3, reach);
+    key.userData.reach = reach;
+    floor.scale.setScalar(Math.max(1, reach * 1.6) / 6);
+}
+
+function show(result, milliseconds) {
+    if (object) { scene.remove(object); disposeObject3D(object); }
+    object = toObject3D(result, THREE, { textures, anisotropy: renderer.capabilities.getMaxAnisotropy() });
+    scene.add(object);
+    if (!framed) { frame(result); framed = true; }
+    const scale = 100 / result.unitsPerMeter;
+    const extent = axis => ((result.bounds.max[axis] - result.bounds.min[axis]) * scale).toFixed(0);
+    $("stat-vertices").textContent = result.vertexCount.toLocaleString("en");
+    $("stat-triangles").textContent = result.triangleCount.toLocaleString("en");
+    $("stat-surfaces").textContent = result.surfaces.length;
+    $("stat-textures").textContent = result.textures.length + " (" + textures.size + " on the GPU)";
+    $("stat-size").textContent = result.vertexCount ? extent(0) + " × " + extent(1) + " × " + extent(2) + " cm" : "–";
+    $("stat-time").textContent = milliseconds.toFixed(1) + " ms";
+    showTextures(result);
+    status("");
+}
+
+// model.html?model=crate.iprop3d&seed=7 opens another file beside this page.
+const query = new URLSearchParams(location.search);
+const first = /^[\w.-]+\.iprop3d$/.test(query.get("model") || "") ? query.get("model") : "chair.iprop3d";
+if (/^\d+$/.test(query.get("seed") || "")) $("seed").value = query.get("seed");
+
+worker.onmessage = ({ data }) => {
+    if (data.type === "ready") {
+        fetch(first).then(response => {
+            if (!response.ok) throw new Error(first + " is missing: run backends/html5/prepare.sh, or open a file");
+            return response.arrayBuffer();
+        }).then(buffer => load(new Uint8Array(buffer), first)).catch(error => status(error.message, true));
+    } else if (data.type === "loaded") {
+        model = data;
+        showInputs(data.inputs);
+        generate();
+    } else if (data.type === "result") {
+        if (data.request === request) show(data.result, data.milliseconds);
+    } else if (data.type === "error") {
+        if (data.request === undefined || data.request === request) status(data.message, true);
+    }
+};
+worker.onerror = event => status("The worker failed: " + event.message, true);
+
+// ---- controls ----
+const step = delta => { $("seed").value = Math.min(4294967295, Math.max(0, (Number($("seed").value) || 0) + delta)); generate(); };
+$("previous").addEventListener("click", () => step(-1));
+$("next").addEventListener("click", () => step(1));
+$("random").addEventListener("click", () => { $("seed").value = Math.floor(Math.random() * 100000); generate(); });
+$("seed").addEventListener("change", generate);
+window.addEventListener("keydown", event => {
+    if (event.target instanceof HTMLInputElement) return;
+    if (event.key === "ArrowLeft") step(-1);
+    if (event.key === "ArrowRight") step(1);
+});
+
+const open = file => file.arrayBuffer().then(buffer => load(new Uint8Array(buffer), file.name));
+$("file").addEventListener("change", event => { if (event.target.files[0]) open(event.target.files[0]); });
+const stage = $("stage");
+stage.addEventListener("dragover", event => { event.preventDefault(); stage.classList.add("is-over"); });
+stage.addEventListener("dragleave", () => stage.classList.remove("is-over"));
+stage.addEventListener("drop", event => {
+    event.preventDefault();
+    stage.classList.remove("is-over");
+    if (event.dataTransfer.files[0]) open(event.dataTransfer.files[0]);
+});
+
+// The key light: x and y in -1..1 across the view, always above the floor
+// and on the viewer's side, so that the lit side faces the camera.
+function aimLight(x, y, reach) {
+    const forward = new THREE.Vector3().subVectors(camera.position, controls.target).setY(0).normalize();
+    const right = new THREE.Vector3(forward.z, 0, -forward.x);
+    const direction = new THREE.Vector3().addScaledVector(right, x * 1.6).addScaledVector(forward, 0.9)
+        .add(new THREE.Vector3(0, 0.9 + (y + 1) * 0.9, 0)).normalize();
+    key.position.copy(controls.target).addScaledVector(direction, reach * 5);
+}
+canvas.addEventListener("pointermove", event => {
+    if (!$("light").checked || event.buttons !== 0 || !key.userData.reach) return;
+    const box = canvas.getBoundingClientRect();
+    aimLight((event.clientX - box.left) / box.width * 2 - 1, 1 - (event.clientY - box.top) / box.height * 2, key.userData.reach);
+});
+
+function resize() {
+    const { clientWidth, clientHeight } = stage;
+    renderer.setSize(clientWidth, clientHeight, false);
+    camera.aspect = clientWidth / Math.max(1, clientHeight);
+    camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);
+resize();
+renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+</script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+// A sword standing on its pommel, one unit to a centimetre. The seed picks
+// the blade's shape and length, the guard, the grip and the pommel;
+// `metalwork` fixes the metal of the guard and pommel and `wrap` the grip's
+// leather, and 0 leaves each to the seed. The blade's flat faces look
+// toward the viewer (+Z).
+import metal from "skins/iron.ips"
+import strap from "skins/leather.ips"
+import edge  from "skins/blade.ips"
+
+asset sword {
+  size 32x118x10
+  scale 100
+
+  input u32 metalwork = 0               // 1 steel, 2 brass, 3 bronze, 4 blackened
+  input u32 wrap = 0                    // 1 brown, 2 black, 3 red, 4 green
+
+  palette fittings = [#8d9297, #b08d57, #8c6a3f, #34373a]
+  palette leathers = [#6b4226, #2a2522, #6e2a25, #3f4d33]
+  palette steels   = [#a7adb3, #8f969c, #b6b2a8]
+
+  render {
+    root = seed.initial()
+
+    // Shape first, in names of their own.
+    bladeKind  = choose(root.fork("blade"), 0, 0, 1, 2, 3)    // straight, leaf, tapered, falchion
+    guardKind  = choose(root.fork("guard"), 0, 0, 1, 2, 3)    // bar, rounded bar, swept, disc
+    pommelKind = choose(root.fork("pommel"), 0, 1, 1, 2)      // ball, wheel, faceted
+    length = roll(root.fork("length"), 58.0, 86.0)
+    width  = roll(root.fork("width"), 3.6, 5.4)
+    thick  = roll(root.fork("thickness"), 0.6, 0.85)
+    grip   = roll(root.fork("grip"), 10.0, 19.0)
+    span   = roll(root.fork("span"), 14.0, 24.0)
+    bar    = roll(root.fork("bar"), 1.6, 2.4)
+    knob   = roll(root.fork("knob"), 2.2, 3.0)
+
+    // Materials.
+    fit = metalwork
+    if (metalwork == 0) { fit = choose(root.fork("metalwork"), 1, 1, 2, 3, 4) }
+    hide = wrap
+    if (wrap == 0) { hide = choose(root.fork("wrap"), 1, 1, 2, 3, 4) }
+    // The blade wears one picture laid once across each face, with its
+    // fuller down the middle.
+    groove = 0.0
+    if (choose(root.fork("fuller"), 0, 1, 1) == 1) { groove = roll(root.fork("fuller length"), 0.45, 0.75) }
+    steel = skin.fit(skin.metallic(skin.roughness(edge.draw(root.fork("steel"), tint = steels[choose(root.fork("steel tone"), 0, 0, 1, 2)],
+                                                            fuller = groove), 0.3), 1.0))
+    fittings_ = skin.metallic(skin.roughness(metal.draw(root.fork("fittings"), tint = fittings[fit - 1],
+                                                        wear = roll(root.fork("fitting wear"), 0.2, 0.8)), 0.4), 1.0)
+    leather = skin.density(skin.roughness(strap.draw(root.fork("leather"), dye = leathers[hide - 1]), 0.85), 3.0)
+
+    // From the ground up: pommel, grip, guard, blade.
+    pommel(pommelKind, knob, fittings_)
+    bottom = knob * 2.0 - 0.3
+    gripRadius = roll(root.fork("grip radius"), 1.25, 1.5)
+    cylinder({0, bottom, 0}, gripRadius, grip, 14, leather)
+    cylinder({0, bottom - 0.2, 0}, gripRadius + 0.3, 1.0, 14, fittings_)
+    cylinder({0, bottom + grip - 0.8, 0}, gripRadius + 0.3, 1.0, 14, fittings_)
+    guardAt = bottom + grip
+    top = guard(guardKind, guardAt, span, bar, root.fork("sweep"), fittings_)
+    blade(bladeKind, top - 0.3, length, width * 0.5, thick, steel)
+  }
+
+  pommel(kind: i32, r: f32, s: skin) {
+    if (kind == 0) {
+      sphere({0, 0, 0}, r, 16, 8, s)
+    } else if (kind == 1) {
+      // A wheel, its faces toward the viewer.
+      place(at = {0, r, -r * 0.35}, pitch = 90.0) { cylinder({0, 0, 0}, r, r * 0.7, 20, s) }
+    } else {
+      lathe({0, 0, 0}, [{0, 0}, {r * 0.6, 0}, {r, r * 0.7}, {r * 0.85, r * 1.5}, {r * 0.45, r * 2.0}, {0, r * 2.0}], 8, 15.0, s)
+    }
+  }
+
+  // The guard at y; returns the height its top reaches.
+  guard(kind: i32, y: f32, span: f32, bar: f32, sweep: seed, s: skin) -> f32 {
+    if (kind == 0) {
+      box({0, y, 0}, {span, bar, bar * 1.3}, 0.3, s)
+      return y + bar
+    }
+    if (kind == 1) {
+      // A turned bar with knobs, built upright and laid along X.
+      h = bar * 0.5
+      place(at = {-span * 0.5, y + h, 0}, roll = -90.0) {
+        lathe({0, 0, 0}, [{0, 0}, {h * 1.4, 0}, {h * 1.5, h * 1.2}, {h * 0.85, h * 2.6}, {h * 0.85, span - h * 2.6},
+                          {h * 1.5, span - h * 1.2}, {h * 1.4, span}, {0, span}], 12, 30.0, s)
+      }
+      return y + bar
+    }
+    if (kind == 2) {
+      // Two arms rising from a block.
+      rise = roll(sweep, 8.0, 22.0)
+      arm = span * 0.5
+      box({0, y, 0}, {bar * 2.2, bar * 1.6, bar * 1.3}, 0.3, s)
+      place(at = {0, y + bar * 0.5, 0}, roll = rise - 90.0) { box({0, 0, 0}, {bar, arm, bar}, 0.3, s) }
+      place(at = {0, y + bar * 0.5, 0}, roll = 90.0 - rise) { box({0, 0, 0}, {bar, arm, bar}, 0.3, s) }
+      return y + bar * 1.6
+    }
+    // A disc.
+    cylinder({0, y, 0}, span * 0.22, bar * 0.8, 24, s)
+    return y + bar * 0.8
+  }
+
+  // The blade from y up: an outline in the plane of the viewer, made
+  // `thick` deep with bevelled edges. h is half its width at the guard.
+  blade(kind: i32, y: f32, length: f32, h: f32, thick: f32, s: skin) {
+    outline = [{-h, 0}, {h, 0}, {h, length * 0.86}, {0, length}, {-h, length * 0.86}]
+    if (kind == 1) {
+      outline = [{-h * 0.8, 0}, {h * 0.8, 0}, {h, length * 0.35}, {h * 1.25, length * 0.72}, {0, length},
+                 {-h * 1.25, length * 0.72}, {-h, length * 0.35}]
+    } else if (kind == 2) {
+      outline = [{-h, 0}, {h, 0}, {h * 0.45, length * 0.9}, {0, length}, {-h * 0.45, length * 0.9}]
+    } else if (kind == 3) {
+      outline = [{-h, 0}, {h, 0}, {h * 1.35, length * 0.55}, {h * 1.05, length * 0.84}, {-h * 0.25, length},
+                 {-h, length * 0.93}]
+    }
+    extrude({0, y, 0}, outline, thick, thick * 0.3, s)
+  }
+}

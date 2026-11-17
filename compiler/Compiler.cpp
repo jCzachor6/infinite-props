@@ -6,6 +6,7 @@
 #include "Plan.hpp"
 #include "Optimizer.hpp"
 #include "iprop/Debug.hpp"
+#include "iprop/model/Model.hpp"
 
 namespace iprop {
 namespace {
@@ -16,8 +17,13 @@ namespace {
 std::vector<u8> compileImpl(
     const ips::Program& entry,
     const std::map<std::string, const ips::Program*>& parts, bool optimize,
-    const std::map<std::string, std::string>& partSources) {
-    std::unique_ptr<compiler::Plan> plan = compiler::Planner(entry, parts, partSources).plan();
+    const std::map<std::string, std::string>& partSources,
+    const std::map<std::string, std::vector<u8>>& skins) {
+    std::unique_ptr<compiler::Plan> plan = compiler::Planner(entry, parts, partSources, skins).plan();
+    // The optimizer passes read the 2D opcode table; a model program keeps
+    // the reference lowering until they learn the model page.
+    const bool model = plan->model;
+    if (model) optimize = false;
 
     std::optional<compiler::Plan> originalPlan;
     if (optimize) originalPlan.emplace(*plan);
@@ -73,8 +79,11 @@ std::vector<u8> compileImpl(
 
     // Dogfood: the compiled file must pass the runtime validator.
     try {
-        const auto loaded = loadFile(bytes);
-        validate(loaded);
+        if (model) model::validateModel(model::loadModel(bytes));
+        else {
+            const auto loaded = loadFile(bytes);
+            validate(loaded);
+        }
     } catch (const FormatError& error) {
         throw ips::SourceError{{1, 1},
                                std::string("compiled program failed validation: ") +
@@ -88,8 +97,9 @@ std::vector<u8> compileImpl(
 
 std::vector<u8> compileProgram(const ips::Program& entry,
     const std::map<std::string, const ips::Program*>& parts, bool optimize,
-    const std::map<std::string, std::string>& partSources) {
-    try { return compileImpl(entry, parts, optimize, partSources); }
+    const std::map<std::string, std::string>& partSources,
+    const std::map<std::string, std::vector<u8>>& skins) {
+    try { return compileImpl(entry, parts, optimize, partSources, skins); }
     catch (const compiler::PoolLimit& error) {
         throw ips::SourceError{{1,1}, error.what(), {}, ips::DiagnosticCode::ResourceLimit,
                               ips::DiagnosticStage::Planning};

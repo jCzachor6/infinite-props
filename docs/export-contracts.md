@@ -2,7 +2,7 @@
 
 The development compiler exports source language **1.1.0** with product
 **1.1.0**, an unversioned format, C API **0.7** and ABI **0.5**. JSON protocol versions
-are independent: language-description schema **7**, diagnostic schema **1**
+are independent: language-description schema **8**, diagnostic schema **1**
 and documentation-manifest schema **3**.
 
 | Payload | Formal contract | Consumer |

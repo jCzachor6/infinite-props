@@ -1,0 +1,40 @@
+// Leather strips wound around a grip: diagonal bands with a dark gap
+// between them. The bands climb one pixel across for one down, eight pixels
+// apart, so they meet themselves across every edge and the texture repeats.
+// It is drawn flat; the normal map raises the bands.
+asset leather {
+  size 32x32
+  input color dye = #6b4226
+  output normal relief
+
+  draw {
+    root = seed.initial()
+    rect(0, 0, 32, 32, color.shade(dye, -48))
+    // Each band is a run of single-pixel rows shifted by one per row.
+    for row in 0..32 {
+      for band in 0..4 {
+        left = (row + band * 8) % 32
+        tone = int(roll(root.fork("band").fork(band), -6.0, 6.0))
+        rect(left, row, 6, 1, color.shade(dye, tone))
+        if (left > 26) { rect(left - 32, row, 6, 1, color.shade(dye, tone)) }
+      }
+    }
+    // Stitches or grain: a few dark pores.
+    for k in 0..24 {
+      pore = root.fork("pore").fork(k)
+      rect(roll(pore.fork("x"), 0.0, 31.0), roll(pore.fork("y"), 0.0, 31.0), 1, 1, color.shade(dye, -22))
+    }
+
+    layer height(alpha = surface.source_over) {
+      rect(0, 0, 32, 32, #303030)
+      for row in 0..32 {
+        for band in 0..4 {
+          left = (row + band * 8) % 32
+          rect(left, row, 6, 1, #ffffff)
+          if (left > 26) { rect(left - 32, row, 6, 1, #ffffff) }
+        }
+      }
+    }
+    relief = height.normal(1.5, 0.6)
+  }
+}

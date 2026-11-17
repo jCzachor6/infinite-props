@@ -16,6 +16,10 @@ external edits).
   The relief additions highlight like their neighbours: the `.normal` surface
   method beside `.blur`, `surface.normal` beside the alpha modes, and
   `color.normal` through the compiler's builtin list.
+  The words of [models](../docs/language/models.md) highlight where the
+  grammar gives them a meaning: `render` before a block, `scale` before a
+  number, `place` as a call, `skin` where a type is expected, `vec3` like
+  `vec2`, and the primitives and the `skin` and `vec3` namespaces as builtins.
 - Diagnostics: a debounced full check through the native `ipc` binary on
   edits, saves and external file changes. JSON diagnostics retain exclusive
   source ranges, stable error codes, severity and related locations, including
@@ -152,8 +156,17 @@ The same real diagnostic mutation corpus is checked by Python, the editor and
 the formal schema in `compiler_export_contracts`.
 
 Completion and hover signatures come from the selected `ipc --describe-language`
-catalogue (schema 7), including namespace constants, geometry/part handle types and
-the `seed` type.
+catalogue (schema 8), including namespace constants, geometry/part handle types and
+the `seed` type. The builtins and types that only an asset with `render` has
+come from `source_rules.models` and say so in their hover; `lerp` shows the
+overload such an asset adds beside its own.
+
+An asset with `render` previews like any other: the picture is the tools'
+preview of the model, and the panel lists its vertices, triangles, surfaces
+and textures in place of 2D outputs. The seed, the inputs, the seed sheet and
+the PNG export work as for an image, and the binary export proposes
+`.iprop3d`. The bytecode inspector does not cover models yet: `ipdis` reports
+that it cannot read them.
 The executable identity invalidates the cache after a compiler change. Preview
 renders use `--omit-part-outputs`: images and ordinary outputs remain visible;
 typed snapshots/resources require a host API and are not serialized by the editor.

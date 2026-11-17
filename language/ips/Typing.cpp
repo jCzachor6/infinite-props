@@ -46,6 +46,8 @@ std::vector<std::string> declaredParamNames(const Function& function) {
 
 Typer::Typer(const std::map<std::string, PartInfo>& parts) : parts_(parts) {}
 
+bool Typer::modelAsset() const { return owner_ && isModel(owner_->asset); }
+
 BoundCallPlan Typer::bind(const Call& call, CallSignature signature, std::string_view name) {
     auto bound = bindCall(call, std::move(signature), name);
     calls_.insert_or_assign(&call, bound);
@@ -161,18 +163,22 @@ void Typer::checkKnownBounds(const SamplerCapture& capture, ValueType item) {
 // A drawn range and a captured one obey the same rules, so bounds known here
 // that the draw always rejects are reported for both.
 void Typer::checkKnownRange(const RandomRange& range, ValueType item, const SourceLocation& at) {
-    auto lower = known(*range.lower);
-    auto upper = known(*range.upper);
-    if (item == ValueType::F32) {
-        for (auto* bound : {&lower, &upper})
-            if (*bound && std::holds_alternative<i32>(**bound)) *bound = static_cast<f32>(std::get<i32>(**bound));
+    // A drawn vec3 range mixes its two ends (models v1.2): it has no bounds
+    // the draw rejects, and no sampler description to validate them.
+    if (item != ValueType::Vec3) {
+        auto lower = known(*range.lower);
+        auto upper = known(*range.upper);
+        if (item == ValueType::F32) {
+            for (auto* bound : {&lower, &upper})
+                if (*bound && std::holds_alternative<i32>(**bound)) *bound = static_cast<f32>(std::get<i32>(**bound));
+        }
+        if (lower) if (const auto* message = samplerBoundsError(item, *lower, Value{}, false))
+            valueError(at, message);
+        if (upper) if (const auto* message = samplerBoundsError(item, *upper, Value{}, false))
+            valueError(at, message);
+        if (lower && upper) if (const auto* message = samplerBoundsError(item, *lower, *upper, true))
+            valueError(at, message);
     }
-    if (lower) if (const auto* message = samplerBoundsError(item, *lower, Value{}, false))
-        valueError(at, message);
-    if (upper) if (const auto* message = samplerBoundsError(item, *upper, Value{}, false))
-        valueError(at, message);
-    if (lower && upper) if (const auto* message = samplerBoundsError(item, *lower, *upper, true))
-        valueError(at, message);
     // A constructor that rejects its known parameters can never produce the
     // distribution the range draws from.
     if (range.distribution) if (const auto message = rejection(*range.distribution))
@@ -391,6 +397,10 @@ ValueType Typer::typeMember(const Expr& expr, const Member& member) {
               "vec2 has only .x and .y components, got '" +
                   member.name + "'");
     }
+    if (object == ValueType::Vec3) {
+        if (member.name == "x" || member.name == "y" || member.name == "z") return ValueType::F32;
+        error(member.location, "vec3 has only .x, .y and .z components, got '" + member.name + "'");
+    }
     if (object == ValueType::Color) {
         if (colorChannel(member.name)) return ValueType::I32;
         error(member.location, "color has only .r, .g, .b and .a channels, got '." +
@@ -494,8 +504,8 @@ ValueType Typer::typeIdentifier(const Expr& expr, const Identifier& id) {
     }
     for (const auto& input : owner_->asset.inputs) {
         if (input.name == id.name) {
-            error(id.location,
-                  "input '" + id.name + "' is only visible inside 'draw'");
+            error(id.location, "input '" + id.name + "' is only visible inside '" +
+                                   entryName(owner_->asset) + "'");
         }
     }
     if (id.name == "seed") {
@@ -545,7 +555,9 @@ ValueType Typer::typeVector(const VectorLit& vector) {
     };
     switch (vector.elements.size()) {
     case 2: return numericElements(ValueType::Vec2);
-    case 3: return numericElements(ValueType::Circle);
+    // Three numbers are a point in space in a render asset and the circle of
+    // an output write in a draw asset.
+    case 3: return numericElements(modelAsset() ? ValueType::Vec3 : ValueType::Circle);
     case 4: return numericElements(ValueType::Rect);
     default:
         error(vector.location,
@@ -669,9 +681,10 @@ ValueType Typer::typeRamp(const Identifier& name, const Call& call) {
 ValueType Typer::typeRandomRange(const RandomRange& range) {
     const ValueType lower = typeOf(*range.lower);
     const ValueType upper = typeOf(*range.upper);
-    const bool ends = lower == upper && (lower == ValueType::Color || lower == ValueType::Vec2);
+    const bool ends = lower == upper && (lower == ValueType::Color || lower == ValueType::Vec2 || lower == ValueType::Vec3);
     if (!ends && (!isNumeric(lower) || !isNumeric(upper))) {
-        error(range.location, "'to' needs two numbers, two colors or two vec2 values, got " +
+        error(range.location, std::string("'to' needs two numbers, two colors or two ") +
+                                  (modelAsset() ? "vec2 or vec3" : "vec2") + " values, got " +
                                   std::string(typeName(lower)) + " and " + typeName(upper));
     }
     if (range.distribution) {
@@ -696,11 +709,14 @@ ValueType Typer::typeBinary(const Binary& bin) {
     case Binary::Op::Sub:
     case Binary::Op::Mul:
     case Binary::Op::Div:
-        if (left == ValueType::Vec2 || right == ValueType::Vec2) {
-            const bool vectors = left == ValueType::Vec2 && right == ValueType::Vec2;
-            const bool vectorScalar = left == ValueType::Vec2 && isNumeric(right) &&
+        if (left == ValueType::Vec2 || right == ValueType::Vec2 || left == ValueType::Vec3 || right == ValueType::Vec3) {
+            // vec3 follows vec2: both sides one vector type, or a scalar on
+            // the right of * and /, or on the left of *.
+            const ValueType vector = left == ValueType::Vec3 || right == ValueType::Vec3 ? ValueType::Vec3 : ValueType::Vec2;
+            const bool vectors = left == vector && right == vector;
+            const bool vectorScalar = left == vector && isNumeric(right) &&
                                       (bin.op == Binary::Op::Mul || bin.op == Binary::Op::Div);
-            const bool scalarVector = isNumeric(left) && right == ValueType::Vec2 &&
+            const bool scalarVector = isNumeric(left) && right == vector &&
                                       bin.op == Binary::Op::Mul;
             if (!vectors && !vectorScalar && !scalarVector) {
                 const char* op = bin.op == Binary::Op::Add ? "+"
@@ -711,7 +727,7 @@ ValueType Typer::typeBinary(const Binary& bin) {
                           typeName(left) + " and " +
                           typeName(right));
             }
-            return ValueType::Vec2;
+            return vector;
         }
         if (!isNumeric(left) || !isNumeric(right)) {
             error(bin.location, "arithmetic requires numeric operands, got " +
@@ -761,7 +777,7 @@ ValueType Typer::typeUnary(const Unary& un) {
     if (operand == ValueType::Seed) failSeedOperand(un);
     switch (un.op) {
     case Unary::Op::Neg:
-        if (!isNumeric(operand) && operand != ValueType::Vec2) {
+        if (!isNumeric(operand) && operand != ValueType::Vec2 && operand != ValueType::Vec3) {
             error(un.location,
                   "unary minus requires a numeric or vec2 operand, got " +
                       std::string(typeName(operand)));

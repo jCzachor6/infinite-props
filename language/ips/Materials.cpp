@@ -565,6 +565,9 @@ struct Expander {
         } else if (auto* clip = std::get_if<ClipStmt>(&stmt)) {
             transformExpr(clip->mask);
             clip->body = transformStmts(clip->body);
+        } else if (auto* place = std::get_if<PlaceStmt>(&stmt)) {
+            for (auto& arg : place->args) transformExpr(arg.value);
+            place->body = transformStmts(place->body);
         }
         out.push_back(std::move(stmt));
         return out;

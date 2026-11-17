@@ -36,12 +36,15 @@ add_subdirectory(${IPROP_GODOTCPP_DIR} godot-cpp)
 # The extension library (8.1/8.2).
 add_library(iprop_godot SHARED
     src/register_types.cpp
-    src/iprop_godot.cpp)
+    src/iprop_godot.cpp
+    src/iprop_model_godot.cpp)
 
-target_link_libraries(iprop_godot PRIVATE godot-cpp iprop_capi_static)
+# Models (a preview) come through their own C API, which carries the 2D one.
+target_link_libraries(iprop_godot PRIVATE godot-cpp iprop::capi3d)
 target_include_directories(iprop_godot PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/backends/capi)
+    ${CMAKE_SOURCE_DIR}/backends/capi
+    ${CMAKE_SOURCE_DIR}/backends/capi3d)
 target_include_directories(iprop_godot SYSTEM PRIVATE
     $<TARGET_PROPERTY:godot-cpp,INTERFACE_INCLUDE_DIRECTORIES>)
 iprop_warnings(iprop_godot)
@@ -49,9 +52,9 @@ iprop_warnings(iprop_godot)
 # candidates and catches failures before returning to the engine. Source flags
 # follow transitive target flags, keeping the override local to this boundary.
 if(MSVC)
-    set_source_files_properties(src/iprop_godot.cpp PROPERTIES COMPILE_OPTIONS "/EHsc")
+    set_source_files_properties(src/iprop_godot.cpp src/iprop_model_godot.cpp PROPERTIES COMPILE_OPTIONS "/EHsc")
 else()
-    set_source_files_properties(src/iprop_godot.cpp PROPERTIES COMPILE_OPTIONS "-fexceptions")
+    set_source_files_properties(src/iprop_godot.cpp src/iprop_model_godot.cpp PROPERTIES COMPILE_OPTIONS "-fexceptions")
 endif()
 
 if(APPLE)
@@ -83,7 +86,8 @@ set_target_properties(iprop_godot PROPERTIES
 # library), ready for the Godot editor or the headless runs.
 set(IPROP_GODOT_PROJECT ${CMAKE_BINARY_DIR}/godot-project)
 file(MAKE_DIRECTORY ${IPROP_GODOT_PROJECT}/assets)
-foreach(file project.godot demo.tscn demo.gd conformance.gd pixel-corpus.gd part-outputs.gd normal-maps.gd)
+foreach(file project.godot demo.tscn demo.gd conformance.gd pixel-corpus.gd part-outputs.gd normal-maps.gd
+             models.gd model-demo.tscn model-demo.gd)
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/project/${file}
                    ${IPROP_GODOT_PROJECT}/${file} COPYONLY)
 endforeach()
@@ -110,6 +114,17 @@ endforeach()
 file(MAKE_DIRECTORY ${IPROP_GODOT_PROJECT}/.godot)
 file(WRITE ${IPROP_GODOT_PROJECT}/.godot/extension_list.cfg
     "res://iprop.gdextension\n")
+
+# The model demo's chair is compiled here: the model format is a preview and
+# may still change between releases, so no binary of it is kept in the tree.
+set(IPROP_GODOT_CHAIR ${IPROP_GODOT_PROJECT}/assets/chair.iprop3d)
+add_custom_command(OUTPUT ${IPROP_GODOT_CHAIR}
+    COMMAND $<TARGET_FILE:ipc> ${CMAKE_SOURCE_DIR}/examples/models/chair.ips -o ${IPROP_GODOT_CHAIR}
+    DEPENDS ipc ${CMAKE_SOURCE_DIR}/examples/models/chair.ips
+            ${CMAKE_SOURCE_DIR}/examples/models/skins/oak.ips ${CMAKE_SOURCE_DIR}/examples/models/skins/weave.ips
+    COMMENT "Compiling the chair of the Godot model demo")
+add_custom_target(godot_model_assets DEPENDS ${IPROP_GODOT_CHAIR})
+add_dependencies(iprop_godot godot_model_assets)
 
 add_custom_target(godot_demo
     DEPENDS iprop_godot
@@ -145,6 +160,18 @@ if(IPROP_BUILD_TESTS)
             --path ${IPROP_GODOT_PROJECT} --script res://normal-maps.gd
             -- ${CMAKE_BINARY_DIR}/binding-fixtures)
         set_tests_properties(godot_normal_maps PROPERTIES TIMEOUT 120)
+        # Models (preview): the extension against the native tools, which the
+        # script runs itself on the corpus of the WASM conformance.
+        add_dependencies(iprop_godot ipc ipgen)
+        add_test(NAME godot_models COMMAND ${IPROP_GODOT_BINARY}
+            --headless --log-file ${CMAKE_BINARY_DIR}/godot-models.log
+            --path ${IPROP_GODOT_PROJECT} --script res://models.gd
+            -- ${CMAKE_SOURCE_DIR} $<TARGET_FILE_DIR:ipc> ${CMAKE_BINARY_DIR}/godot-models)
+        # Godot exits with zero when a script fails to load, so the result is
+        # the line the script prints at its end, not the exit code.
+        set_tests_properties(godot_models PROPERTIES TIMEOUT 180
+            PASS_REGULAR_EXPRESSION "godot models: PASS"
+            FAIL_REGULAR_EXPRESSION "FAIL ;SCRIPT ERROR")
     else()
         if(IPROP_GODOT STREQUAL "ON")
             message(FATAL_ERROR "Required Godot engine for conformance was not found")

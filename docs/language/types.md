@@ -1,5 +1,9 @@
 # Types, expressions and variables
 
+<!-- llm: skip -->
+An asset with `render` has two more types, `vec3` and `skin`; see
+[models](models.md#points-and-directions).
+
 ## Value types and conversions
 
 | Type | Meaning | Can be stored, passed and returned? |

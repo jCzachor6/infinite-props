@@ -41,6 +41,18 @@ The native matrix installs/tests the Python image package and exercises the
 production Unity C# binding against the built C library. Both macOS runners
 additionally build the Apple XCFramework and run Swift/CGImage/SpriteKit/Metal
 tests, each on its own architecture.
+[Models](language/models.md), a preview, are covered by the native suite
+(`model` and the four `capi3d_*` tests), by the native/WASM runner, which
+compares every vertex, index and texture of four models between the two
+runtimes, by the three.js adapter tests of the website job and, where Godot
+is built, by `godot_models`. `model_corpus` pins 41 generations of the
+showcase props, the handbook's models and a model of edge cases: the
+SHA-256 of every compiled file, surface array and texture in
+`tests/fixtures/model-corpus-v1.2.json`. Every native runner must give
+those bytes, and the WASM runner checks the same file. A runner that differs
+leaves the whole report and the exact dump of each differing case in
+`build/ci-reports/model-corpus/`, inside the retained reports.
+
 Unity Editor does not run in CI. Its local Gamma/Linear texture and GPU checks
 require an installed, licensed Editor; see the
 [Unity guide](../backends/unity/README.md#verify). Restoring that automation after

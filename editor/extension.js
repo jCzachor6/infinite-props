@@ -351,10 +351,18 @@ function previewHtml() {
       // Clamp the sliders to the declared ranges.
       status.textContent = "fuel: " + json.fuel.spent + " / " + json.fuel.budget;
       status.className = "";
-      outputs.textContent = json.outputs.map((o) =>
-        o.name + " (" + o.kind + (o.list ? ", list" : "") + "): " +
-        o.values.map((v) => JSON.stringify(v)).join(", ")).join("\\n");
-      if (json.part_outputs_omitted) outputs.textContent += "\\nPart snapshots are available through the typed host API.";
+      if (json.surfaces) {
+        // A model (an asset with render): the picture is a preview of its
+        // triangles, and the result lists what a host would receive.
+        outputs.textContent = json.vertices + " vertices, " + json.triangles + " triangles, " +
+          json.surfaces.length + " surfaces\\n" +
+          json.textures.map((t) => "texture " + t.name + " " + t.size.x + "x" + t.size.y).join("\\n");
+      } else {
+        outputs.textContent = json.outputs.map((o) =>
+          o.name + " (" + o.kind + (o.list ? ", list" : "") + "): " +
+          o.values.map((v) => JSON.stringify(v)).join(", ")).join("\\n");
+        if (json.part_outputs_omitted) outputs.textContent += "\\nPart snapshots are available through the typed host API.";
+      }
       document.getElementById("inputs").textContent = "";
       for (const input of json.inputs) {
         const row = document.createElement("div");
@@ -399,6 +407,19 @@ function post(message) {
 function previewPaths() {
     const tmp = os.tmpdir();
     return { ipropPath: path.join(tmp, "iprop-preview.iprop"), pngPath: path.join(tmp, "iprop-preview.png") };
+}
+
+// A compiled asset with render is a model: its file starts with "IP3D"
+// whatever it is called (models, a preview). The tools tell by the bytes too.
+function isModelFile(file) {
+    try {
+        const head = Buffer.alloc(4);
+        const handle = fs.openSync(file, "r");
+        try { fs.readSync(handle, head, 0, 4, 0); } finally { fs.closeSync(handle); }
+        return head.toString("latin1") === "IP3D";
+    } catch {
+        return false;
+    }
 }
 
 function activeEntry() {
@@ -797,7 +818,7 @@ async function exportBinary() {
     try {
         const compiled = await compileEntry(entry);
         const target = await vscode.window.showSaveDialog({
-            defaultUri: vscode.Uri.file(entry.replace(/\.ips$/, ".iprop")),
+            defaultUri: vscode.Uri.file(entry.replace(/\.ips$/, isModelFile(compiled) ? ".iprop3d" : ".iprop")),
         });
         if (!target) return;
         fs.copyFileSync(compiled, target.fsPath);

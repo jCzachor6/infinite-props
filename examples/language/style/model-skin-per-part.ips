@@ -1,0 +1,17 @@
+// Four textures where one would do.
+import wood from "../skins/wood.ips"
+
+asset table {
+  size 60x40x40
+  render {
+    root = seed.initial()
+    for i in 0..4 {
+      x = 26.0
+      z = 16.0
+      if (i % 2 == 1) { x = -26.0 }
+      if (i >= 2) { z = -16.0 }
+      box({x, 0, z}, {4, 36, 4}, 0.3, wood.draw(root.fork("leg").fork(i)))
+    }
+    box({0, 36, 0}, {60, 4, 40}, 0.5, wood.draw(root.fork("top")))
+  }
+}

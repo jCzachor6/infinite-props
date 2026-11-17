@@ -1,0 +1,33 @@
+// A blade for a model, drawn for one face and laid on it with skin.fit: the
+// top of the image is the tip, the bottom the guard. Polished steel with
+// streaks along the length and a fuller, the groove down the middle, darker
+// where grime settles. It is drawn flat: the normal map cuts the groove in
+// and the engine's light shades its sides.
+asset blade {
+  size 16x256
+  input color tint = #a7adb3
+  input f32 fuller = 0.6                // its length as a share of the blade; 0 for none
+  output normal relief
+
+  draw {
+    root = seed.initial()
+    rect(0, 0, 16, 256, tint)
+    for k in 0..12 {
+      streak = root.fork("streak").fork(k)
+      x = roll(streak.fork("x"), 0.0, 15.5)
+      rect(x, 0, 0.5, 256, color.shade(tint, int(roll(streak.fork("tone"), -8.0, 10.0))))
+    }
+    // Darker toward the guard, where hands and scabbards rub.
+    rect(0, 236, 16, 20, color.shade(tint, -6))
+    top = 256.0 * (1.0 - clamp(fuller, 0.0, 0.9))
+    if (fuller > 0.0) {
+      rect(5.5, top, 5, 248.0 - top, color.shade(tint, -20))
+    }
+
+    layer height(alpha = surface.source_over) {
+      rect(0, 0, 16, 256, #d0d0d0)
+      if (fuller > 0.0) { rect(5.5, top, 5, 248.0 - top, #505050) }
+    }
+    relief = height.normal(2.0, 0.8)
+  }
+}

@@ -143,3 +143,130 @@ test("editor inspector keeps source maps and binary export uses production outpu
         assert.deepEqual(fs.readFileSync(exported), fs.readFileSync(reference));
     } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
+
+test("editor previews, inspects and exports a model", { timeout: 30000 }, async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "iprop-editor-model-"));
+    const entry = path.join(dir, "crate.ips");
+    fs.writeFileSync(path.join(dir, "tile.ips"), "asset tile { size 16x8 input color tint = #a3713d draw {\n  rect(0,0,16,8,tint)\n} }");
+    fs.writeFileSync(entry, "import tile from \"tile.ips\"\nasset crate { size 12x10x8 input f32 wide = 8.0 render {\n" +
+        "  box({0, 0, 0}, {wide, 10, 8}, 0.5, tile.draw(seed.initial()))\n} }");
+    const commands = new Map();
+    const disposable = () => ({ dispose() {} });
+    const waiting = [];
+    const posted = [];
+    const post = message => {
+        posted.push(message);
+        for (const item of [...waiting]) {
+            if (!item.matches(message)) continue;
+            waiting.splice(waiting.indexOf(item), 1);
+            item.resolve(message);
+        }
+    };
+    const next = matches => new Promise(resolve => waiting.push({ matches, resolve }));
+    const panels = [];
+    let saveOptions, notify;
+    const notification = new Promise(resolve => { notify = resolve; });
+    const vscode = {
+        CodeActionKind: { QuickFix: "quickfix" },
+        ViewColumn: { Beside: 2 },
+        Uri: { file: fsPath => ({ fsPath, toString: () => fsPath }) },
+        commands: { registerCommand(name, callback) { commands.set(name, callback); return disposable(); } },
+        languages: {
+            createDiagnosticCollection: () => ({ set() {}, clear() {}, delete() {}, dispose() {} }),
+            registerCodeLensProvider: disposable,
+            registerCodeActionsProvider: disposable,
+            registerCompletionItemProvider: () => ({ dispose() {} }),
+            registerHoverProvider: () => ({ dispose() {} }),
+            registerDocumentFormattingEditProvider: disposable,
+        },
+        workspace: {
+            textDocuments: [],
+            getConfiguration: () => ({ get: key => ({ compilerPath: compiler, rendererPath: tool("ipgen"),
+                disassemblerPath: tool("ipdis"), validatorPath: tool("ipval") })[key] }),
+            onDidChangeTextDocument: disposable,
+            onDidSaveTextDocument: disposable,
+            onDidCloseTextDocument: disposable,
+            onDidChangeConfiguration: disposable,
+            createFileSystemWatcher: () => ({ ...disposable(), onDidChange() {}, onDidCreate() {}, onDidDelete() {} }),
+        },
+        window: {
+            activeTextEditor: { document: { fileName: entry, languageId: "ips", getText: () => fs.readFileSync(entry, "utf8") } },
+            createOutputChannel: () => ({ appendLine() {}, dispose() {} }),
+            setStatusBarMessage: disposable,
+            onDidChangeTextEditorSelection: disposable,
+            onDidChangeActiveTextEditor: disposable,
+            createWebviewPanel: kind => {
+                const panel = { kind, onDidDispose() {}, reveal() {},
+                    webview: { html: "", postMessage: post, onDidReceiveMessage() {} } };
+                panels.push(panel);
+                return panel;
+            },
+            showSaveDialog: async options => { saveOptions = options; return { fsPath: path.join(dir, "exported.iprop3d") }; },
+            showInformationMessage: notify,
+            showWarningMessage: message => notify(new Error(message)),
+            showErrorMessage: message => notify(new Error(message)),
+        },
+    };
+    const extension = path.join(root, "editor/extension.js");
+    const requireExtension = createRequire(extension);
+    const context = vm.createContext({ module: { exports: {} }, setTimeout, clearTimeout, AbortController, Buffer,
+        require: name => name === "vscode" ? vscode : name === "os"
+            ? { ...os, tmpdir: () => dir } : requireExtension(name) });
+    try {
+        vm.runInContext(fs.readFileSync(extension, "utf8"), context, { filename: extension });
+        context.module.exports.activate({ subscriptions: [] });
+
+        // The preview compiles the model and renders a picture of it with
+        // the command line of any other asset.
+        const rendered = next(message => message.type === "render" || message.type === "error");
+        commands.get("iprop.preview")();
+        const render = await rendered;
+        assert.equal(render.type, "render", render.message);
+        const picture = Buffer.from(render.png, "base64");
+        assert.equal(picture.subarray(1, 4).toString("latin1"), "PNG");
+        const result = JSON.parse(render.json);
+        assert.equal(result.triangles, 44);
+        assert.deepEqual(result.inputs, [{ name: "wide", type: "f32", default: 8 }]);
+
+        // The page shows the model's numbers and its inputs instead of 2D outputs.
+        const page = panels.find(panel => panel.kind === "iprop.preview").webview.html;
+        const script = /<script>([\s\S]*)<\/script>/.exec(page)[1];
+        const elements = new Map();
+        const element = id => {
+            if (!elements.has(id)) elements.set(id, { id, textContent: "", className: "", value: "", children: [],
+                addEventListener() {}, appendChild(child) { this.children.push(child); } });
+            return elements.get(id);
+        };
+        let receive;
+        vm.runInNewContext(script, {
+            acquireVsCodeApi: () => ({ postMessage() {} }),
+            document: { getElementById: element, createElement: () => element(Symbol("created")) },
+            window: { addEventListener: (_kind, handler) => { receive = handler; } },
+            parseInt, JSON, String,
+        });
+        receive({ data: render });
+        assert.equal(element("status").textContent, "fuel: " + result.fuel.spent + " / " + result.fuel.budget);
+        assert.equal(element("outputs").textContent, "96 vertices, 44 triangles, 1 surfaces\ntexture tile 16x8");
+        assert.equal(element("inputs").children.length, 1);
+        assert.match(element("preview").src, /^data:image\/png;base64,/);
+
+        // The assembly listing does not cover models yet, and says so.
+        const inspected = next(message => message.type === "disassembly" || message.type === "error");
+        commands.get("iprop.inspector")();
+        const listing = await inspected;
+        assert.equal(listing.type, "error");
+        assert.match(listing.message, /this is an \.iprop3d model; ipdis does not read models yet/);
+
+        // An export is offered under the model's own extension and validates.
+        await commands.get("iprop.exportBinary")();
+        const notice = await notification;
+        assert.equal(typeof notice, "string", String(notice));
+        assert.match(notice, /ipval: valid/);
+        assert.match(saveOptions.defaultUri.fsPath, /crate\.iprop3d$/);
+        const exported = fs.readFileSync(path.join(dir, "exported.iprop3d"));
+        assert.equal(exported.subarray(0, 4).toString("latin1"), "IP3D");
+        const reference = path.join(dir, "reference.iprop3d");
+        run(compiler, [entry, "-o", reference]);
+        assert.deepEqual(exported, fs.readFileSync(reference));
+    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});

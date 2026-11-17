@@ -1,6 +1,7 @@
 #include "ipgen.hpp"
 
 #include "json.hpp"
+#include "model_tools.hpp"
 #include "png.hpp"
 
 #include "iprop/VM.hpp"
@@ -9,6 +10,7 @@
 #include <charconv>
 #include <cstdio>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -34,6 +36,12 @@ struct Options {
     bool deriveNormal = false;
     DerivedNormalRequest derived{};
     std::vector<std::pair<std::string, std::string>> uniforms;
+    // Models (.iprop3d) only.
+    std::string preview;  // PNG path of the preview image; empty = not written
+    std::string skinsDir; // directory for the texture PNGs; empty = not written
+    bool dump = false;    // the exact dump on stdout instead of the summary
+    tools::PreviewOptions view{512, 512, 35.f, 20.f, tools::kPreviewBackground};
+    std::string modelOnly; // the first option given that needs a model
 };
 
 void printUsage(std::FILE* out) {
@@ -60,7 +68,22 @@ void printUsage(std::FILE* out) {
                  "  --work-stats        include work counters in result JSON\n"
                  "  -h, --help          show this help\n"
                  "\n"
-                 "The result JSON (outputs and fuel) is printed to stdout.\n");
+                 "The result JSON (outputs and fuel) is printed to stdout.\n"
+                 "\n"
+                 "A model (<file.iprop3d>) generates triangles and textures instead:\n"
+                 "  -o, --output PATH   binary glTF (default: <stem>-<seed>.glb); a path\n"
+                 "                      ending in .png writes the preview image instead\n"
+                 "  --preview PATH      also write a preview image as a PNG\n"
+                 "  --preview-size WxH  preview size in pixels (default 512x512)\n"
+                 "  --view YAW,PITCH    where the preview camera stands, in degrees\n"
+                 "                      (default 35,20)\n"
+                 "  --background COLOR  preview background, #RRGGBB or #RRGGBBAA\n"
+                 "  --skins-dir DIR     also write every texture and its normal image\n"
+                 "  --dump              print every vertex, index and image hash, floats as\n"
+                 "                      raw binary32 bits, instead of the summary\n"
+                 "--seed, --uniform, --float-bits and the limits apply to a model too, and\n"
+                 "--omit-part-outputs is accepted: a model has no part records. The preview\n"
+                 "is a review aid and not part of any contract.\n");
 }
 
 int fail(const std::string& message) {
@@ -140,6 +163,199 @@ Color parseColor(const std::string& text) {
     return color;
 }
 
+// Uniform overrides, each parsed per its declared input type. Returns the
+// error message, empty when every override was accepted.
+std::string readUniforms(const LoadedFile& loaded, const Options& options,
+                         std::map<std::string, UniformValue>& uniforms) {
+    for (const auto& [name, value] : options.uniforms) {
+        const InputDecl* decl = loaded.meta.findInput(name, loaded.pool);
+        if (decl == nullptr) {
+            return "unknown uniform '" + name + "'";
+        }
+        try {
+            UniformValue uniform;
+            switch (decl->type) {
+            case InputType::Color:
+                uniform.type = InputType::Color;
+                uniform.color = parseColor(value);
+                break;
+            case InputType::F32:
+                uniform.type = InputType::F32;
+                uniform.f = std::stof(value);
+                break;
+            case InputType::U32: {
+                u32 parsed = 0;
+                if (!parseU32(value, parsed)) {
+                    throw std::invalid_argument("not an unsigned integer");
+                }
+                uniform.type = InputType::U32;
+                uniform.u = parsed;
+                break;
+            }
+            }
+            uniforms[name] = uniform;
+        } catch (const std::exception& error) {
+            return "bad value for uniform '" + name + "': " + error.what();
+        }
+    }
+    return {};
+}
+
+// The declared inputs, for uniform editors: the elements of a JSON array.
+void writeInputsJson(std::ostream& json, const LoadedFile& loaded) {
+    for (std::size_t i = 0; i < loaded.meta.inputs.size(); ++i) {
+        if (i != 0) {
+            json << ",";
+        }
+        const InputDecl& input = loaded.meta.inputs[i];
+        json << "\n    {\"name\": \"" << loaded.pool.strings.at(input.nameIndex) << "\", \"type\": \"";
+        switch (input.type) {
+        case InputType::Color: {
+            const Color& c = input.colorDefault;
+            char hex[16];
+            std::snprintf(hex, sizeof(hex), "#%02x%02x%02x%02x", c.r, c.g, c.b, c.a);
+            json << "color\", \"default\": \"" << hex << "\"";
+            break;
+        }
+        case InputType::F32:
+            json << "f32\", \"default\": " << input.f32Default;
+            break;
+        case InputType::U32:
+            json << "u32\", \"default\": " << input.u32Default;
+            break;
+        }
+        json << "}";
+    }
+}
+
+bool endsWith(const std::string& text, std::string_view suffix) {
+    if (text.size() < suffix.size()) return false;
+    for (std::size_t i = 0; i < suffix.size(); ++i) {
+        const char c = text[text.size() - suffix.size() + i];
+        if ((c >= 'A' && c <= 'Z' ? static_cast<char>(c - 'A' + 'a') : c) != suffix[i]) return false;
+    }
+    return true;
+}
+
+bool writeBytes(const std::string& path, const std::vector<u8>& bytes) {
+    std::ofstream out(path, std::ios::binary);
+    if (!out) return false;
+    out.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+    out.close();
+    return static_cast<bool>(out);
+}
+
+// A model (spec models v1.2): a binary glTF, an optional preview and texture
+// images, and a summary or the exact dump on stdout.
+int generateModelFile(const Options& options, const std::vector<u8>& bytes) {
+    // --omit-part-outputs is accepted: a model has no part records to leave
+    // out, and one command line then renders any compiled source.
+    if (options.sizeX != 0 || !options.normalOutput.empty() || options.deriveNormal)
+        return fail("--size, --normal-output and --derive-normal do not apply to a model; "
+                    "a texture takes its size from the model source");
+    model::LoadedModel loaded;
+    try {
+        loaded = model::loadModel(bytes);
+        model::validateModel(loaded);
+    } catch (const FormatError& error) {
+        return fail("invalid .iprop3d at byte offset " + std::to_string(error.offset) + ": " + error.what());
+    }
+
+    model::ModelInputs inputs;
+    inputs.seed = options.seed;
+    if (const auto problem = readUniforms(loaded.file, options, inputs.uniforms); !problem.empty()) return fail(problem);
+
+    model::ModelResult result;
+    try {
+        inputs.limits.workLimit = options.workLimit;
+        inputs.limits.deadline = ExecutionLimits::deadlineAfter(options.timeoutMs * 1'000'000);
+        result = model::generateModel(loaded, inputs);
+    } catch (const FormatError& error) {
+        return fail("generation failed at byte offset " + std::to_string(error.offset) + ": " + error.what());
+    }
+
+    // -o names the glTF, or the preview when it ends in .png.
+    const std::string stem = options.file.substr(0, options.file.rfind('.')) + "-" + std::to_string(options.seed);
+    std::string glbPath = options.output.empty() ? stem + ".glb" : options.output;
+    std::string previewPath = options.preview;
+    if (endsWith(glbPath, ".png")) {
+        if (!previewPath.empty()) return fail("--output names a PNG and --preview another: give the preview once");
+        previewPath = std::move(glbPath);
+        glbPath.clear();
+    }
+    if (!glbPath.empty() && !writeBytes(glbPath, tools::encodeGlb(result))) return fail("cannot write '" + glbPath + "'");
+    if (!previewPath.empty() && !tools::writePng(previewPath, tools::renderPreview(result, options.view)))
+        return fail("cannot write PNG '" + previewPath + "'");
+    std::vector<std::string> texturePaths;
+    if (!options.skinsDir.empty()) {
+        std::error_code error;
+        std::filesystem::create_directories(options.skinsDir, error);
+        for (std::size_t i = 0; i < result.textures.size(); ++i) {
+            const auto& texture = result.textures[i];
+            // The alias is an identifier, so it is safe in a file name.
+            const std::string base = options.skinsDir + "/" + (i < 10 ? "0" : "") + std::to_string(i) + "-" + texture.name;
+            if (!tools::writePng(base + ".png", tools::canvasImage(texture.color)))
+                return fail("cannot write PNG '" + base + ".png'");
+            for (const auto& image : texture.images)
+                if (image.kind == AuxImageKind::Normal &&
+                    !tools::writePng(base + "-normal.png", tools::canvasImage(image.image)))
+                    return fail("cannot write PNG '" + base + "-normal.png'");
+            texturePaths.push_back(base + ".png");
+        }
+    }
+
+    if (options.dump) {
+        tools::writeModelDump(std::cout, result, options.seed);
+        return 0;
+    }
+    const auto number = [&](f32 value) { return tools::jsonNumber(value, options.floatBits); };
+    const auto triple = [&](const f32 values[3]) {
+        return "{\"x\": " + number(values[0]) + ", \"y\": " + number(values[1]) + ", \"z\": " + number(values[2]) + "}";
+    };
+    std::ostringstream json;
+    json << "{\n  \"seed\": " << options.seed << ",\n  \"size\": " << triple(result.size)
+         << ",\n  \"units_per_meter\": " << number(result.unitsPerMeter)
+         << ",\n  \"bounds\": {\"min\": " << triple(result.boundsMin) << ", \"max\": " << triple(result.boundsMax)
+         << "},\n  \"vertices\": " << result.vertexCount << ",\n  \"triangles\": " << result.triangleCount
+         << ",\n  \"fuel\": {\"budget\": " << result.fuelBudget << ", \"spent\": " << result.fuelUsed << "}";
+    if (options.workStats)
+        json << ",\n  \"work\": {\"budget\": " << result.workBudget << ", \"spent\": " << result.workUsed << "}";
+    json << ",\n  \"inputs\": [";
+    writeInputsJson(json, loaded.file);
+    json << "\n  ],\n  \"textures\": [";
+    for (std::size_t i = 0; i < result.textures.size(); ++i) {
+        const auto& texture = result.textures[i];
+        char key[17];
+        std::snprintf(key, sizeof(key), "%016llx", static_cast<unsigned long long>(texture.key));
+        json << (i ? "," : "") << "\n    {\"name\": \"" << tools::jsonEscape(texture.name) << "\", \"key\": \"" << key
+             << "\", \"size\": {\"x\": " << texture.color.width << ", \"y\": " << texture.color.height
+             << "}, \"repeats\": " << (texture.repeats ? "true" : "false") << ", \"images\": [";
+        for (std::size_t j = 0; j < texture.images.size(); ++j)
+            json << (j ? ", " : "") << "{\"kind\": \"normal\", \"name\": \"" << tools::jsonEscape(texture.images[j].name) << "\"}";
+        json << "]";
+        if (i < texturePaths.size()) json << ", \"path\": \"" << tools::jsonEscape(texturePaths[i]) << "\"";
+        json << "}";
+    }
+    json << "\n  ],\n  \"surfaces\": [";
+    for (std::size_t i = 0; i < result.surfaces.size(); ++i) {
+        const auto& surface = result.surfaces[i];
+        json << (i ? "," : "") << "\n    {\"texture\": " << surface.texture << ", \"vertices\": "
+             << surface.positions.size() / 3 << ", \"triangles\": " << surface.indices.size() / 3
+             << ", \"roughness\": " << number(surface.roughness) << ", \"metallic\": " << number(surface.metallic)
+             << ", \"emission\": " << number(surface.emission) << ", \"alpha\": \""
+             << (surface.alpha == model::SkinAlpha::Cutout ? "cutout" : "opaque") << "\"";
+        if (surface.alpha == model::SkinAlpha::Cutout) json << ", \"cutoff\": " << number(surface.cutoff);
+        json << ", \"two_sided\": " << (surface.twoSided ? "true" : "false") << ", \"crisp\": "
+             << (surface.crisp ? "true" : "false") << "}";
+    }
+    json << "\n  ]";
+    if (!glbPath.empty()) json << ",\n  \"glb\": \"" << tools::jsonEscape(glbPath) << "\"";
+    if (!previewPath.empty()) json << ",\n  \"preview\": \"" << tools::jsonEscape(previewPath) << "\"";
+    json << "\n}\n";
+    std::cout << json.str();
+    return 0;
+}
+
 } // namespace
 
 int ipgenMain(int argc, char* argv[]) {
@@ -197,6 +413,29 @@ int ipgenMain(int argc, char* argv[]) {
             if (invalid.empty() && (text.empty() || parsed.ec != std::errc{} || parsed.ptr != text.data() + text.size()))
                 invalid = "bad " + arg + " value";
             derivedParameters = true;
+        } else if (arg == "--preview" || arg == "--skins-dir") {
+            std::string& path = arg == "--preview" ? options.preview : options.skinsDir;
+            path = next(arg.c_str());
+            if (invalid.empty() && path.empty()) invalid = "empty " + arg + " path";
+            if (options.modelOnly.empty()) options.modelOnly = arg;
+        } else if (arg == "--dump") {
+            options.dump = true;
+            if (options.modelOnly.empty()) options.modelOnly = arg;
+        } else if (arg == "--preview-size") {
+            if (!parseSize(next("--preview-size"), options.view.width, options.view.height) ||
+                options.view.width > 4096 || options.view.height > 4096)
+                invalid = "bad --preview-size value (at most 4096x4096)";
+            if (options.modelOnly.empty()) options.modelOnly = arg;
+        } else if (arg == "--view") {
+            if (!tools::parseView(next("--view"), options.view)) invalid = "bad --view value (expected YAW,PITCH in degrees)";
+            if (options.modelOnly.empty()) options.modelOnly = arg;
+        } else if (arg == "--background") {
+            try {
+                options.view.background = parseColor(next("--background"));
+            } catch (const std::invalid_argument& error) {
+                invalid = std::string("bad --background value: ") + error.what();
+            }
+            if (options.modelOnly.empty()) options.modelOnly = arg;
         } else if (!arg.empty() && arg[0] == '-') {
             invalid = "unknown option '" + arg + "'";
         } else if (options.file.empty()) {
@@ -232,6 +471,9 @@ int ipgenMain(int argc, char* argv[]) {
         return fail("empty file '" + options.file + "'");
     }
 
+    if (tools::isModelFile(bytes)) return generateModelFile(options, bytes);
+    if (!options.modelOnly.empty()) return fail(options.modelOnly + " needs a model (.iprop3d)");
+
     LoadedFile loaded;
     try {
         loaded = loadFile(bytes);
@@ -248,38 +490,7 @@ int ipgenMain(int argc, char* argv[]) {
     inputs.sizeX = options.sizeX;
     inputs.sizeY = options.sizeY;
 
-    // Uniform overrides: parse per the declared input type.
-    for (const auto& [name, value] : options.uniforms) {
-        const InputDecl* decl = loaded.meta.findInput(name, loaded.pool);
-        if (decl == nullptr) {
-            return fail("unknown uniform '" + name + "'");
-        }
-        try {
-            UniformValue uniform;
-            switch (decl->type) {
-            case InputType::Color:
-                uniform.type = InputType::Color;
-                uniform.color = parseColor(value);
-                break;
-            case InputType::F32:
-                uniform.type = InputType::F32;
-                uniform.f = std::stof(value);
-                break;
-            case InputType::U32: {
-                u32 parsed = 0;
-                if (!parseU32(value, parsed)) {
-                    throw std::invalid_argument("not an unsigned integer");
-                }
-                uniform.type = InputType::U32;
-                uniform.u = parsed;
-                break;
-            }
-            }
-            inputs.uniforms[name] = uniform;
-        } catch (const std::exception& error) {
-            return fail("bad value for uniform '" + name + "': " + error.what());
-        }
-    }
+    if (const auto problem = readUniforms(loaded, options, inputs.uniforms); !problem.empty()) return fail(problem);
 
     GenerationResult result;
     u64 budget = 0;
@@ -327,29 +538,7 @@ int ipgenMain(int argc, char* argv[]) {
          << "}";
     if (options.workStats) json << ",\n  \"work\": {\"budget\": " << workBudget << ", \"spent\": " << workUsed << "}";
     json << ",\n  \"inputs\": [";
-    for (std::size_t i = 0; i < loaded.meta.inputs.size(); ++i) {
-        if (i != 0) {
-            json << ",";
-        }
-        const InputDecl& input = loaded.meta.inputs[i];
-        json << "\n    {\"name\": \"" << loaded.pool.strings.at(input.nameIndex) << "\", \"type\": \"";
-        switch (input.type) {
-        case InputType::Color: {
-            const Color& c = input.colorDefault;
-            char hex[16];
-            std::snprintf(hex, sizeof(hex), "#%02x%02x%02x%02x", c.r, c.g, c.b, c.a);
-            json << "color\", \"default\": \"" << hex << "\"";
-            break;
-        }
-        case InputType::F32:
-            json << "f32\", \"default\": " << input.f32Default;
-            break;
-        case InputType::U32:
-            json << "u32\", \"default\": " << input.u32Default;
-            break;
-        }
-        json << "}";
-    }
+    writeInputsJson(json, loaded);
     json << "\n  ],\n  \"outputs\": [";
     bool firstOutput = true;
     for (std::size_t i = 0; i < result.outputs.size(); ++i) {

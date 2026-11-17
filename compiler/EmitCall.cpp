@@ -19,6 +19,9 @@ ips::ValueType Emitter::emitCall(const ips::Call& call) {
         } else if constexpr (std::is_same_v<T, PartCall>) {
             emitPartCall(target);
             return ips::ValueType::Void;
+        } else if constexpr (std::is_same_v<T, SkinCall>) {
+            emitSkinCall(target);
+            return ips::ValueType::Skin;
         } else {
             if (target.constant) {
                 emitConst(*target.constant);
@@ -35,6 +38,10 @@ void Emitter::emitArg(const PlannedArgument& arg) {
 }
 
 void Emitter::emitOverload(const ips::BuiltinOverload& overload) {
+    if (overload.modelOp) {
+        ins(model::kModelPage, *overload.modelOp);
+        return;
+    }
     if (!overload.opcode) return; // an identity conversion
     switch (operandKind(*overload.opcode)) {
     case OperandKind::None:
@@ -274,6 +281,32 @@ ips::ValueType Emitter::emitBuiltin(const BuiltinCall& call) {
     const u16 vertices = static_cast<u16>((call.arguments.size() - 1) / 2);
     ins(Opcode::Poly, 0, vertices);
     return VT::Void;
+}
+
+// The inputs in declaration order, the seed, then the width and the height
+// in pixels, zero for the declared size (spec models v1.2).
+void Emitter::emitSkinCall(const SkinCall& call) {
+    for (const auto& input : call.inputs) {
+        if (const auto* arg = std::get_if<PlannedArgument>(&input)) emitArg(*arg);
+        else emitConst(std::get<Value>(input));
+    }
+    emitArg(call.seed);
+    if (call.size) {
+        // A vec2 of pixels: each component rounds toward zero, as int() does.
+        emitExpr(*call.size);
+        const auto height = temporary(ips::ValueType::I32);
+        ins(Opcode::Dup);
+        ins(Opcode::Vec2Y);
+        ins(Opcode::F32ToI32);
+        ins(Opcode::LocalSet, 0, height.index());
+        ins(Opcode::Vec2X);
+        ins(Opcode::F32ToI32);
+        ins(Opcode::LocalGet, 0, height.index());
+    } else {
+        emitConst(i32{0});
+        emitConst(i32{0});
+    }
+    page(model::Op::SkinDraw, static_cast<u16>(call.program));
 }
 
 void Emitter::emitPartCall(const PartCall& call) {

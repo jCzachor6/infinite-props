@@ -1,0 +1,53 @@
+// Oak for a model: boards that run down the image and repeat in both
+// directions. `planks = 0` paints one solid piece, for thin parts.
+asset oak {
+  size 64x64
+  input color tint = #a3713d
+  input u32 planks = 1
+  output normal relief
+
+  draw {
+    root = seed.initial()
+    rect(0, 0, 64, 64, tint)
+
+    // Four boards of their own tone. The edge of the image lies inside the
+    // first board, so no gap falls on the seam: it wraps from right to left.
+    if (planks == 1) {
+      for i in 0..4 {
+        tone = int(roll(root.fork("board").fork(i), -9.0, 9.0))
+        left = float(i) * 16.0 - 8.0
+        rect(left, 0, 16, 64, color.shade(tint, tone))
+        if (i == 0) { rect(left + 64.0, 0, 16, 64, color.shade(tint, tone)) }
+      }
+    }
+    // Grain: streaks down the whole image, so the top meets the bottom.
+    for k in 0..26 {
+      streak = root.fork("grain").fork(k)
+      x = roll(streak.fork("x"), 0.0, 64.0)
+      rect(x, 0, roll(streak.fork("width"), 0.4, 1.0), 64,
+           color.shade(tint, int(roll(streak.fork("tone"), -22.0, -5.0))))
+    }
+    for k in 0..10 {
+      streak = root.fork("light").fork(k)
+      x = roll(streak.fork("x"), 0.0, 64.0)
+      rect(x, 0, 0.5, 64, color.shade(tint, int(roll(streak.fork("tone"), 5.0, 14.0))))
+    }
+    if (planks == 1) {
+      for i in 0..4 { rect(float(i) * 16.0 + 7.5, 0, 1, 64, color.shade(tint, -62)) }
+    }
+
+    // The height: boards are high, grain is a shallow groove, gaps are deep.
+    layer height(alpha = surface.source_over) {
+      rect(0, 0, 64, 64, #ffffff)
+      for k in 0..26 {
+        streak = root.fork("grain").fork(k)
+        x = roll(streak.fork("x"), 0.0, 64.0)
+        rect(x, 0, roll(streak.fork("width"), 0.4, 1.0), 64, #c8c8c8)
+      }
+      if (planks == 1) {
+        for i in 0..4 { rect(float(i) * 16.0 + 7.5, 0, 1, 64, #303030) }
+      }
+    }
+    relief = height.normal(1.6, 0.5)
+  }
+}

@@ -148,7 +148,8 @@ void Execution::closeOpenLayers(std::size_t labelDepth) {
            layerScopes.back().labelDepth > labelDepth) {
         auto scope = std::move(layerScopes.back());
         layerScopes.pop_back();
-        if (scope.isClip) target.clips.resize(scope.savedClipDepth);
+        if (scope.isExtension) extension->closeScope(*this);
+        else if (scope.isClip) target.clips.resize(scope.savedClipDepth);
         else {
             frame().locals[scope.local] = target.view();
             target = std::move(scope.savedTarget);

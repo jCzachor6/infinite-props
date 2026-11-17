@@ -52,6 +52,25 @@ def main():
             assert builtin['variadic']['choice_evaluation'] == 'eager_once_before_selection_rng', builtin
             assert builtin['variadic']['effects']['rng'] in {'advance_current', 'isolated_seeded_stream'}, builtin
 
+    # Models (v1.2): the builtins of a render asset carry the same summaries.
+    # A model operation is no opcode, so it shares no opcode's effects.
+    models = description['source_rules']['models']
+    for builtin in [*models['builtins'], *models['extended_builtins']]:
+        assert builtin['overloads'] and 'variadic' not in builtin, builtin
+        for entry in builtin['overloads']:
+            signatures += 1
+            valid(entry['effects'])
+            assert entry['effects']['summary'] == 'intrinsic' and 'opcode' not in entry and entry['model_op'], builtin
+            if entry['result'] == 'void':
+                assert entry['effects']['writes_canvas'], builtin
+    for part in ('place', 'skin_call'):
+        valid(models[part]['effects'])
+    assert models['place']['effects'] == {'rng': 'none', 'writes_canvas': False, 'writes_outputs': False,
+                                          'summary': 'intrinsic', 'may_trap': ['numeric_range', 'scope_depth']}
+    # A texture is generated from its own seed and never moves the model's stream.
+    assert models['skin_call']['effects']['rng'] == 'isolated_callee_stream'
+    assert models['skin_call']['effects']['writes_canvas'] and 'callee' in models['skin_call']['effects']['may_trap']
+
     rules = description['effect_rules']
     samplers = description['source_rules']['samplers']
     valid(samplers['capture_effects'])
@@ -111,6 +130,12 @@ def main():
     assert normalize['result'] == 'vec2'
     assert normalize['effects']['rng'] == 'none' and normalize['effects']['may_trap'] == ['numeric_range']
     assert by_name['stream.pop']['overloads'][0]['effects']['may_trap'] == ['stream_stack_underflow']
+    in_model = {builtin['name']: builtin for builtin in models['builtins']}
+    assert in_model['vec3.normalize']['overloads'][0]['effects']['may_trap'] == ['numeric_range']
+    assert in_model['vec3.cross']['overloads'][0]['effects']['may_trap'] == []
+    assert in_model['skin.fit']['overloads'][0]['effects']['may_trap'] == ['unassigned_handle']
+    assert all(entry['effects']['may_trap'] == ['numeric_range', 'unassigned_handle']
+               for name in ('box', 'lathe', 'quad', 'skin.density') for entry in in_model[name]['overloads'])
     print(f'Language effects: {len(by_name)} builtins, {signatures} signatures and shared effect rules passed')
 
 

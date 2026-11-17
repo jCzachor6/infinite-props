@@ -16,12 +16,19 @@ struct TypeDescriptor {
         // A source-only kind (named seeds v1.1): the compiler stores a seed as
         // its 32 bits in i32 slots, so the format and the VM never carry it.
         Seed = 20,
+        // A scalar of the model dialect only (spec models v1.2): the 2D loader
+        // rejects its type code, so no .iprop file declares or produces one.
+        Vec3 = 21,
+        // A source-only kind of model programs: a skin travels as the number
+        // of its record in i32 slots.
+        Skin = 22,
     };
     static const TypeDescriptor I32, F32, Color, Vec2, Distribution;
     static const TypeDescriptor List, Rect, Circle, Void, Builder, Sampler, PointBuilder;
     static const TypeDescriptor Layer, Mask, Stepper;
     static const TypeDescriptor Diagram2d, Contours2d, Regions2d, Part2d, Parts2d;
     static const TypeDescriptor Seed;
+    static const TypeDescriptor Vec3, Skin;
     Kind kind = Kind::I32;
     Kind element = Kind::Void;
     // Lists may contain sampler<T> or stepper<T> descriptions, but no lists
@@ -50,7 +57,9 @@ struct TypeDescriptor {
     }
     constexpr bool isGeometry() const { return kind >= Kind::Diagram2d && kind <= Kind::Parts2d; }
     constexpr bool needsDescriptor() const { return isParameterized() || isResource(); }
-    constexpr bool isScalar() const { return kind <= Kind::Distribution && element == Kind::Void && parameter == Kind::Void; }
+    constexpr bool isScalar() const {
+        return (kind <= Kind::Distribution || kind == Kind::Vec3) && element == Kind::Void && parameter == Kind::Void;
+    }
     constexpr bool isStorable() const {
         return isScalar() || isResource() || (isDescription() && element <= Kind::Vec2 && parameter == Kind::Void) ||
             (isList() && ((element <= Kind::Distribution && parameter == Kind::Void) ||
@@ -84,6 +93,8 @@ inline constexpr TypeDescriptor TypeDescriptor::Regions2d{Kind::Regions2d};
 inline constexpr TypeDescriptor TypeDescriptor::Part2d{Kind::Part2d};
 inline constexpr TypeDescriptor TypeDescriptor::Parts2d{Kind::Parts2d};
 inline constexpr TypeDescriptor TypeDescriptor::Seed{Kind::Seed};
+inline constexpr TypeDescriptor TypeDescriptor::Vec3{Kind::Vec3};
+inline constexpr TypeDescriptor TypeDescriptor::Skin{Kind::Skin};
 
 using ValueType = TypeDescriptor;
 const char* valueTypeName(TypeDescriptor type);

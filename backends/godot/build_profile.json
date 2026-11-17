@@ -1,5 +1,6 @@
 {
   "enabled_classes": [
-    "CanvasTexture", "FileAccess", "Image", "ImageTexture", "Resource", "Sprite2D", "Texture2D", "OS"
+    "ArrayMesh", "CanvasTexture", "FileAccess", "Image", "ImageTexture", "MeshInstance3D", "Resource", "Sprite2D",
+    "StandardMaterial3D", "Texture2D", "OS"
   ]
 }

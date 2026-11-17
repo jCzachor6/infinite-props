@@ -1,0 +1,22 @@
+// A test tile: a dark border and a light mark in the upper left corner, so
+// a preview shows where a face puts its texture and which way up. With
+// `open = 1` only the border is painted and the middle stays transparent.
+asset grid {
+  size 16x16
+  input color tint = #6f8fa8
+  input u32 open = 0
+
+  draw {
+    edge = color.shade(tint, -45)
+    if (open == 0) {
+      rect(0, 0, 16, 16, edge)
+      rect(1, 1, 14, 14, tint)
+    } else {
+      rect(0, 0, 16, 3, edge)
+      rect(0, 13, 16, 3, edge)
+      rect(0, 3, 3, 10, edge)
+      rect(13, 3, 3, 10, edge)
+    }
+    rect(2, 2, 4, 4, color.shade(tint, 50))
+  }
+}

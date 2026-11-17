@@ -17,8 +17,12 @@ accept `AUTO` (build when dependencies are available), `ON` (require them) or
 `OFF` (exclude them). See [SFML](../backends/sfml/README.md) and
 [Godot](../backends/godot/README.md) for their dependency/build settings.
 
+A full build also builds the runtime of [models](language/models.md) and
+its [C API](c-api-models.md). Both are previews: static libraries that the
+SDK does not install yet.
+
 `IPROP_RUNTIME_ONLY=ON` builds only the native runtime and C ABI, excluding
-host tools, tests, engine dependencies and SDK installation. Mobile/plugin
+host tools, tests, engine dependencies, the model runtime and SDK installation. Mobile/plugin
 builders use this mode. The [native binding guide](native-bindings.md) links
 Apple, Unity, Android and Python build/package instructions.
 
@@ -38,8 +42,8 @@ python3 scripts/language_docs.py verify --output-dir build/language-docs --again
 ```
 
 The generated package contains expanded chapters, `docs/language-v1.1.0.md`,
-`LLM_REFERENCE.md`, compiler catalog, schemas, examples and the current format
-specification. Its manifest records independent versions, source identity and
+`LLM_REFERENCE.md`, `LLM_REFERENCE_MODELS.md`, compiler catalog, schemas,
+examples and the current format specification. Its manifest records independent versions, source identity and
 file hashes. See [maintaining documentation](language/development.md).
 
 ## Native SDK

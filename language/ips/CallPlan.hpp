@@ -36,6 +36,8 @@ CallSignature surfacePaintCallSignature(const Call& call, ValueType imageType);
 CallSignature helperCallSignature(std::span<const std::string> names);
 CallSignature rampCallSignature();
 CallSignature partCallSignature(std::span<const PartInput> inputs);
+// Inputs in declaration order, then the seed, then the size (models v1.2).
+CallSignature skinCallSignature(std::span<const PartInput> inputs);
 BoundCallPlan bindCall(const Call& call, CallSignature signature, std::string_view function);
 
 // The source-only formatter has local declarations but may not have imports.

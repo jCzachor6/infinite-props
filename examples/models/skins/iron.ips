@@ -1,0 +1,85 @@
+// Metal for a model: iron bands, steel blades, brass fittings. Brushed
+// streaks run down the whole image and every mark that crosses an edge is
+// drawn again on the other side, so the texture repeats in both directions.
+// It is drawn flat: no light, no shadow; the relief is in the normal map.
+asset iron {
+  size 64x64
+  input color tint = #6b6f73
+  input f32 wear = 0.5                  // 0 polished, 1 battered
+  output normal relief
+
+  draw {
+    root = seed.initial()
+    rect(0, 0, 64, 64, tint)
+
+    // Brushing: faint streaks the length of the piece.
+    for k in 0..40 {
+      streak = root.fork("brush").fork(k)
+      x = roll(streak.fork("x"), 0.0, 64.0)
+      tone = int(roll(streak.fork("tone"), -9.0, 9.0))
+      rect(x, 0, 0.5, 64, color.shade(tint, tone))
+    }
+
+    // Wear: darker patches, wrapped around both edges.
+    patches = int(wear * 9.0)
+    for k in 0..patches {
+      patch = root.fork("patch").fork(k)
+      cx = roll(patch.fork("x"), 0.0, 64.0)
+      cy = roll(patch.fork("y"), 0.0, 64.0)
+      r = roll(patch.fork("r"), 3.0, 9.0)
+      dark = color.shade(tint, int(roll(patch.fork("tone"), -8.0, -3.0)))
+      for dx in -1..2 {
+        for dy in -1..2 {
+          oval(cx + float(dx) * 64.0, cy + float(dy) * 64.0, r * 0.6, r * 1.4, dark)
+        }
+      }
+    }
+
+    // Scratches: short bright lines, wrapped too.
+    scratches = 4 + int(wear * 14.0)
+    for k in 0..scratches {
+      mark = root.fork("scratch").fork(k)
+      x = roll(mark.fork("x"), 0.0, 64.0)
+      y = roll(mark.fork("y"), 0.0, 64.0)
+      length = roll(mark.fork("length"), 3.0, 10.0)
+      lean = roll(mark.fork("lean"), -0.6, 0.6)
+      bright = color.shade(tint, int(roll(mark.fork("tone"), 10.0, 24.0)))
+      for dx in -1..2 {
+        for dy in -1..2 {
+          ox = x + float(dx) * 64.0
+          oy = y + float(dy) * 64.0
+          line(ox, oy, ox + lean * length, oy + length, 1, bright)
+        }
+      }
+    }
+
+    // The height: flat metal, scratches cut in, worn patches slightly low.
+    layer height(alpha = surface.source_over) {
+      rect(0, 0, 64, 64, #c0c0c0)
+      for k in 0..patches {
+        patch = root.fork("patch").fork(k)
+        cx = roll(patch.fork("x"), 0.0, 64.0)
+        cy = roll(patch.fork("y"), 0.0, 64.0)
+        r = roll(patch.fork("r"), 3.0, 9.0)
+        for dx in -1..2 {
+          for dy in -1..2 { oval(cx + float(dx) * 64.0, cy + float(dy) * 64.0, r * 0.6, r * 1.4, #b4b4b4) }
+        }
+      }
+      for k in 0..scratches {
+        mark = root.fork("scratch").fork(k)
+        x = roll(mark.fork("x"), 0.0, 64.0)
+        y = roll(mark.fork("y"), 0.0, 64.0)
+        length = roll(mark.fork("length"), 3.0, 10.0)
+        lean = roll(mark.fork("lean"), -0.6, 0.6)
+        for dx in -1..2 {
+          for dy in -1..2 {
+            ox = x + float(dx) * 64.0
+            oy = y + float(dy) * 64.0
+            line(ox, oy, ox + lean * length, oy + length, 1, #707070)
+          }
+        }
+      }
+    }
+    relief = height.normal(1.2, 0.6)
+  }
+}

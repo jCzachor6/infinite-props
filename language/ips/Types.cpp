@@ -43,6 +43,12 @@ std::optional<ValueType> geometryType(std::string_view name) {
     return std::nullopt;
 }
 
+std::optional<ValueType> modelType(std::string_view name) {
+    for (const auto type : {ValueType::Vec3, ValueType::Skin})
+        if (name == typeName(type)) return type;
+    return std::nullopt;
+}
+
 std::optional<unsigned> colorChannel(std::string_view member) {
     constexpr std::string_view names[] = {"r", "g", "b", "a"};
     for (unsigned i = 0; i < 4; ++i)
@@ -54,9 +60,12 @@ bool isNumeric(ValueType type) {
     return type == ValueType::I32 || type == ValueType::F32;
 }
 
-bool isStorable(ValueType type) { return type == ValueType::Seed || type.isStorable(); }
+bool isStorable(ValueType type) { return type == ValueType::Seed || type == ValueType::Skin || type.isStorable(); }
 
-ValueType runtimeType(ValueType type) { return type == ValueType::Seed ? ValueType::I32 : type; }
+// A seed is its 32 bits and a skin the number of its record: both i32 slots.
+ValueType runtimeType(ValueType type) {
+    return type == ValueType::Seed || type == ValueType::Skin ? ValueType::I32 : type;
+}
 
 ValueType promote(ValueType a, ValueType b) {
     return a == b ? a : ValueType::F32;

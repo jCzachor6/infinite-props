@@ -1,0 +1,53 @@
+// A stool, one unit to a centimetre. The seed picks its height, the seat,
+// three or four legs and the cushion; `finish` fixes the wood.
+import wood  from "skins/wood.ips"
+import cloth from "skins/cloth.ips"
+
+asset stool {
+  size 44x52x44
+  scale 100
+
+  input u32 finish = 0                  // 0 leaves the choice to the seed
+  palette finishes = [#c79c63, #a3713d, #7c4a27, #d9d5c9]
+
+  render {
+    root = seed.initial()
+    top   = roll(root.fork("height"), 40.0, 48.0)
+    reach = roll(root.fork("reach"), 12.0, 15.0)      // from the middle to a leg
+    round = choose(root.fork("seat"), 0, 1)
+    legs  = choose(root.fork("legs"), 3, 4, 4)
+    soft  = choose(root.fork("cushion"), 0, 1)
+
+    // One texture for all the wood, one for the cloth.
+    look = finish
+    if (finish == 0) { look = choose(root.fork("finish"), 1, 2, 3, 4) }
+    oak = skin.roughness(wood.draw(root.fork("oak"), tint = finishes[look - 1]), 0.6)
+
+    // Legs stand around the middle; a rung joins each to the next.
+    turn = 360.0 / float(legs)
+    span = 2.0 * reach * sin(3.14159265 / float(legs))
+    for i in 0..legs {
+      place(yaw = turn * float(i) + 45.0) {
+        cone({0, 0, reach}, 1.3, 2.0, top - 3.0, 8, oak)
+        place(at = {0, 12, reach}, yaw = 90.0 + turn * 0.5, pitch = 90.0) {
+          cylinder({0, 0, 0}, 0.8, span, 8, oak)
+        }
+      }
+    }
+
+    // The seat, and a cushion: a ball pressed flat.
+    wide = reach * 2.0 + 7.0
+    if (round == 1) {
+      cylinder({0, top - 3.0, 0}, wide * 0.5, 3.0, 24, oak)
+    } else {
+      box({0, top - 3.0, 0}, {wide, 3, wide}, 0.5, oak)
+    }
+    if (soft == 1) {
+      dye = choose(root.fork("dye"), #8a2f2f, #2f4f7a, #3f6b45, #b08a3a)
+      weave = skin.density(skin.roughness(cloth.draw(root.fork("cloth"), dye = dye), 0.95), 3.0)
+      place(at = {0, top, 0}, scale = {1, 0.3, 1}) {
+        sphere({0, 0, 0}, wide * 0.42, 20, 8, weave)
+      }
+    }
+  }
+}

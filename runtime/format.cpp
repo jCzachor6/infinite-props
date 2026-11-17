@@ -17,7 +17,7 @@ const Section* FileLayout::find(SectionId id) const {
     return nullptr;
 }
 
-Header parseHeader(std::span<const u8> data, OffsetSpace space) {
+Header parseHeader(std::span<const u8> data, OffsetSpace space, const Dialect& dialect) {
     if (data.size() < kHeaderSize) {
         throw FormatError("file too small: header truncated", data.size(), ErrorReason::TruncatedInput, ErrorStage::Load, space);
     }
@@ -26,7 +26,7 @@ Header parseHeader(std::span<const u8> data, OffsetSpace space) {
 
     // Magic (spec §2.1).
     for (std::size_t i = 0; i < 4; ++i) {
-        if (reader.readU8() != kMagic[i]) {
+        if (reader.readU8() != dialect.magic[i]) {
             throw FormatError("bad magic: not an .iprop file", i, ErrorReason::BadMagic, ErrorStage::Load, space);
         }
     }
@@ -57,9 +57,9 @@ Header parseHeader(std::span<const u8> data, OffsetSpace space) {
     return header;
 }
 
-FileLayout parseLayout(std::span<const u8> data) {
+FileLayout parseLayout(std::span<const u8> data, const Dialect& dialect) {
     FileLayout layout;
-    layout.header = parseHeader(data, OffsetSpace::ExpandedFile);
+    layout.header = parseHeader(data, OffsetSpace::ExpandedFile, dialect);
     layout.totalSize = data.size();
     if (layout.header.hasCompression())
         throw FormatError("compressed container must be expanded before parsing layout", 8, ErrorReason::InvalidLayout, ErrorStage::Load, OffsetSpace::Container);
@@ -73,7 +73,8 @@ FileLayout parseLayout(std::span<const u8> data) {
     }
 
     layout.sections.reserve(count);
-    bool seen[static_cast<u32>(SectionId::Steppers) + 1] = {};
+    // The header admits at most 255 sections, and every id is at most that.
+    bool seen[256] = {};
     for (u32 i = 0; i < count; ++i) {
         const std::size_t entryAt = kHeaderSize + static_cast<std::size_t>(i) * 12;
         const u32 rawId = reader.readU32();
@@ -81,7 +82,7 @@ FileLayout parseLayout(std::span<const u8> data) {
         const u32 size = reader.readU32();
 
         // Section ids run from Meta to the newest section (spec §2.2).
-        if (rawId < static_cast<u32>(SectionId::Meta) || rawId > static_cast<u32>(SectionId::Steppers)) {
+        if (rawId < static_cast<u32>(SectionId::Meta) || rawId > dialect.lastSection || rawId > 255) {
             throw FormatError("unknown section id " + std::to_string(rawId), entryAt, ErrorReason::InvalidLayout);
         }
         if (seen[rawId]) {

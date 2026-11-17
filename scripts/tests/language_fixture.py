@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
-# A schema-7 protocol fixture with deliberately independent mock versions,
+# A schema-8 protocol fixture with deliberately independent mock versions,
 # reduced to the one builtin the handbook describes.
 LANGUAGE = json.loads(Path(__file__).with_name("language.json").read_text(encoding="utf-8"))
 
@@ -32,10 +32,11 @@ def fixture(root):
         **VERSION_FILES,
         "docs/language/book.json": '{"title":"Book","chapters":["index.md"]}',
         "docs/language/index.md": "# Book\n\n## unit\n<!-- builtin: unit -->\n\nOne deterministic stream draw.\n\n<!-- example: ../../examples/language/one.ips -->\n",
-        "docs/language-description.schema.json": schema(7),
+        "docs/language-description.schema.json": schema(8),
         "docs/compiler-diagnostics.schema.json": schema(1),
         "docs/documentation-manifest.schema.json": schema(3),
         "docs/llm-reference.json": "{}\n",
+        "docs/llm-reference-models.json": "{}\n",
         "examples/language/cases.json": '{"cases":[{"file":"one.ips","expect":"pass"}]}',
         "examples/language/one.ips": "asset A { size 1x1 draw { x = unit() } }\n",
         "examples/recipes/README.md": "# Recipes\n",

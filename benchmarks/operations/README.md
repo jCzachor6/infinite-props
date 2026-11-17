@@ -144,3 +144,53 @@ a mask blur tap for the same fuel, and the five units per pixel of the slope
 and encoding step leave it cheaper per fuel unit than a paint. The numbers
 are one machine's and are not asserted by any test; the exact fuel is pinned
 in `tests/normal_map_test.cpp`.
+
+## 1.2 model tariff (preview)
+
+A model program ([contract](../../spec/models-v1.2.md#accounting-and-limits))
+pays one unit for each instruction, and a primitive reserves 6 more for each
+vertex and 2 for each triangle it emits. An extrude also reserves
+`ceil(n*n/3)` for an outline of `n` points (`ceil(n*n/2)` with a bevel),
+`place.begin` 24 and `skin.draw` 64. The prices were set against a plain
+instruction and the raster kernels of the 2D tariff, run in the same process:
+
+```sh
+cmake --build build-3d --target iprop_model_tariff
+build-3d/benchmarks/iprop_model_tariff
+```
+
+Each row is the median generation of a model with N copies of one statement
+minus a control without them, divided by N; packing the result into surfaces
+is inside the timed interval. On the reference Mac (arm64, Release), CPU time
+per fuel unit:
+
+| Statement | Before (1 per vertex and triangle) | After |
+| --- | --- | --- |
+| a plain instruction (`x = x + 1.0`) | 3.9–4.0 | unchanged |
+| 2D `rect` 16×16, `oval` (75%) | 1.8–2.9 | unchanged |
+| `box`, bevelled `box`, `cylinder` 8–64 sides, `cone`, `band` | 15.8–18.1 | 3.4–4.1 |
+| `sphere` 16×8 and 32×16, `lathe` with and without a crease | 12.7–14.5 | 3.4–3.8 |
+| `extrude`, 5 to 16 points, with and without a bevel | 12.6–14.3 | 3.4–4.2 |
+| `extrude`, a concave star of 256 points | 35.2–35.8 | 4.0–4.1 |
+| `extrude`, a comb of 253 points, the ear search's worst order measured | — | 4.2–4.4 |
+| a `place` block, plain or turned, scaled and mirrored | 15.1–15.9 | 3.8–4.2 |
+| `vec3` arithmetic, `vec3.normalize`, a skin modifier | 10–14 | unchanged |
+| `skin.draw` of an existing texture / of a new 8×8 one | 0.8 / 7.9 | unchanged |
+
+Before, a vertex cost about 22 ns and a triangle about 7, four times a plain
+instruction's 4 ns per unit, and the triangulation and the contact checks of
+a large outline grew with the square of its points while its price grew with
+its vertices. The multipliers put every primitive and placement measured, and
+both outline families (a star and a comb, each up to the limit of 256
+points), at the rate of a plain instruction. Other outlines may order the
+ear search worse; the 256-point limit and the vertex limit bound what one
+can cost; the 2D tariff's percentages can only
+lower a price, so the model page charges its own units. The `vec3`
+operations and the skin modifiers keep one unit: their 10–14 ns are the cost
+of reaching the model page through the VM's extension hook, which is a
+matter for optimisation rather than price. A skin call keeps its flat 64:
+the texture itself is charged to its own program. The largest model the
+limits allow costs under 1.3 million of the default 25,000,000. The numbers
+are one machine's and no test asserts a timing; the exact prices are pinned
+in `tests/model/program_test.cpp`. Work is unchanged: one step per vertex
+and per triangle.

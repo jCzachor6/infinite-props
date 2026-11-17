@@ -58,8 +58,9 @@ struct CodeSection {
 // part entries with in-pool names and unique per-part signatures, no
 // trailing bytes. Semantic checks (draw signature, acyclicity, opcode
 // validity) belong to the Phase 6 validator.
+// `vec3` admits the vec3 type code of the model dialect (spec models v1.2).
 CodeSection parseCode(std::span<const u8> data, const Section& section,
-                      const ConstPool& pool, std::span<const TypeDescriptor> types = {});
+                      const ConstPool& pool, std::span<const TypeDescriptor> types = {}, bool vec3 = false);
 
 // Parses the v0.5 `parts` section (spec v0.5 §6) into the parsed part table:
 // one name and parent per part, names in the pool and unique, every parent a

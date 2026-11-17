@@ -26,7 +26,8 @@ iprop_warnings(ipc)
 add_library(ipdis_lib STATIC
     ipdis.cpp)
 
-target_link_libraries(ipdis_lib PUBLIC iprop::runtime)
+# The model library only tells ipdis that a file is a model it cannot read yet.
+target_link_libraries(ipdis_lib PUBLIC iprop::runtime PRIVATE iprop::model)
 target_include_directories(ipdis_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 iprop_warnings(ipdis_lib)
 
@@ -39,7 +40,7 @@ iprop_warnings(ipdis)
 add_library(ipval_lib STATIC
     ipval.cpp)
 
-target_link_libraries(ipval_lib PUBLIC iprop::runtime)
+target_link_libraries(ipval_lib PUBLIC iprop::runtime PRIVATE iprop::model)
 target_include_directories(ipval_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 iprop_warnings(ipval_lib)
 
@@ -61,10 +62,18 @@ target_link_libraries(iprop_png PUBLIC iprop::runtime)
 target_include_directories(iprop_png PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 iprop_warnings(iprop_png)
 
+# What the tools do with a generated model (models v1.2): glb, preview, dump.
+add_library(iprop_model_tools STATIC
+    model_tools.cpp)
+
+target_link_libraries(iprop_model_tools PUBLIC iprop::model iprop_png)
+target_include_directories(iprop_model_tools PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+iprop_warnings(iprop_model_tools)
+
 add_library(ipgen_lib STATIC
     ipgen.cpp)
 
-target_link_libraries(ipgen_lib PUBLIC iprop::runtime PRIVATE iprop_png)
+target_link_libraries(ipgen_lib PUBLIC iprop::runtime PRIVATE iprop_png iprop_model_tools)
 target_include_directories(ipgen_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 iprop_warnings(ipgen_lib)
 
@@ -90,7 +99,7 @@ iprop_warnings(ipa)
 add_library(ipsheet_lib STATIC
     ipsheet.cpp)
 
-target_link_libraries(ipsheet_lib PUBLIC iprop::runtime PRIVATE iprop_png)
+target_link_libraries(ipsheet_lib PUBLIC iprop::runtime PRIVATE iprop_png iprop_model_tools)
 target_include_directories(ipsheet_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 iprop_warnings(ipsheet_lib)
 

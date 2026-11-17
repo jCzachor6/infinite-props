@@ -166,6 +166,75 @@ read returns a null Image and preserves all previously completed output maps;
 the sprite retains its documented clearing behavior. The shared result reader
 is also installed as `include/iprop/backend/ResultQueries.hpp`.
 
+## Models (preview)
+
+The extension also generates **3D models** from compiled `.iprop3d` files
+([writing one](../../docs/language/models.md), [the contract](../../spec/models-v1.2.md)),
+through the [model C API](../capi3d/README.md). Models are a preview: these classes may
+change in any release until the models contract is frozen.
+
+- **`IpropModel` (Resource)** — `load_file(path)` loads and validates an
+  `.iprop3d`; `generate(seed, limits = {})` returns an `ArrayMesh` with one
+  surface and one `StandardMaterial3D` per material of the model. `size`
+  (the nominal size the source declares, in model units), `units_per_meter`,
+  `fuel`, `inputs` and `skin_programs` describe the file; `set_input` and
+  `reset_inputs` work as on `IpropAsset`, and `limits` takes the same
+  `work_limit`, `timeout_ns` and `cancellation`, which cover the model and
+  every texture it generates.
+
+  ```gdscript
+  var model := IpropModel.new()
+  model.load_file("res://assets/chair.iprop3d")
+  model.set_input("finish", 3)
+  $MeshInstance3D.mesh = model.generate(7)
+  ```
+
+- **The mesh** — a model and Godot agree on the axes (`+Y` up,
+  right-handed), on UVs with the origin in the upper left corner, on tangents
+  with a bitangent sign and on normal maps with green up the image. They
+  differ in two conventions, which the mesh adapts: triangles are reversed,
+  because Godot's front faces are clockwise, and positions are divided by
+  `units_per_meter`, because a scene is in metres. A material carries the
+  colour texture, the normal map of a skin that publishes one, roughness and
+  metallic, repeat or clamp, nearest filtering for a `crisp` skin and
+  mipmapped anisotropic filtering otherwise, alpha scissor for a cutout skin,
+  no culling for a two-sided one and the colour texture as emission for a
+  glowing one.
+- **The generation's own numbers** stay available after `generate`, exactly
+  as generated (model units, counterclockwise triangles): `surfaces` is a
+  list of `{index, texture, roughness, metallic, emission, alpha_mode,
+  alpha_cutoff, two_sided, crisp, vertex_count, index_count, positions,
+  normals, tangents, uvs, indices}` with `PackedFloat32Array` and
+  `PackedInt32Array` values, and `textures` a list of `{index, key, name,
+  width, height, asset_width, asset_height, repeats, image, images, normal}`
+  with RGBA8 `Image` values. Equal `key`s mean equal pixels. `bounds_min`,
+  `bounds_max`, `vertex_count`, `triangle_count`, `fuel_used` and `work`
+  (`{budget, used}`) complete it. Returned images and arrays own their data.
+- **Failures** — `generate` returns null, `last_error` holds status, reason,
+  stage, location flags, PC and message, and the previous generation's
+  properties stay. A failure inside a texture names its skin program
+  (`skin 'wood': …`).
+- **`IpropModelInstance3D` (MeshInstance3D)** — holds an `IpropModel` and a
+  `seed`; it regenerates its mesh when either changes or the model's inputs
+  do, and shows nothing while the model is not loaded or a generation fails.
+
+`model-demo.tscn` shows six chairs from `assets/chair.iprop3d`, each from its
+own seed, turning under a lamp that follows the mouse: **Space** rolls new
+seeds, **Left/Right** step them, **F** and **C** step the wood finish and the
+cushion fabric.
+
+```
+Godot.app/Contents/MacOS/Godot --path build/godot-project model-demo.tscn
+```
+
+`godot_models` (ctest) runs headlessly: it compiles four models with `ipc`,
+generates them with `ipgen --dump` and with `IpropModel` for several seeds
+and inputs, and demands the same bits in every vertex, index, material
+number, texture and counter. It then checks the mesh against those arrays
+(metres, reversed triangles, materials), failures against their native
+reasons, and the node. The test passes on the line the script prints at its
+end, because Godot exits with zero when a script fails to load.
+
 ## The demo (8.3)
 
 `build/godot-project/` opens in the editor or runs directly:

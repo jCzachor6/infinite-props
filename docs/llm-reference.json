@@ -1,4 +1,12 @@
 {
+  "document": {
+    "links": [
+      {
+        "label": "Models reference (render assets, a preview)",
+        "path": "LLM_REFERENCE_MODELS.md"
+      }
+    ]
+  },
   "maximum_bytes": 131072,
   "defaults": {
     "max_bytes": 131072,

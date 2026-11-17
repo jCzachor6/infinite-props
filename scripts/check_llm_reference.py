@@ -80,6 +80,68 @@ def main():
             if url.fragment:
                 require(url.fragment in {h['anchor'] for h in docs.headings(path.read_text(encoding='utf-8'))},
                         'missing offline anchor: ' + target)
+        # The models reference (render assets): its own selection and budget,
+        # the builtins of render assets alone, generated rules, executed forms.
+        models_config = json.loads((root / llm.MODELS_CONFIG).read_text(encoding='utf-8'))
+        models_reference = (output / 'LLM_REFERENCE_MODELS.md').read_text(encoding='utf-8')
+        models_bytes = len(models_reference.encode('utf-8'))
+        require(models_bytes <= models_config['defaults']['max_bytes'] <= models_config['maximum_bytes'],
+                'models reference exceeds its budget')
+        require('Commit: `' + info['source_commit'] + '`' in models_reference and
+                'Product ' + language['product_version'] in models_reference, 'models reference lost its identity')
+        model_checks = info['llm_models_reference_checks']
+        model_examples = {name for entry in models_config['sections'] if entry['id'] in models_config['defaults']['sections']
+                          for name in entry.get('examples', []) + entry.get('demos', [])}
+        model_pairs = len(models_config['diagnostic_pairs']) + len(models_config['style_pairs'])
+        require(len([c for c in model_checks if c.get('execution') == 'pass']) == len(model_examples),
+                'selected model examples were not executed')
+        require(len([c for c in model_checks if c.get('correction_execution') == 'pass']) == model_pairs,
+                'model repair pairs were not executed')
+        require(models_reference.count('```ips') == len(model_checks) + model_pairs,
+                'unregistered/unexecuted code block in the models reference')
+        require(models_reference.index('## Render assets') < models_reference.index('## Before and after') <
+                models_reference.index('## Compiler rules for render assets') < models_reference.index('## Builtins'),
+                'the models reference does not open with the chapter and its style')
+        require('llm: skip' not in models_reference and '<!-- model-extensions -->' not in models_reference,
+                'a marker leaked into the models reference')
+        models = language['source_rules']['models']
+        in_models = {builtin['name'] for builtin in models['builtins']}
+        for builtin in models['builtins'] + models['extended_builtins']:
+            require('`' + builtin['name'] + '(' in models_reference,
+                    'builtin missing from the models reference: ' + builtin['name'])
+        # Each reference lists the builtins of its own kind of asset alone.
+        first_catalogue = reference[reference.index('## Builtins'):]
+        require(not [name for name in in_models if '\n`' + name + '(' in first_catalogue],
+                'a builtin of render assets leaked into the first reference')
+        second_catalogue = models_reference[models_reference.index('## Builtins'):models_reference.index('## Rejection and repair')]
+        require('\n`rect(' not in second_catalogue and '\n`pixel(' not in second_catalogue,
+                'a drawing builtin leaked into the models reference')
+        for name in models['unavailable_builtins']:
+            require(name in models_reference, 'unavailable builtin missing from the models rules: ' + name)
+        require(str(models['limits']['vertices']) in models_reference and
+                str(models['place']['maximum_open_scopes']) in models_reference, 'model limits missing')
+        require('LLM_REFERENCE_MODELS.md' in reference and 'LLM_REFERENCE.md' in models_reference,
+                'the two references do not link each other')
+        for target in re.findall(r'\[[^\]\n]+\]\(([^\s)]+)\)', models_reference):
+            url = urlsplit(target)
+            require(not url.scheme and not url.netloc, 'models reference requires an online source')
+            path = (output / unquote(url.path)).resolve()
+            require(path.is_relative_to(output) and path.is_file(), 'missing offline link: ' + target)
+            if url.fragment:
+                require(url.fragment in {h['anchor'] for h in docs.headings(path.read_text(encoding='utf-8'))},
+                        'missing offline anchor: ' + target)
+        # Every builtin of a render asset is selectable by name in its reference.
+        for builtin in models['builtins']:
+            text, evidence = llm.render(root, language, authored, cases, info, compiler,
+                                        sections='symbols', symbols=builtin['name'], config_name=llm.MODELS_CONFIG)
+            require(text.count('`' + builtin['name'] + '(') == len(builtin['overloads']) and not evidence,
+                    'exported model signatures missing from selected reference: ' + builtin['name'])
+        try:
+            llm.render(root, language, authored, cases, info, compiler, sections='symbols', symbols='rect',
+                       config_name=llm.MODELS_CONFIG)
+            raise RuntimeError('a drawing builtin was selectable in the models reference')
+        except RuntimeError as error:
+            require('unknown symbol' in str(error), 'unexpected models selection failure: ' + str(error))
         docs.verify(output, language['product_version'], info['source_commit'], root, compiler)
         original = snapshot(output)
         # Real command-line selections, including an overload and a dotted name.
@@ -155,15 +217,30 @@ def main():
                 require(expected in str(error), 'unexpected authored failure: ' + str(error))
             require(snapshot(output) == original, 'invalid correction changed existing documentation')
         require(snapshot(root / 'examples/language') == source_before, 'acceptance checks mutated registered sources')
-        # The existing manifest owns the generated reference as well as inputs.
-        (output / 'LLM_REFERENCE.md').write_text(reference + '\nchanged', encoding='utf-8')
+        # A broken selection of the models reference fails closed as well.
+        broken = json.loads(json.dumps(models_config))
+        broken['style_pairs'][0]['replacements'][0]['before'] = 'no such text'
+        (copied / llm.CONFIG).write_text(json.dumps(config), encoding='utf-8')
+        (copied / llm.MODELS_CONFIG).write_text(json.dumps(broken), encoding='utf-8')
         try:
-            docs.verify(output)
-            raise RuntimeError('tampered reference accepted')
+            docs.build(compiler, output, copied)
+            raise RuntimeError('stale models selection accepted')
         except RuntimeError as error:
-            require('Documentation file changed: LLM_REFERENCE.md' in str(error), 'tampered reference escaped ownership')
+            require('correction must match once' in str(error), 'unexpected models failure: ' + str(error))
+        require(snapshot(output) == original, 'invalid models selection changed existing documentation')
+        # The existing manifest owns the generated references as well as inputs.
+        for name, content in (('LLM_REFERENCE.md', reference), ('LLM_REFERENCE_MODELS.md', models_reference)):
+            (output / name).write_text(content + '\nchanged', encoding='utf-8')
+            try:
+                docs.verify(output)
+                raise RuntimeError('tampered reference accepted')
+            except RuntimeError as error:
+                require('Documentation file changed: ' + name in str(error), 'tampered reference escaped ownership')
+            (output / name).write_text(content, encoding='utf-8')
         print(f'LLM reference: PASS {reference_bytes} bytes, {len(examples)} executable forms, {pairs} checked before/after pairs, '
-              f'{len(language["builtins"])} selectable builtins/{signatures} signatures')
+              f'{len(language["builtins"])} selectable builtins/{signatures} signatures; '
+              f'models reference {models_bytes} bytes, {len(model_examples)} executable forms, {model_pairs} pairs, '
+              f'{len(in_models)} builtins')
 
 
 if __name__ == '__main__':

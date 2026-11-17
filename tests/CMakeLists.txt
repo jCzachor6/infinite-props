@@ -342,3 +342,22 @@ if(Python3_Interpreter_FOUND)
     add_test(NAME language_llm_reference COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_llm_reference.py" "$<TARGET_FILE:ipc>")
 endif()
+
+# The model runtime (spec models v1.2): its own executable, so the 2D suite
+# builds and runs without it.
+add_executable(iprop_model_tests
+    model/geometry_test.cpp
+    model/program_test.cpp
+    model/tools_test.cpp
+    model/corpus_test.cpp)
+target_link_libraries(iprop_model_tests PRIVATE iprop_compiler ipgen_lib ipsheet_lib ipval_lib ipdis_lib
+    iprop_model_tools Catch2::Catch2WithMain)
+target_include_directories(iprop_model_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+iprop_warnings(iprop_model_tests)
+add_test(NAME model COMMAND iprop_model_tests "~[corpus]")
+# The pinned corpus of models (tests/fixtures/model-corpus-v1.2.json): every
+# platform must give the same bytes. A difference leaves the report and the
+# dumps of the cases that differ where CI keeps its reports.
+add_test(NAME model_corpus COMMAND iprop_model_tests "[corpus]")
+set_tests_properties(model_corpus PROPERTIES
+    ENVIRONMENT "IPROP_MODEL_CORPUS_REPORT=${CMAKE_BINARY_DIR}/ci-reports/model-corpus")

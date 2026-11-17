@@ -289,7 +289,19 @@ void ParserImpl::parseDeclaration(Asset& asset) {
         break;
     case TokenKind::Identifier: {
         const Token declaration = advance();
-        if (declaration.text == "size") {
+        if (declaration.text == "render" && kind() == TokenKind::LBrace) {
+            // The entry block of a model. `render(...)` stays a helper.
+            Function entry{declaration.text, {}, {}, parseBlock(), declaration.location};
+            entry.entry = true;
+            asset.functions.push_back(std::move(entry));
+            asset.functions.back().sourceRange = {start, pos_};
+        } else if (declaration.text == "scale" && (kind() == TokenKind::Int || kind() == TokenKind::Float)) {
+            if (asset.scale) throw SourceError{declaration.location, "duplicate 'scale' declaration"};
+            asset.scale = parseLiteral();
+            asset.scaleLocation = declaration.location;
+            match(TokenKind::Semi);
+            asset.metadataSyntax.push_back({MetadataSyntax::Kind::Scale, {start, pos_}});
+        } else if (declaration.text == "size") {
             if (asset.sizeX.has_value())
                 throw SourceError{declaration.location, "duplicate 'size' declaration"};
             parseSize(asset);
@@ -326,21 +338,27 @@ void ParserImpl::parseSize(Asset& asset) {
     const Token width = expect(TokenKind::Int, "a width");
     asset.sizeX = toU32(width, "width");
 
-    // "192x192" lexes as Int "192" then Identifier "x192".
+    // "192x192" lexes as Int "192" then Identifier "x192", and a model's
+    // "60x110x60" as Int "60" then Identifier "x110x60".
     if (kind() == TokenKind::Int) {
         asset.sizeY = toU32(advance(), "height");
+        if (kind() == TokenKind::Int) asset.sizeZ = toU32(advance(), "depth");
     } else if (kind() == TokenKind::Identifier) {
-        const Token height = advance();
-        if (height.text.size() > 1 &&
-            (height.text[0] == 'x' || height.text[0] == 'X') &&
-            isDigits(std::string_view(height.text).substr(1))) {
-            if (height.text.size() > 2 && height.text[1] == '0')
-                throw SourceError{height.location, "leading zeros are not allowed in the height"};
-            asset.sizeY = toU32(
-                Token{TokenKind::Int, height.text.substr(1), height.location},
-                "height");
-        } else {
-            failHere("expected a height after the width, e.g. \"192x192\"");
+        const Token rest = advance();
+        const std::string_view text = rest.text;
+        const auto split = text.find_first_of("xX", 1);
+        const auto height = text.substr(1, split == std::string_view::npos ? split : split - 1);
+        const bool marked = text.size() > 1 && (text[0] == 'x' || text[0] == 'X');
+        if (!marked || !isDigits(height)) failHere("expected a height after the width, e.g. \"192x192\"");
+        if (height.size() > 1 && height[0] == '0')
+            throw SourceError{rest.location, "leading zeros are not allowed in the height"};
+        asset.sizeY = toU32(Token{TokenKind::Int, std::string(height), rest.location}, "height");
+        if (split != std::string_view::npos) {
+            const auto depth = text.substr(split + 1);
+            if (!isDigits(depth)) failHere("expected a depth after the height, e.g. \"60x110x60\"");
+            if (depth.size() > 1 && depth[0] == '0')
+                throw SourceError{rest.location, "leading zeros are not allowed in the depth"};
+            asset.sizeZ = toU32(Token{TokenKind::Int, std::string(depth), rest.location}, "depth");
         }
     } else {
         failExpected("a height");
@@ -498,6 +516,8 @@ ParamType ParserImpl::parseParamType(bool insideList) {
         if (const auto type = geometryType(peek().text)) { advance(); return *type; }
         // `seed` names a type only here; elsewhere it reads the stream state.
         if (peek().text == "seed") { advance(); return ParamType::Seed; }
+        // The types of a render asset (models v1.2), contextual like `seed`.
+        if (const auto type = modelType(peek().text)) { advance(); return *type; }
     }
     if (kind() == TokenKind::KeywordList && kind(1) == TokenKind::Less) {
         advance(); advance();
@@ -626,6 +646,13 @@ Stmt ParserImpl::parseIdentifierStatement() {
         expect(TokenKind::Assign, "'=' after local geometry handle name");
         return Stmt{VarDecl{local.text, parseExpr(), local.location, type}};
     }
+    if (kind() == TokenKind::Identifier && modelType(peek().text) && isNameKind(kind(1)) &&
+        kind(2) == TokenKind::Assign) {
+        const auto type = parseParamType();
+        const auto local = expectName("a local name");
+        expect(TokenKind::Assign, "'=' after the local name");
+        return Stmt{VarDecl{local.text, parseExpr(), local.location, type}};
+    }
     if (kind() == TokenKind::KeywordMask) {
         const auto at = peek().location;
         if (kind(1) == TokenKind::Dot)
@@ -672,6 +699,13 @@ Stmt ParserImpl::parseIdentifierStatement() {
     }
     if (std::holds_alternative<Index>(*expr) && kind() == TokenKind::Assign)
         throw SourceError{locationOf(*expr), "list elements are immutable; assign a whole new list instead"};
+    // `place(...) { ... }`: the placement scope of a render asset. Without a
+    // block it is an ordinary call of a helper named place.
+    if (auto* call = std::get_if<Call>(expr.get()); call && name.text == "place" && kind() == TokenKind::LBrace &&
+        std::holds_alternative<Identifier>(*call->callee)) {
+        auto args = std::move(call->args);
+        return Stmt{PlaceStmt{std::move(args), parseBlock(), name.location}};
+    }
     if (!std::holds_alternative<Call>(*expr) && !std::holds_alternative<SamplerPick>(*expr) &&
         !std::holds_alternative<SamplerCapture>(*expr) && !std::holds_alternative<ListMethod>(*expr) &&
         !std::holds_alternative<SurfaceBlur>(*expr) && !std::holds_alternative<SurfaceNormal>(*expr)) {

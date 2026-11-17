@@ -17,19 +17,22 @@ material_field = name, "=", expression, [ ";" ] ;
 material_type = name, ".", identifier ;
 asset         = "asset", identifier, "{", { ";" | declaration }, "}" ;
 declaration   = size | origin | input | output
-              | palette | asset_constant | draw | helper ;
-size          = "size", integer, (integer | xdigits), [ ";" ] ;
+              | palette | asset_constant | draw | render | scale | helper ;
+size          = "size", integer, (integer, [ integer ] | xdigits, [ xdigits ]), [ ";" ] ;  (* a third number: the depth of a model *)
 origin        = "origin", expression, ",", expression, [ ";" ] ;
 input         = "input", input_type, name, "=", declaration_constant, [ ";" ] ;
 input_type    = "color" | "f32" | "u32" | "i32" ;
 output        = "output", [ "list" ], output_kind, name, [ ";" ] ; (* part requires list; mask/layer/normal forbid list *)
 output_kind   = "point" | "circle" | "rect" | "mask" | "layer" | "normal" | "part" ;
 palette       = "palette", name, "=", "[", [ expressions ], "]", [ ";" ] ;
-asset_constant = "const", value_type, name, "=", expression, [ ";" ] ;  (* reserved "const" *)
+asset_constant = "const", (value_type | model_type), name, "=", expression, [ ";" ] ;  (* reserved "const" *)
 draw          = "draw", block ;
-helper        = name, "(", [ parameters ], ")", [ "->", (value_type | "seed") ], block ;
+render        = "render", block ;  (* contextual; the entry of a model, in place of draw *)
+scale         = "scale", (integer | floating), [ ";" ] ;  (* contextual; units per metre of a model *)
+helper        = name, "(", [ parameters ], ")", [ "->", (value_type | "seed" | model_type) ], block ;
 parameters    = parameter, { ",", parameter }, [ "," ] ;
-parameter     = name, ":", (value_type | material_type | "seed") ;  (* "seed": contextual type name *)
+parameter     = name, ":", (value_type | material_type | "seed" | model_type) ;  (* "seed": contextual type name *)
+model_type    = "vec3" | "skin" ;  (* contextual type names of a model *)
 scalar_type   = "i32" | "f32" | "color" | "vec2" | "distribution" ;
 sampler_type  = "sampler", "<", ("i32" | "f32" | "color" | "vec2"), ">" ;
 stepper_type  = "stepper", "<", ("i32" | "f32" | "color" | "vec2"), ">" ;
@@ -37,9 +40,10 @@ list_type     = "list", "<", (scalar_type | sampler_type | stepper_type), ">" ;
 value_type    = scalar_type | list_type | sampler_type | stepper_type | "layer" | "mask" ;
 block         = "{", { ";" | statement }, "}" ;
 clip_scope    = "clip", "(", expression, ")", block ;
-statement     = layer_capture | clip_scope | assignment | call_statement | if | while | for
+statement     = layer_capture | clip_scope | place_scope | assignment | call_statement | if | while | for
               | "break" | "continue" | return ;
-assignment    = [ "distribution" | "layer" | "mask" | list_type | sampler_type | stepper_type ], name, "=", expression ;
+place_scope   = "place", "(", [ arguments ], ")", block ;  (* contextual: a call of that name followed by a block *)
+assignment    = [ "distribution" | "layer" | "mask" | list_type | sampler_type | stepper_type | model_type ], name, "=", expression ;
 call_statement = (name | "mask" | "sampler" | "stepper"), { postfix_suffix } ;  (* must end as a call, capture, pick or list method *)
 if            = "if", "(", expression, ")", block,
                 [ "else", (if | block) ] ;
@@ -162,3 +166,11 @@ method on every receiver.
 `mask` is also a reserved value type and the mask namespace. `mask.from` uses
 the existing reserved `from` token only in this namespace. `clip` introduces
 a statement block; both words remain unavailable as ordinary names.
+
+`render`, `scale`, `place`, `vec3` and `skin` are not reserved. `render` is
+the entry of a [model](models.md) only before a block and `scale` a
+declaration only before a number; `place` opens a block only as a call that a
+block follows; `vec3` and `skin` name types only where a type is expected. An
+asset with `draw` keeps all five as ordinary names, and its `size` has no
+depth. `skin.density` uses the reserved `density` token only in that
+namespace.
