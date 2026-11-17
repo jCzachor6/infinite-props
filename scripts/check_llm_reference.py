@@ -229,14 +229,17 @@ def main():
             require('correction must match once' in str(error), 'unexpected models failure: ' + str(error))
         require(snapshot(output) == original, 'invalid models selection changed existing documentation')
         # The existing manifest owns the generated references as well as inputs.
-        for name, content in (('LLM_REFERENCE.md', reference), ('LLM_REFERENCE_MODELS.md', models_reference)):
-            (output / name).write_text(content + '\nchanged', encoding='utf-8')
+        # Bytes in and out: a text write would turn the restored file's line
+        # ends into CRLF on Windows and change its digest.
+        for name in ('LLM_REFERENCE.md', 'LLM_REFERENCE_MODELS.md'):
+            kept = (output / name).read_bytes()
+            (output / name).write_bytes(kept + b'\nchanged')
             try:
                 docs.verify(output)
                 raise RuntimeError('tampered reference accepted')
             except RuntimeError as error:
                 require('Documentation file changed: ' + name in str(error), 'tampered reference escaped ownership')
-            (output / name).write_text(content, encoding='utf-8')
+            (output / name).write_bytes(kept)
         print(f'LLM reference: PASS {reference_bytes} bytes, {len(examples)} executable forms, {pairs} checked before/after pairs, '
               f'{len(language["builtins"])} selectable builtins/{signatures} signatures; '
               f'models reference {models_bytes} bytes, {len(model_examples)} executable forms, {model_pairs} pairs, '
