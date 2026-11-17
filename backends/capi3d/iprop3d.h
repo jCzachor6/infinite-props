@@ -7,8 +7,8 @@
  * structured errors, sized descriptors, input descriptors, parameter sets,
  * execution limits and image tags unchanged.
  *
- * PREVIEW. API 0.1 follows the models contract, which is a preview until it
- * is frozen. Until then a release may change any declaration here, and no
+ * PREVIEW. API 0.2 follows the models contract, which is a preview until it
+ * is frozen; 0.2 adds the 3D outputs of a result. Until then a release may change any declaration here, and no
  * ABI is promised: the library is static only (`iprop3dc`) and a client is
  * built together with it. iprop.h and `ipropc` are unaffected.
  *
@@ -33,7 +33,7 @@ extern "C" {
 
 /* The version of this header, independent of IPROP_API_VERSION_*. */
 #define IPROP3D_API_VERSION_MAJOR 0
-#define IPROP3D_API_VERSION_MINOR 1
+#define IPROP3D_API_VERSION_MINOR 2
 
 /* Opaque handles. */
 typedef struct iprop3d_model iprop3d_model;   /* a loaded, validated .iprop3d */
@@ -169,7 +169,8 @@ IPROP_API void iprop3d_result_free(iprop3d_result* result);
 /* bounds_* enclose every generated position, x, y, z in model units; both
  * are zero for a model without triangles. size and units_per_meter repeat
  * the model's. Counts cover all surfaces. fuel_* count the model program
- * only; work_* count the model and all its textures. */
+ * only; work_* count the model and all its textures. output_count (API 0.2)
+ * counts the model's own outputs. */
 typedef struct {
     uint32_t struct_size;
     uint32_t flags;
@@ -181,6 +182,7 @@ typedef struct {
     uint32_t surface_count, texture_count;
     uint64_t fuel_budget, fuel_used;
     uint64_t work_budget, work_used;
+    uint32_t output_count;
 } iprop3d_result_info;
 
 IPROP_API iprop_status_ex iprop3d_result_info_init(iprop3d_result_info* out, uint32_t capacity);
@@ -281,6 +283,38 @@ IPROP_API iprop_status_ex iprop3d_result_texture_image(const iprop3d_result* res
 IPROP_API iprop_status_ex iprop3d_result_texture_image_find(const iprop3d_result* result, uint32_t texture_index,
                                                             iprop_aux_image_kind kind, uint32_t* out_index,
                                                             iprop_error_ex* error);
+
+/* ---- Outputs (API 0.2) ------------------------------------------------------ */
+
+typedef uint32_t iprop3d_output_kind;
+#define IPROP3D_OUTPUT_POINT3D UINT32_C(0) /* 3 floats: x, y, z */
+#define IPROP3D_OUTPUT_BOX3D UINT32_C(1)   /* 15 floats: centre, size, x axis, y axis, z axis */
+
+/* One output the model declares, in declaration order, with the values the
+ * generation wrote: none for a singular output never written, one for a
+ * written one, any number for a list. Values are in model units like
+ * positions and lie where the model's blocks put them. A box is its centre,
+ * its size along its own axes and those axes, three unit vectors forming a
+ * rotation. values has value_count * floats_per_value floats and is NULL
+ * exactly when value_count is zero; it and the name are borrowed from the
+ * result until iprop3d_result_free. All floats are exact binary32 bits. */
+typedef struct {
+    uint32_t struct_size;
+    uint32_t flags;
+    uint32_t output_index;
+    iprop3d_output_kind kind;
+    uint32_t list;
+    uint32_t value_count;
+    uint32_t floats_per_value;
+    iprop_utf8_view name;
+    const float* values;
+} iprop3d_output_view;
+
+IPROP_API iprop_status_ex iprop3d_output_view_init(iprop3d_output_view* out, uint32_t capacity);
+IPROP_API iprop_status_ex iprop3d_result_output(const iprop3d_result* result, uint32_t output_index,
+                                                iprop3d_output_view* out, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop3d_result_output_find(const iprop3d_result* result, iprop_utf8_view name,
+                                                     uint32_t* out_index, iprop_error_ex* error);
 
 #ifdef __cplusplus
 } /* extern "C" */

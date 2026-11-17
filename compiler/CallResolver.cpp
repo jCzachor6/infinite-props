@@ -61,8 +61,12 @@ ResolvedCall CallResolver::resolve(const ips::Call& call) const {
         return {call.location, std::move(result)};
     }
     if (std::holds_alternative<ips::Member>(*call.callee)) {
-        if (plan_.model) return {call.location, skin(call, name.substr(0, name.find('.')))};
-        return {call.location, part(call, ns + name.substr(0, name.find('.')))};
+        // Imports are named by their path from the model, as a part's
+        // functions are: `oak` in part `leg` is the skin `leg.oak`.
+        const std::string alias = ns + name.substr(0, name.find('.'));
+        if (plan_.model && name.ends_with(".render")) return {call.location, modelPart(call, alias)};
+        if (plan_.model) return {call.location, skin(call, alias)};
+        return {call.location, part(call, alias)};
     }
     const auto id = plan_.functionId(name, ns);
     if (!id) throw ips::SourceError{call.location, "unknown function '" + name + "'"};
@@ -87,6 +91,21 @@ SkinCall CallResolver::skin(const ips::Call& call, const std::string& alias) con
     }
     result.seed = argument(*args[ips::kSkinSeedSlot]->value, ips::ValueType::I32);
     if (const auto* size = args[ips::kSkinSizeSlot]) result.size = size->value.get();
+    return result;
+}
+
+ModelPartCall CallResolver::modelPart(const ips::Call& call, const std::string& path) const {
+    ModelPartCall result{};
+    result.part = plan_.partIndex.at(path);
+    const auto& bound = function_.boundCalls.at(&call);
+    const auto& inputs = plan_.parts[result.part]->asset.inputs;
+    const auto& args = bound.arguments;
+    for (std::size_t i = 0; i < inputs.size(); ++i) {
+        if (const auto* supplied = args[ips::kModelPartFirstInput + i])
+            result.inputs.emplace_back(argument(*supplied->value, ips::valueTypeOf(inputs[i].type)));
+        else result.inputs.emplace_back(plan_.inputDefaults.at(&inputs[i]).value);
+    }
+    result.seed = argument(*args[ips::kModelPartSeedSlot]->value, ips::ValueType::I32);
     return result;
 }
 

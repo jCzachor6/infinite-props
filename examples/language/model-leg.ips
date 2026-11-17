@@ -1,0 +1,16 @@
+// A turned leg: a model of its own, and a part of the table in
+// model-parts.ips. Its output tells the table where its top is.
+import wood from "skins/wood.ips"
+
+asset leg {
+  size 8x60x8
+  input f32 height = 50.0
+  output point3d top
+
+  render {
+    r = 2.0 to 2.8
+    lathe({0, 0, 0}, [{r * 0.7, 0}, {r, height * 0.3}, {r * 0.6, height * 0.85}, {r, height}], 10,
+          wood.draw(seed.initial().fork("oak")))
+    top = {0, height, 0}
+  }
+}

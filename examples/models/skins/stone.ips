@@ -1,0 +1,44 @@
+// Weathered stone for a model: a grey ground, lighter and darker mottling,
+// specks of quartz and mica, and lichen. The noise does not repeat, so a
+// model lays it once on each face with skin.fit; the relief raises the
+// light mottling and sinks the dark.
+asset stone {
+  size 64x64
+  input color tint = #8a8679
+  output normal relief
+  output roughness finish
+
+  draw {
+    root = seed.initial()
+    rect(0, 0, 64, 64, tint)
+    light = noise.mask({0, 0}, {64, 64}, noise.mode_fbm, {0.07, 0.07}, 0.15, root.fork("light"),
+                       octaves = 3, softness = 0.0, comparison = noise.above, warp_amount = 0.4)
+    dark = noise.mask({0, 0}, {64, 64}, noise.mode_fbm, {0.09, 0.09}, -0.2, root.fork("dark"),
+                      octaves = 3, softness = 0.0, comparison = noise.below, warp_amount = 0.4)
+    lichen = noise.mask({0, 0}, {64, 64}, noise.mode_cell, {0.12, 0.12}, 0.22, root.fork("lichen"),
+                        octaves = 1, softness = 0.0, comparison = noise.below, warp_amount = 0.6)
+    clip(light) { rect(0, 0, 64, 64, color.shade(tint, 16)) }
+    clip(dark) { rect(0, 0, 64, 64, color.shade(tint, -22)) }
+    clip(lichen) { rect(0, 0, 64, 64, color.mix(tint, #7d8a4a, 0.55)) }
+    // Specks of quartz and dark mica.
+    for k in 0..36 {
+      speck = root.fork("speck").fork(k)
+      rect(roll(speck.fork("x"), 0.0, 63.0), roll(speck.fork("y"), 0.0, 63.0), 1, 1,
+           color.shade(tint, choose(speck.fork("tone"), -45, -35, 30, 42)))
+    }
+
+    // The relief: the light mottling stands out, the dark sinks.
+    layer height(alpha = surface.source_over) {
+      rect(0, 0, 64, 64, #808080)
+      clip(light) { rect(0, 0, 64, 64, #b0b0b0) }
+      clip(dark) { rect(0, 0, 64, 64, #505050) }
+    }
+    relief = height.normal(2.0, 1.0)
+    // Matt stone, the lichen a little softer still.
+    layer rough(alpha = surface.source_over) {
+      rect(0, 0, 64, 64, #e0e0e0)
+      clip(lichen) { rect(0, 0, 64, 64, #ffffff) }
+    }
+    finish = rough
+  }
+}

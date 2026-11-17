@@ -1,6 +1,6 @@
 # Models: the `.iprop3d` format and the extended VM (1.2 preview)
 
-**Status:** Preview contract of milestone M1, not frozen. Sub-operation
+**Status:** Preview contract of milestones M1–M3, not frozen. Sub-operation
 numbers, section layouts and source spellings may change until the model
 contract is frozen; a file written by a preview toolchain need not load in a
 later one. Nothing here changes a `.iprop` file, the
@@ -17,9 +17,15 @@ states the rules an implementation must follow bit for bit.
 - [Types](#types)
 - [The model page](#the-model-page)
 - [Placement scopes](#placement-scopes)
+- [Blocks and buffers](#blocks-and-buffers)
 - [Skins](#skins)
 - [Vertices and mapping](#vertices-and-mapping)
 - [Primitives](#primitives)
+- [Shapes along a path](#shapes-along-a-path)
+- [Shaping blocks](#shaping-blocks)
+- [Outputs](#outputs)
+- [Parts](#parts)
+- [Ownership](#ownership)
 - [Accounting and limits](#accounting-and-limits)
 - [Result](#result)
 - [Source language](#source-language)
@@ -82,6 +88,8 @@ file the same way.
 | 10 | resource exports | invalid |
 | 12 | model | required |
 | 13 | skins | required |
+| 14 | outputs | optional ([outputs section](#the-outputs-section)) |
+| 15 | parts | optional ([parts section](#the-parts-section)) |
 
 In the meta section `sizeX` and `sizeY` must be 1, both origins zero, the
 flags zero and `outputCount` zero. `fuel` is the budget of the model program.
@@ -125,6 +133,43 @@ Each range is a complete expanded `.iprop` file (not a zlib envelope) that
 loads and validates under the 2D rules. Its `byteLength` is at least 20.
 Failures report `InvalidMetadata` with the entry's position.
 
+Two entries with the same range are **one program**: an asset imported under
+several names (by a model and its parts) is stored once and its textures are
+shared as one program's ([generating a texture](#generating-a-texture)).
+
+### The outputs section
+
+Section 14, present only in a file with 3D outputs, declares the output
+slots, numbered from 0 in order:
+
+| Size | Field |
+| --- | --- |
+| 4 | `count`, 1–256 |
+| 8 × count | entries: `u32 nameIndex`, `u8 kind`, `u8 list`, `u16 owner` |
+
+`kind` is 0 (`point3d`) or 1 (`box3d`), `list` 0 or 1, and `owner` `0xFFFF`
+for the model itself or the index of a [part](#the-parts-section). A name is
+a non-empty string of the pool, unique among the slots of one owner.
+Trailing bytes are invalid. Failures report `InvalidMetadata`.
+
+### The parts section
+
+Section 15, present only in a file with 3D parts, lists the part instances:
+
+| Size | Field |
+| --- | --- |
+| 4 | `count`, 1–256 |
+| 16 × count | entries: `u32 nameIndex`, `u32 firstFunction`, `u32 functionCount`, `u32 parent` |
+
+A name is non-empty and unique; the reference compiler uses the import path
+from the model (`leg`, `pair.peg`). `parent` is `0xFFFFFFFF` for the model or
+the index of an earlier part. The functions of the parts follow the
+model's own as contiguous runs in entry order: the first part's run starts
+after function 0, each run starts where the previous ends, `functionCount`
+is at least 1 and the last run ends at the end of the function table. The
+first function of a run is the part's **entry**: its parameters are the
+part's inputs and it has no results. Failures report `InvalidMetadata`.
+
 ## Types
 
 A model program has one more value type:
@@ -133,8 +178,14 @@ A model program has one more value type:
 | --- | --- | --- |
 | vec3 | 21 | Three binary32 components in one stack slot |
 
-It is storable in locals, parameters and results. It is not a list, sampler
-or stepper element in M1. Its typed zero is `(0, 0, 0)`.
+It is storable in locals, parameters and results. Its typed zero is
+`(0, 0, 0)`. It is no element of a sampler or a stepper.
+
+A model file may also declare the descriptor `list<vec3>` (kind 5, element
+21) in its types section; a `.iprop` file that does fails loading with
+`InvalidCode` (`invalid parameterized type descriptor`). Such a list is
+built and read by the list instructions of the 2D set; in the collections
+section each element is three binary32 values, `x`, `y`, `z`.
 
 A **skin** is not a VM type. The program carries it as an `i32`: the number of
 a skin record, from 1. Zero is the unassigned skin. Every instruction that
@@ -174,6 +225,12 @@ unreachable code too.
 | 0x0D | `vec3.normalize` | 0 | `[vec3] -> [vec3]` |
 | 0x0E | `vec3.mix` | 0 | `[vec3 vec3 f32] -> [vec3]` |
 | 0x20 | `place.begin` | mask | arguments by mask `-> []`, opens a scope |
+| 0x21 | `smooth.begin` | 0 | `[f32] -> []`, opens a block |
+| 0x22 | `refine.begin` | 0 | `[i32] -> []`, opens a block |
+| 0x23 | `bend.begin` | 0 | `[f32] -> []`, opens a block |
+| 0x24 | `twist.begin` | 0 | `[f32] -> []`, opens a block |
+| 0x25 | `taper.begin` | 0 | `[f32] -> []`, opens a block |
+| 0x26 | `displace.begin` | 0 | `[f32 f32 i32] -> []`, opens a block |
 | 0x40 | `box` | 0 | `[vec3 vec3 skin] -> []` |
 | 0x41 | `box.bevel` | 0 | `[vec3 vec3 f32 skin] -> []` |
 | 0x42 | `cylinder` | 0 | `[vec3 f32 f32 i32 skin] -> []` |
@@ -186,6 +243,8 @@ unreachable code too.
 | 0x49 | `extrude.bevel` | 0 | `[vec3 list<vec2> f32 f32 skin] -> []` |
 | 0x4A | `quad` | 0 | `[vec3 vec3 vec3 vec3 skin] -> []` |
 | 0x4B | `tri` | 0 | `[vec3 vec3 vec3 skin] -> []` |
+| 0x50 | `tube` | 0 | `[vec3 vec3 vec3 vec3 f32 f32 i32 i32 skin] -> []` |
+| 0x51 | `sweep` | 0 | `[list<vec3> list<vec2> skin] -> []` |
 | 0x70 | `skin.draw` | program | `[inputs… i32 i32 i32] -> [skin]` |
 | 0x71 | `skin.density` | 0 | `[skin f32] -> [skin]` |
 | 0x72 | `skin.fit` | 0 | `[skin] -> [skin]` |
@@ -198,12 +257,23 @@ unreachable code too.
 | 0x79 | `skin.crisp` | 0 | `[skin] -> [skin]` |
 | 0x7A | `skin.blend` | 0 | `[skin] -> [skin]` |
 | 0x7B | `skin.region` | 0 | `[skin f32 f32 f32 f32] -> [skin]` |
+| 0x91 | `out.point3d` | slot | `[vec3] -> []` |
+| 0x92 | `out.box3d` | slot | `[vec3 vec3] -> []` |
+| 0x93 | `out.list.point3d` | slot | `[vec3] -> []` |
+| 0x94 | `out.list.box3d` | slot | `[vec3 vec3] -> []` |
+| 0x95 | `part.get.point3d` | slot | `[] -> [vec3]` |
+| 0xA0 | `part.render` | part | `[inputs… i32] -> []`, runs the part |
 
 `skin` in a stack signature is an `i32`. An operand written 0 must be zero.
 An aux value outside this table fails validation, in unreachable code too.
-Ranges reserved for later milestones: `0x21–0x3F` scopes, `0x4C–0x6F`
-primitives, `0x7C–0x8F` skins, `0x90–0x9F` queries and outputs, `0xA0–0xAF`
-parts, `0xB0–0xBF` sculpting.
+A slot operand names an entry of the [outputs section](#the-outputs-section)
+whose kind and list flag match the operation (`out.point3d` a singular
+`point3d`, `part.get.point3d` a singular `point3d`), else validation fails.
+`part.render P` names an entry of the [parts section](#the-parts-section)
+and takes the parameters of its entry, then the seed. Ranges reserved for
+later milestones: `0x27–0x3F` scopes, `0x4C–0x4F` and `0x52–0x6F`
+primitives, `0x7C–0x8F` skins, `0x90` and `0x96–0x9F` queries and outputs,
+`0xA1–0xAF` parts, `0xB0–0xBF` sculpting.
 
 ### The `vec3` operations
 
@@ -306,6 +376,38 @@ tangent(t)    = unit(v)   where v[i] = (A[i][0]*t.x + A[i][1]*t.y) + A[i][2]*t.z
 
 A flipped scope emits every triangle `(a, b, c)` as `(a, c, b)` and negates
 the tangent sign.
+
+## Blocks and buffers
+
+A **block** is a scope with a buffer of its own: the
+[shaping blocks](#shaping-blocks) and the [call of a part](#parts). Its
+frame is where it opens: the block's scope is the identity map, not flipped,
+and scopes opened inside it compose from there. Every scope therefore maps
+into the frame of the innermost open block, or of the model when none is
+open, and a primitive writes into that buffer.
+
+A vertex written into a block's buffer keeps `point(p)`, `normal(n)`,
+`tangent(t)` and its sign in binary64, unrounded; its UV is computed and
+rounded as for any vertex. A vertex written into the model is rounded as
+[vertices and mapping](#vertices-and-mapping) state.
+
+When a shaping block closes, at its `end` or when a branch or a return
+leaves it, in this order:
+
+1. Every position of its buffer must be finite, else the generation traps
+   with `NumericRange` (`model coordinate out of range`).
+2. The block [processes](#shaping-blocks) its buffer, paying first.
+3. It pays 3 fuel units and one work step for each vertex and 1 fuel unit
+   and one work step for each triangle of the buffer.
+4. Every vertex passes to the enclosing scope in buffer order, as if a
+   primitive emitted it there with its `p`, `n`, `t` and sign: through that
+   scope's map, normalised again, and rounded if that scope writes into the
+   model; it keeps its UV and its skin record. Triangles follow in order,
+   renumbered, and a flipped scope swaps their last two corners.
+5. Its [pending outputs](#outputs) pass on in order.
+
+Vertex and triangle limits count every vertex and triangle made, in every
+buffer: each of them ends in the model.
 
 ## Skins
 
@@ -726,6 +828,308 @@ fw = |b - a|        fh = |cross(b - a, c - a)| / fw
 with the triangle `(0, 1, 2)`. `|v|` is `sqrt((v.x*v.x + v.y*v.y) + v.z*v.z)`.
 In a flipped scope the sign `w` is negated like every other.
 
+## Shapes along a path
+
+Below, vectors combine component by component in the written order:
+`a + b*k` is `(a.x + b.x*k, …)`; `dot`, `cross` and `unit` are those of the
+[conventions](#conventions). The **start frame** of a path leaving in the
+unit direction `T`:
+
+```
+R = (0, 1, 0)                 if T.y*T.y < 0.75
+R = (0, 0, -1) if T.y > 0, else (0, 0, 1)    otherwise
+V = unit(R - T*dot(R, T))
+U = cross(V, T)
+```
+
+`settle(T, U)` makes a frame of a direction again:
+`U' = unit(U - T*dot(U, T))`, `V' = cross(T, U')`.
+
+### `tube`
+
+`tube(a, b, c, d, r0, r1, sides, segments, skin)`: every argument finite
+(`tube needs finite arguments`), radii not negative and not both zero
+(`radius must be positive`), `sides` in 3–64 and `segments` in 1–256
+(`segments must be in 1..256`).
+
+With `n = segments`, rings `i = 0 … n` at `t = i / n`, `s = 1 - t`:
+
+```
+w0 = (s*s)*s   w1 = ((3*s)*s)*t   w2 = ((3*s)*t)*t   w3 = (t*t)*t
+X[i] = ((a*w0 + b*w1) + c*w2) + d*w3
+D[i] = ((b - a)*(s*s) + (c - b)*((2*s)*t)) + (d - c)*(t*t)
+r[i] = r0 + (r1 - r0)*t
+cum[0] = 0      cum[i+1] = cum[i] + |X[i+1] - X[i]|      L = cum[n]
+```
+
+A zero `D[i]` is replaced by `X[i+1] - X[i]` (by `X[n] - X[n-1]` for the
+last ring); still zero, it traps with `RuntimeViolation`
+(`tube curve has no direction`). `T[i] = unit(D[i])`. Ring 0 takes the start
+frame of `T[0]`; ring `i + 1` takes the double reflection of ring `i`:
+
+```
+v1 = X[i+1] - X[i]      c1 = dot(v1, v1)
+if c1 > 0:  U = U[i] - v1*((2*dot(v1, U[i]))/c1)    t = T[i] - v1*((2*dot(v1, T[i]))/c1)
+else:       U = U[i]                                 t = T[i]
+v2 = T[i+1] - t         c2 = dot(v2, v2)
+if c2 > 0:  U = U - v2*((2*dot(v2, U))/c2)
+U[i+1], V[i+1] = settle(T[i+1], U)
+```
+
+With the [column directions](#cylinder-cone-and-band) `(dx, dz)` of `sides`,
+`C = TAU * max(r0, r1)` and `k = r0 - r1`, ring `i` has columns
+`j = 0 … sides`:
+
+```
+radial = U[i]*dx - V[i]*dz
+p = X[i] + radial*r[i]
+n = unit(radial*L + T[i]*k)        T = U[i]*dz + V[i]*dx
+(s, t) = (C * (j / sides), L - cum[i])        (fw, fh) = (C, L)
+```
+
+All rings come first, then the triangles of a [band](#cylinder-cone-and-band)
+between rings `i` and `i + 1` for each `i`, leaving out the triangle that
+collapses at a ring of radius zero. Then a cap at ring 0 when `r0 > 0` and at
+ring `n` when `r1 > 0`, each like a cone's with the cone's X along `U` and its
+Z along `-V`: a centre `X` and the ring points `X + U*lx - V*lz` with
+`(lx, lz) = (dx*r, dz*r)`, the normal `-T` for the first and `T` for the
+last, the tangent `U`, face coordinates and triangles as the lower and the
+upper cap of a cone.
+
+### `sweep`
+
+`sweep(path, profile, skin)`: a path of 2–256 finite points
+(`sweep path needs 2..256 points`, `sweep needs finite arguments`) and a
+profile of 3–256 points, checked and oriented as an
+[extrude outline](#extrude) with the messages `sweep profile has no area`,
+`sweep profile repeats a point` and `sweep profile is self-intersecting`, and
+[triangulated](#triangulation) (`sweep profile cannot be triangulated`).
+Fuel reserves `ceil(n*n/3)` for a profile of `n` points and 24 for each
+point of the path.
+
+Segment `k` runs from path point `k` to `k + 1`: a zero difference traps
+(`sweep path repeats a point`), `d[k] = unit(P[k+1] - P[k])` and `cum` sums
+the lengths `|P[k+1] - P[k]|`, `L` the whole. Segment 0 takes the start
+frame of `d[0]`. At each inner point `k`:
+
+```
+B = d[k-1] + d[k]        zero: RuntimeViolation (sweep path turns back on itself)
+m = unit(B)      along = dot(d[k-1], m)
+RU[k] = U[k-1] - d[k-1]*(dot(U[k-1], m)/along)       RV[k] the same with V[k-1]
+U[k], V[k] = settle(d[k], U[k-1] - m*(2*dot(U[k-1], m)))
+```
+
+The ends take the axes of their segment: `RU[0] = U[0]` and the last point
+those of the last segment. A profile point `q` lies at
+`ring(k, q) = (P[k] + RU[k]*q.x) + RV[k]*q.y`. With `minX … maxY` the bounds
+of the profile and `W`, `H` its size:
+
+1. A **start cap**: `ring(0, q)` of each point, `N = -d[0]`, `T = -U[0]`,
+   `(s, t) = (maxX - q.x, maxY - q.y)`, `(fw, fh) = (W, H)`, the triangles of
+   the profile as `(a, c, b)`.
+2. An **end cap** at the last point: `N` and `T` the direction and `U` of the
+   last segment, `(s, t) = (q.x - minX, maxY - q.y)`, the triangles as they
+   are.
+3. For each segment `k`, for each profile edge from `q` to `r`, with
+   `(dx, dy) = r - q`, `e = sqrt(dx*dx + dy*dy)` and `around` the profile's
+   perimeter up to each point: a face of the vertices `ring(k, q)`,
+   `ring(k, r)`, `ring(k+1, r)`, `ring(k+1, q)` with
+   `N = U[k]*(dy/e) + V[k]*(-dx/e)`, `T = U[k]*(dx/e) + V[k]*(dy/e)`, face
+   coordinates `(around(q), L - cum[k])`, `(around(r), L - cum[k])`,
+   `(around(r), L - cum[k+1])`, `(around(q), L - cum[k+1])` and
+   `(fw, fh) = (perimeter, L)`.
+
+## Shaping blocks
+
+A shaping block pops its arguments and checks them, in this order: the
+nesting limit is the [place](#placement-scopes) one, and every failed check
+traps with `NumericRange`:
+
+| Block | Check |
+| --- | --- |
+| `smooth(angle)` | `angle` in 0–180 (`smooth angle must be in 0..180`) |
+| `refine(count)` | `count` in 1–16 (`refine count must be in 1..16`) |
+| `bend(angle)` | `angle` in -360–360 (`bend angle must be in -360..360`) |
+| `twist(angle)` | finite (`twist angle must be finite`) |
+| `taper(scale)` | finite and positive (`taper scale must be finite and positive`) |
+| `displace(amount, frequency, seed)` | finite amount, finite positive frequency (`displace needs a finite amount and a positive frequency`) |
+
+It reserves 24 fuel units and opens a [block](#blocks-and-buffers). What it
+does when it closes follows. Vertices of **equal position** compare their
+binary64 coordinates by value; groups of them are taken in order of their
+first vertex. `settled(t, n)` is `unit(t - n*dot(t, n))`, or `t` when that
+difference is zero.
+
+**smooth** pays 8 fuel units and one work step per vertex. An angle of 0
+changes nothing. Otherwise, with `(c, _) = turn(angle)`, each vertex `v`
+sums, in group order, the normals of the vertices `u` at its position for
+which `u = v` or `dot(n[u], n[v]) > c`. A vertex keeps its normal and its
+tangent when every other `u` that passes has a normal equal to its own (a
+copy on a seam of the image), or none passes, or its sum is zero; any other
+takes `unit` of its sum as its normal and `settled(t, n)` as its tangent.
+All new normals are found before any is set.
+
+**refine(n)** adds, for `E` distinct pairs of vertex numbers that are edges
+of triangles and `T` triangles, `E*(n-1) + T*(n-1)*(n-2)/2` vertices and
+`T*(n*n - 1)` triangles, checked against the limits and paid before it
+works: 5 fuel units and 48 bytes per added vertex, 2 fuel units and 16 bytes
+per added triangle, one work step per added vertex and per resulting
+triangle. The vertices it adds follow the existing ones. Point `(i, j)` of a
+triangle `(a, b, c)`, `i + j ≤ n`, is `a` for `(0, 0)`, `b` for `(n, 0)` and
+`c` for `(0, n)`; on the edge `ab` (`j = 0`), `ac` (`i = 0`) or `bc`
+(`i + j = n`, at `j` from `b`) it is the edge's point at that fraction, and
+inside it is new:
+
+```
+wa = (n-i-j)/n   wb = i/n   wc = j/n
+p = (a.p*wa + b.p*wb) + c.p*wc      n = unit((a.n*wa + b.n*wb) + c.n*wc)
+t = unit((a.t*wa + b.t*wb) + c.t*wc)      w = a.w      uv = f32((a.uv*wa + b.uv*wb) + c.uv*wc)
+```
+
+with the triangle's skin. The `n - 1` points of an edge are made once, when
+first needed, walking from the end whose position is smaller (by `x`, then
+`y`, then `z`; at equal positions, by number): point `m` at
+`f = m/n` from start `p` to end `q` is `p + (q - p)*f`, its normal
+`unit(n_p + (n_q - n_p)*f)`, its tangent likewise, `w` and skin of `p`, and
+`uv = f32(uv_p + (uv_q - uv_p)*f)`. Triangles are visited in order, lattice
+points row by row (`j` outer, `i` inner), and each triangle becomes, for each
+row `j < n` and `i < n - j`, `((i,j), (i+1,j), (i,j+1))` and, when
+`i + j + 1 < n`, `((i+1,j), (i+1,j+1), (i,j+1))`.
+
+**bend**, **twist** and **taper** pay 3 fuel units and one work step per
+vertex. They act over `[y0, y1]`, the least and greatest `y` of the buffer's
+positions, with `L = y1 - y0`; with no vertex, with `L` not positive, or with
+a bend or twist of 0 or a taper of 1 they change nothing. Otherwise every
+vertex at `p` moves to `F(p)`, its normal becomes `unit(C(J)*n)` with `C` the
+cofactors of the [placement scopes](#placement-scopes) and its tangent
+`unit(J*t)`, where for `u = (p.y - y0)/L`:
+
+```
+bend:   a = angle*RAD   R = L/a   phi = u*a   s = sin64(phi)   c = sin64(phi + PIO2)
+        l = R - p.x     k = l/R   (not k > 0: RuntimeViolation, bend is too tight for its geometry)
+        F = (R - l*c, y0 + l*s, p.z)              J = | c   k*s  0 |
+                                                      | -s  k*c  0 |
+                                                      | 0   0    1 |
+twist:  a = angle*RAD   th = u*a   s = sin64(th)   c = sin64(th + PIO2)   q = a/L
+        x' = c*p.x + s*p.z    z' = c*p.z - s*p.x
+        F = (x', p.y, z')                           J = | c    q*z'     s |
+                                                      | 0    1        0 |
+                                                      | -s   -(q*x')  c |
+taper:  g = 1 + (scale - 1)*u    m = (scale - 1)/L
+        F = (p.x*g, p.y, p.z*g)                     J = | g  p.x*m  0 |
+                                                      | 0  1      0 |
+                                                      | 0  p.z*m  g |
+```
+
+**displace** pays 18 fuel units and one work step per vertex, 4 fuel units
+and one work step per triangle. An amount of 0 changes nothing. Otherwise
+each group of equal positions `p` sums the
+normals of its vertices in order; a zero sum leaves the group where it is,
+any other moves every vertex of the group to
+`p + unit(sum)*(amount*noise3(p.x*f, p.y*f, p.z*f, seed))` with `f` the
+frequency. Then each triangle, in order, adds its face vector
+`cross(b' - a', c' - a')` of the moved positions to the sum kept for each of
+its corners, in corner order, keyed by the corner's position and normal
+before the move. Each vertex takes `unit` of its key's sum as its normal, or
+keeps its normal when the sum is zero, and its tangent becomes
+`settled(t, n)`.
+
+### Noise in space
+
+`noise3(x, y, z, seed)` is gradient noise in binary64, in about -1 to 1.
+Each coordinate must be finite with its `floor` in
+`[-2147483648, 2147483646]`, else it traps with `NumericRange`
+(`noise coordinate out of range`).
+
+```
+for each corner (dx, dy, dz) in {0,1}^3, z outer, then y, then x:
+    h = hash(seed ^ ((ix+dx)*73856093) ^ ((iy+dy)*19349663) ^ ((iz+dz)*83492791))   // u32 wraparound
+    g = G[h & 15]
+    n[dz][dy][dx] = (g.x*(fx - dx) + g.y*(fy - dy)) + g.z*(fz - dz)
+u = fade(fx)   v = fade(fy)   w = fade(fz)      fade(t) = ((t*t)*t)*((t*((t*6) - 15)) + 10)
+a00 = n000*(1-u) + n001*u    a10 = n010*(1-u) + n011*u    a01 = n100*(1-u) + n101*u    a11 = n110*(1-u) + n111*u
+b0 = a00*(1-v) + a10*v       b1 = a01*(1-v) + a11*v
+noise3 = b0*(1-w) + b1*w
+```
+
+`ix = floor(x)`, `fx = x - floor(x)` and so on, `n` indexed `[dz][dy][dx]`;
+`hash` is [§12.1](iprop-v0.8.md#121-hashx) and `G` the sixteen directions
+`(1,1,0) (-1,1,0) (1,-1,0) (-1,-1,0) (1,0,1) (-1,0,1) (1,0,-1) (-1,0,-1)
+(0,1,1) (0,-1,1) (0,1,-1) (0,-1,-1) (1,1,0) (0,-1,1) (-1,1,0) (0,-1,-1)`.
+
+## Outputs
+
+`out.point3d` and `out.list.point3d` pop a point and reserve 8 fuel units;
+a component that is not finite traps with `NumericRange` (`a point3d output needs finite
+components`). `out.box3d` and `out.list.box3d` pop the size, then `at`, and
+reserve 16 fuel units: a value that is not finite or a size component that is not positive traps with
+`NumericRange` (`a box3d output needs finite values and a positive size`).
+A box then traps with `RuntimeViolation` when the current scope is
+**sheared** (`a box3d output cannot be turned inside an unequal scale`) or
+when a bend, twist or taper block is open between the current scope and the
+frame of the running asset (`a box3d output cannot be written inside bend,
+twist or taper`).
+
+A scope is sheared when its parent is, or when its parent has an **unequal
+scale** and it turns: `yaw`, `pitch` or `roll` given and not an exact
+multiple of 90 degrees. A scope has an unequal scale when its parent has or
+when its own `scale` is a `vec3` with two different components. Blocks keep
+their parent's state; a part's block starts with neither.
+
+A point is `p`, a box its centre `(at.x, at.y + size.y*0.5, at.z)` and the
+three edges `(size.x, 0, 0)`, `(0, size.y, 0)`, `(0, 0, size.z)`, unflipped,
+all binary64. The value is **delivered** to the current scope:
+
+```
+p' = point(p)                     with that scope's map
+e' = A*e for each edge            flipped' = flipped xor the scope's flipped
+```
+
+If the scope writes into a shaping block, the value waits there as a
+**pending output**. When the block closes, a bend, twist or taper moves the
+point of each pending output by `F` (with the same rules, without a trap),
+and each is delivered in order to the enclosing scope. Otherwise (the
+model, or the block of a part call) the value is **committed** to its slot,
+with one work step:
+
+- a point stores `f32` of each coordinate, which must stay finite
+  (`model coordinate out of range`);
+- a box stores the centre likewise, and for each edge `e`
+  `len = sqrt((e.x*e.x + e.y*e.y) + e.z*e.z)`, which must be positive and
+  finite (`RuntimeViolation`, `degenerate direction`), the size `f32(len)`
+  and the axis `f32(e/len)`, the third axis negated when flipped.
+
+A singular slot keeps the latest value, a list slot every value in order.
+
+## Parts
+
+`part.render P` checks the call depth (`CallDepth`, `call depth exceeds
+limit`), pops the seed and the arguments of the part's entry, reserves 24
+fuel units and empties every slot of part `P`. It opens a
+[block](#blocks-and-buffers) for the part and runs its entry in a frame of
+its own, as a part call of a 2D program does: its stream and its initial
+seed are the seed, and the caller continues after the instruction when the
+frame returns. Values the part writes to its slots are committed in the
+frame of its block, which is the frame of the scope that called it.
+
+When the part's frame returns, after its own scopes have closed, its block
+closes as a shaping block does, without step 1 and 2. The calling frame then
+records `P` as its last part and the calling scope as where it reads.
+
+`part.get.point3d S` traps with `InvalidOutput` unless `P` is the calling
+frame's last part (`slot does not belong to the last called part`) and the
+current scope is the one it recorded (`a part's outputs are read in the
+block that called it`), and with `PartOutputMissing` when the slot holds no
+value (`part output not written`). It pushes the latest value.
+
+## Ownership
+
+Every function belongs to the model or to the part whose run holds it.
+Validation fails with `InvalidInstruction` when a function calls a function
+of another asset, writes a slot it does not own, reads a slot that is not a
+part of its own asset's, or runs `part.render` on a part that is not its own
+asset's. A part's entry that returns values fails with `InvalidSignature`.
+
 ## Accounting and limits
 
 | Limit | Value |
@@ -738,6 +1142,10 @@ In a flipped scope the sign `w` is negated like every other.
 | skin records | 1024 |
 | embedded programs | 64 |
 | open scopes | 32 |
+| output slots of a file | 256 |
+| parts of a file | 256 |
+| points of a sweep path | 256 |
+| segments of a tube | 256 |
 
 A primitive that would pass a vertex or triangle limit traps with
 `RuntimeViolation` (`model exceeds 65536 vertices`, `model exceeds 131072
@@ -748,8 +1156,9 @@ triangles`) before emitting anything; a texture past its limits traps with
 reserves 6 more for each vertex and 2 for each triangle it emits, and an
 extrude also `ceil(n*n/3)` for an outline of `n` points, `ceil(n*n/2)` with a
 bevel, because the checks and the triangulation of an outline grow with the
-square of its points. `place.begin` reserves 24 more and `skin.draw` 64 more,
-also when it reuses a texture. A texture's own generation spends the
+square of its points; a sweep `ceil(n*n/3)` for its profile. `place.begin`
+reserves 24 more and `skin.draw` 64 more, also when it reuses a texture.
+Shaping blocks and parts pay as their sections state. A texture's own generation spends the
 embedded program's budget, not the model's. These prices put a vertex, a
 triangle and a placement at about the CPU time per unit of a plain
 instruction; the `vec3` operations and the skin modifiers cost one unit each.
@@ -760,7 +1169,9 @@ texture's generation runs with the steps that remain and its use is charged
 to the model. Deadlines and cancellation stop either.
 
 **Memory.** A vertex is charged 48 bytes, a triangle 16 and a skin record 64
-to the 64 MiB generation arena. Textures are bounded by their own limits.
+to the 64 MiB generation arena, when a primitive or `refine` makes it;
+passing it out of a block charges nothing. Textures are bounded by their own
+limits.
 
 A failed generation publishes nothing.
 
@@ -782,6 +1193,9 @@ A successful generation yields:
   triangles that use it;
 - per texture whether it **repeats**: whether a triangle uses it through a
   record with the repeat mapping;
+- the model's own **outputs** in slot order, each with its name, kind, list
+  flag and values: a point as three binary32 values, a box as its centre,
+  its size and its three axes, each three binary32 values;
 - fuel and work counters, and the vertex and triangle counts.
 
 The image of a texture has the 2D alpha contract. A surface whose alpha is
@@ -813,13 +1227,28 @@ Source 1.2 adds the following, only in an asset that has `render`:
   crease before the skin.
 - `place(at =, yaw =, pitch =, roll =, scale =, mirror_x =, mirror_y =,
   mirror_z =) { … }`, named arguments only, at least one.
+- `tube` and `sweep`, and the type `list<vec3>`: literals, constants, locals,
+  parameters, results, indexing and `list.len`, no `.sort()` or
+  `.distinct()`.
+- The shaping blocks `smooth(a) { … }`, `refine(n) { … }`, `bend(a) { … }`,
+  `twist(a) { … }`, `taper(k) { … }` and
+  `displace(amount, frequency, seed) { … }`, positional arguments only; they
+  share the limit of 32 open scopes with `place`.
+- `output point3d NAME`, `output box3d NAME` and their `list` forms; a
+  `point3d` is assigned a `vec3`, a `box3d` the literal `{at, size}` of two
+  `vec3`. Assigning a `box3d` lexically inside `bend`, `twist` or `taper` is a
+  compile error. A render asset declares no other output kind.
+- An imported render asset is a **part**: `alias.render(seed, input = value,
+  …)` is a statement, and `alias.outputs.NAME` reads one of its singular
+  `point3d` outputs as a `vec3`. A part declares the same `scale` as the
+  model.
 
 Drawing, surfaces, 2D outputs and 2D geometry are compile errors in such an
 asset, and everything above is unknown in an asset that has `draw`: there
 `vec3` and `skin` are ordinary names and a compile error as the declared type
-of a parameter, a result, a local or a constant. An asset that has `render`
-cannot be imported, by either kind of asset; its own imports are assets that
-have `draw` and material libraries.
+of a parameter, a result, a local or a constant. An asset that has `draw`
+cannot import one that has `render`; a render asset imports assets that have
+`draw` (skins), render assets (parts) and material libraries.
 
 The authoring rules, with examples, are in the handbook chapter
 [models](../docs/language/models.md).
@@ -830,5 +1259,6 @@ members and operators, `vec3.len`, `vec3.dot`, `vec3.cross`,
 [the `vec3` operations](#the-vec3-operations): a constant has the bits the
 running program would compute, and an initializer that would trap is a
 compile error with the trap's message. Primitives, skins and `place` change
-the model and are not constants. In M1 a `vec3` or a `skin` is not an
-element of a list, a sampler or a stepper.
+the model and are not constants. A `list<vec3>` constant is folded the same
+way. A `vec3` is no element of a sampler or a stepper, and a `skin` no
+element of any collection.

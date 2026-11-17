@@ -6,6 +6,7 @@
 #include "CheckedBoundary.hpp"
 #include "ExecutionOptions.hpp"
 #include "Handles.hpp"
+#include "Utf8View.hpp"
 #include "iprop/model/Model.hpp"
 
 #include <array>
@@ -115,6 +116,15 @@ IPROP3D_INIT_BEGIN(iprop3d_result_info)
     ZERO(iprop3d_result_info, surface_count); ZERO(iprop3d_result_info, texture_count);
     ZERO(iprop3d_result_info, fuel_budget); ZERO(iprop3d_result_info, fuel_used);
     ZERO(iprop3d_result_info, work_budget); ZERO(iprop3d_result_info, work_used);
+    ZERO(iprop3d_result_info, output_count);
+IPROP3D_INIT_END
+
+IPROP3D_INIT_BEGIN(iprop3d_output_view)
+    ZERO(iprop3d_output_view, flags); ZERO(iprop3d_output_view, output_index); ZERO(iprop3d_output_view, kind);
+    ZERO(iprop3d_output_view, list); ZERO(iprop3d_output_view, value_count);
+    ZERO(iprop3d_output_view, floats_per_value);
+    clearName(out, capacity);
+    ZERO(iprop3d_output_view, values);
 IPROP3D_INIT_END
 
 IPROP3D_INIT_BEGIN(iprop3d_surface_view)
@@ -334,10 +344,11 @@ iprop_status_ex iprop3d_result_query(const iprop3d_result* result, iprop3d_resul
         info.fuel_used = data.fuelUsed;
         info.work_budget = data.workBudget;
         info.work_used = data.workUsed;
+        info.output_count = static_cast<uint32_t>(data.outputs.size());
 #define WRITE(field) writeField(out, capacity, offsetof(iprop3d_result_info, field), info.field)
         WRITE(bounds_min); WRITE(bounds_max); WRITE(size); WRITE(units_per_meter);
         WRITE(vertex_count); WRITE(triangle_count); WRITE(surface_count); WRITE(texture_count);
-        WRITE(fuel_budget); WRITE(fuel_used); WRITE(work_budget); WRITE(work_used);
+        WRITE(fuel_budget); WRITE(fuel_used); WRITE(work_budget); WRITE(work_used); WRITE(output_count);
 #undef WRITE
         return CallOutcome{};
     });
@@ -472,6 +483,59 @@ iprop_status_ex iprop3d_result_texture_image_find(const iprop3d_result* result, 
             }
         }
         return CallOutcome::argument("the texture has no auxiliary image of this kind");
+    });
+}
+
+// ---- outputs (API 0.2) --------------------------------------------------------
+
+static_assert(sizeof(iprop::Vec3) == 3 * sizeof(float), "a point is three floats");
+static_assert(sizeof(iprop::model::ModelBox) == 15 * sizeof(float), "a box is fifteen floats");
+
+iprop_status_ex iprop3d_result_output(const iprop3d_result* result, uint32_t output_index,
+                                      iprop3d_output_view* out, iprop_error_ex* error) {
+    ErrorContext context{iprop::ErrorStage::Arguments};
+    return checkedBoundary(error, out, queryCapacity(out), context, [&] {
+        if (result == nullptr) return CallOutcome::argument("result is null");
+        uint32_t capacity = 0;
+        if (const auto usable = queryOutput(out, capacity, "output view is null or smaller than four bytes");
+            !usable.succeeded)
+            return usable;
+        if (output_index >= result->data.outputs.size()) return CallOutcome::argument("output index is out of range");
+        const auto& output = result->data.outputs[output_index];
+        const bool box = output.kind == iprop::model::ModelOutputKind::Box3d;
+        iprop3d_output_view view{};
+        view.output_index = output_index;
+        view.kind = box ? IPROP3D_OUTPUT_BOX3D : IPROP3D_OUTPUT_POINT3D;
+        view.list = output.list ? 1 : 0;
+        view.value_count = static_cast<uint32_t>(box ? output.boxes.size() : output.points.size());
+        view.floats_per_value = box ? 15 : 3;
+        if (view.value_count != 0)
+            view.values = box ? reinterpret_cast<const float*>(output.boxes.data())
+                              : reinterpret_cast<const float*>(output.points.data());
+#define WRITE(field) writeField(out, capacity, offsetof(iprop3d_output_view, field), view.field)
+        WRITE(output_index); WRITE(kind); WRITE(list); WRITE(value_count); WRITE(floats_per_value); WRITE(values);
+#undef WRITE
+        writeName(out, capacity, output.name);
+        return CallOutcome{};
+    });
+}
+
+iprop_status_ex iprop3d_result_output_find(const iprop3d_result* result, iprop_utf8_view name,
+                                           uint32_t* out_index, iprop_error_ex* error) {
+    ErrorContext context{iprop::ErrorStage::Arguments};
+    return checkedBoundary(error, out_index, sizeof(uint32_t), context, [&] {
+        if (result == nullptr) return CallOutcome::argument("result is null");
+        if (out_index == nullptr) return CallOutcome::argument("out_index is null");
+        std::string_view sought;
+        if (!readUtf8View(name, sought)) return CallOutcome::argument("output name is not a valid UTF-8 view");
+        const auto& outputs = result->data.outputs;
+        for (std::size_t index = 0; index < outputs.size(); ++index) {
+            if (outputs[index].name == sought) {
+                *out_index = static_cast<uint32_t>(index);
+                return CallOutcome{};
+            }
+        }
+        return CallOutcome::argument("output name was not found");
     });
 }
 

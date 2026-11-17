@@ -5,6 +5,7 @@
 #include "ips/Imports.hpp"
 #include "ips/Semantics.hpp"
 
+#include <charconv>
 #include <set>
 #include <utility>
 
@@ -12,10 +13,12 @@ namespace iprop::compiler {
 namespace {
 
 // The geometric outputs of an asset in declaration order: its output slots.
+// The 3D outputs of a render asset have slots of their own (M3).
 std::vector<SlotInfo> geometrySlots(const ips::Asset& asset) {
     std::vector<SlotInfo> slots;
     for (const auto& output : asset.outputs)
-        if (!ips::isResourceOutput(output.kind)) slots.push_back({output.kind, output.isList, output.name});
+        if (!ips::isResourceOutput(output.kind) && !ips::isModelOutput(output.kind))
+            slots.push_back({output.kind, output.isList, output.name});
     return slots;
 }
 
@@ -199,23 +202,74 @@ void Planner::planParts() {
         plan_->rootSlotIndex.emplace(plan_->rootSlots[slot].name, slot);
 
     if (plan_->model) {
-        // The imports of a model are its skins, not parts of one executable.
-        for (const auto& import : entry_.imports) {
-            if (std::find(entry_.materialImportAliases.begin(), entry_.materialImportAliases.end(),
-                          import.alias) != entry_.materialImportAliases.end())
-                continue;
-            const auto program = parts_.find(import.alias);
-            const auto bytes = skins_.find(import.alias);
-            if (program == parts_.end() || bytes == skins_.end())
-                throw ips::SourceError{import.location, "imported asset '" + import.alias + "' was not provided",
-                    {}, ips::DiagnosticCode::PlanError, ips::DiagnosticStage::Planning};
-            if (plan_->skins.size() >= model::kMaxSkinPrograms)
-                throw ips::SourceError{import.location, "a model imports at most " +
-                    std::to_string(model::kMaxSkinPrograms) + " skin assets", {},
-                    ips::DiagnosticCode::ResourceLimit, ips::DiagnosticStage::Planning};
-            plan_->skinIndex.emplace(import.alias, static_cast<u32>(plan_->skins.size()));
-            plan_->skins.push_back({import.alias, program->second, bytes->second});
-        }
+        // A model's imports that have draw are its skins; those that have
+        // render are its parts, whose imports are expanded in turn (M3).
+        const auto expandModel = [&](auto&& self, const ips::Program& owner, const std::string& prefix,
+                                     u32 parent, const std::string& ownerSource) -> void {
+            for (const auto& import : owner.imports) {
+                if (std::find(owner.materialImportAliases.begin(), owner.materialImportAliases.end(),
+                              import.alias) != owner.materialImportAliases.end())
+                    continue;
+                const std::string path = prefix + import.alias;
+                const auto program = parts_.find(path);
+                if (program == parts_.end())
+                    throw ips::SourceError{import.location, "imported asset '" + path + "' was not provided",
+                        ownerSource, ips::DiagnosticCode::PlanError, ips::DiagnosticStage::Planning};
+                if (ips::isModel(program->second->asset)) {
+                    // One unit is the same length in a part and in its model.
+                    const auto partScale = ips::modelScale(program->second->asset), ownScale = ips::modelScale(entry_.asset);
+                    if (partScale && ownScale && *partScale != *ownScale) {
+                        const auto number = [](f32 value) {
+                            char text[32];
+                            const auto end = std::to_chars(text, text + sizeof(text), value).ptr;
+                            return std::string(text, end);
+                        };
+                        throw ips::SourceError{import.location, "part '" + path + "' declares scale " + number(*partScale) +
+                            " and the model " + number(*ownScale) + "; give both the same scale, or call the part "
+                            "in place(scale = " + number(*ownScale / *partScale) + ")", ownerSource,
+                            ips::DiagnosticCode::PlanError, ips::DiagnosticStage::Planning};
+                    }
+                    if (plan_->parts.size() >= model::kMaxModelParts)
+                        throw ips::SourceError{import.location, "a model and its parts use at most " +
+                            std::to_string(model::kMaxModelParts) + " parts", ownerSource,
+                            ips::DiagnosticCode::ResourceLimit, ips::DiagnosticStage::Planning};
+                    const auto index = static_cast<u32>(plan_->parts.size());
+                    const auto named = partSources_.find(path);
+                    const auto source = named != partSources_.end() ? named->second
+                                                                    : ips::resolveImportPath(ownerSource, import.path);
+                    plan_->partIndex.emplace(path, index);
+                    plan_->parts.push_back(program->second);
+                    plan_->instances.push_back({path, parent, source});
+                    self(self, *program->second, path + ".", index, source);
+                    continue;
+                }
+                const auto bytes = skins_.find(path);
+                if (bytes == skins_.end())
+                    throw ips::SourceError{import.location, "imported asset '" + path + "' was not provided",
+                        ownerSource, ips::DiagnosticCode::PlanError, ips::DiagnosticStage::Planning};
+                if (plan_->skins.size() >= model::kMaxSkinPrograms)
+                    throw ips::SourceError{import.location, "a model and its parts import at most " +
+                        std::to_string(model::kMaxSkinPrograms) + " skin assets", ownerSource,
+                        ips::DiagnosticCode::ResourceLimit, ips::DiagnosticStage::Planning};
+                plan_->skinIndex.emplace(path, static_cast<u32>(plan_->skins.size()));
+                plan_->skins.push_back({path, program->second, bytes->second});
+            }
+        };
+        expandModel(expandModel, entry_, "", kRootParent, "");
+        // 3D output slots: the model's own, then each part's.
+        const auto addSlots = [&](const ips::Program& owner, u32 ownerIndex) {
+            for (const auto& output : owner.asset.outputs) {
+                if (!ips::isModelOutput(output.kind)) continue;
+                if (plan_->modelSlots.size() >= model::kMaxModelOutputs)
+                    throw ips::SourceError{output.location, "a model and its parts declare more than " +
+                        std::to_string(model::kMaxModelOutputs) + " outputs", plan_->sourcePath(&owner),
+                        ips::DiagnosticCode::ResourceLimit, ips::DiagnosticStage::Planning};
+                plan_->modelSlotIndex.emplace(std::pair{ownerIndex, output.name}, static_cast<u32>(plan_->modelSlots.size()));
+                plan_->modelSlots.push_back({output.kind, output.isList, output.name, ownerIndex});
+            }
+        };
+        addSlots(entry_, kRootParent);
+        for (u32 part = 0; part < plan_->parts.size(); ++part) addSlots(*plan_->parts[part], part);
         return;
     }
 
@@ -294,12 +348,19 @@ void Planner::planFunctions() {
         }
     }
     for (std::size_t i = 0; i < plan_->parts.size(); ++i) {
-        for (const auto& function : plan_->parts[i]->asset.functions) {
+        const auto& asset = plan_->parts[i]->asset;
+        const ips::Function* partEntry = ips::entryFunction(asset);
+        const auto add = [&](const ips::Function& function) {
             const std::string name = plan_->instances[i].path + "." + function.name;
             planned.push_back(name);
             registry_.emplace(name, &function);
-            registryDrawLike_.emplace(name, function.name == "draw");
-        }
+            registryDrawLike_.emplace(name, &function == partEntry);
+        };
+        // A 3D part's functions are a run that starts with its render
+        // (M3); a 2D part keeps its declaration order.
+        if (plan_->model && partEntry) add(*partEntry);
+        for (const auto& function : asset.functions)
+            if (!plan_->model || &function != partEntry) add(function);
     }
     // The function table holds the entry asset's functions and every part's.
     if (planned.size() > kMaxFunctions)

@@ -1,4 +1,5 @@
-// A skin comes from an asset that has draw; a model cannot be imported.
+// A skin comes from an asset that has draw; a model is built with
+// alias.render, never worn as a skin.
 import stool from "../stool.ips"
 
 asset room {

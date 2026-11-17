@@ -1,0 +1,8 @@
+// A part and its model measure in the same units: the leg has scale 100.
+import leg from "../model-leg.ips"
+
+asset bench {
+  size 64x48x32
+  scale 32
+  render { leg.render(seed.initial()) }
+}

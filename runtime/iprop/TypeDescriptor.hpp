@@ -22,13 +22,16 @@ struct TypeDescriptor {
         // A source-only kind of model programs: a skin travels as the number
         // of its record in i32 slots.
         Skin = 22,
+        // A source-only kind of model programs (M3): the `{at, size}` value
+        // of a box3d output write, never stored.
+        Box3d = 23,
     };
     static const TypeDescriptor I32, F32, Color, Vec2, Distribution;
     static const TypeDescriptor List, Rect, Circle, Void, Builder, Sampler, PointBuilder;
     static const TypeDescriptor Layer, Mask, Stepper;
     static const TypeDescriptor Diagram2d, Contours2d, Regions2d, Part2d, Parts2d;
     static const TypeDescriptor Seed;
-    static const TypeDescriptor Vec3, Skin;
+    static const TypeDescriptor Vec3, Skin, Box3d;
     Kind kind = Kind::I32;
     Kind element = Kind::Void;
     // Lists may contain sampler<T> or stepper<T> descriptions, but no lists
@@ -62,7 +65,8 @@ struct TypeDescriptor {
     }
     constexpr bool isStorable() const {
         return isScalar() || isResource() || (isDescription() && element <= Kind::Vec2 && parameter == Kind::Void) ||
-            (isList() && ((element <= Kind::Distribution && parameter == Kind::Void) ||
+            // A list of vec3 (M3) loads only in the model dialect.
+            (isList() && (((element <= Kind::Distribution || element == Kind::Vec3) && parameter == Kind::Void) ||
                          ((element == Kind::Sampler || element == Kind::Stepper) && parameter <= Kind::Vec2)));
     }
     constexpr TypeDescriptor item() const { return {element, parameter}; }
@@ -95,6 +99,7 @@ inline constexpr TypeDescriptor TypeDescriptor::Parts2d{Kind::Parts2d};
 inline constexpr TypeDescriptor TypeDescriptor::Seed{Kind::Seed};
 inline constexpr TypeDescriptor TypeDescriptor::Vec3{Kind::Vec3};
 inline constexpr TypeDescriptor TypeDescriptor::Skin{Kind::Skin};
+inline constexpr TypeDescriptor TypeDescriptor::Box3d{Kind::Box3d};
 
 using ValueType = TypeDescriptor;
 const char* valueTypeName(TypeDescriptor type);

@@ -30,6 +30,11 @@ const CORPUS := [
 	 "inputs": [{}, {"finish": "5", "fabric": "2"}]},
 	{"name": "empty", "source": "backends/capi3d/test/empty.ips", "seeds": [0, 9], "inputs": [{}]},
 	{"name": "materials", "source": "tests/model/corpus/materials.ips", "seeds": [1, 3, 6], "inputs": [{}]},
+	# Shapes along a path, shaping blocks, outputs and parts (M3).
+	{"name": "shapes", "source": "tests/model/corpus/shapes.ips", "seeds": [1, 3], "inputs": [{}]},
+	{"name": "parts", "source": "examples/language/model-parts.ips", "seeds": [1], "inputs": [{}]},
+	# A collider turned by a yaw and a roll: the box's axes are the basis's columns.
+	{"name": "boulder", "source": "examples/models/boulder.ips", "seeds": [1, 6], "inputs": [{}, {"rough": "0.9"}]},
 ]
 
 var failures := 0
@@ -150,6 +155,51 @@ func difference(model: IpropModel, expected: Dictionary) -> String:
 		for i in indices.size():
 			if indices[i] != int(wanted.indices[i]):
 				return "surface %d index %d" % [s, i]
+	return output_difference(model, expected)
+
+# The outputs (M3) against the dump: in metres, each binary32 component
+# divided by the units per metre in binary32, as the mesh's positions are.
+func metres(model: IpropModel, values: Array) -> Vector3:
+	return Vector3(float_of(values[0]), float_of(values[1]), float_of(values[2])) / model.units_per_meter
+
+func float_of(value_bits: Variant) -> float:
+	var bytes := PackedByteArray()
+	bytes.resize(4)
+	bytes.encode_u32(0, int(value_bits))
+	return bytes.decode_float(0)
+
+func output_difference(model: IpropModel, expected: Dictionary) -> String:
+	var outputs: Array = model.outputs
+	var wanted_outputs: Array = expected.get("outputs", [])
+	if outputs.size() != wanted_outputs.size():
+		return "output count"
+	for o in outputs.size():
+		var output: Dictionary = outputs[o]
+		var wanted: Dictionary = wanted_outputs[o]
+		if output.index != o or output.name != wanted.name or output.kind != wanted.kind or output.list != wanted.list:
+			return "output %d identity" % o
+		if output.kind == "point3d":
+			var points: PackedVector3Array = output.points
+			if points.size() != wanted.points.size():
+				return "output %d count" % o
+			for i in points.size():
+				if points[i] != metres(model, wanted.points[i]):
+					return "output %d point %d" % [o, i]
+		else:
+			var boxes: Array = output.boxes
+			if boxes.size() != wanted.boxes.size():
+				return "output %d count" % o
+			for i in boxes.size():
+				var box: Dictionary = boxes[i]
+				var transform: Transform3D = box.transform
+				if transform.origin != metres(model, wanted.boxes[i].center) or box.size != metres(model, wanted.boxes[i].size):
+					return "output %d box %d" % [o, i]
+				for axis in 3:
+					var column: Vector3 = transform.basis[axis]
+					var expected_axis: Array = wanted.boxes[i].axes[axis]
+					if bits(column.x) != int(expected_axis[0]) or bits(column.y) != int(expected_axis[1]) \
+							or bits(column.z) != int(expected_axis[2]):
+						return "output %d box %d axis %d" % [o, i, axis]
 	return ""
 
 # The mesh Godot draws against the raw arrays of the same generation.
@@ -384,6 +434,32 @@ func check_node(files: Dictionary) -> void:
 	demand(model.set_input("wide", 3.0) == OK and node.mesh == chair, "the replaced model is disconnected")
 	node.model = null
 	demand(node.mesh == null, "no model, no mesh")
+	# Outputs (M3): a Marker3D at every point and box colliders in a
+	# StaticBody3D, rebuilt with the mesh and switched off by properties.
+	var parts := IpropModel.new()
+	demand(parts.load_file(files.parts) == OK, "load the table of parts")
+	node.model = parts
+	var tops: PackedVector3Array = parts.outputs[0].points
+	demand(tops.size() == 4, "the table's four tops")
+	var markers := node.get_children().filter(func(child): return child is Marker3D)
+	demand(markers.size() == 4 and markers[0].name == "tops_0" and markers[0].position == tops[0], "a marker at every top")
+	node.markers = false
+	demand(node.get_children().filter(func(child): return child is Marker3D).is_empty(), "markers switched off")
+	node.markers = true
+	var shapes := IpropModel.new()
+	demand(shapes.load_file(files.shapes) == OK, "load the shapes")
+	node.model = shapes
+	node.seed = 1
+	var bodies := node.get_children().filter(func(child): return child is StaticBody3D)
+	demand(bodies.size() == 1 and bodies[0].get_child_count() == 3, "three box colliders")
+	if bodies.size() == 1 and bodies[0].get_child_count() == 3:
+		var collider := bodies[0].get_child(0) as CollisionShape3D
+		demand(collider.name == "boxes_0" and (collider.shape as BoxShape3D).size == shapes.outputs[2].boxes[0].size,
+			"a collider of the box's size")
+	node.colliders = false
+	demand(node.get_children().filter(func(child): return child is StaticBody3D).is_empty(), "colliders switched off")
+	node.model = null
+	demand(node.get_child_count() == 0, "no model, no outputs")
 	node.free()
 
 # Equal texture keys share one GPU texture between meshes; a texture no mesh

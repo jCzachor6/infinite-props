@@ -212,6 +212,16 @@
     {"file": "model-glass.ips", "expect": "pass"},
     {"file": "model-net.ips", "expect": "pass"},
     {"file": "errors/model-constant.ips", "expect": "compile-error", "message": "'sheet' declares no constant 'sidex'"},
-    {"file": "traps/model-region.ips", "expect": "trap", "message": "skin region must lie inside the image"}
+    {"file": "traps/model-region.ips", "expect": "trap", "message": "skin region must lie inside the image"},
+    {"file": "model-paths.ips", "expect": "pass"},
+    {"file": "model-shaping.ips", "expect": "pass"},
+    {"file": "model-outputs.ips", "expect": "pass"},
+    {"file": "model-leg.ips", "expect": "pass"},
+    {"file": "model-parts.ips", "expect": "pass"},
+    {"file": "errors/model-box-bend.ips", "expect": "compile-error", "message": "a box3d output cannot be written inside bend, twist or taper"},
+    {"file": "errors/model-part-scale.ips", "expect": "compile-error", "message": "part 'leg' declares scale 100 and the model 32"},
+    {"file": "traps/model-bend.ips", "expect": "trap", "message": "bend is too tight for its geometry"},
+    {"file": "traps/model-part-read.ips", "expect": "trap", "message": "a part's outputs are read in the block that called it"},
+    {"file": "traps/model-box-shear.ips", "expect": "trap", "message": "a box3d output cannot be turned inside an unequal scale"}
   ]
 }

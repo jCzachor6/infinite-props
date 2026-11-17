@@ -122,7 +122,7 @@
     },
     "types": {
       "name": "storage.type.ips",
-      "match": "\\b(distribution|sampler|stepper)\\b|\\blist\\b(?=\\s*<)|\\b(diagram2d|contours2d|regions2d|part2d|parts2d|color|f32|u32|i32|vec2|vec3|point|rect|circle)\\b(?!\\s*=(?!=))"
+      "match": "\\b(distribution|sampler|stepper)\\b|\\blist\\b(?=\\s*<)|\\b(diagram2d|contours2d|regions2d|part2d|parts2d|color|f32|u32|i32|vec2|vec3|point|rect|circle|point3d|box3d)\\b(?!\\s*=(?!=))"
     },
     "operators": {
       "name": "keyword.operator.ips",
@@ -130,7 +130,7 @@
     },
     "builtins": {
       "name": "support.function.builtin.ips",
-      "match": "(?<![.\\w])((?:cell|color|diagram|dist|list|mask|noise|part|parts|regions|skin|stream|surface|vec2|vec3)\\.[A-Za-z_][A-Za-z_0-9]*|seed\\.initial|abs|atan2|band|beta|box|ceil|chance|choose|clamp|cone|contour|cos|curve|cylinder|dither|exp|extrude|float|floor|gain|gaussian|hash|index|int|lathe|lerp|line|max|min|oval|pick|pixel|poly|pow|quad|quintic|ramp|range|rect|regions|remap|rgb|rgba|roll|round|sin|smooth|smoothstep|sphere|sqrt|tri|triangular|unit|voronoi|weather)\\b(?=\\s*\\()",
+      "match": "(?<![.\\w])((?:cell|color|diagram|dist|list|mask|noise|part|parts|regions|skin|stream|surface|vec2|vec3)\\.[A-Za-z_][A-Za-z_0-9]*|seed\\.initial|abs|atan2|band|beta|box|ceil|chance|choose|clamp|cone|contour|cos|curve|cylinder|dither|exp|extrude|float|floor|gain|gaussian|hash|index|int|lathe|lerp|line|max|min|oval|pick|pixel|poly|pow|quad|quintic|ramp|range|rect|regions|remap|rgb|rgba|roll|round|sin|smooth|smoothstep|sphere|sqrt|sweep|tri|triangular|tube|unit|voronoi|weather)\\b(?=\\s*\\()",
       "comment": "Builtins of both kinds of asset; the primitives and the skin and vec3 namespaces belong to assets with render."
     },
     "samplerCapture": {
@@ -207,9 +207,9 @@
       ]
     },
     "modelKeywords": {
-      "comment": "`render` before a block, `scale` before a number and `place` as a call; ordinary names elsewhere.",
+      "comment": "`render` before a block, `scale` before a number, `place` as a call and the shaping blocks (`smooth(40.0) {`) before a block; ordinary names elsewhere.",
       "name": "keyword.control.model.ips",
-      "match": "\\brender\\b(?=\\s*\\{)|\\bscale\\b(?=\\s+[0-9])|\\bplace\\b(?=\\s*\\()"
+      "match": "\\brender\\b(?=\\s*\\{)|\\bscale\\b(?=\\s+[0-9])|\\bplace\\b(?=\\s*\\()|\\b(?:smooth|refine|bend|twist|taper|displace)\\b(?=\\s*\\([^()]*(?:\\([^()]*\\)[^()]*)*\\)\\s*\\{)"
     }
   }
 }

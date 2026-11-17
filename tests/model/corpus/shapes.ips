@@ -1,0 +1,64 @@
+// A model of the corpus for milestone M3: every new kernel on its general
+// path. A tube along a curve in space, a sweep along a path with oblique
+// mitres, every shaping block nested in turned, unequally scaled and
+// mirrored scopes, outputs written through them, and parts.
+import grid from "../../../examples/language/skins/grid.ips"
+import peg from "peg.ips"
+
+asset shapes {
+  size 120x80x80
+  output point3d top
+  output list point3d tips
+  output list box3d boxes
+
+  render {
+    root = seed.initial()
+    tile = skin.density(grid.draw(root.fork("tile"), size = {24, 24}), roll(root.fork("density"), 0.7, 2.3))
+    sides = choose(root.fork("sides"), 3, 5, 7, 11, 13, 17, 30)
+    flip = choose(root.fork("mirror"), 0, 1)
+
+    // A tube whose control points the seed scatters, thinning or pointed.
+    a = {-40, 0, 0} to {-30, 5, 10}
+    b = {-50, 20, -10} to {-20, 40, 10}
+    c = {-30, 30, -20} to {0, 50, 20}
+    d = {-20, 10, -10} to {-10, 30, 10}
+    tube(a, b, c, d, roll(root.fork("r0"), 0.0, 3.5), roll(root.fork("r1"), 0.5, 3.0), sides,
+         choose(root.fork("segments"), 1, 3, 8, 17), tile)
+
+    // A sweep along an oblique path, its profile concave or convex.
+    place(at = {20, 0, -20}, yaw = roll(root.fork("sweep yaw"), -90.0, 90.0)) {
+      path = [{0, 0, 0}, {0, 10, 0} to {5, 30, 5}, {20, 20, 0} to {30, 40, 10}, {35, 0, 10} to {40, 10, 20}]
+      if (choose(root.fork("profile"), 0, 1) == 0) {
+        sweep(path, [{-2, -1}, {2, -1}, {2, 1}, {-2, 1}], tile)
+      } else {
+        sweep(path, [{0, 0}, {3, 0}, {3, 1}, {1, 1}, {1, 3}, {0, 3}], tile)
+      }
+      top = path[1]
+    }
+
+    // Blocks in a turned, scaled and mirrored scope.
+    place(at = {30, 0, 25}, roll = roll(root.fork("roll"), -30.0, 30.0),
+          scale = {roll(root.fork("sx"), 0.6, 1.6), 1.0, roll(root.fork("sz"), 0.6, 1.6)}, mirror_x = flip) {
+      smooth(roll(root.fork("smooth"), 10.0, 170.0)) {
+        bend(roll(root.fork("bend"), -150.0, 150.0)) {
+          refine(choose(root.fork("bend refine"), 2, 4, 6)) { cylinder({0, 0, 0}, 2.5, 30.0, sides, tile) }
+          tips = {0, 30, 0}
+        }
+      }
+      place(at = {12, 0, 0}) {
+        displace(roll(root.fork("amount"), -2.0, 2.0), roll(root.fork("frequency"), 0.05, 0.4), root.fork("dents")) {
+          refine(4) { sphere({0, 0, 0}, 6.0, sides, 8, tile) }
+        }
+      }
+    }
+
+    // Parts, each with a seed of its own, read in their blocks.
+    for i in 0..3 {
+      place(at = {float(i) * 12.0 - 12.0, 0, -45}, yaw = float(i) * 37.0) {
+        peg.render(root.fork("peg").fork(i), tall = 8.0 + float(i) * 3.0)
+        tips = peg.outputs.tip
+      }
+      boxes = {{float(i) * 12.0 - 12.0, 0, -45}, {3, 8.0 + float(i) * 3.0, 3}}
+    }
+  }
+}

@@ -221,6 +221,23 @@ val surfaces(const iprop3d_result* result, u32 count, Checked& check) {
     return list;
 }
 
+// The model's own outputs (M3): values as a flat Float32Array, three floats
+// a point and fifteen a box (centre, size, x, y and z axis).
+val outputs(const iprop3d_result* result, u32 count, Checked& check) {
+    auto list = val::array();
+    for (u32 o = 0; o < count; ++o) {
+        iprop3d_output_view view{}; iprop3d_output_view_init(&view, sizeof(view));
+        check(iprop3d_result_output(result, o, &view, &check.error));
+        auto entry = val::object();
+        entry.set("index", o); entry.set("name", text(view.name));
+        entry.set("kind", std::string(view.kind == IPROP3D_OUTPUT_BOX3D ? "box3d" : "point3d"));
+        entry.set("list", view.list != 0); entry.set("count", view.value_count);
+        entry.set("values", copied(view.values, std::size_t{view.value_count} * view.floats_per_value));
+        list.call<void>("push", entry);
+    }
+    return list;
+}
+
 val resultObject(const iprop3d_result* result, Checked& check) {
     iprop3d_result_info info{}; iprop3d_result_info_init(&info, sizeof(info));
     check(iprop3d_result_query(result, &info, &check.error));
@@ -234,6 +251,7 @@ val resultObject(const iprop3d_result* result, Checked& check) {
     object.set("fuel", fuel); object.set("work", work);
     object.set("textures", textures(result, info.texture_count, check));
     object.set("surfaces", surfaces(result, info.surface_count, check));
+    object.set("outputs", outputs(result, info.output_count, check));
     return object;
 }
 

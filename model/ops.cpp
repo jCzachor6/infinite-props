@@ -21,7 +21,16 @@ constexpr OpSpec dynamic(Op op, const char* mnemonic) {
     return spec;
 }
 
+// A fixed signature whose operand names a slot or a part.
+constexpr OpSpec indexed(Op op, const char* mnemonic, std::initializer_list<TypeDescriptor> inputs,
+                         std::optional<TypeDescriptor> result = {}) {
+    OpSpec spec = fixed(op, mnemonic, inputs, result);
+    spec.operandIsImmediate = true;
+    return spec;
+}
+
 constexpr TypeDescriptor kProfile = TypeDescriptor::list(TypeDescriptor::Vec2);
+constexpr TypeDescriptor kPath = TypeDescriptor::list(TypeDescriptor::Vec3);
 constexpr TypeDescriptor kSkin = kSkinSlot;
 
 constexpr OpSpec kSpecs[] = {
@@ -42,6 +51,12 @@ constexpr OpSpec kSpecs[] = {
     fixed(Op::Vec3Mix, "vec3.mix", {T::Vec3, T::Vec3, T::F32}, T::Vec3),
 
     dynamic(Op::PlaceBegin, "place.begin"),
+    fixed(Op::SmoothBegin, "smooth.begin", {T::F32}),
+    fixed(Op::RefineBegin, "refine.begin", {T::I32}),
+    fixed(Op::BendBegin, "bend.begin", {T::F32}),
+    fixed(Op::TwistBegin, "twist.begin", {T::F32}),
+    fixed(Op::TaperBegin, "taper.begin", {T::F32}),
+    fixed(Op::DisplaceBegin, "displace.begin", {T::F32, T::F32, T::I32}),
 
     fixed(Op::Box, "box", {T::Vec3, T::Vec3, kSkin}),
     fixed(Op::BoxBevel, "box.bevel", {T::Vec3, T::Vec3, T::F32, kSkin}),
@@ -55,6 +70,8 @@ constexpr OpSpec kSpecs[] = {
     fixed(Op::ExtrudeBevel, "extrude.bevel", {T::Vec3, kProfile, T::F32, T::F32, kSkin}),
     fixed(Op::Quad, "quad", {T::Vec3, T::Vec3, T::Vec3, T::Vec3, kSkin}),
     fixed(Op::Tri, "tri", {T::Vec3, T::Vec3, T::Vec3, kSkin}),
+    fixed(Op::Tube, "tube", {T::Vec3, T::Vec3, T::Vec3, T::Vec3, T::F32, T::F32, T::I32, T::I32, kSkin}),
+    fixed(Op::Sweep, "sweep", {kPath, kProfile, kSkin}),
 
     dynamic(Op::SkinDraw, "skin.draw"),
     fixed(Op::SkinDensity, "skin.density", {kSkin, T::F32}, kSkin),
@@ -68,6 +85,13 @@ constexpr OpSpec kSpecs[] = {
     fixed(Op::SkinCrisp, "skin.crisp", {kSkin}, kSkin),
     fixed(Op::SkinBlend, "skin.blend", {kSkin}, kSkin),
     fixed(Op::SkinRegion, "skin.region", {kSkin, T::F32, T::F32, T::F32, T::F32}, kSkin),
+
+    indexed(Op::OutPoint3d, "out.point3d", {T::Vec3}),
+    indexed(Op::OutBox3d, "out.box3d", {T::Vec3, T::Vec3}),
+    indexed(Op::OutListPoint3d, "out.list.point3d", {T::Vec3}),
+    indexed(Op::OutListBox3d, "out.list.box3d", {T::Vec3, T::Vec3}),
+    indexed(Op::PartGetPoint3d, "part.get.point3d", {}, T::Vec3),
+    dynamic(Op::PartRender, "part.render"),
 };
 
 } // namespace

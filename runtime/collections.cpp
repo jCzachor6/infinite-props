@@ -144,7 +144,7 @@ void writeTypeReference(Writer& writer, TypeDescriptor type, std::span<const Typ
     writer.writeU16(index);
 }
 
-std::vector<TypeDescriptor> parseTypeDescriptors(std::span<const u8> data, const Section& section) {
+std::vector<TypeDescriptor> parseTypeDescriptors(std::span<const u8> data, const Section& section, bool vec3) {
     auto reader = sectionReader(data, section);
     const auto count = reader.readU32();
     if (count > kMaxConstPoolEntries) throw FormatError("too many type descriptors", section.offset, ErrorReason::InvalidCode);
@@ -163,7 +163,8 @@ std::vector<TypeDescriptor> parseTypeDescriptors(std::span<const u8> data, const
             type = TypeDescriptor::list(types[reference]);
         } else {
             type = {static_cast<TypeDescriptor::Kind>(kind), static_cast<TypeDescriptor::Kind>(element)};
-            if (!type.needsDescriptor() || !type.isStorable() || reference != 0)
+            if (!type.needsDescriptor() || !type.isStorable() || reference != 0 ||
+                (!vec3 && type.element == TypeDescriptor::Kind::Vec3))
                 throw FormatError("invalid parameterized type descriptor", at, ErrorReason::InvalidCode);
         }
         if (std::find(types.begin(), types.end(), type) != types.end())
@@ -223,6 +224,12 @@ std::vector<ListValue> parseCollectionPool(std::span<const u8> data, const Secti
             case TypeDescriptor::F32: list->elements.emplace_back(reader.readF32()); break;
             case TypeDescriptor::Color: list->elements.emplace_back(reader.readColor()); break;
             case TypeDescriptor::Vec2: list->elements.emplace_back(Vec2{reader.readF32(), reader.readF32()}); break;
+            // Only a model file declares list<vec3> (the types section checks the dialect).
+            case TypeDescriptor::Vec3: {
+                const f32 x = reader.readF32(), y = reader.readF32(), z = reader.readF32();
+                list->elements.emplace_back(Vec3{x, y, z});
+                break;
+            }
             case TypeDescriptor::Distribution:
                 list->elements.emplace_back(readDistributionData(reader, pools.distributions)); break;
             case TypeDescriptor::Sampler: list->elements.push_back(description(pools.samplers, item)); break;
@@ -244,6 +251,7 @@ void writeListElements(Writer& writer, const ListData& list, std::span<const Sam
         else if (const auto* f = std::get_if<f32>(&value)) writer.writeF32(*f);
         else if (const auto* c = std::get_if<Color>(&value)) writer.writeColor(*c);
         else if (const auto* v = std::get_if<Vec2>(&value)) { writer.writeF32(v->x); writer.writeF32(v->y); }
+        else if (const auto* p = std::get_if<Vec3>(&value)) { writer.writeF32(p->x); writer.writeF32(p->y); writer.writeF32(p->z); }
         else if (const auto* d = std::get_if<Distribution>(&value)) writeDistributionData(writer, *d, distributions);
         else if (const auto* s = std::get_if<SamplerValue>(&value)) writer.writeU16(descriptionIndex(samplers, *s));
         else if (const auto* t = std::get_if<StepperValue>(&value)) writer.writeU16(descriptionIndex(steppers, *t));

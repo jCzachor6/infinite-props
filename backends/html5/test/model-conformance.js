@@ -31,6 +31,9 @@ const corpus = [
     { name: "empty", source: "backends/capi3d/test/empty.ips", seeds: [0, 9], uniforms: [{}] },
     // Material maps, glass and windows (M2): numbers, alpha modes and maps.
     { name: "materials", source: "tests/model/corpus/materials.ips", seeds: [1, 3, 6], uniforms: [{}] },
+    // Shapes along a path, shaping blocks, outputs and parts (M3).
+    { name: "shapes", source: "tests/model/corpus/shapes.ips", seeds: [1, 2, 3, 5, 8], uniforms: [{}] },
+    { name: "model-parts", source: "examples/language/model-parts.ips", seeds: [1, 9], uniforms: [{}] },
 ];
 
 function fnv1a64(bytes) {
@@ -42,8 +45,32 @@ function fnv1a64(bytes) {
 const bits = array => Array.from(new Uint32Array(array.buffer, array.byteOffset, array.length));
 const bitsOf = value => new Uint32Array(new Float32Array([value]).buffer)[0];
 
+// The outputs of a WASM result in the shape of `ipgen --dump` (M3).
+function dumpedOutputs(result) {
+    return result.outputs.map(output => {
+        const entry = { name: output.name, kind: output.kind, list: output.list };
+        const values = bits(output.values), triple = at => values.slice(at, at + 3);
+        if (output.kind === "box3d") {
+            entry.boxes = [];
+            for (let i = 0; i < output.count; ++i)
+                entry.boxes.push({ center: triple(i * 15), size: triple(i * 15 + 3),
+                    axes: [triple(i * 15 + 6), triple(i * 15 + 9), triple(i * 15 + 12)] });
+        } else {
+            entry.points = [];
+            for (let i = 0; i < output.count; ++i) entry.points.push(triple(i * 3));
+        }
+        return entry;
+    });
+}
+
 // A WASM result in the shape of `ipgen --dump`.
 function dumped(result, seed) {
+    const dump = dumpedCore(result, seed);
+    if (result.outputs.length) dump.outputs = dumpedOutputs(result);
+    return dump;
+}
+
+function dumpedCore(result, seed) {
     return {
         seed,
         size: result.size.map(bitsOf),
@@ -95,6 +122,8 @@ function corpusPins(program, result) {
         for (const array of ["positions", "normals", "tangents", "uvs", "indices"])
             lines.push("surface " + s + " " + array + " " + sha256(bytesOf(surface[array])));
     });
+    result.outputs.forEach((output, o) => lines.push("output " + o + " " + output.name + " " + output.kind +
+        (output.list ? " list" : " single") + " values " + output.count + " " + sha256(bytesOf(output.values))));
     return lines;
 }
 
@@ -131,7 +160,7 @@ function run(iprop3d, toolsDir) {
     const stats = { models: 0, generations: 0, vertices: 0, textures: 0, skins: 0, traps: 0, encodings: 0, corpus: 0, pins: 0 };
     const Module = iprop3d.module;
     try {
-        assert.deepEqual(iprop3d.version, { major: 0, minor: 1 });
+        assert.deepEqual(iprop3d.version, { major: 0, minor: 2 });
         assert.deepEqual(iprop3d.limits, { vertices: 65536, triangles: 131072, textures: 32, textureSide: 2048, texels: 4194304 });
 
         // ---- the corpus, bit for bit ----
@@ -347,7 +376,8 @@ function run(iprop3d, toolsDir) {
             const expected = dumped(result, 5);
             const buffers = iprop3d.transferables(result);
             assert.equal(new Set(buffers).size, buffers.length);
-            assert.equal(buffers.length, result.surfaces.length * 5 + result.textures.reduce((n, texture) => n + 1 + texture.images.length, 0));
+            assert.equal(buffers.length, result.surfaces.length * 5 + result.textures.reduce((n, texture) => n + 1 + texture.images.length, 0) +
+                result.outputs.length);
             const moved = structuredClone(result, { transfer: buffers });
             assert.equal(result.surfaces[0].positions.length, 0, "the buffers were moved, not copied");
             assert.equal(difference(dumped(moved, 5), expected), null);

@@ -32,6 +32,8 @@ iprop_capi3d_fixture(empty.iprop3d empty.ips)
 iprop_capi3d_fixture(tile.iprop tile.ips)
 # Material maps, glass and windows (M2): the corpus model and its skins.
 iprop_capi3d_fixture(materials.iprop3d ../../../tests/model/corpus/materials.ips)
+# 3D outputs (API 0.2, M3).
+iprop_capi3d_fixture(outputs.iprop3d outputs.ips)
 add_custom_target(capi3d_fixtures DEPENDS ${IPROP_CAPI3D_FIXTURES})
 
 # iprop_capi3d_test(<name> <source>... [MODEL])

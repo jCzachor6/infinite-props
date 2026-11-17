@@ -161,6 +161,7 @@ Frame Execution::spareFrame() {
     frame.shareStream = false;
     frame.isPart = false;
     frame.lastPart = kNoPartIndex;
+    frame.extensionFrame = false;
     return frame;
 }
 
@@ -284,6 +285,8 @@ void Execution::leaveFrame() {
         caller.lastPart = state.partIndex; // the part-output register
     } else if (finished.shareStream) {
         caller.stream = finished.stream; // reference semantics (spec §8.2)
+    } else if (finished.extensionFrame) {
+        extension->frameLeft(*this);
     }
     for (Value& value : finished.stack) {
         work();

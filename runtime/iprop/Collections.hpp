@@ -35,7 +35,8 @@ TypeDescriptor readTypeReference(Reader& reader, std::span<const TypeDescriptor>
 u16 typeDescriptorIndex(TypeDescriptor type, std::span<const TypeDescriptor> types);
 void writeTypeReference(Writer& writer, TypeDescriptor type,
                         std::span<const TypeDescriptor> types);
-std::vector<TypeDescriptor> parseTypeDescriptors(std::span<const u8> data, const Section& section);
+// `vec3` admits list<vec3> (the model dialect); a 2D file rejects it.
+std::vector<TypeDescriptor> parseTypeDescriptors(std::span<const u8> data, const Section& section, bool vec3 = false);
 void writeTypeDescriptors(Writer& writer, std::span<const TypeDescriptor> types);
 std::vector<ListValue> parseCollectionPool(std::span<const u8> data, const Section& section,
                                          const CollectionPool& pools, PoolBudget& budget);

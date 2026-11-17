@@ -20,6 +20,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 #include "iprop3d.h"
 #include "iprop_godot.hpp"
@@ -29,6 +30,7 @@
 #include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/core/object_id.hpp>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/string.hpp>
@@ -48,7 +50,7 @@ class IpropModel : public godot::Resource {
     int64_t fuel_ = 0;
     godot::Array skin_programs_{};
     // The latest generation; a failed one leaves these as they were.
-    godot::Array surfaces_{}, textures_{};
+    godot::Array surfaces_{}, textures_{}, outputs_{};
     godot::Vector3 bounds_min_{}, bounds_max_{};
     int64_t vertex_count_ = 0, triangle_count_ = 0, fuel_used_ = 0;
     godot::Dictionary work_{}, last_error_{};
@@ -110,6 +112,12 @@ public:
     // name, image} and `normal` the normal map among them, or null. `key` is
     // sixteen hex digits: equal keys mean equal pixels.
     godot::Array get_textures() const { return textures_; }
+    // The model's outputs (models v1.2, M3), in declaration order and in
+    // metres: {index, name, kind ("point3d" or "box3d"), list, points
+    // (PackedVector3Array) or boxes ([{transform: Transform3D, size:
+    // Vector3}], the transform's basis the box's axes and its origin the
+    // centre)}. A singular output never written has no value.
+    godot::Array get_outputs() const { return outputs_; }
     godot::Vector3 get_bounds_min() const { return bounds_min_; }
     godot::Vector3 get_bounds_max() const { return bounds_max_; }
     int64_t get_vertex_count() const { return vertex_count_; }
@@ -129,6 +137,12 @@ class IpropModelInstance3D : public godot::MeshInstance3D {
 
     godot::Ref<IpropModel> model_;
     int64_t seed_ = 0;
+    // Children made from the model's outputs (M3): a Marker3D for each point
+    // and a StaticBody3D of box colliders. They are rebuilt by refresh and
+    // never saved with the scene.
+    bool markers_ = true, colliders_ = true;
+    std::vector<godot::ObjectID> output_nodes_;
+    void rebuild_outputs();
 
 protected:
     static void _bind_methods();
@@ -149,6 +163,10 @@ public:
     godot::Ref<IpropModel> get_model() const { return model_; }
     void set_seed(int64_t seed);
     int64_t get_seed() const { return seed_; }
+    void set_markers(bool enabled);
+    bool get_markers() const { return markers_; }
+    void set_colliders(bool enabled);
+    bool get_colliders() const { return colliders_; }
 };
 
 } // namespace iprop_godot

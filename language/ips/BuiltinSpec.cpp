@@ -444,6 +444,16 @@ const std::map<std::string, BuiltinSpec>& modelBuiltinSpecs() {
                                            M::ExtrudeBevel)}));
         result.emplace("quad", spec({op({{"a", V::Vec3}, {"b", V::Vec3}, {"c", V::Vec3}, {"d", V::Vec3}, skin}, M::Quad)}));
         result.emplace("tri", spec({op({{"a", V::Vec3}, {"b", V::Vec3}, {"c", V::Vec3}, skin}, M::Tri)}));
+        // Shapes along a path (M3).
+        result.emplace("tube", spec({op({{"a", V::Vec3}, {"b", V::Vec3}, {"c", V::Vec3}, {"d", V::Vec3}, {"r0", V::F32},
+                                         {"r1", V::F32}, sides, {"segments", V::I32}, skin}, M::Tube)}));
+        result.emplace("sweep", spec({op({{"path", V::list(V::Vec3)}, {"profile", points}, skin}, M::Sweep)}));
+        // list.len counts a path too.
+        auto length = builtinSpecs().at("list.len");
+        auto paths = length.overloads.front();
+        paths.params.front().type = V::list(V::Vec3);
+        length.overloads.push_back(std::move(paths));
+        result.emplace("list.len", std::move(length));
 
         result.emplace("vec3.len", spec({op({{"v", V::Vec3}}, M::Vec3Len, V::F32)}));
         result.emplace("vec3.dot", spec({op({{"a", V::Vec3}, {"b", V::Vec3}}, M::Vec3Dot, V::F32)}));

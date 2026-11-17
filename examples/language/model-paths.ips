@@ -1,0 +1,17 @@
+// tube runs a round section along a curve; sweep runs any outline along a
+// path of points, mitred at every corner.
+import grid from "skins/grid.ips"
+
+asset fixtures {
+  size 80x60x40
+
+  render {
+    tile = grid.draw(1)
+    // A lamp arm: from the top of a post, up and over to its end, thinning.
+    cylinder({-30, 0, 0}, 2.0, 40.0, 12, tile)
+    tube({-30, 40, 0}, {-30, 52, 0}, {-12, 52, 0}, {-6, 44, 0}, 2.0, 1.2, 10, 12, tile)
+    // A hand rail: a square profile up one post, along and down the other.
+    rail = [{8, 0, 0}, {8, 40, 0}, {36, 40, 0}, {36, 0, 0}]
+    sweep(rail, [{-1.5, -1.5}, {1.5, -1.5}, {1.5, 1.5}, {-1.5, 1.5}], tile)
+  }
+}

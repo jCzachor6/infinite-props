@@ -89,22 +89,110 @@ public:
             state.push(kSkinSlot);
             return true;
         }
-        default:
+        case Op::SmoothBegin: case Op::RefineBegin: case Op::BendBegin: case Op::TwistBegin: case Op::TaperBegin:
+        case Op::DisplaceBegin:
             for (std::size_t i = spec->inputCount; i > 0; --i) state.expect(spec->inputs[i - 1], spec->mnemonic);
-            if (spec->result) state.push(*spec->result);
+            state.openScope();
+            return true;
+        case Op::PartRender: {
+            // The part's inputs, as its entry declares them, then the seed.
+            if (ins.operand >= model_.parts.size()) state.fail("model part index out of range");
+            const auto& entry = model_.file.code.functions[model_.parts[ins.operand].firstFunction];
+            state.expect(ValueType::I32, "part seed");
+            for (std::size_t i = entry.params.size(); i > 0; --i) state.expect(entry.params[i - 1], "part input");
             return true;
         }
+        case Op::OutPoint3d: case Op::OutBox3d: case Op::OutListPoint3d: case Op::OutListBox3d:
+        case Op::PartGetPoint3d: {
+            if (ins.operand >= model_.outputs.size()) state.fail("model output slot out of range");
+            const ModelOutputDecl& slot = model_.outputs[ins.operand];
+            const bool box = spec->op == Op::OutBox3d || spec->op == Op::OutListBox3d;
+            const bool list = spec->op == Op::OutListPoint3d || spec->op == Op::OutListBox3d;
+            if ((slot.kind == ModelOutputKind::Box3d) != box || slot.list != list)
+                state.fail(std::string(spec->mnemonic) + " does not match the kind of its slot");
+            break;
+        }
+        default:
+            break;
+        }
+        for (std::size_t i = spec->inputCount; i > 0; --i) state.expect(spec->inputs[i - 1], spec->mnemonic);
+        if (spec->result) state.push(*spec->result);
+        return true;
     }
 
 private:
     const LoadedModel& model_;
 };
 
+// The asset a function belongs to: a part index, or kRootParent for the
+// model's own functions.
+u32 ownerOf(const LoadedModel& model, std::size_t function) {
+    for (u32 part = 0; part < model.parts.size(); ++part) {
+        const ModelPartDecl& decl = model.parts[part];
+        if (function >= decl.firstFunction && function - decl.firstFunction < decl.functionCount) return part;
+    }
+    return kRootParent;
+}
+
+[[noreturn]] void misplaced(const std::string& message, std::size_t function, std::size_t pc) {
+    FormatError error(message, ErrorReason::InvalidInstruction, ErrorStage::Validate);
+    error.location.flags |= ErrorLocation::Function | ErrorLocation::PC;
+    error.location.functionIndex = static_cast<u32>(function);
+    error.location.pc = static_cast<u32>(pc);
+    throw error;
+}
+
+// Each asset reaches only what is its own (M3): its helpers, its slots and
+// its direct parts; a part's entry returns nothing.
+void checkOwnership(const LoadedModel& model) {
+    const auto& functions = model.file.code.functions;
+    for (const ModelPartDecl& part : model.parts)
+        if (!functions[part.firstFunction].results.empty())
+            throw FormatError("model part '" + part.name + "' entry must return nothing", ErrorReason::InvalidSignature,
+                              ErrorStage::Validate);
+    for (std::size_t f = 0; f < functions.size(); ++f) {
+        const u32 owner = ownerOf(model, f);
+        const u16 slotOwner = owner == kRootParent ? kRootOwner : static_cast<u16>(owner);
+        const auto code = functions[f].code;
+        for (std::size_t pc = 0; pc * 4 + 4 <= code.size(); ++pc) {
+            const Instruction ins = decodeInstruction(code.subspan(pc * 4, 4));
+            if (ins.opcode == Opcode::Call) {
+                if (ins.operand < functions.size() && ownerOf(model, ins.operand) != owner)
+                    misplaced("a call reaches a function of another asset", f, pc);
+                continue;
+            }
+            if (ins.opcode != kModelPage) continue;
+            const OpSpec* spec = findOp(ins.aux);
+            if (!spec) continue; // the validator reports it
+            switch (spec->op) {
+            case Op::OutPoint3d: case Op::OutBox3d: case Op::OutListPoint3d: case Op::OutListBox3d:
+                if (ins.operand < model.outputs.size() && model.outputs[ins.operand].owner != slotOwner)
+                    misplaced("an asset writes only its own outputs", f, pc);
+                break;
+            case Op::PartRender:
+                if (ins.operand < model.parts.size() && model.parts[ins.operand].parent != owner)
+                    misplaced("an asset builds only its own parts", f, pc);
+                break;
+            case Op::PartGetPoint3d:
+                if (ins.operand < model.outputs.size()) {
+                    const u16 reads = model.outputs[ins.operand].owner;
+                    if (reads == kRootOwner || model.parts[reads].parent != owner)
+                        misplaced("an asset reads the outputs of its own parts only", f, pc);
+                }
+                break;
+            default:
+                break;
+            }
+        }
+    }
+}
+
 } // namespace
 
 void validateModel(const LoadedModel& model) {
     const ModelValidation extension(model);
     validate(model.file, &extension);
+    checkOwnership(model);
     for (const SkinProgram& program : model.skins) {
         try {
             validate(program.file);

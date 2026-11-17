@@ -138,11 +138,45 @@ export function toObject3D(result, THREE, options = {}) {
     return group;
 }
 
-// Releases the GPU resources of an object made by toObject3D. Textures in a
-// shared cache stay; clear them with disposeTextures when the scene goes.
+// The model's outputs (M3) as a Group in the same space as toObject3D's:
+// an empty Object3D at every point, named after its output, and a line box
+// for every box3d, turned by its axes. A scene puts a light or a handle at a
+// point and uses the boxes as colliders, or shows both while authoring.
+export function outputsToObject3D(result, THREE, options = {}) {
+    const group = new THREE.Group();
+    const color = options.color === undefined ? 0xffcc33 : options.color;
+    for (const output of result.outputs || []) {
+        const values = output.values;
+        for (let i = 0; i < output.count; ++i) {
+            const name = output.list ? output.name + "[" + i + "]" : output.name;
+            if (output.kind === "point3d") {
+                const point = new THREE.Object3D();
+                point.name = name;
+                point.position.set(values[i * 3], values[i * 3 + 1], values[i * 3 + 2]);
+                group.add(point);
+                continue;
+            }
+            const at = i * 15;
+            const box = new THREE.LineSegments(
+                new THREE.EdgesGeometry(new THREE.BoxGeometry(values[at + 3], values[at + 4], values[at + 5])),
+                new THREE.LineBasicMaterial({ color }));
+            box.name = name;
+            const axis = k => new THREE.Vector3(values[at + 6 + k * 3], values[at + 7 + k * 3], values[at + 8 + k * 3]);
+            box.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(axis(0), axis(1), axis(2)));
+            box.position.set(values[at], values[at + 1], values[at + 2]);
+            group.add(box);
+        }
+    }
+    if (options.meters !== false) group.scale.setScalar(1 / result.unitsPerMeter);
+    return group;
+}
+
+// Releases the GPU resources of an object made by toObject3D or
+// outputsToObject3D. Textures in a shared cache stay; clear them with
+// disposeTextures when the scene goes.
 export function disposeObject3D(object) {
     object.traverse(node => {
-        if (!node.isMesh) return;
+        if (!node.isMesh && !node.isLineSegments) return;
         node.geometry.dispose();
         node.material.dispose();
     });

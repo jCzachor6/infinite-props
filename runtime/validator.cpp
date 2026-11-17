@@ -847,7 +847,7 @@ LoadedFile loadFile(std::span<const u8> data, const Dialect& dialect) {
     file.pool = parseConsts(bytes, *file.layout.find(SectionId::Const));
     file.meta = parseMeta(bytes, *file.layout.find(SectionId::Meta), file.pool);
     if (const auto* types = file.layout.find(SectionId::Types))
-        file.collections.types = parseTypeDescriptors(bytes, *types);
+        file.collections.types = parseTypeDescriptors(bytes, *types, dialect.vec3);
     // Later pools reference earlier ones; all of them share one budget.
     PoolBudget budget;
     if (const auto* distributions = file.layout.find(SectionId::Distributions))

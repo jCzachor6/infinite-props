@@ -109,6 +109,31 @@ const std::vector<Case>& cases() {
         {"examples/models/lantern.ips", 4, {}},
         {"examples/models/lantern.ips", 6, {}},
         {"examples/models/lantern.ips", 3, {{"rust", "0.9"}}},
+        // Shapes along a path, shaping blocks, outputs and parts (M3).
+        {"tests/model/corpus/shapes.ips", 1, {}},
+        {"tests/model/corpus/shapes.ips", 2, {}},
+        {"tests/model/corpus/shapes.ips", 3, {}},
+        {"tests/model/corpus/shapes.ips", 4, {}},
+        {"tests/model/corpus/shapes.ips", 5, {}},
+        {"tests/model/corpus/shapes.ips", 6, {}},
+        {"tests/model/corpus/shapes.ips", 7, {}},
+        {"tests/model/corpus/shapes.ips", 8, {}},
+        {"examples/language/model-paths.ips", 1, {}},
+        {"examples/language/model-shaping.ips", 1, {}},
+        {"examples/language/model-shaping.ips", 2, {}},
+        {"examples/language/model-outputs.ips", 3, {}},
+        {"examples/language/model-parts.ips", 1, {}},
+        {"examples/language/model-parts.ips", 9, {}},
+        {"examples/models/streetlamp.ips", 1, {}},
+        {"examples/models/streetlamp.ips", 2, {}},
+        {"examples/models/streetlamp.ips", 5, {{"paint", "#5a2a2a"}, {"rust", "0.8"}}},
+        {"examples/models/boulder.ips", 1, {}},
+        {"examples/models/boulder.ips", 6, {{"rough", "0.9"}}},
+        {"examples/models/table.ips", 1, {}},
+        {"examples/models/table.ips", 3, {{"stain", "#5c3a1e"}}},
+        {"examples/models/railing.ips", 1, {}},
+        {"examples/models/railing.ips", 2, {}},
+        {"examples/models/railing.ips", 4, {{"rust", "0.9"}}},
     };
     return list;
 }
@@ -251,6 +276,21 @@ Generated generate(const Case& item) {
         lines.push_back(name + " tangents " + digest(littleEndian(surface.tangents)));
         lines.push_back(name + " uvs " + digest(littleEndian(surface.uvs)));
         lines.push_back(name + " indices " + digest(littleEndian(surface.indices)));
+    }
+    // The model's outputs (M3), only for a model that declares some.
+    for (std::size_t o = 0; o < result.outputs.size(); ++o) {
+        const auto& output = result.outputs[o];
+        const bool box = output.kind == model::ModelOutputKind::Box3d;
+        std::vector<f32> values;
+        for (const Vec3& point : output.points) values.insert(values.end(), {point.x, point.y, point.z});
+        for (const auto& value : output.boxes) {
+            values.insert(values.end(), value.center, value.center + 3);
+            values.insert(values.end(), value.size, value.size + 3);
+            for (const auto& axis : value.axes) values.insert(values.end(), axis, axis + 3);
+        }
+        lines.push_back("output " + std::to_string(o) + " " + output.name + (box ? " box3d" : " point3d") +
+                        (output.list ? " list" : " single") + " values " +
+                        std::to_string(box ? output.boxes.size() : output.points.size()) + " " + digest(littleEndian(values)));
     }
     std::ostringstream dump;
     tools::writeModelDump(dump, result, item.seed);

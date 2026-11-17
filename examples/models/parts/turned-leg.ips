@@ -1,0 +1,27 @@
+// A turned leg, a model of its own and a part of the table: a lathe profile
+// of beads and coves that the seed varies, smoothed where it bends gently.
+// Its output `top` says where the leg ends, for the table to put its top on.
+import wood from "../skins/oak.ips"
+
+asset leg {
+  size 8x80x8
+  scale 100
+
+  input f32 height = 72.0
+  input color tint = #8a5a2b
+
+  output point3d top
+
+  render {
+    root = seed.initial()
+    r = roll(root.fork("radius"), 2.4, 3.2)
+    bead = roll(root.fork("bead"), 0.2, 0.45)
+    profile = [{r * 0.75, 0}, {r * 0.9, height * 0.05}, {r * 0.7, height * 0.1},
+               {r * 1.15, height * bead}, {r * 0.8, height * bead + 4.0}, {r * 0.95, height * 0.75},
+               {r * 1.3, height * 0.82}, {r * 1.3, height}]
+    smooth(35.0) {
+      lathe({0, 0, 0}, profile, 12, wood.draw(root.fork("oak"), tint = tint, planks = 0))
+    }
+    top = {0, height, 0}
+  }
+}

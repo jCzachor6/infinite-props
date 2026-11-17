@@ -65,10 +65,18 @@ void readSkinsSection(std::span<const u8> data, const Section& section, LoadedMo
         if (!covered[i] && data[section.offset + i] != 0) invalid("stray bytes in the skins section", section.offset + i);
 
     model.skins.reserve(count);
-    for (const Entry& entry : entries) {
+    for (std::size_t i = 0; i < entries.size(); ++i) {
+        const Entry& entry = entries[i];
         const auto bytes = data.subspan(section.offset + entry.offset, entry.length);
         SkinProgram program;
         program.name = model.file.pool.strings[entry.nameIndex];
+        // Equal bytes share one range (the writer stores them once).
+        program.identity = static_cast<u32>(i);
+        for (std::size_t j = 0; j < i; ++j)
+            if (entries[j].offset == entry.offset && entries[j].length == entry.length) {
+                program.identity = static_cast<u32>(j);
+                break;
+            }
         try {
             if (parseHeader(bytes).hasCompression()) throw FormatError("an embedded program must not be compressed");
             program.file = loadFile(bytes);
@@ -78,6 +86,69 @@ void readSkinsSection(std::span<const u8> data, const Section& section, LoadedMo
         program.hash = fnv1a64(bytes);
         model.skins.push_back(std::move(program));
     }
+}
+
+const std::string& poolName(const LoadedModel& model, u32 index, std::size_t at, const char* what) {
+    if (index >= model.file.pool.strings.size()) invalid(std::string(what) + " name outside const string pool", at);
+    const std::string& name = model.file.pool.strings[index];
+    if (name.empty()) invalid(std::string(what) + " name must not be empty", at);
+    return name;
+}
+
+// Section 15: the parts, each a contiguous run of functions after the
+// model's own, in order and to the end of the function table.
+void readPartsSection(std::span<const u8> data, const Section& section, LoadedModel& model) {
+    Reader reader = sectionReader(data, section);
+    const u32 count = reader.readU32();
+    if (count == 0 || count > kMaxModelParts) invalid("model part count must be in 1..256", reader.position() - 4);
+    const u64 functions = model.file.code.functions.size();
+    model.parts.reserve(count);
+    for (u32 i = 0; i < count; ++i) {
+        const std::size_t at = reader.position();
+        ModelPartDecl part;
+        part.name = poolName(model, reader.readU32(), at, "model part");
+        part.firstFunction = reader.readU32();
+        part.functionCount = reader.readU32();
+        part.parent = reader.readU32();
+        for (const ModelPartDecl& other : model.parts)
+            if (other.name == part.name) invalid("duplicate model part name '" + part.name + "'", at);
+        if (part.parent != kRootParent && part.parent >= i) invalid("a model part's parent must precede it", at);
+        const u64 expected = i == 0 ? 0u : static_cast<u64>(model.parts.back().firstFunction) + model.parts.back().functionCount;
+        if (part.functionCount == 0 || (i == 0 ? part.firstFunction == 0 : part.firstFunction != expected) ||
+            static_cast<u64>(part.firstFunction) + part.functionCount > functions)
+            invalid("model part functions must follow the model's own, in order", at);
+        model.parts.push_back(std::move(part));
+    }
+    const ModelPartDecl& last = model.parts.back();
+    if (static_cast<u64>(last.firstFunction) + last.functionCount != functions)
+        invalid("model part functions must reach the end of the function table", section.offset);
+    if (reader.position() != section.offset + section.size) invalid("trailing bytes in the model parts section", reader.position());
+}
+
+// Section 14: the 3D output slots, numbered in order.
+void readOutputsSection(std::span<const u8> data, const Section& section, LoadedModel& model) {
+    Reader reader = sectionReader(data, section);
+    const u32 count = reader.readU32();
+    if (count == 0 || count > kMaxModelOutputs) invalid("model output count must be in 1..256", reader.position() - 4);
+    model.outputs.reserve(count);
+    for (u32 i = 0; i < count; ++i) {
+        const std::size_t at = reader.position();
+        ModelOutputDecl output;
+        output.name = poolName(model, reader.readU32(), at, "model output");
+        const u8 kind = reader.readU8();
+        const u8 list = reader.readU8();
+        output.owner = reader.readU16();
+        if (kind > static_cast<u8>(ModelOutputKind::Box3d)) invalid("unknown model output kind", at + 4);
+        if (list > 1) invalid("model output list flag must be 0 or 1", at + 5);
+        if (output.owner != kRootOwner && output.owner >= model.parts.size()) invalid("model output owner out of range", at + 6);
+        output.kind = static_cast<ModelOutputKind>(kind);
+        output.list = list == 1;
+        for (const ModelOutputDecl& other : model.outputs)
+            if (other.owner == output.owner && other.name == output.name)
+                invalid("duplicate model output name '" + output.name + "'", at);
+        model.outputs.push_back(std::move(output));
+    }
+    if (reader.position() != section.offset + section.size) invalid("trailing bytes in the model outputs section", reader.position());
 }
 
 } // namespace
@@ -102,11 +173,15 @@ LoadedModel loadModel(std::span<const u8> bytes) {
     const auto& layout = model.file.layout;
     const Section* modelSection = nullptr;
     const Section* skinsSection = nullptr;
+    const Section* outputsSection = nullptr;
+    const Section* partsSection = nullptr;
     for (const Section& section : layout.sections) {
         if (section.id == SectionId::Parts || section.id == SectionId::ResourceExports)
             invalid("a model file has no parts or resource exports section", section.offset, ErrorReason::InvalidLayout);
         if (section.id == kModelSection) modelSection = &section;
         if (section.id == kSkinsSection) skinsSection = &section;
+        if (section.id == kOutputsSection) outputsSection = &section;
+        if (section.id == kPartsSection) partsSection = &section;
     }
     if (!modelSection || !skinsSection)
         invalid("missing required section (model, skins)", 0, ErrorReason::InvalidLayout);
@@ -122,7 +197,29 @@ LoadedModel loadModel(std::span<const u8> bytes) {
 
     readModelSection(data, *modelSection, model);
     readSkinsSection(data, *skinsSection, model);
+    if (partsSection) readPartsSection(data, *partsSection, model);
+    if (outputsSection) readOutputsSection(data, *outputsSection, model);
     return model;
+}
+
+void writeOutputsSection(Writer& out, std::span<const OutputEntry> entries) {
+    out.writeU32(static_cast<u32>(entries.size()));
+    for (const OutputEntry& entry : entries) {
+        out.writeU32(entry.nameIndex);
+        out.writeU8(static_cast<u8>(entry.kind));
+        out.writeU8(entry.list ? 1 : 0);
+        out.writeU16(entry.owner);
+    }
+}
+
+void writePartsSection(Writer& out, std::span<const PartEntry> entries) {
+    out.writeU32(static_cast<u32>(entries.size()));
+    for (const PartEntry& entry : entries) {
+        out.writeU32(entry.nameIndex);
+        out.writeU32(entry.firstFunction);
+        out.writeU32(entry.functionCount);
+        out.writeU32(entry.parent);
+    }
 }
 
 void writeModelSection(Writer& out, const f32 size[3], f32 unitsPerMeter) {

@@ -27,14 +27,21 @@ All additions belong to assets that have `render`:
 | `alias.name` | A `const` of an imported draw asset, read by a render asset |
 | `box`, `cylinder`, `cone`, `band`, `sphere`, `lathe`, `extrude`, `quad`, `tri` | The primitives |
 | `place(at = ..., yaw = ...) { ... }` | A block that moves, turns, scales or mirrors what it builds |
+| `tube`, `sweep`, `list<vec3>` | Shapes along a curve or a path of points |
+| `smooth`, `refine`, `bend`, `twist`, `taper`, `displace` blocks | Blocks that change the shape of what they build |
+| `output point3d name`, `output box3d name` | Points and boxes handed to the game |
+| `alias.render(seed)`, `alias.outputs.name` | An imported render asset built as a part, and its points |
 
 None of the new words is reserved. In an asset with `draw` every one of them
-stays an ordinary name: a helper called `box`, `render` or `place`, a local
-called `skin`, an import alias `vec3` and a part input `scale` compile as
-they did. `{a, b, c}` remains the value of a circle output there.
+stays an ordinary name: a helper called `box`, `render`, `place` or `bend`,
+a local called `skin`, an import alias `vec3` and a part input `scale`
+compile as they did. `{a, b, c}` remains the value of a circle output there,
+and `smooth(x)` the 2D function: it is a block only before `{` in a render
+asset.
 
-A draw asset cannot import a render asset, and a render asset imports draw
-assets alone. Old sources contain neither, because 1.1 had no render assets.
+A draw asset cannot import a render asset. A render asset imports draw
+assets (skins) and render assets (parts). Old sources contain none of these,
+because 1.1 had no render assets.
 
 Draw assets gain four output kinds:
 
@@ -72,12 +79,13 @@ A 1.1 binding skips kinds it does not know, except the 1.1 Python package,
 whose `ImageKind` rejects them: use the 1.2 package with a 1.2 library.
 
 - **C.** [`iprop3d.h`](../c-api-models.md) is a separate header and a
-  separate static library with its own version, 0.1. It is not part of the
-  installed SDK yet.
+  separate static library with its own version, 0.2: 0.2 adds a model's
+  outputs to the results of 0.1. It is not part of the installed SDK yet.
 - **Browser.** `iprop3d.wasm` generates models and also carries the whole 2D
   interface; `iprop.wasm` stays a 2D module. See
   [HTML5/WASM](../../backends/html5/README.md#models-preview).
-- **Godot.** `IpropModel` and `IpropModelInstance3D` join the extension; see
+- **Godot.** `IpropModel` and `IpropModelInstance3D` join the extension; the
+  node turns a model's outputs into markers and colliders. See
   [Godot](../../backends/godot/README.md#models-preview).
 - The Python, Swift, C#, Kotlin and SFML bindings have no model interface.
 

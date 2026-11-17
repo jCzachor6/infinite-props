@@ -1,0 +1,105 @@
+// An iron railing, one unit to a centimetre: posts at the corners of a path,
+// a handrail and a bottom rail swept along it, and bars between the posts.
+// The seed picks the path (a straight run, a corner or a curved bay), the
+// height, the spacing and the bars: round, twisted square or round with a
+// collar. The game reads `colliders`, one box along each run.
+import iron from "skins/wrought.ips"
+
+asset railing {
+  size 260x110x160
+  scale 100
+
+  input color paint = #23272c
+  input f32 rust = 0.25                  // 0 freshly painted, 1 rusted through
+
+  output list box3d colliders            // one along each run
+
+  render {
+    root = seed.initial()
+    h = roll(root.fork("height"), 85.0, 100.0)
+    gap = roll(root.fork("gap"), 11.0, 14.0)
+    bars = choose(root.fork("bars"), 0, 1, 1, 2)     // round, twisted, collared
+    shape = choose(root.fork("path"), 0, 1, 2)       // straight, corner, bay
+    metal = skin.metallic(skin.density(iron.draw(root.fork("iron"), tint = paint, rust = rust), 2.0), 0.7)
+
+    // The path of the posts, on the ground.
+    path = [{-120, 0, 0}, {120, 0, 0}]
+    if (shape == 1) {
+      path = [{-120, 0, -60}, {50, 0, -60}, {50, 0, 70}]
+    } else if (shape == 2) {
+      // A bay: a half circle between two straight runs.
+      path = [{-125, 0, -60}, {-60, 0, -60}, {-52.0, 0, -8.0}, {-30.0, 0, 30.0}, {0, 0, 45},
+              {30.0, 0, 30.0}, {52.0, 0, -8.0}, {60, 0, -60}, {125, 0, -60}]
+    }
+    count = list.len(path)
+
+    // The rails: a rounded handrail on the posts and a square bottom rail.
+    top = lift(path, h + 2.0)
+    low = lift(path, 10.0)
+    smooth(50.0) {
+      sweep(top, [{-3.0, -2.0}, {3.0, -2.0}, {3.5, -0.5}, {3.0, 1.5}, {1.5, 2.5}, {-1.5, 2.5}, {-3.0, 1.5}, {-3.5, -0.5}], metal)
+    }
+    sweep(low, [{-1.5, -1.5}, {1.5, -1.5}, {1.5, 1.5}, {-1.5, 1.5}], metal)
+
+    // A post at each corner, with a ball on top.
+    for i in 0..count {
+      p = path[i]
+      box({p.x, 0, p.z}, {5, h, 5}, 0.6, metal)
+      sphere({p.x, h + 4.5, p.z}, 3.2, 12, 6, metal)
+    }
+
+    // The bars along each run, turned to face along it.
+    for i in 0..count - 1 {
+      a = path[i]
+      b = path[i + 1]
+      run = vec3.len(b - a)
+      turn = atan2(a.z - b.z, b.x - a.x) * 57.2957795
+      place(at = a, yaw = turn) {
+        n = max(1, int(run / gap))
+        for k in 1..n {
+          bar({run * float(k) / float(n), 0, 0}, h, bars, metal)
+        }
+        colliders = {{run * 0.5, 0, 0}, {run, h + 4.0, 7}}
+      }
+    }
+  }
+
+  // The path raised to a height.
+  lift(path: list<vec3>, y: f32) -> list<vec3> {
+    if (list.len(path) == 2) { return [{path[0].x, y, path[0].z}, {path[1].x, y, path[1].z}] }
+    if (list.len(path) == 3) {
+      return [{path[0].x, y, path[0].z}, {path[1].x, y, path[1].z}, {path[2].x, y, path[2].z}]
+    }
+    return [{path[0].x, y, path[0].z}, {path[1].x, y, path[1].z}, {path[2].x, y, path[2].z},
+            {path[3].x, y, path[3].z}, {path[4].x, y, path[4].z}, {path[5].x, y, path[5].z},
+            {path[6].x, y, path[6].z}, {path[7].x, y, path[7].z}, {path[8].x, y, path[8].z}]
+  }
+
+  // One bar from the bottom rail to the handrail.
+  bar(at: vec3, h: f32, style: i32, metal: skin) {
+    tall = h - 8.5
+    if (style == 1) {
+      // A square bar whose middle third is twisted once: twist turns its
+      // block from none at the bottom to the whole angle at the top, so the
+      // middle is a piece of its own, in twelve steps of 30 degrees. A whole
+      // turn ends where it began, so the twisted square meets the straight
+      // pieces above and below it corner to corner.
+      third = tall / 3.0
+      t = third / 12.0
+      place(at = {at.x, 11.5, at.z}) {
+        lathe({0, 0, 0}, [{0, 0}, {1.6, 0}, {1.6, third}], 4, 30.0, metal)
+        twist(360.0) {
+          lathe({0, third, 0}, [{1.6, 0}, {1.6, t}, {1.6, t * 2.0}, {1.6, t * 3.0}, {1.6, t * 4.0},
+                                {1.6, t * 5.0}, {1.6, t * 6.0}, {1.6, t * 7.0}, {1.6, t * 8.0}, {1.6, t * 9.0},
+                                {1.6, t * 10.0}, {1.6, t * 11.0}, {1.6, third}], 4, 30.0, metal)
+        }
+        lathe({0, third * 2.0, 0}, [{1.6, 0}, {1.6, third}, {0, third}], 4, 30.0, metal)
+      }
+      return
+    }
+    cylinder({at.x, 11.5, at.z}, 0.8, tall, 8, metal)
+    if (style == 2) {
+      cylinder({at.x, 11.5 + tall * 0.45, at.z}, 1.5, tall * 0.1, 8, metal)
+    }
+  }
+}

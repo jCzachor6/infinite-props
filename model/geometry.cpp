@@ -70,6 +70,70 @@ Point3 cross(const Point3& a, const Point3& b) {
 double dot(const Point3& a, const Point3& b) { return (a.x * b.x + a.y * b.y) + a.z * b.z; }
 double length(const Point3& v) { return std::sqrt((v.x * v.x + v.y * v.y) + v.z * v.z); }
 
+void placePoint(const Affine& m, const Point3& p, double out[3]) {
+    out[0] = ((m.a[0][0] * p.x + m.a[0][1] * p.y) + m.a[0][2] * p.z) + m.o[0];
+    out[1] = ((m.a[1][0] * p.x + m.a[1][1] * p.y) + m.a[1][2] * p.z) + m.o[1];
+    out[2] = ((m.a[2][0] * p.x + m.a[2][1] * p.y) + m.a[2][2] * p.z) + m.o[2];
+}
+
+void placeDirections(const Affine& m, const Point3& n, const Point3& t, double w, PlacedVertex& out) {
+    Point3 normal{(m.c[0][0] * n.x + m.c[0][1] * n.y) + m.c[0][2] * n.z,
+                  (m.c[1][0] * n.x + m.c[1][1] * n.y) + m.c[1][2] * n.z,
+                  (m.c[2][0] * n.x + m.c[2][1] * n.y) + m.c[2][2] * n.z};
+    if (m.flipped) normal = {-normal.x, -normal.y, -normal.z};
+    out.normal = unit(normal);
+    out.tangent = unit({(m.a[0][0] * t.x + m.a[0][1] * t.y) + m.a[0][2] * t.z,
+                        (m.a[1][0] * t.x + m.a[1][1] * t.y) + m.a[1][2] * t.z,
+                        (m.a[2][0] * t.x + m.a[2][1] * t.y) + m.a[2][2] * t.z});
+    out.w = m.flipped ? -w : w;
+}
+
+// A position stored in the model's mesh must stay finite in binary32.
+void checkCoordinates(const double position[3]) {
+    for (int i = 0; i < 3; ++i)
+        if (!std::isfinite(static_cast<f32>(position[i]))) violate("model coordinate out of range");
+}
+
+// Stores a placed vertex in its target: rounded once to binary32 in the
+// model's mesh, unrounded in a block's buffer. Returns its index.
+u32 store(const Target& target, const PlacedVertex& placed, const f32 uv[2], u32 skin) {
+    if (target.local) {
+        LocalVertex out;
+        out.position = {placed.position[0], placed.position[1], placed.position[2]};
+        out.normal = placed.normal;
+        out.tangent = placed.tangent;
+        out.w = placed.w;
+        out.uv[0] = uv[0];
+        out.uv[1] = uv[1];
+        out.skin = skin;
+        const u32 index = static_cast<u32>(target.local->vertices.size());
+        target.local->vertices.push_back(out);
+        return index;
+    }
+    checkCoordinates(placed.position);
+    Vertex out{};
+    for (int i = 0; i < 3; ++i) out.position[i] = static_cast<f32>(placed.position[i]);
+    out.normal[0] = static_cast<f32>(placed.normal.x);
+    out.normal[1] = static_cast<f32>(placed.normal.y);
+    out.normal[2] = static_cast<f32>(placed.normal.z);
+    out.tangent[0] = static_cast<f32>(placed.tangent.x);
+    out.tangent[1] = static_cast<f32>(placed.tangent.y);
+    out.tangent[2] = static_cast<f32>(placed.tangent.z);
+    out.tangent[3] = static_cast<f32>(placed.w);
+    out.uv[0] = uv[0];
+    out.uv[1] = uv[1];
+    const u32 index = static_cast<u32>(target.mesh->vertices.size());
+    target.mesh->vertices.push_back(out);
+    target.mesh->vertexSkins.push_back(skin);
+    return index;
+}
+
+void storeTriangle(const Target& target, u32 a, u32 b, u32 c, u32 skin) {
+    if (target.scope.flipped) std::swap(b, c);
+    if (target.local) target.local->triangles.push_back({a, b, c, skin});
+    else target.mesh->triangles.push_back({a, b, c, skin});
+}
+
 // Appends vertices and triangles of one primitive to its target.
 class Writer {
 public:
@@ -77,53 +141,29 @@ public:
 
     u32 vertex(const Point3& p, const Point3& n, const Point3& t, double s, double tt, double fw, double fh,
                double w = 1.0) {
-        const Affine& m = target_.scope;
-        Vertex out{};
-        const double coordinates[3] = {
-            ((m.a[0][0] * p.x + m.a[0][1] * p.y) + m.a[0][2] * p.z) + m.o[0],
-            ((m.a[1][0] * p.x + m.a[1][1] * p.y) + m.a[1][2] * p.z) + m.o[1],
-            ((m.a[2][0] * p.x + m.a[2][1] * p.y) + m.a[2][2] * p.z) + m.o[2]};
-        for (int i = 0; i < 3; ++i) {
-            out.position[i] = static_cast<f32>(coordinates[i]);
-            if (!std::isfinite(out.position[i])) violate("model coordinate out of range");
-        }
-        Point3 normal{(m.c[0][0] * n.x + m.c[0][1] * n.y) + m.c[0][2] * n.z,
-                      (m.c[1][0] * n.x + m.c[1][1] * n.y) + m.c[1][2] * n.z,
-                      (m.c[2][0] * n.x + m.c[2][1] * n.y) + m.c[2][2] * n.z};
-        if (m.flipped) normal = {-normal.x, -normal.y, -normal.z};
-        normal = unit(normal);
-        const Point3 tangent = unit({(m.a[0][0] * t.x + m.a[0][1] * t.y) + m.a[0][2] * t.z,
-                                     (m.a[1][0] * t.x + m.a[1][1] * t.y) + m.a[1][2] * t.z,
-                                     (m.a[2][0] * t.x + m.a[2][1] * t.y) + m.a[2][2] * t.z});
-        out.normal[0] = static_cast<f32>(normal.x);
-        out.normal[1] = static_cast<f32>(normal.y);
-        out.normal[2] = static_cast<f32>(normal.z);
-        out.tangent[0] = static_cast<f32>(tangent.x);
-        out.tangent[1] = static_cast<f32>(tangent.y);
-        out.tangent[2] = static_cast<f32>(tangent.z);
-        out.tangent[3] = static_cast<f32>(m.flipped ? -w : w);
+        PlacedVertex placed;
+        placePoint(target_.scope, p, placed.position);
+        // In the model's mesh a coordinate out of range traps before a
+        // degenerate direction, as it always has.
+        if (target_.mesh) checkCoordinates(placed.position);
+        placeDirections(target_.scope, n, t, w, placed);
+        f32 uv[2];
         const Mapping& map = target_.mapping;
         if (map.region) {
             const auto clamped = [](double value) { return !(value > 0.0) ? 0.0 : value > 1.0 ? 1.0 : value; };
-            out.uv[0] = static_cast<f32>((map.regionX + clamped(s / fw) * map.regionW) / map.assetWidth);
-            out.uv[1] = static_cast<f32>((map.regionY + clamped(tt / fh) * map.regionH) / map.assetHeight);
+            uv[0] = static_cast<f32>((map.regionX + clamped(s / fw) * map.regionW) / map.assetWidth);
+            uv[1] = static_cast<f32>((map.regionY + clamped(tt / fh) * map.regionH) / map.assetHeight);
         } else if (map.fit) {
-            out.uv[0] = static_cast<f32>(s / fw);
-            out.uv[1] = static_cast<f32>(tt / fh);
+            uv[0] = static_cast<f32>(s / fw);
+            uv[1] = static_cast<f32>(tt / fh);
         } else {
-            out.uv[0] = static_cast<f32>((s * map.density + map.shiftU) / map.assetWidth);
-            out.uv[1] = static_cast<f32>((tt * map.density + map.shiftV) / map.assetHeight);
+            uv[0] = static_cast<f32>((s * map.density + map.shiftU) / map.assetWidth);
+            uv[1] = static_cast<f32>((tt * map.density + map.shiftV) / map.assetHeight);
         }
-        const u32 index = static_cast<u32>(target_.mesh.vertices.size());
-        target_.mesh.vertices.push_back(out);
-        target_.mesh.vertexSkins.push_back(target_.skin);
-        return index;
+        return store(target_, placed, uv, target_.skin);
     }
 
-    void triangle(u32 a, u32 b, u32 c) {
-        if (target_.scope.flipped) std::swap(b, c);
-        target_.mesh.triangles.push_back({a, b, c, target_.skin});
-    }
+    void triangle(u32 a, u32 b, u32 c) { storeTriangle(target_, a, b, c, target_.skin); }
 
     // Four vertices BL, BR, TR, TL already emitted from `first`.
     void quad(u32 first) {
@@ -381,6 +421,44 @@ double sin64(double x) {
 
 // ---- placement --------------------------------------------------------------
 
+PlacedVertex transform(const Affine& scope, const Point3& p, const Point3& n, const Point3& t, double w) {
+    PlacedVertex out;
+    placePoint(scope, p, out.position);
+    placeDirections(scope, n, t, w, out);
+    return out;
+}
+
+Point3 mapPoint(const Affine& scope, const Point3& p) {
+    double out[3];
+    placePoint(scope, p, out);
+    return {out[0], out[1], out[2]};
+}
+
+Point3 mapVector(const Affine& m, const Point3& v) {
+    return {(m.a[0][0] * v.x + m.a[0][1] * v.y) + m.a[0][2] * v.z,
+            (m.a[1][0] * v.x + m.a[1][1] * v.y) + m.a[1][2] * v.z,
+            (m.a[2][0] * v.x + m.a[2][1] * v.y) + m.a[2][2] * v.z};
+}
+
+bool quarterTurn(f32 degrees) {
+    const double a = degrees;
+    const double q = a / 90.0;
+    return q == std::floor(q);
+}
+
+void pass(const Target& target, const LocalMesh& block) {
+    const u32 first = target.vertexCount();
+    for (const LocalVertex& vertex : block.vertices) {
+        PlacedVertex placed;
+        placePoint(target.scope, vertex.position, placed.position);
+        if (target.mesh) checkCoordinates(placed.position);
+        placeDirections(target.scope, vertex.normal, vertex.tangent, vertex.w, placed);
+        store(target, placed, vertex.uv, vertex.skin);
+    }
+    for (const Triangle& triangle : block.triangles)
+        storeTriangle(target, first + triangle.a, first + triangle.b, first + triangle.c, triangle.skin);
+}
+
 Affine place(const Affine& parent, const Placement& placement) {
     const u16 mask = placement.mask;
     if (!finite(placement.at) || !finite(placement.yaw) || !finite(placement.pitch) || !finite(placement.roll) ||
@@ -635,7 +713,7 @@ void emit(const Target& target, const SphereShape& shape) {
     const auto dir = columns(shape.sides);
     const Point3 centre{shape.at.x, shape.at.y + shape.radius, shape.at.z};
     const double circumference = kTau * shape.radius, height = kPi * shape.radius;
-    const u32 first = static_cast<u32>(target.mesh.vertices.size());
+    const u32 first = target.vertexCount();
     for (u32 i = 0; i <= shape.rings; ++i) {
         double sp, cp;
         if (i == 0) {
@@ -858,14 +936,14 @@ void emit(const Target& target, const ExtrudeShape& shape) {
     }
     const double width = maxX - minX, height = maxY - minY;
 
-    const u32 front = static_cast<u32>(target.mesh.vertices.size());
+    const u32 front = target.vertexCount();
     for (const Point2& point : capLine)
         out.vertex({shape.at.x + point.x, shape.at.y + point.y, z1}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, point.x - minX,
                    maxY - point.y, width, height);
     for (std::size_t i = 0; i < shape.triangles.size(); i += 3)
         out.triangle(front + shape.triangles[i], front + shape.triangles[i + 1], front + shape.triangles[i + 2]);
 
-    const u32 back = static_cast<u32>(target.mesh.vertices.size());
+    const u32 back = target.vertexCount();
     for (const Point2& point : capLine)
         out.vertex({shape.at.x + point.x, shape.at.y + point.y, z0}, {0.0, 0.0, -1.0}, {-1.0, 0.0, 0.0},
                    maxX - point.x, maxY - point.y, width, height);
@@ -965,6 +1043,279 @@ void emit(const Target& target, const TriShape& shape) {
     out.vertex(shape.b, normal, tangent, fw, fh, fw, fh);
     out.vertex(shape.c, normal, tangent, dot(reach, tangent), 0.0, fw, fh);
     out.triangle(first, first + 1, first + 2);
+}
+
+// ---- shapes along a path (M3) ---------------------------------------------
+
+namespace {
+
+Point3 add(const Point3& a, const Point3& b) { return {a.x + b.x, a.y + b.y, a.z + b.z}; }
+Point3 scaled(const Point3& v, double k) { return {v.x * k, v.y * k, v.z * k}; }
+bool zero(const Point3& v) { return v.x == 0.0 && v.y == 0.0 && v.z == 0.0; }
+
+// The first frame of a path leaving in the unit direction t: V is the up of
+// the profile, U across it, and U x V = t. V leans to +Y unless the path
+// climbs or falls steeper than 60 degrees; then it leans back (-Z) on the way
+// up and forward (+Z) on the way down.
+void startFrame(const Point3& t, Point3& u, Point3& v) {
+    const Point3 r = t.y * t.y < 0.75 ? Point3{0.0, 1.0, 0.0} : Point3{0.0, 0.0, t.y > 0.0 ? -1.0 : 1.0};
+    v = unit(sub(r, scaled(t, dot(r, t))));
+    u = cross(v, t);
+}
+
+// U made perpendicular to the unit t again, and V completing the frame.
+void settle(const Point3& t, Point3& u, Point3& v) {
+    u = unit(sub(u, scaled(t, dot(u, t))));
+    v = cross(t, u);
+}
+
+// The cap of a tube: a disc in the plane of a ring, like a cone's cap with
+// the cone's X along U and its Z along -V.
+void tubeCap(Writer& out, const Point3& centre, const Point3& u, const Point3& v, const Point3& t,
+             const std::vector<Point2>& dir, double r, bool upper) {
+    const u32 sides = static_cast<u32>(dir.size() - 1);
+    const Point3 normal = upper ? t : Point3{-t.x, -t.y, -t.z};
+    const double size = 2.0 * r;
+    const u32 first = out.vertex(centre, normal, u, r, r, size, size);
+    for (u32 j = 0; j < sides; ++j) {
+        const double lx = dir[j].x * r, lz = dir[j].y * r;
+        const Point3 p = sub(add(centre, scaled(u, lx)), scaled(v, lz));
+        out.vertex(p, normal, u, lx + r, upper ? lz + r : r - lz, size, size);
+    }
+    for (u32 j = 0; j < sides; ++j) {
+        const u32 here = first + 1 + j, next = first + 1 + (j + 1) % sides;
+        if (upper) out.triangle(first, here, next);
+        else out.triangle(first, next, here);
+    }
+}
+
+} // namespace
+
+TubeShape checkTube(Vec3 a, Vec3 b, Vec3 c, Vec3 d, f32 r0, f32 r1, i32 sides, i32 segments) {
+    if (!finite(a) || !finite(b) || !finite(c) || !finite(d) || !finite(r0) || !finite(r1))
+        violate("tube needs finite arguments");
+    if (r0 < 0.f || r1 < 0.f || (r0 == 0.f && r1 == 0.f)) violate("radius must be positive");
+    checkSides(sides);
+    if (segments < 1 || segments > static_cast<i32>(kMaxTubeSegments)) violate("segments must be in 1..256");
+    TubeShape shape;
+    shape.sides = static_cast<u32>(sides);
+    shape.segments = static_cast<u32>(segments);
+    shape.r0 = r0;
+    shape.r1 = r1;
+    shape.maxRadius = std::max(shape.r0, shape.r1);
+    const Point3 pa = widen(a), pb = widen(b), pc = widen(c), pd = widen(d);
+    const Point3 ba = sub(pb, pa), cb = sub(pc, pb), dc = sub(pd, pc);
+    const u32 n = shape.segments;
+    std::vector<Point3> derivatives(n + 1);
+    for (u32 i = 0; i <= n; ++i) {
+        const double t = static_cast<double>(i) / static_cast<double>(n);
+        const double s = 1.0 - t;
+        const double w0 = (s * s) * s, w1 = ((3.0 * s) * s) * t, w2 = ((3.0 * s) * t) * t, w3 = (t * t) * t;
+        shape.centres.push_back({((pa.x * w0 + pb.x * w1) + pc.x * w2) + pd.x * w3,
+                                 ((pa.y * w0 + pb.y * w1) + pc.y * w2) + pd.y * w3,
+                                 ((pa.z * w0 + pb.z * w1) + pc.z * w2) + pd.z * w3});
+        const double q0 = s * s, q1 = (2.0 * s) * t, q2 = t * t;
+        derivatives[i] = {(ba.x * q0 + cb.x * q1) + dc.x * q2, (ba.y * q0 + cb.y * q1) + dc.y * q2,
+                          (ba.z * q0 + cb.z * q1) + dc.z * q2};
+        shape.radii.push_back(shape.r0 + (shape.r1 - shape.r0) * t);
+    }
+    shape.cumulative.push_back(0.0);
+    for (u32 i = 0; i < n; ++i)
+        shape.cumulative.push_back(shape.cumulative.back() + length(sub(shape.centres[i + 1], shape.centres[i])));
+    shape.length = shape.cumulative.back();
+    // Where the curve stops (a control point on its end point), the chord to
+    // the neighbouring ring gives the direction.
+    for (u32 i = 0; i <= n; ++i) {
+        Point3 direction = derivatives[i];
+        if (zero(direction))
+            direction = i < n ? sub(shape.centres[i + 1], shape.centres[i]) : sub(shape.centres[i], shape.centres[i - 1]);
+        if (zero(direction)) violate("tube curve has no direction", ErrorReason::RuntimeViolation);
+        shape.directions.push_back(unit(direction));
+    }
+    // Rotation-minimising frames by double reflection (Wang et al. 2008).
+    shape.us.resize(n + 1);
+    shape.vs.resize(n + 1);
+    startFrame(shape.directions[0], shape.us[0], shape.vs[0]);
+    for (u32 i = 0; i < n; ++i) {
+        const Point3& t0 = shape.directions[i];
+        const Point3& t1 = shape.directions[i + 1];
+        Point3 u = shape.us[i], t = t0;
+        const Point3 v1 = sub(shape.centres[i + 1], shape.centres[i]);
+        const double c1 = dot(v1, v1);
+        if (c1 > 0.0) {
+            u = sub(u, scaled(v1, (2.0 * dot(v1, u)) / c1));
+            t = sub(t, scaled(v1, (2.0 * dot(v1, t)) / c1));
+        }
+        const Point3 v2 = sub(t1, t);
+        const double c2 = dot(v2, v2);
+        if (c2 > 0.0) u = sub(u, scaled(v2, (2.0 * dot(v2, u)) / c2));
+        shape.us[i + 1] = u;
+        settle(t1, shape.us[i + 1], shape.vs[i + 1]);
+    }
+    return shape;
+}
+
+Counts count(const TubeShape& shape) {
+    const u32 sides = shape.sides, n = shape.segments;
+    const u32 caps = (shape.r0 > 0.0 ? 1u : 0u) + (shape.r1 > 0.0 ? 1u : 0u);
+    // A band between two rings loses a triangle per side at a ring of
+    // radius zero, as a cone's does.
+    u32 triangles = caps * sides;
+    for (u32 i = 0; i < n; ++i)
+        triangles += (shape.radii[i] > 0.0 ? sides : 0u) + (shape.radii[i + 1] > 0.0 ? sides : 0u);
+    return {(n + 1) * (sides + 1) + caps * (sides + 1), triangles};
+}
+
+void emit(const Target& target, const TubeShape& shape) {
+    Writer out(target);
+    const auto dir = columns(shape.sides);
+    const u32 sides = shape.sides, n = shape.segments;
+    const double circumference = kTau * shape.maxRadius, total = shape.length;
+    const double slope = shape.r0 - shape.r1;
+    const u32 first = target.vertexCount();
+    for (u32 i = 0; i <= n; ++i) {
+        const Point3& u = shape.us[i];
+        const Point3& v = shape.vs[i];
+        const Point3& t = shape.directions[i];
+        for (u32 j = 0; j <= sides; ++j) {
+            const double dx = dir[j].x, dz = dir[j].y;
+            const Point3 radial = sub(scaled(u, dx), scaled(v, dz));
+            const Point3 p = add(shape.centres[i], scaled(radial, shape.radii[i]));
+            const Point3 normal = unit(add(scaled(radial, total), scaled(t, slope)));
+            const Point3 tangent = add(scaled(u, dz), scaled(v, dx));
+            const double s = circumference * (static_cast<double>(j) / static_cast<double>(sides));
+            out.vertex(p, normal, tangent, s, total - shape.cumulative[i], circumference, total);
+        }
+    }
+    for (u32 i = 0; i < n; ++i)
+        band(out, first + i * (sides + 1), first + (i + 1) * (sides + 1), sides, shape.radii[i] > 0.0,
+             shape.radii[i + 1] > 0.0);
+    if (shape.r0 > 0.0) tubeCap(out, shape.centres[0], shape.us[0], shape.vs[0], shape.directions[0], dir, shape.r0, false);
+    if (shape.r1 > 0.0) tubeCap(out, shape.centres[n], shape.us[n], shape.vs[n], shape.directions[n], dir, shape.r1, true);
+}
+
+SweepShape checkSweep(std::span<const Vec3> path, std::span<const Vec2> profile) {
+    if (path.size() < 2 || path.size() > kMaxPathPoints) violate("sweep path needs 2..256 points");
+    if (profile.size() < 3 || profile.size() > kMaxOutlinePoints) violate("sweep profile needs 3..256 points");
+    SweepShape shape;
+    for (const Vec3& point : path) {
+        if (!finite(point)) violate("sweep needs finite arguments");
+        shape.path.push_back(widen(point));
+    }
+    for (const Vec2& point : profile) {
+        if (!finite(point.x) || !finite(point.y)) violate("sweep needs finite arguments");
+        shape.profile.push_back({point.x, point.y});
+    }
+    switch (normalise(shape.profile, true)) {
+    case OutlineFault::NoArea: violate("sweep profile has no area", ErrorReason::RuntimeViolation);
+    case OutlineFault::Repeat: violate("sweep profile repeats a point");
+    case OutlineFault::Crossing: violate("sweep profile is self-intersecting", ErrorReason::RuntimeViolation);
+    case OutlineFault::None: break;
+    }
+    shape.triangles = triangulate(shape.profile);
+    if (shape.triangles.empty()) violate("sweep profile cannot be triangulated", ErrorReason::RuntimeViolation);
+
+    const std::size_t m = shape.path.size();
+    shape.cumulative.push_back(0.0);
+    for (std::size_t k = 0; k + 1 < m; ++k) {
+        const Point3 delta = sub(shape.path[k + 1], shape.path[k]);
+        if (zero(delta)) violate("sweep path repeats a point");
+        shape.segmentD.push_back(unit(delta));
+        shape.cumulative.push_back(shape.cumulative.back() + length(delta));
+    }
+    shape.segmentU.resize(m - 1);
+    shape.segmentV.resize(m - 1);
+    startFrame(shape.segmentD[0], shape.segmentU[0], shape.segmentV[0]);
+    shape.ringU.push_back(shape.segmentU[0]);
+    shape.ringV.push_back(shape.segmentV[0]);
+    for (std::size_t k = 1; k + 1 < m; ++k) {
+        const Point3& before = shape.segmentD[k - 1];
+        const Point3& after = shape.segmentD[k];
+        const Point3 bisector = add(before, after);
+        if (zero(bisector)) violate("sweep path turns back on itself", ErrorReason::RuntimeViolation);
+        const Point3 mitre = unit(bisector);
+        const double along = dot(before, mitre);
+        const Point3& u = shape.segmentU[k - 1];
+        const Point3& v = shape.segmentV[k - 1];
+        // The previous segment's cross-section, carried along it onto the
+        // mitre plane.
+        shape.ringU.push_back(sub(u, scaled(before, dot(u, mitre) / along)));
+        shape.ringV.push_back(sub(v, scaled(before, dot(v, mitre) / along)));
+        // The next segment's frame is the previous one mirrored in that plane.
+        Point3 nextU = sub(u, scaled(mitre, 2.0 * dot(u, mitre)));
+        shape.segmentU[k] = nextU;
+        settle(after, shape.segmentU[k], shape.segmentV[k]);
+    }
+    shape.ringU.push_back(shape.segmentU[m - 2]);
+    shape.ringV.push_back(shape.segmentV[m - 2]);
+    return shape;
+}
+
+Counts count(const SweepShape& shape) {
+    const u32 n = static_cast<u32>(shape.profile.size());
+    const u32 segments = static_cast<u32>(shape.path.size() - 1);
+    const u32 capTriangles = static_cast<u32>(shape.triangles.size() / 3);
+    return {2 * n + 4 * n * segments, 2 * capTriangles + 2 * n * segments};
+}
+
+void emit(const Target& target, const SweepShape& shape) {
+    Writer out(target);
+    const std::size_t n = shape.profile.size(), m = shape.path.size();
+    const auto ring = [&](std::size_t k, const Point2& q) {
+        return add(add(shape.path[k], scaled(shape.ringU[k], q.x)), scaled(shape.ringV[k], q.y));
+    };
+    double minX = shape.profile[0].x, maxX = minX, minY = shape.profile[0].y, maxY = minY;
+    for (const Point2& point : shape.profile) {
+        minX = std::min(minX, point.x);
+        maxX = std::max(maxX, point.x);
+        minY = std::min(minY, point.y);
+        maxY = std::max(maxY, point.y);
+    }
+    const double width = maxX - minX, height = maxY - minY;
+
+    // The start cap faces back along the path, as the back cap of an
+    // extrude; the end cap faces along it, as the front cap.
+    const Point3& d0 = shape.segmentD[0];
+    const Point3& u0 = shape.segmentU[0];
+    const u32 start = target.vertexCount();
+    for (const Point2& q : shape.profile)
+        out.vertex(ring(0, q), {-d0.x, -d0.y, -d0.z}, {-u0.x, -u0.y, -u0.z}, maxX - q.x, maxY - q.y, width, height);
+    for (std::size_t i = 0; i < shape.triangles.size(); i += 3)
+        out.triangle(start + shape.triangles[i], start + shape.triangles[i + 2], start + shape.triangles[i + 1]);
+    const Point3& dn = shape.segmentD[m - 2];
+    const u32 end = target.vertexCount();
+    for (const Point2& q : shape.profile)
+        out.vertex(ring(m - 1, q), dn, shape.segmentU[m - 2], q.x - minX, maxY - q.y, width, height);
+    for (std::size_t i = 0; i < shape.triangles.size(); i += 3)
+        out.triangle(end + shape.triangles[i], end + shape.triangles[i + 1], end + shape.triangles[i + 2]);
+
+    // The profile's perimeter up to each point; the last is the whole.
+    std::vector<double> around(n + 1, 0.0);
+    for (std::size_t e = 0; e < n; ++e) {
+        const Point2& q = shape.profile[e];
+        const Point2& r = shape.profile[(e + 1) % n];
+        const double dx = r.x - q.x, dy = r.y - q.y;
+        around[e + 1] = around[e] + std::sqrt(dx * dx + dy * dy);
+    }
+    const double perimeter = around[n], total = shape.cumulative[m - 1];
+    for (std::size_t k = 0; k + 1 < m; ++k) {
+        const Point3& u = shape.segmentU[k];
+        const Point3& v = shape.segmentV[k];
+        const double lower = total - shape.cumulative[k], upper = total - shape.cumulative[k + 1];
+        for (std::size_t e = 0; e < n; ++e) {
+            const Point2& q = shape.profile[e];
+            const Point2& r = shape.profile[(e + 1) % n];
+            const double dx = r.x - q.x, dy = r.y - q.y;
+            const double edge = std::sqrt(dx * dx + dy * dy);
+            const Point3 normal = add(scaled(u, dy / edge), scaled(v, -dx / edge));
+            const Point3 tangent = add(scaled(u, dx / edge), scaled(v, dy / edge));
+            const u32 first = out.vertex(ring(k, q), normal, tangent, around[e], lower, perimeter, total);
+            out.vertex(ring(k, r), normal, tangent, around[e + 1], lower, perimeter, total);
+            out.vertex(ring(k + 1, r), normal, tangent, around[e + 1], upper, perimeter, total);
+            out.vertex(ring(k + 1, q), normal, tangent, around[e], upper, perimeter, total);
+            out.quad(first);
+        }
+    }
 }
 
 // ---- vec3 values ------------------------------------------------------------

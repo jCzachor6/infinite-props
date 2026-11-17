@@ -413,7 +413,7 @@ class SourcePrinter {
                 out_ << "clip("; expression(*node.mask); out_ << ')';
                 block(node.body, level);
             } else if constexpr (std::is_same_v<T, PlaceStmt>) {
-                out_ << "place(";
+                out_ << node.block << '(';
                 for (std::size_t i = 0; i < node.args.size(); ++i) {
                     if (i) out_ << ", ";
                     if (node.args[i].name) out_ << *node.args[i].name << " = ";
@@ -542,8 +542,8 @@ public:
         for (const auto& output : asset.outputs) {
             indent(1); SourceOutput::Scope range(out_, output.sourceRange, false);
             const char* kinds[] = {"point", "rect", "circle", "mask", "layer", "part", "normal",
-                                   "roughness", "metallic", "ao", "emission"};
-            if (static_cast<unsigned>(output.kind) >= 11 || (output.kind == OutputKind::Part && !output.isList))
+                                   "roughness", "metallic", "ao", "emission", "point3d", "box3d"};
+            if (static_cast<unsigned>(output.kind) >= 13 || (output.kind == OutputKind::Part && !output.isList))
                 throw SourceError{output.location, "invalid output kind in source printer"};
             out_ << "  output " << (output.isList ? "list " : "")
                  << kinds[static_cast<unsigned>(output.kind)] << ' ' << output.name; out_.finishRange(); out_ << '\n'; range.close();

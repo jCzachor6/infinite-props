@@ -206,3 +206,36 @@ test("the transfer list of a result names each buffer once", () => {
     assert.equal(buffers.length, 4 * 5 - 1 + 2 + 1);
     assert(buffers.every(buffer => buffer instanceof ArrayBuffer));
 });
+
+test("outputs become named points and boxes turned by their axes", { skip: !available && "three.js is not installed" }, async () => {
+    const { THREE, adapter } = await load();
+    const source = result();
+    // A yaw of 30 degrees: a rotation that is not its own transpose, so a
+    // basis built from rows instead of columns would turn the other way.
+    const c = Math.cos(Math.PI / 6), s = Math.sin(Math.PI / 6);
+    source.outputs = [
+        { index: 0, name: "bulbs", kind: "point3d", list: true, count: 2, values: new Float32Array([1, 2, 3, -1, 2, 3]) },
+        { index: 1, name: "collider", kind: "box3d", list: false, count: 1,
+          values: new Float32Array([4, 5, 6, 2, 3, 4, c, 0, -s, 0, 1, 0, s, 0, c]) },
+    ];
+    const group = adapter.outputsToObject3D(source, THREE);
+    assert.equal(group.scale.x, 1 / 50);
+    assert.equal(adapter.outputsToObject3D(source, THREE, { meters: false }).scale.x, 1);
+    assert.deepEqual(group.children.map(child => child.name), ["bulbs[0]", "bulbs[1]", "collider"]);
+    const [first, second, box] = group.children;
+    assert.deepEqual(first.position.toArray(), [1, 2, 3]);
+    assert.deepEqual(second.position.toArray(), [-1, 2, 3]);
+    assert(box.isLineSegments);
+    assert.deepEqual(box.position.toArray(), [4, 5, 6]);
+    const close = (vector, expected) => vector.toArray().forEach((value, i) => assert(Math.abs(value - expected[i]) < 1e-6,
+        vector.toArray() + " against " + expected));
+    close(new THREE.Vector3(1, 0, 0).applyQuaternion(box.quaternion), [c, 0, -s]);
+    close(new THREE.Vector3(0, 0, 1).applyQuaternion(box.quaternion), [s, 0, c]);
+    box.geometry.computeBoundingBox();
+    close(box.geometry.boundingBox.getSize(new THREE.Vector3()), [2, 3, 4]);
+    let released = 0;
+    group.traverse(node => { if (node.isLineSegments) node.geometry.addEventListener("dispose", () => ++released); });
+    adapter.disposeObject3D(group);
+    assert.equal(released, 1);
+    assert.equal(adapter.outputsToObject3D({ ...source, outputs: [] }, THREE).children.length, 0);
+});

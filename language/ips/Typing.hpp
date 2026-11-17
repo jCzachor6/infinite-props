@@ -185,6 +185,7 @@ private:
     // `alias.draw(seed, inputs..., size = {w, h})` in a render asset: the
     // imported draw asset generated as a texture (models v1.2).
     ValueType typeSkinCall(const Call& call);
+    ValueType typeModelPartCall(const Call& call);
     // Whether the asset being typed has `render` in place of `draw`.
     bool modelAsset() const;
     ValueType typeVector(const VectorLit& vector);

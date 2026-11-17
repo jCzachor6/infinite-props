@@ -1,0 +1,11 @@
+// A part's points are read in the block that called it.
+import leg from "../model-leg.ips"
+
+asset stand {
+  size 20x60x20
+  output point3d top
+  render {
+    place(at = {0, 0, 5}) { leg.render(seed.initial()) }
+    top = leg.outputs.top
+  }
+}

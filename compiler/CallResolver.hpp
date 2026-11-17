@@ -48,6 +48,14 @@ struct SkinCall {
     PlannedArgument seed;
     const ips::Expr* size = nullptr; // a vec2 of pixels; null: the declared size
 };
+// `alias.render(...)` of a model (M3): an imported render asset built in
+// the current scope.
+struct ModelPartCall {
+    u32 part;
+    // The inputs in declaration order, supplied or at their default.
+    std::vector<std::variant<PlannedArgument, Value>> inputs;
+    PlannedArgument seed;
+};
 struct RampCall {
     const ips::ResolvedPalette* palette;
     PlannedArgument position;
@@ -55,7 +63,7 @@ struct RampCall {
 };
 struct ResolvedCall {
     ips::SourceLocation location;
-    std::variant<BuiltinCall, UserCall, PartCall, RampCall, SelectionCall, SkinCall> target;
+    std::variant<BuiltinCall, UserCall, PartCall, RampCall, SelectionCall, SkinCall, ModelPartCall> target;
 };
 
 // Lowers frontend-bound calls to coercions, defaults and table indices.
@@ -71,5 +79,6 @@ private:
     PlannedArgument argument(const ips::Expr& expression, ips::ValueType expected) const;
     PartCall part(const ips::Call& call, const std::string& path) const;
     SkinCall skin(const ips::Call& call, const std::string& alias) const;
+    ModelPartCall modelPart(const ips::Call& call, const std::string& path) const;
 };
 } // namespace iprop::compiler

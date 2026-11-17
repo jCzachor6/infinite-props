@@ -365,6 +365,31 @@ int generateModelFile(const Options& options, const std::vector<u8>& bytes) {
              << (surface.crisp ? "true" : "false") << "}";
     }
     json << "\n  ]";
+    // The model's 3D outputs (M3), when it declares any.
+    if (!result.outputs.empty()) {
+        json << ",\n  \"outputs\": [";
+        for (std::size_t i = 0; i < result.outputs.size(); ++i) {
+            const auto& output = result.outputs[i];
+            const bool box = output.kind == model::ModelOutputKind::Box3d;
+            json << (i ? "," : "") << "\n    {\"name\": \"" << tools::jsonEscape(output.name) << "\", \"kind\": \""
+                 << (box ? "box3d" : "point3d") << "\", \"list\": " << (output.list ? "true" : "false") << ", \"values\": [";
+            const std::size_t count = box ? output.boxes.size() : output.points.size();
+            for (std::size_t j = 0; j < count; ++j) {
+                json << (j ? ", " : "");
+                if (!box) {
+                    const f32 point[3] = {output.points[j].x, output.points[j].y, output.points[j].z};
+                    json << triple(point);
+                    continue;
+                }
+                const auto& value = output.boxes[j];
+                json << "{\"center\": " << triple(value.center) << ", \"size\": " << triple(value.size)
+                     << ", \"axes\": [" << triple(value.axes[0]) << ", " << triple(value.axes[1]) << ", "
+                     << triple(value.axes[2]) << "]}";
+            }
+            json << "]}";
+        }
+        json << "\n  ]";
+    }
     if (!glbPath.empty()) json << ",\n  \"glb\": \"" << tools::jsonEscape(glbPath) << "\"";
     if (!previewPath.empty()) json << ",\n  \"preview\": \"" << tools::jsonEscape(previewPath) << "\"";
     json << "\n}\n";

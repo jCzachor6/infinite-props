@@ -3,6 +3,7 @@
 set(IPROP_MODEL_SOURCES
     ops.cpp
     geometry.cpp
+    blocks.cpp
     loader.cpp
     validation.cpp
     machine.cpp)

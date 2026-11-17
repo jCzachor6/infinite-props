@@ -276,6 +276,12 @@ ips::ValueType Emitter::emitPartRead(const ips::Expr& expr) {
     const auto slot = [&] { return static_cast<u16>(plan_.partSlot(part, read.output->name)); };
     const auto resource = [&] { return plan_.resourceSlotIndex.at({part, read.output->name}); };
     switch (read.kind) {
+    case ips::OutputKind::Point3d:
+        // A 3D part's point (M3), in the frame of the block that called it.
+        page(model::Op::PartGetPoint3d, static_cast<u16>(plan_.modelSlotIndex.at({part, read.output->name})));
+        return ips::ValueType::Vec3;
+    case ips::OutputKind::Box3d:
+        error(ips::locationOf(expr), "cannot read a part's box3d output");
     case ips::OutputKind::Part:
         error(ips::locationOf(expr), "cannot read list part output");
     case ips::OutputKind::Mask:

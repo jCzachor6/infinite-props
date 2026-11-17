@@ -100,9 +100,10 @@ std::string functionNamespace(const std::string& functionName);
 struct Plan {
     const ips::Program* entry = nullptr;
 
-    // A model (models v1.2): the entry has `render`. Its imports are the draw
-    // assets it generates as textures: compiled on their own, in import
-    // order. A model has no part instances.
+    // A model (models v1.2): the entry has `render`. Its imports that have
+    // `draw` are the assets it generates as textures, compiled on their own;
+    // those that have `render` are its parts (M3), instances like 2D parts.
+    // Both are keyed by alias path, in preorder of import order.
     bool model = false;
     struct Skin {
         std::string alias;
@@ -124,6 +125,16 @@ struct Plan {
     std::map<std::pair<u32, std::string>, u32> partSlotIndex;
     std::vector<PlannedResourceExport> resourceExports;
     std::map<std::pair<u32, std::string>, u16> resourceSlotIndex;
+    // The 3D output slots of a model (M3): the model's own in declaration
+    // order, then each part's in instance order; by (owner, output name).
+    struct ModelSlot {
+        ips::OutputKind kind = ips::OutputKind::Point3d;
+        bool isList = false;
+        std::string name;
+        u32 owner = kRootParent;
+    };
+    std::vector<ModelSlot> modelSlots;
+    std::map<std::pair<u32, std::string>, u32> modelSlotIndex;
 
     std::vector<PlannedFunction> functions;
     std::map<std::string, u32> functionIndex;

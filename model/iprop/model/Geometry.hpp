@@ -82,13 +82,56 @@ struct Mapping {
     double regionX = 0.0, regionY = 0.0, regionW = 1.0, regionH = 1.0;
 };
 
-// Where a primitive writes.
+// A vertex of a block's own buffer (v1.2, M3): kept in binary64 in the
+// block's frame until the block passes it to its parent; its UV is final.
+struct LocalVertex {
+    Point3 position, normal, tangent;
+    double w = 1.0; // the bitangent sign
+    f32 uv[2] = {0.f, 0.f};
+    u32 skin = 0;
+};
+
+struct LocalMesh {
+    std::vector<LocalVertex> vertices;
+    std::vector<Triangle> triangles;
+};
+
+// Where a primitive writes: the model's mesh, rounded to binary32 once, or
+// the buffer of an open block, kept in binary64.
 struct Target {
-    Mesh& mesh;
+    Target(Mesh& root, const Affine& placement, Mapping map, u32 record)
+        : mesh(&root), scope(placement), mapping(map), skin(record) {}
+    Target(LocalMesh& block, const Affine& placement, Mapping map, u32 record)
+        : local(&block), scope(placement), mapping(map), skin(record) {}
+    Mesh* mesh = nullptr;
+    LocalMesh* local = nullptr;
     const Affine& scope;
     Mapping mapping;
     u32 skin = 0;
+    u32 vertexCount() const {
+        return static_cast<u32>(mesh ? mesh->vertices.size() : local->vertices.size());
+    }
 };
+
+// The image of a vertex under a scope, before any rounding (spec models
+// v1.2, Placement scopes): the point, the unit normal through the cofactors,
+// the unit tangent and the sign, negated in a flipped scope.
+struct PlacedVertex {
+    double position[3] = {0.0, 0.0, 0.0};
+    Point3 normal, tangent;
+    double w = 1.0;
+};
+PlacedVertex transform(const Affine& scope, const Point3& p, const Point3& n, const Point3& t, double w);
+// The point and vector maps of a scope alone: A·p + o and A·v, with the
+// arithmetic of a vertex position.
+Point3 mapPoint(const Affine& scope, const Point3& p);
+Point3 mapVector(const Affine& scope, const Point3& v);
+// Whether turn() takes its exact path: a multiple of 90 degrees.
+bool quarterTurn(f32 degrees);
+
+// Passes the vertices and triangles of a closed block to its parent through
+// the scope the block was opened in, keeping each vertex's UV and skin.
+void pass(const Target& target, const LocalMesh& block);
 
 struct Counts {
     u32 vertices = 0;
@@ -177,6 +220,34 @@ struct TriShape {
 TriShape checkTri(Vec3 a, Vec3 b, Vec3 c);
 Counts count(const TriShape& shape);
 void emit(const Target& target, const TriShape& shape);
+
+// ---- shapes along a path (M3) ---------------------------------------------
+
+// A tube along a cubic Bezier curve, its radius running from r0 to r1. The
+// rings are sampled at even parameter steps and carry rotation-minimising
+// frames: U and V span a ring, U x V = T, the direction of the curve.
+struct TubeShape {
+    std::vector<Point3> centres, directions, us, vs;
+    std::vector<double> radii, cumulative; // cumulative: chord length up to each ring
+    double length = 0, maxRadius = 0, r0 = 0, r1 = 0;
+    u32 sides = 0, segments = 0;
+};
+TubeShape checkTube(Vec3 a, Vec3 b, Vec3 c, Vec3 d, f32 r0, f32 r1, i32 sides, i32 segments);
+Counts count(const TubeShape& shape);
+void emit(const Target& target, const TubeShape& shape);
+
+// A profile swept along a polyline, mitred at every inner point.
+struct SweepShape {
+    std::vector<Point3> path;
+    std::vector<Point2> profile;   // counterclockwise
+    std::vector<u32> triangles;    // of the profile, three per triangle
+    std::vector<Point3> ringU, ringV;               // the profile's axes at each path point
+    std::vector<Point3> segmentU, segmentV, segmentD; // the frame of each segment
+    std::vector<double> cumulative;                  // path length up to each point
+};
+SweepShape checkSweep(std::span<const Vec3> path, std::span<const Vec2> profile);
+Counts count(const SweepShape& shape);
+void emit(const Target& target, const SweepShape& shape);
 
 // ---- vec3 values (binary32, like the vec2 operations) -----------------------
 

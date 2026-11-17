@@ -140,7 +140,7 @@ archive does not carry the module yet; build it from source.
 | `js/api3d.js` | the browser-facing wrapper (`Iprop3D.create`) |
 | `js/model-worker.js` | a worker that generates models off the main thread |
 | `js/three-adapter.js`, `.d.ts` | a result as three.js objects, and the types of a result |
-| `demo/model.html` | a viewer: orbit, seeds, the model's inputs, any `.iprop3d` you drop on it |
+| `demo/model.html` | a viewer: orbit, seeds, the model's inputs and outputs, any `.iprop3d` you drop on it |
 | `test/model-conformance.js` | every vertex, index, material number and texture against the native tools, bit for bit |
 | `test/three-adapter.test.js` | the adapter without WebGL |
 
@@ -169,6 +169,14 @@ model and every texture it generates. A result holds
   and `images` the normal and material maps of the skin (`IMAGE_*` kinds).
   Equal keys mean equal pixels, in any result of any model, so a page can keep
   one GPU texture per key;
+- `outputs`: the model's own [outputs](../../docs/language/models.md#outputs)
+  in declaration order, `{index, name, kind ("point3d" or "box3d"), list,
+  count, values}` with `values` a `Float32Array` of 3 floats a point and 15 a
+  box (centre, size, then its x, y and z axes), also given as `points` (`[x,
+  y, z]` each) or `boxes` (`{center, size, axes}`). `outputsToObject3D` of
+  the three.js adapter turns them into empty objects at the points and line
+  boxes, named after their output (`name[i]` in a list) and in the space of
+  `toObject3D`: for a light at a lamp's bulb, or to see the colliders;
 - `bounds`, `size`, `unitsPerMeter`, `vertexCount`, `triangleCount`, `fuel`
   and `work`.
 
@@ -208,7 +216,9 @@ python3 -m http.server -d backends/html5 8000   # then open /demo/model.html
 ```
 
 The viewer takes three.js from a CDN. `model.html?model=NAME.iprop3d&seed=7`
-opens another file beside the page.
+opens another file beside the page: `prepare.sh` also compiles the lantern,
+the street lamp, the railing, the boulder and the table. A model's outputs
+show over it, a dot at each point and the edges of each box.
 
 **Conformance.** `run-tests.js` runs the model suite whenever the build
 directory holds `iprop3d.js`: four models over several seeds and inputs must

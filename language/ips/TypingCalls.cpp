@@ -77,6 +77,12 @@ ValueType Typer::typeMemberCall(const Call& call) {
         // (e.g. pot.draw resembles part.draw).
         if (path.segments.size() == 1 && path.segments[0] == "draw" && findPart(path.base))
             return modelAsset() ? typeSkinCall(call) : typePartCall(call);
+        // A 3D part (M3): an imported render asset built where it is called.
+        if (path.segments.size() == 1 && path.segments[0] == "render" && findPart(path.base)) {
+            if (!modelAsset())
+                error(path.location, "'" + path.base + ".render' builds a 3D part; it is available in a render asset");
+            return typeModelPartCall(call);
+        }
         if (const auto* builtin = findBuiltin(full, modelAsset())) {
             if (modelAsset() && !availableInModel(*builtin))
                 error(path.location, full + " needs a canvas and a render asset has none; "
@@ -314,8 +320,8 @@ ValueType Typer::typeSkinCall(const Call& call) {
     if (skin == nullptr)
         error(path.location, "'" + path.base + "' is not an imported asset" + didYouMean(path.base, partAliases()));
     if (skin->model)
-        error(path.location, "'" + path.base + "' is a render asset; a skin comes from an asset with draw { }, "
-                                                "and 3D parts are not supported yet");
+        error(path.location, "'" + path.base + "' is a render asset; build it with " + path.base +
+                                 ".render(seed, ...), and take skins from assets with draw { }");
     for (const auto& arg : call.args)
         if (arg.name && (*arg.name == "at" || *arg.name == "rot" || *arg.name == "mirror_x" || *arg.name == "mirror_y"))
             error(arg.location, "a skin has no placement; remove '" + *arg.name + "'");
@@ -338,6 +344,32 @@ ValueType Typer::typeSkinCall(const Call& call) {
                                                typeName(valueTypeOf(input.type)) + ", got " + typeName(got));
     }
     return ValueType::Skin;
+}
+
+// `alias.render(seed, inputs...)` in a render asset (M3): the imported
+// render asset built in the current scope, a statement.
+ValueType Typer::typeModelPartCall(const Call& call) {
+    const Path path = flatten(*call.callee);
+    const auto* part = findPart(path.base);
+    if (!part->model)
+        error(path.location, "'" + path.base + "' has draw { }: use " + path.base +
+                                 ".draw(...) as a skin; render builds an asset with render { }");
+    for (const auto& arg : call.args)
+        if (arg.name && (*arg.name == "at" || *arg.name == "yaw" || *arg.name == "scale" || *arg.name == "size"))
+            error(arg.location, "a 3D part has no '" + *arg.name + "' argument; put the call in a place(...) block");
+    const auto bound = bind(call, modelPartCallSignature(part->inputs), path.base + ".render");
+    const auto& args = bound.arguments;
+    checkSeedArgument(*args[kModelPartSeedSlot]->value, "a part's seed");
+    for (std::size_t i = 0; i < part->inputs.size(); ++i) {
+        const auto* arg = args[kModelPartFirstInput + i];
+        if (!arg) continue;
+        const auto& input = part->inputs[i];
+        const auto got = typeOf(*arg->value);
+        if (!argFits(valueTypeOf(input.type), got))
+            error(locationOf(*arg->value), "input '" + input.name + "' of part '" + path.base + "' must be " +
+                                               typeName(valueTypeOf(input.type)) + ", got " + typeName(got));
+    }
+    return ValueType::Void;
 }
 
 } // namespace iprop::ips

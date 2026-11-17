@@ -81,6 +81,9 @@ struct Frame {
     // The index of the most recently called part in this frame (spec §9.9);
     // kNoPartIndex before any part call.
     u16 lastPart = kNoPartIndex;
+    // A frame an extension pushed (a 3D part, models v1.2): leaving it
+    // tells the extension. Never set in a 2D generation.
+    bool extensionFrame = false;
 };
 
 // Saved caller state for one part call (spec §10): the caller's canvas is
@@ -119,6 +122,9 @@ public:
     virtual bool opensScope(Instruction ins) const = 0;
     // Closes the innermost scope this extension opened.
     virtual void closeScope(Execution& ex) = 0;
+    // A frame the extension pushed has returned; the caller's frame is the
+    // innermost one again.
+    virtual void frameLeft(Execution& ex) = 0;
 
 protected:
     ~Extension() = default;

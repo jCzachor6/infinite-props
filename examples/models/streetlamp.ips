@@ -1,0 +1,87 @@
+// A street lamp, one unit to a centimetre: a painted iron post on a plinth,
+// one arm or two curving out of its top, and under each arm a shade with a
+// glowing glass bowl. The arm is a tube along a curve; the bowl is a turned
+// profile in glass that blends and glows. The game reads `bulbs`, where to
+// put a light, and `colliders`, the post and its plinth; `paint` fixes the
+// colour and `rust` how worn it is.
+import iron  from "skins/wrought.ips"
+import glass from "skins/pane.ips"
+import fire  from "skins/flame.ips"
+
+asset streetlamp {
+  size 140x430x60
+  scale 100
+
+  input color paint = #2f4a3a
+  input f32 rust = 0.3                   // 0 freshly painted, 1 rusted through
+
+  output list point3d bulbs              // where the game puts a light
+  output list box3d colliders            // the post and its plinth
+
+  render {
+    root = seed.initial()
+
+    // Proportions.
+    h = roll(root.fork("height"), 340.0, 400.0)
+    arm = roll(root.fork("reach"), 60.0, 95.0)
+    rise = roll(root.fork("rise"), 20.0, 45.0)
+    arms = choose(root.fork("arms"), 1, 1, 2)
+    style = choose(root.fork("shade"), 0, 1, 2)    // cone, dome, bell
+
+    // Skins. The paint is the iron's tint; glass blends and glows.
+    metal = skin.metallic(skin.density(iron.draw(root.fork("iron"), tint = paint, rust = rust), 1.5), 0.6)
+    bowl = skin.emission(skin.blend(skin.two_sided(skin.fit(glass.draw(root.fork("glass"), tint = #fff1c8)))), 1.8)
+    glow = skin.emission(skin.fit(fire.draw(root.fork("bulb"))), 3.0)
+
+    // The plinth, the post and the rings on it.
+    smooth(50.0) {
+      lathe({0, 0, 0}, [{14, 0}, {14, 6}, {11, 9}, {9, 22}, {7, 26}, {7, 30}], 16, metal)
+    }
+    cone({0, 30, 0}, 5.5, 3.6, h - 30.0, 16, metal)
+    for i in 0..3 {
+      cylinder({0, 34.0 + float(i) * 6.0, 0}, 6.4 - float(i) * 0.4, 2.0, 16, metal)
+    }
+    sphere({0, h, 0}, 4.5, 16, 8, metal)
+    colliders = {{0, 0, 0}, {28, 30, 28}}
+    colliders = {{0, 30, 0}, {11, h - 30.0, 11}}
+
+    // The arms: the second one mirrored across the post.
+    for side in 0..arms {
+      place(mirror_x = side) {
+        head(h, arm, rise, style, metal, bowl, glow)
+      }
+    }
+  }
+
+  // One arm from the top of the post, curving up and out, its tip ending
+  // over the shade. A small scroll under it holds the arm to the post. The
+  // bulb is written where it hangs under the tip.
+  head(h: f32, arm: f32, rise: f32, style: i32, metal: skin, bowl: skin, glow: skin) {
+    tip = {arm, h + rise * 0.4, 0}
+    tube({0, h - 6.0, 0}, {0, h + rise, 0}, {arm * 0.6, h + rise, 0}, tip, 2.6, 1.8, 10, 14, metal)
+    tube({2, h - 30.0, 0}, {10, h - 26.0, 0}, {arm * 0.35, h - 10.0, 0}, {arm * 0.5, h + rise * 0.8, 0}, 1.2, 0.8, 8, 10, metal)
+    place(at = tip) {
+      shade(style, metal)
+      // The glass bowl under the shade, and the lamp inside it.
+      lathe({0, -14.0, 0}, [{0, 0}, {6.0, 1.5}, {9.0, 7.0}, {9.5, 12.0}, {8.0, 14.0}], 16, 30.0, bowl)
+      sphere({0, -10.5, 0}, 2.5, 12, 6, glow)
+      bulbs = {0, -10.5, 0}             // moves and mirrors with the arm
+    }
+  }
+
+  // The shade over the bowl, by style.
+  shade(style: i32, metal: skin) {
+    if (style == 0) {
+      cone({0, -2.0, 0}, 13.0, 2.0, 9.0, 16, metal)
+    } else if (style == 1) {
+      smooth(60.0) {
+        lathe({0, -3.0, 0}, [{12.5, 0}, {12.0, 3.0}, {9.0, 7.5}, {4.0, 10.0}, {1.5, 11.0}], 16, metal)
+      }
+    } else {
+      smooth(60.0) {
+        lathe({0, -4.0, 0}, [{14.0, 0}, {11.0, 2.0}, {8.5, 6.0}, {6.5, 11.0}, {2.0, 13.0}], 16, metal)
+      }
+    }
+    cylinder({0, -3.0, 0}, 9.6, 1.2, 16, metal)
+  }
+}

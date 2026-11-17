@@ -1,4 +1,4 @@
-# Models in C (API 0.1, a preview)
+# Models in C (API 0.2, a preview)
 
 [`iprop3d.h`](../backends/capi3d/iprop3d.h) generates 3D models from compiled
 `.iprop3d` files: for one seed and its inputs, the triangles of a prop and
@@ -7,8 +7,9 @@ the [model contract](../spec/models-v1.2.md) for every number a model
 produces. The [library README](../backends/capi3d/README.md) shows a whole
 generation and how to build against the library.
 
-This is a **preview**. API 0.1 is independent of the 2D C API version and
-may change in any release until the model contract is frozen. No ABI is
+This is a **preview**. API 0.2 is independent of the 2D C API version and
+may change in any release until the model contract is frozen; 0.2 adds the
+[outputs](#outputs) of a result to 0.1. No ABI is
 promised: the library is static (`iprop3dc`, CMake target `iprop::capi3d`),
 it is not part of the installed SDK, and a client is built together with it.
 [`iprop.h`](../backends/capi/iprop.h), the 2D C API 0.8 and ABI 0.5 do not depend on it.
@@ -71,8 +72,8 @@ untouched.
 
 `iprop3d_result_query` fills `iprop3d_result_info`: the bounds of all
 generated positions, the size and scale of the model, the vertex, triangle,
-surface and texture counts, and the fuel and work counters. Fuel counts the
-model program alone; work counts the model and its textures.
+surface, texture and output counts, and the fuel and work counters. Fuel
+counts the model program alone; work counts the model and its textures.
 
 A **surface** (`iprop3d_result_surface`) is the triangles of one host
 material: every triangle that shares a texture and the material numbers.
@@ -117,6 +118,26 @@ maps of a skin that declares them, in kind order.
 Arrays, pixels and names are borrowed from the result until
 `iprop3d_result_free`. An array pointer is `NULL` exactly when its count is
 zero. Every float holds the exact binary32 bits the runtime computed.
+
+## Outputs
+
+An **output** (`iprop3d_result_output`, API 0.2) is one the model declares
+with [`output point3d` or `output box3d`](language/models.md#outputs), in
+declaration order; `iprop3d_result_output_find` finds one by name. Its
+`values` hold `value_count` values of `floats_per_value` floats each, in
+model units like the positions:
+
+| `kind` | Floats | Value |
+| --- | --- | --- |
+| `IPROP3D_OUTPUT_POINT3D` | 3 | `x`, `y`, `z` |
+| `IPROP3D_OUTPUT_BOX3D` | 15 | the centre, the size along the box's own axes, then its x, y and z axes |
+
+A box's axes are unit vectors that form a rotation, so a host builds a
+collider from the centre, the rotation and the size. `list` is 1 for a list
+output, which holds every value written; a singular output holds the last
+one written, or none (`value_count` 0, `values` NULL). A part's outputs do
+not appear: only the model's own reach the host. Divide by
+`units_per_meter` for metres, as for the positions.
 
 ## What a renderer needs to know
 

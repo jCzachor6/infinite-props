@@ -613,10 +613,18 @@ Json variadic(const std::string& name, const ips::BuiltinSpec& spec) {
 // One builtin with its fixed overloads as the binder sees them. `pageOnly`
 // keeps the overloads of the model page alone: what a render asset adds to a
 // builtin of the 2D table.
-Json builtinEntry(const std::string& name, const ips::BuiltinSpec& spec, bool pageOnly = false) {
+// With `base`, only the overloads it does not have: what a render asset
+// adds to a 2D builtin.
+Json builtinEntry(const std::string& name, const ips::BuiltinSpec& spec, const ips::BuiltinSpec* base = nullptr) {
     Json overloads = Json::array();
     for (const auto& overload : spec.overloads) {
-        if (pageOnly && !overload.modelOp) continue;
+        if (base && std::any_of(base->overloads.begin(), base->overloads.end(), [&](const ips::BuiltinOverload& known) {
+                if (known.params.size() != overload.params.size() || known.result != overload.result) return false;
+                for (std::size_t i = 0; i < known.params.size(); ++i)
+                    if (known.params[i].type != overload.params[i].type) return false;
+                return true;
+            }))
+            continue;
         const ips::BuiltinSpec concrete{spec.lowering, {overload}};
         const auto signature = ips::builtinCallSignature(concrete, overload.params.size(), {1,1}, name);
         Json parameters = Json::array();
@@ -719,7 +727,7 @@ Json models() {
     using V = ips::ValueType;
     Json added = Json::array(), extended = Json::array(), unavailable = Json::array();
     for (const auto& [name, spec] : ips::modelBuiltinSpecs()) {
-        if (ips::builtinSpecs().contains(name)) extended.push_back(builtinEntry(name, spec, true));
+        if (ips::builtinSpecs().contains(name)) extended.push_back(builtinEntry(name, spec, &ips::builtinSpecs().at(name)));
         else added.push_back(builtinEntry(name, spec));
     }
     for (const auto& [name, spec] : ips::builtinSpecs())
@@ -730,6 +738,8 @@ Json models() {
         return Json::object({{"locals", true}, {"helper_parameters", true}, {"helper_returns", true},
             {"asset_constants", constants}, {"host_inputs", false}, {"collections", false}, {"palettes", false}});
     };
+    auto vec3Storage = storage(true);
+    vec3Storage["collections"] = true; // list<vec3> (M3); no sampler, stepper or palette
     auto vec3 = Json::object({{"name", ips::typeName(V::Vec3)}, {"descriptor_code", static_cast<u8>(V::Vec3)},
         {"literal", "{<x>, <y>, <z>}"}, {"literal_elements", "numbers_widen_to_f32"},
         {"components", Json::array({"x", "y", "z"})}, {"component_type", ips::typeName(V::F32)},
@@ -741,7 +751,10 @@ Json models() {
         {"scalar_operand", "right_of_multiply_and_divide_or_left_of_multiply"},
         {"random_range", "one_shared_position_then_mix"}, {"random_range_op", mnemonic(model::Op::Vec3Mix)},
         {"arithmetic", "binary32_per_component_as_vec2"}, {"typed_zero", "zero_vector"},
-        {"storage", storage(true)}});
+        {"storage", std::move(vec3Storage)},
+        {"lists", Json::object({{"type", ips::typeName(V::list(V::Vec3))}, {"literal", "[<vec3>, ...]"},
+            {"index", true}, {"length", "list.len"}, {"constants", true}, {"sort", false}, {"distinct", false},
+            {"maximum_elements", kMaxListElements}})}});
     auto skin = Json::object({{"name", ips::typeName(V::Skin)}, {"representation", "i32_record_number_from_one"},
         {"wire_type", false}, {"unassigned", "trap_when_used"}, {"modifiers", "return_a_new_skin"},
         {"operators", false}, {"storage", storage(false)}});
@@ -814,6 +827,96 @@ Json models() {
         {"auxiliary_images", "published_with_the_texture"}, {"render_asset_target", false},
         {"draw_op", mnemonic(model::Op::SkinDraw)}, {"effects", operationEffects(call.effects)}});
 
+    // 3D outputs (M3).
+    const auto outputOp = [&](model::Op op) { return mnemonic(op); };
+    auto outputs = Json::object({
+        {"kinds", Json::array({
+            Json::object({{"name", "point3d"}, {"value", ips::typeName(V::Vec3)}, {"host", "point_in_model_units"}}),
+            Json::object({{"name", "box3d"}, {"value", "{<at>, <size>}"},
+                {"value_types", Json::array({ips::typeName(V::Vec3), ips::typeName(V::Vec3)})},
+                {"at", "center_of_the_base"}, {"size", "positive_per_axis"},
+                {"host", "center_size_and_three_unit_axes_forming_a_rotation"}})})},
+        {"declaration", "output [list] <kind> <name>"}, {"lists", true},
+        {"singular", "a_later_write_replaces"}, {"list", "appends_in_program_order"}, {"unwritten", "no_value"},
+        {"placement", "moves_turns_scales_and_mirrors_with_the_enclosing_blocks"},
+        {"point_in_deforming_blocks", "follows_bend_twist_and_taper"},
+        {"box_in_deforming_blocks", "compile_error_or_trap_through_a_helper"},
+        {"shear", "a_box_turned_inside_an_unequal_scale_traps"},
+        {"other_blocks", "smooth_refine_and_displace_leave_outputs"},
+        {"host", "the_model_s_own_outputs_in_declaration_order"},
+        {"two_d_outputs", "compile_error"},
+        {"ops", Json::object({{"point3d", outputOp(model::Op::OutPoint3d)}, {"box3d", outputOp(model::Op::OutBox3d)},
+            {"list_point3d", outputOp(model::Op::OutListPoint3d)}, {"list_box3d", outputOp(model::Op::OutListBox3d)}})},
+        {"maximum_slots", model::kMaxModelOutputs}});
+
+    // 3D parts (M3): `$uniform` stands for each input of the imported asset.
+    const auto partCall = ips::modelPartCallSignature(placeholder);
+    Json partParameters = Json::array();
+    for (std::size_t i = 0; i < partCall.parameters.size(); ++i) {
+        const auto& p = partCall.parameters[i];
+        auto entry = Json::object({{"name", p.name}, {"required", p.required}, {"positional", p.positional}});
+        if (i == ips::kModelPartSeedSlot) entry["role"] = "seed";
+        if (std::holds_alternative<const ips::InputDecl*>(partCall.defaults[i])) entry["default"] = "input_declaration";
+        partParameters.push_back(std::move(entry));
+    }
+    auto parts = Json::object({{"syntax", "<alias>.render(<seed>[, <input> = <value>, ...])"},
+        {"target", "imported_asset_with_render"}, {"statement", true}, {"result", ips::typeName(V::Void)},
+        {"parameters", std::move(partParameters)}, {"evaluation_order", evaluationOrder(partCall)},
+        {"placement", "the_scope_of_the_call"}, {"placement_arguments", false},
+        {"stream", "own_stream_from_the_seed"}, {"skins", "the_part_s_imports_textures_shared_by_key"},
+        {"scale", "must_equal_the_model_scale"}, {"size", "informative"},
+        {"outputs_read", "<alias>.outputs.<name>"}, {"readable_outputs", "singular_point3d"},
+        {"read_where", "the_block_of_the_call_after_the_call"}, {"read_value", "in_the_frame_of_that_block"},
+        {"host_outputs", "the_model_s_own_only"}, {"nesting", "parts_import_parts"},
+        {"render_op", mnemonic(model::Op::PartRender)}, {"read_op", mnemonic(model::Op::PartGetPoint3d)},
+        {"maximum_parts", model::kMaxModelParts}, {"fuel", 1 + model::kBlockFuel},
+        {"effects", operationEffects(partCall.effects)}});
+
+    // Shaping blocks (M3).
+    Json shapes = Json::array();
+    for (const auto& block : ips::shapeBlocks()) {
+        Json parameters = Json::array();
+        for (std::size_t i = 0; i < block.count; ++i) {
+            const auto& parameter = block.parameters[i];
+            Json types = Json::array();
+            switch (parameter.kind) {
+            case ips::ShapeArgument::Degrees: case ips::ShapeArgument::Number:
+                types.push_back(ips::typeName(V::I32));
+                types.push_back(ips::typeName(V::F32));
+                break;
+            case ips::ShapeArgument::Count: types.push_back(ips::typeName(V::I32)); break;
+            case ips::ShapeArgument::Seed:
+                types.push_back(ips::typeName(V::Seed));
+                types.push_back(ips::typeName(V::I32));
+                break;
+            }
+            parameters.push_back(Json::object({{"name", std::string(parameter.name)}, {"types", std::move(types)}}));
+        }
+        const std::string name(block.name);
+        const char* meaning = name == "smooth" ? "averages_normals_of_equal_positions_within_the_angle"
+            : name == "refine" ? "splits_each_triangle_into_count_squared"
+            : name == "bend" ? "bends_the_y_axis_into_an_arc_toward_x"
+            : name == "twist" ? "turns_about_y_growing_with_height_like_yaw"
+            : name == "taper" ? "scales_x_and_z_from_one_at_the_bottom_to_scale_at_the_top"
+            : "moves_vertices_along_their_summed_normals_by_amount_times_noise";
+        const char* range = name == "smooth" ? "0_to_180" : name == "refine" ? "1_to_16"
+            : name == "bend" ? "minus_360_to_360" : name == "twist" ? "finite"
+            : name == "taper" ? "positive" : "finite_amount_positive_frequency";
+        shapes.push_back(Json::object({{"name", name}, {"parameters", std::move(parameters)}, {"range", range},
+            {"meaning", meaning}, {"begin_op", mnemonic(block.op)}}));
+    }
+    OperationEffects blockEffects;
+    blockEffects.checks = static_cast<u16>(EffectCheck::NumericRange) | static_cast<u16>(EffectCheck::ScopeDepth);
+    auto shaping = Json::object({{"syntax", "<name>(<argument>, ...) { <statements> }"},
+        {"keyword", "contextual_call_followed_by_a_block"}, {"positional_only", true}, {"blocks", std::move(shapes)},
+        {"frame", "the_block_s_own_identity_at_opening"}, {"precision", "binary64_until_the_block_closes"},
+        {"close", "processes_then_passes_to_the_enclosing_scope_like_a_primitive"},
+        {"axis", "y_over_the_extent_of_the_block_s_vertices"}, {"neutral", "an_argument_that_changes_nothing_is_the_identity"},
+        {"deformed_normals", "cofactor_of_the_jacobian"}, {"displaced_normals", "from_the_moved_triangles"},
+        {"weld", "equal_positions"}, {"maximum_open_scopes", kMaxSurfaceScopes},
+        {"scope_cleanup", Json::array({"end", "return", "break", "continue"})},
+        {"effects", operationEffects(blockEffects)}});
+
     const auto& magic = model::kModelDialect.magic;
     return Json::object({
         {"status", "preview"}, {"contract", "models-v1.2"},
@@ -822,15 +925,17 @@ Json models() {
         {"file_extension", ".iprop3d"}, {"file_magic", std::string(std::begin(magic), std::end(magic))},
         {"page_opcode", static_cast<u8>(model::kModelPage)},
         {"section_ids", Json::object({{"model", static_cast<u32>(model::kModelSection)},
-                                      {"skins", static_cast<u32>(model::kSkinsSection)}})},
+                                      {"skins", static_cast<u32>(model::kSkinsSection)},
+                                      {"outputs", static_cast<u32>(model::kOutputsSection)},
+                                      {"parts", static_cast<u32>(model::kPartsSection)}})},
         {"size_syntax", "size <width>x<height>x<depth>"}, {"size_meaning", "nominal_box_in_model_units_never_clips"},
         {"scale_syntax", "scale <units per metre>"}, {"scale_keyword", "contextual"},
         {"default_scale", decimal(ips::kDefaultModelScale)},
         {"axes", "right_handed_x_right_y_up_z_toward_viewer"}, {"ground", "y_zero"}, {"front", "positive_z"},
         {"winding", "counterclockwise_from_outside"}, {"angle_unit", "degrees"},
         {"geometry_kernel", "binary64_no_fma_one_rounding_to_binary32_per_component"},
-        {"inputs", "render_only"}, {"origin", false}, {"outputs", false}, {"layers", false}, {"clips", false},
-        {"model_parts", false}, {"optimizer", false},
+        {"inputs", "render_only"}, {"origin", false}, {"outputs", std::move(outputs)}, {"layers", false}, {"clips", false},
+        {"model_parts", std::move(parts)}, {"shaping_blocks", std::move(shaping)}, {"optimizer", false},
         {"types", Json::array({std::move(vec3), std::move(skin)})},
         {"type_keywords", "contextual_type_position"}, {"types_in_draw_assets", "compile_error"},
         {"compound_of_three", Json::object({{"render", ips::typeName(V::Vec3)}, {"draw", ips::typeName(V::Circle)}})},
@@ -862,10 +967,20 @@ Json models() {
             {"skin_programs", model::kMaxSkinPrograms}, {"open_scopes", kMaxSurfaceScopes},
             {"sides", bounds(model::kMinSides, model::kMaxSides)}, {"rings", bounds(model::kMinRings, model::kMaxRings)},
             {"profile_points", bounds(2, model::kMaxProfilePoints)},
-            {"outline_points", bounds(3, model::kMaxOutlinePoints)}})},
+            {"outline_points", bounds(3, model::kMaxOutlinePoints)},
+            {"path_points", bounds(2, model::kMaxPathPoints)}, {"tube_segments", bounds(1, model::kMaxTubeSegments)},
+            {"refine", bounds(1, model::kMaxRefine)}, {"outputs", model::kMaxModelOutputs},
+            {"parts", model::kMaxModelParts}})},
         {"fuel", Json::object({{"instruction", 1}, {"vertex", model::kVertexFuel}, {"triangle", model::kTriangleFuel},
             {"extrude_outline", "ceil_points_squared_over_3_or_over_2_with_a_bevel"},
-            {"place_reserve", model::kPlaceFuel}, {"skin_draw_reserve", model::kSkinDrawFuel}})},
+            {"sweep_profile", "ceil_points_squared_over_3"}, {"sweep_path_point", model::kPathPointFuel},
+            {"place_reserve", model::kPlaceFuel}, {"skin_draw_reserve", model::kSkinDrawFuel},
+            {"block_reserve", model::kBlockFuel}, {"part_reserve", model::kBlockFuel},
+            {"pass_vertex", model::kPassVertexFuel}, {"pass_triangle", model::kPassTriangleFuel},
+            {"smooth_vertex", model::kSmoothFuel}, {"deform_vertex", model::kDeformFuel},
+            {"displace_vertex", model::kDisplaceFuel}, {"displace_triangle", model::kDisplaceTriangleFuel},
+            {"refine_vertex", model::kRefineVertexFuel}, {"refine_triangle", model::kRefineTriangleFuel},
+            {"point3d_output", model::kPointOutputFuel}, {"box3d_output", model::kBoxOutputFuel}})},
         {"arena_bytes", Json::object({{"vertex", model::kVertexBytes}, {"triangle", model::kTriangleBytes},
             {"skin_record", model::kSkinRecordBytes}})}});
 }

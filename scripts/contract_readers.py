@@ -22,7 +22,7 @@ VALUE_TYPES |= LIST_TYPES | DESCRIPTION_TYPES
 VALUE_TYPES.add('seed')  # a source type (named seeds v1.1)
 # The types of a render asset (models v1.2). They appear only in the
 # signatures under source_rules.models, never in the 2D lists.
-MODEL_VALUE_TYPES = VALUE_TYPES | {'vec3', 'skin'}
+MODEL_VALUE_TYPES = VALUE_TYPES | {'vec3', 'skin', 'list<vec3>'}
 RNG_EFFECTS = {'none', 'read_current', 'advance_current', 'push_seeded_stream', 'restore_stream',
                'seeded_computation', 'isolated_seeded_stream', 'shared_callee_stream', 'isolated_callee_stream',
                'read_initial'}
@@ -231,7 +231,7 @@ MODELS = {'status': 'preview',
  'file_extension': '.iprop3d',
  'file_magic': 'IP3D',
  'page_opcode': 15,
- 'section_ids': {'model': 12, 'skins': 13},
+ 'section_ids': {'model': 12, 'skins': 13, 'outputs': 14, 'parts': 15},
  'size_syntax': 'size <width>x<height>x<depth>',
  'size_meaning': 'nominal_box_in_model_units_never_clips',
  'scale_syntax': 'scale <units per metre>',
@@ -245,10 +245,113 @@ MODELS = {'status': 'preview',
  'geometry_kernel': 'binary64_no_fma_one_rounding_to_binary32_per_component',
  'inputs': 'render_only',
  'origin': False,
- 'outputs': False,
+ 'outputs': {'kinds': [{'name': 'point3d', 'value': 'vec3', 'host': 'point_in_model_units'},
+                       {'name': 'box3d',
+                        'value': '{<at>, <size>}',
+                        'value_types': ['vec3', 'vec3'],
+                        'at': 'center_of_the_base',
+                        'size': 'positive_per_axis',
+                        'host': 'center_size_and_three_unit_axes_forming_a_rotation'}],
+             'declaration': 'output [list] <kind> <name>',
+             'lists': True,
+             'singular': 'a_later_write_replaces',
+             'list': 'appends_in_program_order',
+             'unwritten': 'no_value',
+             'placement': 'moves_turns_scales_and_mirrors_with_the_enclosing_blocks',
+             'point_in_deforming_blocks': 'follows_bend_twist_and_taper',
+             'box_in_deforming_blocks': 'compile_error_or_trap_through_a_helper',
+             'shear': 'a_box_turned_inside_an_unequal_scale_traps',
+             'other_blocks': 'smooth_refine_and_displace_leave_outputs',
+             'host': 'the_model_s_own_outputs_in_declaration_order',
+             'two_d_outputs': 'compile_error',
+             'ops': {'point3d': 'out.point3d',
+                     'box3d': 'out.box3d',
+                     'list_point3d': 'out.list.point3d',
+                     'list_box3d': 'out.list.box3d'},
+             'maximum_slots': 256},
  'layers': False,
  'clips': False,
- 'model_parts': False,
+ 'model_parts': {'syntax': '<alias>.render(<seed>[, <input> = <value>, ...])',
+                 'target': 'imported_asset_with_render',
+                 'statement': True,
+                 'result': 'void',
+                 'parameters': [{'name': 'seed', 'required': True, 'positional': True, 'role': 'seed'},
+                                {'name': '$uniform',
+                                 'required': False,
+                                 'positional': False,
+                                 'default': 'input_declaration'}],
+                 'evaluation_order': ['$uniform', 'seed'],
+                 'placement': 'the_scope_of_the_call',
+                 'placement_arguments': False,
+                 'stream': 'own_stream_from_the_seed',
+                 'skins': 'the_part_s_imports_textures_shared_by_key',
+                 'scale': 'must_equal_the_model_scale',
+                 'size': 'informative',
+                 'outputs_read': '<alias>.outputs.<name>',
+                 'readable_outputs': 'singular_point3d',
+                 'read_where': 'the_block_of_the_call_after_the_call',
+                 'read_value': 'in_the_frame_of_that_block',
+                 'host_outputs': 'the_model_s_own_only',
+                 'nesting': 'parts_import_parts',
+                 'render_op': 'part.render',
+                 'read_op': 'part.get.point3d',
+                 'maximum_parts': 256,
+                 'fuel': 25,
+                 'effects': {'rng': 'isolated_callee_stream',
+                             'writes_canvas': True,
+                             'writes_outputs': True,
+                             'summary': 'conservative',
+                             'may_trap': ['part_render_arguments', 'callee']}},
+ 'shaping_blocks': {'syntax': '<name>(<argument>, ...) { <statements> }',
+                    'keyword': 'contextual_call_followed_by_a_block',
+                    'positional_only': True,
+                    'blocks': [{'name': 'smooth',
+                                'parameters': [{'name': 'angle', 'types': ['i32', 'f32']}],
+                                'range': '0_to_180',
+                                'meaning': 'averages_normals_of_equal_positions_within_the_angle',
+                                'begin_op': 'smooth.begin'},
+                               {'name': 'refine',
+                                'parameters': [{'name': 'count', 'types': ['i32']}],
+                                'range': '1_to_16',
+                                'meaning': 'splits_each_triangle_into_count_squared',
+                                'begin_op': 'refine.begin'},
+                               {'name': 'bend',
+                                'parameters': [{'name': 'angle', 'types': ['i32', 'f32']}],
+                                'range': 'minus_360_to_360',
+                                'meaning': 'bends_the_y_axis_into_an_arc_toward_x',
+                                'begin_op': 'bend.begin'},
+                               {'name': 'twist',
+                                'parameters': [{'name': 'angle', 'types': ['i32', 'f32']}],
+                                'range': 'finite',
+                                'meaning': 'turns_about_y_growing_with_height_like_yaw',
+                                'begin_op': 'twist.begin'},
+                               {'name': 'taper',
+                                'parameters': [{'name': 'scale', 'types': ['i32', 'f32']}],
+                                'range': 'positive',
+                                'meaning': 'scales_x_and_z_from_one_at_the_bottom_to_scale_at_the_top',
+                                'begin_op': 'taper.begin'},
+                               {'name': 'displace',
+                                'parameters': [{'name': 'amount', 'types': ['i32', 'f32']},
+                                               {'name': 'frequency', 'types': ['i32', 'f32']},
+                                               {'name': 'seed', 'types': ['seed', 'i32']}],
+                                'range': 'finite_amount_positive_frequency',
+                                'meaning': 'moves_vertices_along_their_summed_normals_by_amount_times_noise',
+                                'begin_op': 'displace.begin'}],
+                    'frame': 'the_block_s_own_identity_at_opening',
+                    'precision': 'binary64_until_the_block_closes',
+                    'close': 'processes_then_passes_to_the_enclosing_scope_like_a_primitive',
+                    'axis': 'y_over_the_extent_of_the_block_s_vertices',
+                    'neutral': 'an_argument_that_changes_nothing_is_the_identity',
+                    'deformed_normals': 'cofactor_of_the_jacobian',
+                    'displaced_normals': 'from_the_moved_triangles',
+                    'weld': 'equal_positions',
+                    'maximum_open_scopes': 32,
+                    'scope_cleanup': ['end', 'return', 'break', 'continue'],
+                    'effects': {'rng': 'none',
+                                'writes_canvas': False,
+                                'writes_outputs': False,
+                                'summary': 'intrinsic',
+                                'may_trap': ['numeric_range', 'scope_depth']}},
  'optimizer': False,
  'types': [{'name': 'vec3',
             'descriptor_code': 21,
@@ -274,8 +377,16 @@ MODELS = {'status': 'preview',
                         'helper_returns': True,
                         'asset_constants': True,
                         'host_inputs': False,
-                        'collections': False,
-                        'palettes': False}},
+                        'collections': True,
+                        'palettes': False},
+            'lists': {'type': 'list<vec3>',
+                      'literal': '[<vec3>, ...]',
+                      'index': True,
+                      'length': 'list.len',
+                      'constants': True,
+                      'sort': False,
+                      'distinct': False,
+                      'maximum_elements': 256}},
            {'name': 'skin',
             'representation': 'i32_record_number_from_one',
             'wire_type': False,
@@ -399,13 +510,32 @@ MODELS = {'status': 'preview',
             'sides': {'minimum': 3, 'maximum': 64},
             'rings': {'minimum': 2, 'maximum': 32},
             'profile_points': {'minimum': 2, 'maximum': 64},
-            'outline_points': {'minimum': 3, 'maximum': 256}},
+            'outline_points': {'minimum': 3, 'maximum': 256},
+            'path_points': {'minimum': 2, 'maximum': 256},
+            'tube_segments': {'minimum': 1, 'maximum': 256},
+            'refine': {'minimum': 1, 'maximum': 16},
+            'outputs': 256,
+            'parts': 256},
  'fuel': {'instruction': 1,
           'vertex': 6,
           'triangle': 2,
           'extrude_outline': 'ceil_points_squared_over_3_or_over_2_with_a_bevel',
+          'sweep_profile': 'ceil_points_squared_over_3',
+          'sweep_path_point': 24,
           'place_reserve': 24,
-          'skin_draw_reserve': 64},
+          'skin_draw_reserve': 64,
+          'block_reserve': 24,
+          'part_reserve': 24,
+          'pass_vertex': 3,
+          'pass_triangle': 1,
+          'smooth_vertex': 8,
+          'deform_vertex': 3,
+          'displace_vertex': 18,
+          'displace_triangle': 4,
+          'refine_vertex': 5,
+          'refine_triangle': 2,
+          'point3d_output': 8,
+          'box3d_output': 16},
  'arena_bytes': {'vertex': 48, 'triangle': 16, 'skin_record': 64}}
 
 
@@ -443,16 +573,22 @@ def read_models(value, rules):
     models = obj(rules.get('models'), list(MODELS) + ['builtins', 'extended_builtins', 'unavailable_builtins'], 'models')
     for key in MODELS:
         require(same_value(models[key], MODELS[key]), 'models.' + key)
-    for part in ('place', 'skin_call'):
+    for part in ('place', 'skin_call', 'model_parts', 'shaping_blocks'):
         effects(models[part]['effects'], 'models.' + part + '.effects')
     flat = {builtin['name']: builtin for builtin in value['builtins']}
 
-    def page(builtin):
-        # Every overload is a sub-operation of the model page, never a 2D opcode.
+    def page(builtin, extended=False):
+        # A builtin of a render asset is a sub-operation of the model page. An
+        # overload a 2D builtin gains may also be its 2D opcode on a model
+        # type (list.len of a list<vec3>).
         name = read_builtin(builtin, MODEL_VALUE_TYPES)
         require('variadic' not in builtin and bool(builtin['overloads']), 'model builtin overloads: ' + name)
         for overload in builtin['overloads']:
-            require('opcode' not in overload and 'expansion' not in overload, 'model builtin lowering: ' + name)
+            require('expansion' not in overload, 'model builtin lowering: ' + name)
+            if extended and 'opcode' in overload:
+                require('model_op' not in overload, 'model builtin lowering: ' + name)
+                continue
+            require('opcode' not in overload, 'model builtin lowering: ' + name)
             text(overload.get('model_op'), 'model_op', True)
         return name
 
@@ -460,11 +596,11 @@ def read_models(value, rules):
     added = [page(builtin) for builtin in models['builtins']]
     require(len(added) == len(set(added)) and not set(added) & set(flat), 'model builtin names')
     require(type(models['extended_builtins']) is list, 'models.extended_builtins')
-    extended = [page(builtin) for builtin in models['extended_builtins']]
+    extended = [page(builtin, True) for builtin in models['extended_builtins']]
     require(len(extended) == len(set(extended)) and set(extended) <= set(flat), 'extended builtin names')
     for builtin in models['extended_builtins']:
         # An added overload takes or returns a type the 2D builtin does not have.
-        require(all(({p['type'] for p in overload['parameters']} | {overload['result']}) & {'vec3', 'skin'}
+        require(all(({p['type'] for p in overload['parameters']} | {overload['result']}) & {'vec3', 'skin', 'list<vec3>'}
                     for overload in builtin['overloads']), 'extended overload types: ' + builtin['name'])
     unavailable = strings(models['unavailable_builtins'], 'models.unavailable_builtins', set(flat), True)
     require(not set(unavailable) & set(extended), 'an unavailable builtin is not extended')

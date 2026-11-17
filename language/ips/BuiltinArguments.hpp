@@ -3,6 +3,9 @@
 #include "ips/Ast.hpp"
 #include "ips/BuiltinSpec.hpp"
 
+#include "iprop/model/Ops.hpp"
+
+#include <array>
 #include <string_view>
 
 namespace iprop::ips {
@@ -45,6 +48,12 @@ inline constexpr std::size_t kSkinSeedSlot = 0;
 inline constexpr std::size_t kSkinSizeSlot = 1;
 inline constexpr std::size_t kSkinFirstInput = 2;
 std::vector<ArgumentParameter> skinParameters(std::span<const std::string> uniforms);
+// A 3D part call of a render asset (M3): the seed, then the named-only
+// input overrides of the imported render asset. Its place is the scope it
+// is called in.
+inline constexpr std::size_t kModelPartSeedSlot = 0;
+inline constexpr std::size_t kModelPartFirstInput = 1;
+std::vector<ArgumentParameter> modelPartParameters(std::span<const std::string> uniforms);
 
 // The named arguments of `place(...) { }` (models v1.2), in the order their
 // values are evaluated: the bit order of place.begin's mask, whatever order
@@ -65,6 +74,27 @@ std::span<const PlaceArgument> placeArguments();
 const PlaceArgument* findPlaceArgument(std::string_view name);
 // "at, yaw, pitch, ...": the names for a diagnostic.
 std::string placeArgumentNames();
+
+// The shaping blocks of a render asset (models v1.2, M3), such as
+// `smooth(40.0) { }`: positional arguments, checked and lowered in order.
+enum class ShapeArgument : u8 {
+    Degrees, // a number of degrees
+    Count,   // an i32
+    Number,  // a number
+    Seed,    // a seed
+};
+struct ShapeParameter {
+    std::string_view name;
+    ShapeArgument kind;
+};
+struct ShapeBlock {
+    std::string_view name;
+    model::Op op;
+    std::array<ShapeParameter, 3> parameters;
+    std::size_t count;
+};
+std::span<const ShapeBlock> shapeBlocks();
+const ShapeBlock* findShapeBlock(std::string_view name);
 std::vector<const Arg*> partArguments(const Call& call,
     std::span<const std::string> uniforms, std::string_view function);
 

@@ -4,6 +4,7 @@
 #include <string>
 #include <utility>
 
+#include "ips/BuiltinArguments.hpp"
 #include "ips/ParserDetail.hpp"
 #include "ips/Types.hpp"
 
@@ -435,7 +436,10 @@ OutputDecl ParserImpl::parseOutput() {
         else if (kind() == TokenKind::Identifier && tokens_[pos_].text == "metallic") outputKind = OutputKind::Metallic;
         else if (kind() == TokenKind::Identifier && tokens_[pos_].text == "ao") outputKind = OutputKind::Ao;
         else if (kind() == TokenKind::Identifier && tokens_[pos_].text == "emission") outputKind = OutputKind::Emission;
-        else failExpected("an output kind (point, rect, circle, mask, layer, normal, roughness, metallic, ao, emission or list part)");
+        else if (kind() == TokenKind::Identifier && tokens_[pos_].text == "point3d") outputKind = OutputKind::Point3d;
+        else if (kind() == TokenKind::Identifier && tokens_[pos_].text == "box3d") outputKind = OutputKind::Box3d;
+        else failExpected("an output kind (point, rect, circle, mask, layer, normal, roughness, metallic, ao, emission "
+                          "or list part), or point3d or box3d in a render asset");
     }
     if (isList && isResourceOutput(outputKind)) failHere("resource exports cannot be lists");
     if (!isList && outputKind == OutputKind::Part) failHere("part outputs must be lists");
@@ -704,12 +708,14 @@ Stmt ParserImpl::parseIdentifierStatement() {
     }
     if (std::holds_alternative<Index>(*expr) && kind() == TokenKind::Assign)
         throw SourceError{locationOf(*expr), "list elements are immutable; assign a whole new list instead"};
-    // `place(...) { ... }`: the placement scope of a render asset. Without a
-    // block it is an ordinary call of a helper named place.
-    if (auto* call = std::get_if<Call>(expr.get()); call && name.text == "place" && kind() == TokenKind::LBrace &&
+    // `place(...) { ... }`: the placement scope of a render asset, and its
+    // shaping blocks (`smooth(40.0) { ... }`). Without a block each is an
+    // ordinary call of a helper of that name.
+    if (auto* call = std::get_if<Call>(expr.get());
+        call && (name.text == "place" || findShapeBlock(name.text)) && kind() == TokenKind::LBrace &&
         std::holds_alternative<Identifier>(*call->callee)) {
         auto args = std::move(call->args);
-        return Stmt{PlaceStmt{std::move(args), parseBlock(), name.location}};
+        return Stmt{PlaceStmt{std::move(args), parseBlock(), name.location, name.text}};
     }
     if (!std::holds_alternative<Call>(*expr) && !std::holds_alternative<SamplerPick>(*expr) &&
         !std::holds_alternative<SamplerCapture>(*expr) && !std::holds_alternative<ListMethod>(*expr) &&

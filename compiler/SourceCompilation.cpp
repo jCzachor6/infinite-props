@@ -194,30 +194,37 @@ SourceCompilationResult compileSource(
             return compileProgram(checked(root), parts, options.optimize, partSources);
         };
         if (ips::isModel(checked(result.entryPath).asset)) {
-            // A model (models v1.2): every import is a draw asset compiled on
-            // its own, exactly as `ipc` compiles it, and embedded as a skin.
+            // A model (models v1.2): every import that has draw is compiled
+            // on its own, exactly as `ipc` compiles it, and embedded as a
+            // skin; every import that has render is a 3D part (M3), whose
+            // imports are expanded in turn. Both are named by alias path.
             std::map<std::string, const ips::Program*> imports;
             std::map<std::string, std::string> importSources;
             std::map<std::string, std::vector<u8>> skins;
-            const auto& declared = result.programs.at(result.entryPath).imports;
-            for (std::size_t i = 0; i < declared.size(); ++i) {
-                const auto& source = result.imports.at(result.entryPath)[i];
-                if (result.programs.at(source).isMaterialFile) continue;
-                if (ips::isModel(checked(source).asset))
-                    throw ips::SourceError{declared[i].location, "'" + declared[i].alias + "' is a render asset; "
-                        "importing one as a 3D part is not supported yet", result.entryPath,
-                        ips::DiagnosticCode::TypeError, ips::DiagnosticStage::Typing};
-                std::vector<u8> bytes;
-                try { bytes = compile2d(source); }
-                catch (ips::SourceError& error) {
-                    if (error.path.empty()) error.path = source;
-                    throw;
+            const auto expandModel = [&](auto&& self, const std::string& path, const std::string& prefix) -> void {
+                const auto& declared = result.programs.at(path).imports;
+                for (std::size_t i = 0; i < declared.size(); ++i) {
+                    const auto& source = result.imports.at(path)[i];
+                    if (result.programs.at(source).isMaterialFile) continue;
+                    const std::string alias = prefix + declared[i].alias;
+                    imports.emplace(alias, &checked(source));
+                    importSources.emplace(alias, source);
+                    if (ips::isModel(checked(source).asset)) {
+                        if (imports.size() > 4096) return; // the planner reports the part limit
+                        self(self, source, alias + ".");
+                        continue;
+                    }
+                    std::vector<u8> bytes;
+                    try { bytes = compile2d(source); }
+                    catch (ips::SourceError& error) {
+                        if (error.path.empty()) error.path = source;
+                        throw;
+                    }
+                    if (options.stripDebug) bytes = stripDebug(bytes);
+                    skins.emplace(alias, std::move(bytes));
                 }
-                if (options.stripDebug) bytes = stripDebug(bytes);
-                skins.emplace(declared[i].alias, std::move(bytes));
-                imports.emplace(declared[i].alias, &checked(source));
-                importSources.emplace(declared[i].alias, source);
-            }
+            };
+            expandModel(expandModel, result.entryPath, "");
             stage = ips::DiagnosticStage::Planning;
             auto bytes = compileProgram(checked(result.entryPath), imports, options.optimize, importSources, skins);
             stage = ips::DiagnosticStage::Validation;

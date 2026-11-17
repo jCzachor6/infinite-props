@@ -379,3 +379,243 @@ TEST_CASE("vec3 values") {
     CHECK(vec3Mix({0, 0, 0}, {2, 4, 6}, 0.5f) == Vec3{1, 2, 3});
     CHECK(vec3Mix({0, 0, 0}, {2, 4, 6}, 7.f) == Vec3{2, 4, 6});
 }
+
+// ---- shapes along a path (M3) ---------------------------------------------
+
+namespace {
+std::vector<Vec3> path(std::initializer_list<Vec3> list) { return list; }
+} // namespace
+
+TEST_CASE("a straight tube is a cone") {
+    // Control points on a vertical line: the rings lie where a cone's do.
+    const auto tube = checkTube({0, 0, 0}, {0, 3, 0}, {0, 6, 0}, {0, 9, 0}, 2.f, 1.f, 8, 3);
+    const auto cone = checkCone({0, 0, 0}, 2.f, 1.f, 9.f, 8, true);
+    const Mesh rings = build(tube), solid = build(cone);
+    for (u32 j = 0; j <= 8; ++j) {
+        INFO("column " << j);
+        for (int axis = 0; axis < 3; ++axis) {
+            CHECK_THAT(rings.vertices[j].position[axis], Catch::Matchers::WithinAbs(solid.vertices[j].position[axis], 1e-6));
+            CHECK_THAT(rings.vertices[j].normal[axis], Catch::Matchers::WithinAbs(solid.vertices[j].normal[axis], 1e-6));
+            CHECK_THAT(rings.vertices[j].tangent[axis], Catch::Matchers::WithinAbs(solid.vertices[j].tangent[axis], 1e-6));
+        }
+        CHECK_THAT(rings.vertices[j].uv[0], Catch::Matchers::WithinAbs(solid.vertices[j].uv[0], 1e-6));
+    }
+    checkEverywhere(tube, true);
+}
+
+TEST_CASE("a tube along a curve") {
+    const auto arm = checkTube({0, 0, 0}, {0, 20, 0}, {12, 24, 0}, {20, 16, 0}, 3.f, 2.f, 10, 12);
+    CHECK(count(arm).vertices == 13 * 11 + 2 * 11);
+    CHECK(count(arm).triangles == 12 * 2 * 10 + 2 * 10);
+    checkEverywhere(arm, true);
+    // A curve in space, and one whose end control points sit on its ends.
+    checkEverywhere(checkTube({0, 0, 0}, {5, 5, 5}, {-5, 10, 0}, {0, 15, -5}, 1.f, 1.f, 6, 16), true);
+    checkEverywhere(checkTube({0, 0, 0}, {0, 0, 0}, {10, 10, 0}, {10, 10, 0}, 1.f, 1.f, 5, 8), true);
+    // A pointed end, as a cone's.
+    checkEverywhere(checkTube({0, 0, 0}, {0, 5, 0}, {5, 10, 0}, {10, 10, 0}, 2.f, 0.f, 8, 6), true);
+    // The ends of the curve are its first and last control points.
+    const Mesh mesh = build(arm);
+    const u32 lastRing = 12 * 11;
+    double x = 0, y = 0;
+    for (u32 j = 0; j < 10; ++j) {
+        x += mesh.vertices[lastRing + j].position[0];
+        y += mesh.vertices[lastRing + j].position[1];
+    }
+    CHECK_THAT(x / 10.0, Catch::Matchers::WithinAbs(20.0, 1e-4));
+    CHECK_THAT(y / 10.0, Catch::Matchers::WithinAbs(16.0, 1e-4));
+}
+
+TEST_CASE("tube arguments are checked") {
+    CHECK_THROWS_WITH(checkTube({0, 0, 0}, {0, 1, 0}, {0, 2, 0}, {0, 3, 0}, 0.f, 0.f, 8, 4), "radius must be positive");
+    CHECK_THROWS_WITH(checkTube({0, 0, 0}, {0, 1, 0}, {0, 2, 0}, {0, 3, 0}, 1.f, -1.f, 8, 4), "radius must be positive");
+    CHECK_THROWS_WITH(checkTube({0, 0, 0}, {0, 1, 0}, {0, 2, 0}, {0, 3, 0}, 1.f, 1.f, 2, 4), "sides must be in 3..64");
+    CHECK_THROWS_WITH(checkTube({0, 0, 0}, {0, 1, 0}, {0, 2, 0}, {0, 3, 0}, 1.f, 1.f, 8, 0), "segments must be in 1..256");
+    CHECK_THROWS_WITH(checkTube({0, 0, 0}, {0, 1, 0}, {0, 2, 0}, {0, 3, 0}, 1.f, 1.f, 8, 257), "segments must be in 1..256");
+    CHECK_THROWS_WITH(checkTube({1, 1, 1}, {1, 1, 1}, {1, 1, 1}, {1, 1, 1}, 1.f, 1.f, 8, 4), "tube curve has no direction");
+    const f32 inf = std::numeric_limits<f32>::infinity();
+    CHECK_THROWS_WITH(checkTube({0, 0, 0}, {0, inf, 0}, {0, 2, 0}, {0, 3, 0}, 1.f, 1.f, 8, 4), "tube needs finite arguments");
+}
+
+TEST_CASE("a sweep") {
+    const auto square = points({{-1, -1}, {1, -1}, {1, 1}, {-1, 1}});
+    // A rail up, across and down: mitred twice. A centred profile keeps
+    // the volume of its area times the length of the centre line.
+    const auto rail = checkSweep(path({{0, 0, 0}, {0, 10, 0}, {8, 10, 0}, {8, 0, 0}}), square);
+    CHECK(count(rail).vertices == 2 * 4 + 4 * 4 * 3);
+    CHECK(count(rail).triangles == 2 * 2 + 2 * 4 * 3);
+    CHECK_THAT(volume(build(rail)), Catch::Matchers::WithinAbs(4.0 * 28.0, 1e-9));
+    checkEverywhere(rail, true);
+    // A profile given clockwise, a path in space and a shallow turn.
+    checkEverywhere(checkSweep(path({{0, 0, 0}, {3, 4, 5}, {6, 4, 0}, {9, 9, 9}}),
+                               points({{0, 0}, {0, 1}, {2, 1}, {2, 0}})), true);
+    checkEverywhere(checkSweep(path({{0, 0, 0}, {10, 0, 0}, {20, 0.5f, 0}}), points({{-1, 0}, {1, 0}, {0, 2}})), true);
+    // An L profile, not convex: the caps are triangulated like an extrude.
+    checkEverywhere(checkSweep(path({{0, 0, 0}, {0, 0, 10}}), points({{0, 0}, {3, 0}, {3, 1}, {1, 1}, {1, 3}, {0, 3}})), true);
+    // On a horizontal path the profile stands upright: its y is +Y.
+    const Mesh flat = build(checkSweep(path({{0, 0, 0}, {10, 0, 0}}), points({{0, 0}, {1, 0}, {1, 2}, {0, 2}})));
+    double top = -1e9;
+    for (const Vertex& v : flat.vertices) top = std::max(top, static_cast<double>(v.position[1]));
+    CHECK(top == 2.0);
+}
+
+TEST_CASE("sweep arguments are checked") {
+    const auto square = points({{-1, -1}, {1, -1}, {1, 1}, {-1, 1}});
+    CHECK_THROWS_WITH(checkSweep(path({{0, 0, 0}}), square), "sweep path needs 2..256 points");
+    CHECK_THROWS_WITH(checkSweep(path({{0, 0, 0}, {0, 0, 0}}), square), "sweep path repeats a point");
+    CHECK_THROWS_WITH(checkSweep(path({{0, 0, 0}, {0, 5, 0}, {0, 0, 0}}), square), "sweep path turns back on itself");
+    CHECK_THROWS_WITH(checkSweep(path({{0, 0, 0}, {0, 5, 0}}), points({{0, 0}, {1, 0}})), "sweep profile needs 3..256 points");
+    CHECK_THROWS_WITH(checkSweep(path({{0, 0, 0}, {0, 5, 0}}), points({{0, 0}, {1, 0}, {2, 0}})), "sweep profile has no area");
+    CHECK_THROWS_WITH(checkSweep(path({{0, 0, 0}, {0, 5, 0}}), points({{0, 0}, {4, 0}, {4, 4}, {3, -1}, {1, 4}})),
+                      "sweep profile is self-intersecting");
+}
+
+// ---- shaping blocks (M3) --------------------------------------------------
+
+#include "iprop/model/Blocks.hpp"
+
+namespace {
+
+// A shape built into a block's buffer, processed, then passed to a mesh.
+template<class Shape, class Process>
+Mesh shaped(const Shape& shape, Process process, const Affine& scope = {}) {
+    LocalMesh block;
+    emit(Target{block, Affine{}, repeat(), 1}, shape);
+    checkFinite(block);
+    process(block);
+    Mesh mesh;
+    pass(Target{mesh, scope, repeat(), 0}, block);
+    return mesh;
+}
+
+} // namespace
+
+TEST_CASE("a block passes its buffer unchanged when it does nothing") {
+    const auto box = checkBox({1, 2, 3}, {4, 6, 2}, 0.5f);
+    const Mesh direct = build(box);
+    const Mesh passed = shaped(box, [](LocalMesh&) {});
+    REQUIRE(passed.vertices.size() == direct.vertices.size());
+    for (std::size_t i = 0; i < direct.vertices.size(); ++i) {
+        CHECK(std::memcmp(direct.vertices[i].position, passed.vertices[i].position, 12) == 0);
+        CHECK(std::memcmp(direct.vertices[i].uv, passed.vertices[i].uv, 8) == 0);
+        for (int axis = 0; axis < 3; ++axis)
+            CHECK_THAT(passed.vertices[i].normal[axis], Catch::Matchers::WithinAbs(direct.vertices[i].normal[axis], 1e-7));
+    }
+    // Neutral arguments change nothing either.
+    const Mesh neutral = shaped(box, [](LocalMesh& mesh) {
+        smooth(mesh, 0.f);
+        refine(mesh, 1);
+        for (const DeformKind kind : {DeformKind::Bend, DeformKind::Twist})
+            deform(mesh, deformation(kind, 0.f, mesh));
+        deform(mesh, deformation(DeformKind::Taper, 1.f, mesh));
+    });
+    REQUIRE(neutral.vertices.size() == direct.vertices.size());
+    for (std::size_t i = 0; i < direct.vertices.size(); ++i)
+        CHECK(std::memcmp(direct.vertices[i].position, neutral.vertices[i].position, 12) == 0);
+}
+
+TEST_CASE("refine splits every triangle and keeps the solid closed") {
+    const auto box = checkBox({0, 0, 0}, {4, 6, 2});
+    LocalMesh block;
+    emit(Target{block, Affine{}, repeat(), 1}, box);
+    const Counts counts = refineCounts(block, 3);
+    // Each face has its own four vertices: 6 faces of 5 edges (4 sides and
+    // a diagonal), 2 points on each edge and 1 inside each triangle.
+    CHECK(counts.vertices == 30 * 2 + 12 * 1);
+    CHECK(counts.triangles == 12 * 9);
+    for (const u32 n : {2u, 3u, 5u}) {
+        INFO("refine " << n);
+        const Mesh mesh = shaped(box, [n](LocalMesh& m) { refine(m, n); });
+        CHECK(mesh.triangles.size() == 12 * n * n);
+        checkSurface(mesh);
+        checkClosed(mesh);
+        CHECK_THAT(volume(mesh), Catch::Matchers::WithinAbs(48.0, 1e-9));
+    }
+    checkClosed(shaped(checkBox({0, 0, 0}, {1, 1, 1}, 0.2f), [](LocalMesh& m) { refine(m, 4); }));
+}
+
+TEST_CASE("displace moves copies of a vertex together: no cracks") {
+    const auto box = checkBox({0, 0, 0}, {20, 20, 20});
+    for (const u32 seed : {1u, 7u, 99u}) {
+        INFO("seed " << seed);
+        const Mesh rock = shaped(box, [seed](LocalMesh& m) {
+            refine(m, 6);
+            displace(m, 3.f, 0.15f, seed);
+        });
+        checkClosed(rock);
+        for (const Vertex& v : rock.vertices)
+            REQUIRE_THAT(norm(normal(v)), Catch::Matchers::WithinAbs(1.0, 1e-6));
+        for (const Vertex& v : rock.vertices) REQUIRE(std::fabs(dot(normal(v), tangent(v))) < 1e-5);
+    }
+    // The same seed moves the same way; another seed another way.
+    const auto rock = [&](u32 seed) {
+        return shaped(box, [seed](LocalMesh& m) {
+            refine(m, 3);
+            displace(m, 3.f, 0.15f, seed);
+        });
+    };
+    const Mesh a = rock(5), b = rock(5), c = rock(6);
+    CHECK(std::memcmp(a.vertices.data(), b.vertices.data(), a.vertices.size() * sizeof(Vertex)) == 0);
+    CHECK(std::memcmp(a.vertices.data(), c.vertices.data(), a.vertices.size() * sizeof(Vertex)) != 0);
+    // Noise in space stays in about -1..1 and is a lattice of zeros.
+    CHECK(noise3(3.0, -2.0, 7.0, 11) == 0.0);
+    for (int i = 0; i < 1000; ++i) {
+        const double value = noise3(i * 0.37, i * 0.11 - 5.0, i * 0.23, 3);
+        REQUIRE(std::fabs(value) <= 1.1);
+    }
+    CHECK_THROWS_WITH(noise3(3e9, 0.0, 0.0, 1), "noise coordinate out of range");
+}
+
+TEST_CASE("bend, twist and taper keep the surface sound") {
+    const auto column = checkCone({0, 0, 0}, 2.f, 2.f, 30.f, 12, true);
+    for (const auto& [kind, parameter] : std::vector<std::pair<DeformKind, f32>>{
+             {DeformKind::Bend, 90.f}, {DeformKind::Bend, -120.f}, {DeformKind::Twist, 270.f},
+             {DeformKind::Taper, 0.25f}, {DeformKind::Taper, 3.f}}) {
+        INFO("kind " << static_cast<int>(kind) << " " << parameter);
+        int index = 0;
+        for (const Affine& scope : scopes()) {
+            INFO("scope " << index++);
+            const Mesh mesh = shaped(column, [&](LocalMesh& m) {
+                refine(m, 4);
+                deform(m, deformation(kind, parameter, m));
+            }, scope);
+            checkSurface(mesh);
+            checkClosed(mesh);
+        }
+    }
+    // A bend of 90 degrees over 30 units turns the top of the axis onto an
+    // arc of radius 30 / (pi/2).
+    const auto rod = checkBox({0, 0, 0}, {1, 30, 1});
+    LocalMesh block;
+    emit(Target{block, Affine{}, repeat(), 1}, rod);
+    const Deformation bend = deformation(DeformKind::Bend, 90.f, block);
+    const Point3 tip = deformPoint(bend, {0.0, 30.0, 0.0});
+    const double radius = 30.0 / (3.141592653589793 / 2.0);
+    CHECK_THAT(tip.x, Catch::Matchers::WithinAbs(radius, 1e-9));
+    CHECK_THAT(tip.y, Catch::Matchers::WithinAbs(radius, 1e-9));
+    // Points beyond the centre fold: a vertex there traps, a point does not.
+    LocalMesh wide;
+    emit(Target{wide, Affine{}, repeat(), 1}, checkBox({30, 0, 0}, {20, 10, 1}));
+    CHECK_THROWS_WITH(deform(wide, deformation(DeformKind::Bend, 360.f, wide)), "bend is too tight for its geometry");
+    CHECK_NOTHROW(deformPoint(deformation(DeformKind::Bend, 360.f, wide), {100.0, 5.0, 0.0}));
+}
+
+TEST_CASE("smooth averages normals across soft edges only") {
+    // A lathe of hard joints: smoothing at 60 degrees joins the rows of
+    // a 30 degree joint and keeps the 90 degree rim hard.
+    const auto profile = points({{2, 0}, {2, 4}, {3, 6}, {0, 6}});
+    const auto lathe = checkLathe({0, 0, 0}, profile, 12, nullptr);
+    const Mesh hard = build(lathe);
+    const Mesh soft = shaped(lathe, [](LocalMesh& m) { smooth(m, 60.f); });
+    REQUIRE(soft.vertices.size() == hard.vertices.size());
+    checkSurface(soft);
+    std::size_t changed = 0;
+    for (std::size_t i = 0; i < hard.vertices.size(); ++i)
+        if (std::fabs(hard.vertices[i].normal[1] - soft.vertices[i].normal[1]) > 1e-4) ++changed;
+    CHECK(changed > 0);
+    // A box keeps its edges below 90 degrees, and rounds them at 100.
+    const auto box = checkBox({0, 0, 0}, {2, 2, 2});
+    const Mesh kept = shaped(box, [](LocalMesh& m) { smooth(m, 89.f); });
+    for (const Vertex& v : kept.vertices) CHECK(std::fabs(v.normal[0]) + std::fabs(v.normal[1]) + std::fabs(v.normal[2]) == 1.f);
+    const Mesh round = shaped(box, [](LocalMesh& m) { smooth(m, 100.f); });
+    for (const Vertex& v : round.vertices) CHECK_THAT(std::fabs(v.normal[0]), Catch::Matchers::WithinAbs(1.0 / std::sqrt(3.0), 1e-6));
+}

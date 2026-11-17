@@ -44,6 +44,8 @@ ValueType outputValueType(OutputKind kind) {
     case OutputKind::Ao:
     case OutputKind::Emission: return ValueType::Layer;
     case OutputKind::Part: return ValueType::Part2d;
+    case OutputKind::Point3d: return ValueType::Vec3;
+    case OutputKind::Box3d: return ValueType::Box3d;
     }
     return ValueType::Vec2;
 }
@@ -102,14 +104,19 @@ private:
     const Function* current_ = nullptr;
     std::uint32_t loopDepth_ = 0;
     std::uint32_t surfaceDepth_ = 0; // open layer/clip blocks
+    std::uint32_t deformDepth_ = 0;  // open bend, twist and taper blocks (M3)
 
-    // vec3 and skin are the types of render assets (models v1.2), and in M1
-    // neither is an element of a collection.
+    // vec3 and skin are the types of render assets (models v1.2). A list of
+    // vec3 is one too (M3); no other collection holds either.
     void checkModelType(const ParamType& type, const SourceLocation& at) {
         const auto modelKind = [](TypeDescriptor t) { return t == ValueType::Vec3 || t == ValueType::Skin; };
         if (type.isParameterized()) {
             const auto item = type.item();
             const auto inner = item.isParameterized() ? item.item() : item;
+            if (type.isList() && item == ValueType::Vec3) {
+                if (!model_) error(at, "type 'list<vec3>' belongs to a render asset; this asset has 'draw'");
+                return;
+            }
             if (modelKind(inner))
                 error(at, std::string("a collection cannot hold '") + typeName(inner) + "' values");
             return;
@@ -141,9 +148,11 @@ private:
     void checkRecoveringStmt(const Stmt& stmt) {
         const auto savedDepth = loopDepth_;
         const auto savedSurfaceDepth = surfaceDepth_;
+        const auto savedDeformDepth = deformDepth_;
         if (recover([&] { checkStmt(stmt); })) return;
         loopDepth_ = savedDepth;
         surfaceDepth_ = savedSurfaceDepth;
+        deformDepth_ = savedDeformDepth;
         markInvalidBindings(stmt);
     }
 
@@ -199,10 +208,8 @@ private:
             }
             // A model has no canvas for a parent to draw, and a model cannot
             // be a texture: only an asset with draw { } is imported.
-            if (part->second.model)
-                error(import.location, "'" + import.alias + "' is a render asset; " +
-                    (model_ ? "a skin comes from an asset with draw { }, and 3D parts are not supported yet"
-                            : "a draw asset cannot use a 3D model as a part"));
+            if (part->second.model && !model_)
+                error(import.location, "'" + import.alias + "' is a render asset; a draw asset cannot use a 3D model as a part");
         }
     }
 
@@ -228,8 +235,19 @@ private:
             recover([&] {
                 if (program_.asset.originX)
                     error(program_.asset.location, "a render asset has no 'origin'; it stands on its base");
-                if (!program_.asset.outputs.empty())
-                    error(program_.asset.outputs.front().location, "outputs of a render asset are not supported yet");
+            });
+        }
+        // A render asset hands the game points and boxes in space; a draw
+        // asset hands it 2D geometry and images.
+        for (const auto& output : program_.asset.outputs) {
+            if (atLimit()) return false;
+            recover([&] {
+                if (model_ && !isModelOutput(output.kind))
+                    error(output.location, "a render asset declares point3d and box3d outputs; 2D outputs belong "
+                                           "to an asset with draw { }");
+                if (!model_ && isModelOutput(output.kind))
+                    error(output.location, std::string("'") + (output.kind == OutputKind::Point3d ? "point3d" : "box3d") +
+                                               "' outputs belong to a render asset; a draw asset declares 'point' or 'rect'");
             });
         }
         bool namespaceValid = true;
@@ -390,6 +408,7 @@ private:
         Typer::Scope savedScope = typer_.saveScope();
         const std::uint32_t savedLoopDepth = std::exchange(loopDepth_, 0);
         const std::uint32_t savedSurfaceDepth = std::exchange(surfaceDepth_, 0);
+        const std::uint32_t savedDeformDepth = std::exchange(deformDepth_, 0);
 
         current_ = &function;
         try {
@@ -407,6 +426,7 @@ private:
             current_ = savedCurrent;
             loopDepth_ = savedLoopDepth;
             surfaceDepth_ = savedSurfaceDepth;
+            deformDepth_ = savedDeformDepth;
             typer_.restoreScope(std::move(savedScope));
             throw;
         }
@@ -414,6 +434,7 @@ private:
         current_ = savedCurrent;
         loopDepth_ = savedLoopDepth;
         surfaceDepth_ = savedSurfaceDepth;
+        deformDepth_ = savedDeformDepth;
         typer_.restoreScope(std::move(savedScope));
     }
 
@@ -520,6 +541,7 @@ private:
     // `place(at =, yaw =, pitch =, roll =, scale =, mirror_x =, mirror_y =,
     // mirror_z =) { ... }`: named arguments, each at most once, one at least.
     void checkPlace(const PlaceStmt& place) {
+        if (place.block != "place") return checkShapeBlock(place);
         if (!model_) error(place.location, "place positions 3D geometry; it is available in a render asset");
         if (place.args.empty())
             error(place.location, "place needs at least one of " + placeArgumentNames());
@@ -551,6 +573,47 @@ private:
             if (atLimit()) break;
             checkRecoveringStmt(child);
         }
+        --surfaceDepth_;
+    }
+
+    // `smooth(40.0) { ... }` and the other shaping blocks (M3): positional
+    // arguments of the block's kinds, the same depth limit as place.
+    void checkShapeBlock(const PlaceStmt& block) {
+        const ShapeBlock& shape = *findShapeBlock(block.block);
+        if (!model_) error(block.location, block.block + " shapes 3D geometry; it is available in a render asset");
+        std::string names;
+        for (std::size_t i = 0; i < shape.count; ++i) names += (i ? ", " : "") + std::string(shape.parameters[i].name);
+        if (block.args.size() != shape.count)
+            error(block.location, block.block + " takes " + std::to_string(shape.count) +
+                                      (shape.count == 1 ? " argument" : " arguments") + " (" + names + ")");
+        for (std::size_t i = 0; i < shape.count; ++i) {
+            const Arg& arg = block.args[i];
+            if (arg.name) error(arg.location, block.block + " takes its arguments in order, without names: " + names);
+            const auto& parameter = shape.parameters[i];
+            const ValueType got = typer_.typeOf(*arg.value);
+            const auto need = [&](bool fits, const char* what) {
+                if (!fits)
+                    error(locationOf(*arg.value), "'" + std::string(parameter.name) + "' of " + block.block + " must be " +
+                                                      what + ", got " + typeName(got));
+            };
+            switch (parameter.kind) {
+            case ShapeArgument::Degrees: need(isNumeric(got), "a number of degrees"); break;
+            case ShapeArgument::Number: need(isNumeric(got), "a number"); break;
+            case ShapeArgument::Count: need(got == ValueType::I32, "an i32"); break;
+            case ShapeArgument::Seed: need(got == ValueType::Seed || got == ValueType::I32, "a seed"); break;
+            }
+        }
+        if (surfaceDepth_ >= kMaxSurfaceScopes)
+            throw SourceError{block.location, "place and shaping blocks nest deeper than " +
+                std::to_string(kMaxSurfaceScopes) + " scopes", {}, DiagnosticCode::ResourceLimit, DiagnosticStage::Typing};
+        const bool deforming = block.block == "bend" || block.block == "twist" || block.block == "taper";
+        ++surfaceDepth_;
+        if (deforming) ++deformDepth_;
+        for (const auto& child : block.body) {
+            if (atLimit()) break;
+            checkRecoveringStmt(child);
+        }
+        if (deforming) --deformDepth_;
         --surfaceDepth_;
     }
 
@@ -649,6 +712,10 @@ private:
     void checkVarDecl(const VarDecl& decl) {
         // Output writes: `collider = {...}` where collider is a declared slot.
         if (const OutputDecl* output = findOutput(decl.name)) {
+            // A bend, twist or taper moves a point but cannot keep a box a box.
+            if (output->kind == OutputKind::Box3d && deformDepth_ > 0)
+                error(decl.location, "a box3d output cannot be written inside bend, twist or taper; "
+                                     "write it outside the block");
             checkOutputWrite(*output, *decl.value);
             return;
         }

@@ -1,0 +1,22 @@
+// A part of the corpus model shapes.ips: a twisted, tapered peg with a point
+// at its tip and a box around it.
+import grid from "../../../examples/language/skins/grid.ips"
+
+asset peg {
+  size 6x20x6
+  input f32 tall = 12.0
+  output point3d tip
+  output box3d body
+
+  render {
+    root = seed.initial()
+    tile = skin.fit(grid.draw(root.fork("tile")))
+    taper(roll(root.fork("taper"), 0.4, 1.6)) {
+      twist(roll(root.fork("twist"), -200.0, 200.0)) {
+        refine(choose(root.fork("refine"), 1, 2, 3)) { box({0, 0, 0}, {2.5, tall, 1.5}, 0.3, tile) }
+      }
+    }
+    tip = {0, tall, 0}
+    body = {{0, 0, 0}, {2.5, tall, 1.5}}
+  }
+}

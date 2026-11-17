@@ -99,6 +99,9 @@
     <div id="inputs"><div class="note">None.</div></div>
     <h2>Light</h2>
     <div class="row"><label for="light">Follows the pointer</label><input type="checkbox" id="light" checked></div>
+    <h2>Outputs</h2>
+    <div class="row"><label for="outputs-shown">Shown over the model</label><input type="checkbox" id="outputs-shown" checked></div>
+    <div id="outputs"><div class="note">None.</div></div>
     <h2>This generation</h2>
     <dl>
       <dt>Vertices</dt><dd id="stat-vertices">–</dd>
@@ -117,7 +120,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
-import { toObject3D, disposeObject3D } from "../js/three-adapter.js";
+import { toObject3D, outputsToObject3D, disposeObject3D } from "../js/three-adapter.js";
 
 const $ = id => document.getElementById(id);
 const status = (text, error = false) => { $("status").textContent = text; $("status").classList.toggle("error", error); };
@@ -162,7 +165,7 @@ const absolute = path => new URL(path, location.href).href;
 worker.postMessage({ type: "init", scripts: [absolute("iprop3d.js"), absolute("../js/api3d.js")], wasm: absolute("iprop3d.wasm") });
 
 const textures = new Map();   // one GPU texture per key, across seeds
-let object = null, model = null, request = 0, framed = false;
+let object = null, marks = null, model = null, request = 0, framed = false;
 const uniforms = {};
 
 function generate() {
@@ -233,6 +236,42 @@ function showTextures(result) {
     }
 }
 
+// The outputs a model hands the game: a dot at each point and the edges of
+// each box, drawn over the model so that a point inside it shows too.
+function showOutputs(result) {
+    if (marks) { scene.remove(marks); disposeObject3D(marks); marks = null; }
+    const list = $("outputs");
+    list.textContent = "";
+    if (!result.outputs.length) { list.innerHTML = '<div class="note">None.</div>'; return; }
+    for (const output of result.outputs) {
+        const row = document.createElement("div");
+        row.className = "row";
+        const label = document.createElement("label");
+        label.textContent = output.name;
+        const count = document.createElement("span");
+        count.className = "type";
+        const noun = output.kind === "box3d" ? ["box", "boxes"] : ["point", "points"];
+        count.textContent = output.count + " " + noun[output.count === 1 ? 0 : 1];
+        row.append(label, count);
+        list.append(row);
+    }
+    const color = 0xffc23d, radius = Math.max(...result.size) * 0.012;   // model units
+    marks = outputsToObject3D(result, THREE, { color });
+    for (const child of [...marks.children]) {
+        if (child.isLineSegments) {
+            child.material.depthTest = false;
+            child.renderOrder = 10;
+            continue;
+        }
+        const dot = new THREE.Mesh(new THREE.SphereGeometry(radius, 12, 8),
+            new THREE.MeshBasicMaterial({ color, depthTest: false }));
+        dot.renderOrder = 10;
+        child.add(dot);
+    }
+    marks.visible = $("outputs-shown").checked;
+    scene.add(marks);
+}
+
 // The camera looks at the middle of the nominal size, from far enough to see it whole.
 function frame(result) {
     const scale = 1 / result.unitsPerMeter;
@@ -271,6 +310,7 @@ function show(result, milliseconds) {
     $("stat-size").textContent = result.vertexCount ? extent(0) + " × " + extent(1) + " × " + extent(2) + " cm" : "–";
     $("stat-time").textContent = milliseconds.toFixed(1) + " ms";
     showTextures(result);
+    showOutputs(result);
     status("");
 }
 
@@ -303,6 +343,7 @@ $("previous").addEventListener("click", () => step(-1));
 $("next").addEventListener("click", () => step(1));
 $("random").addEventListener("click", () => { $("seed").value = Math.floor(Math.random() * 100000); generate(); });
 $("seed").addEventListener("change", generate);
+$("outputs-shown").addEventListener("change", () => { if (marks) marks.visible = $("outputs-shown").checked; });
 window.addEventListener("keydown", event => {
     if (event.target instanceof HTMLInputElement) return;
     if (event.key === "ArrowLeft") step(-1);

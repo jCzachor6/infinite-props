@@ -1,0 +1,12 @@
+// A bend folds geometry that lies beyond the centre of its arc: this box
+// starts 12 units out, and a turn of 300 degrees over 10 units has a radius
+// of about 2.
+import grid from "../skins/grid.ips"
+
+asset coil {
+  size 60x20x20
+  input f32 turn = 300.0
+  render {
+    bend(turn) { box({20, 0, 0}, {16, 10, 2}, grid.draw(1)) }
+  }
+}

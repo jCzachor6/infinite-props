@@ -112,6 +112,12 @@ std::vector<ArgumentParameter> skinParameters(std::span<const std::string> unifo
     return result;
 }
 
+std::vector<ArgumentParameter> modelPartParameters(std::span<const std::string> uniforms) {
+    std::vector<ArgumentParameter> result{{"seed"}};
+    for (const auto& name : uniforms) result.push_back({name, false, false});
+    return result;
+}
+
 std::span<const PlaceArgument> placeArguments() {
     static constexpr PlaceArgument arguments[] = {
         {"at", PlaceKind::Offset, model::kPlaceAt},
@@ -139,6 +145,25 @@ std::string placeArgumentNames() {
         names += argument.name;
     }
     return names;
+}
+
+std::span<const ShapeBlock> shapeBlocks() {
+    using A = ShapeArgument;
+    static constexpr ShapeBlock blocks[] = {
+        {"smooth", model::Op::SmoothBegin, {{{"angle", A::Degrees}}}, 1},
+        {"refine", model::Op::RefineBegin, {{{"count", A::Count}}}, 1},
+        {"bend", model::Op::BendBegin, {{{"angle", A::Degrees}}}, 1},
+        {"twist", model::Op::TwistBegin, {{{"angle", A::Degrees}}}, 1},
+        {"taper", model::Op::TaperBegin, {{{"scale", A::Number}}}, 1},
+        {"displace", model::Op::DisplaceBegin, {{{"amount", A::Number}, {"frequency", A::Number}, {"seed", A::Seed}}}, 3},
+    };
+    return blocks;
+}
+
+const ShapeBlock* findShapeBlock(std::string_view name) {
+    for (const auto& block : shapeBlocks())
+        if (block.name == name) return &block;
+    return nullptr;
 }
 
 std::vector<const Arg*> partArguments(const Call& call,

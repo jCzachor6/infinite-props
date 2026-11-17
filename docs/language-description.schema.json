@@ -4815,11 +4815,21 @@
                 "skins": {
                   "const": 13,
                   "description": "The embedded 2D programs the model generates as textures."
+                },
+                "outputs": {
+                  "const": 14,
+                  "description": "The 3D output slots (M3); only in a model that declares outputs."
+                },
+                "parts": {
+                  "const": 15,
+                  "description": "The 3D parts (M3); only in a model that has parts."
                 }
               },
               "required": [
                 "model",
-                "skins"
+                "skins",
+                "outputs",
+                "parts"
               ],
               "additionalProperties": true
             },
@@ -4876,8 +4886,166 @@
               "description": "Whether a model asset may declare `origin`."
             },
             "outputs": {
-              "const": false,
-              "description": "Whether a model asset may declare outputs."
+              "type": "object",
+              "description": "3D outputs of a model asset (M3): points and boxes in space a host reads beside the mesh.",
+              "properties": {
+                "kinds": {
+                  "type": "array",
+                  "description": "The output kinds: what a write assigns and what the host receives.",
+                  "const": [
+                    {
+                      "name": "point3d",
+                      "value": "vec3",
+                      "host": "point_in_model_units"
+                    },
+                    {
+                      "name": "box3d",
+                      "value": "{<at>, <size>}",
+                      "value_types": [
+                        "vec3",
+                        "vec3"
+                      ],
+                      "at": "center_of_the_base",
+                      "size": "positive_per_axis",
+                      "host": "center_size_and_three_unit_axes_forming_a_rotation"
+                    }
+                  ],
+                  "items": {
+                    "type": "object",
+                    "description": "One output kind.",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "The name."
+                      },
+                      "value": {
+                        "type": "string",
+                        "description": "What a write assigns."
+                      },
+                      "host": {
+                        "type": "string",
+                        "description": "What the host receives."
+                      },
+                      "value_types": {
+                        "type": "array",
+                        "description": "The types of the two values of a box.",
+                        "items": {
+                          "type": "string",
+                          "description": "A value type."
+                        }
+                      },
+                      "at": {
+                        "type": "string",
+                        "description": "Where the first value of a box lies."
+                      },
+                      "size": {
+                        "type": "string",
+                        "description": "What the second value of a box is."
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                },
+                "declaration": {
+                  "const": "output [list] <kind> <name>",
+                  "description": "How an output is declared; `list` makes every write append."
+                },
+                "lists": {
+                  "const": true,
+                  "description": "Whether both kinds can be lists."
+                },
+                "singular": {
+                  "const": "a_later_write_replaces",
+                  "description": "A later write of a singular output replaces the earlier value."
+                },
+                "list": {
+                  "const": "appends_in_program_order",
+                  "description": "A list output keeps every value written, in program order."
+                },
+                "unwritten": {
+                  "const": "no_value",
+                  "description": "A singular output never written has no value in the result."
+                },
+                "placement": {
+                  "const": "moves_turns_scales_and_mirrors_with_the_enclosing_blocks",
+                  "description": "A value written inside place blocks goes through their maps, as a vertex built there does."
+                },
+                "point_in_deforming_blocks": {
+                  "const": "follows_bend_twist_and_taper",
+                  "description": "A point written inside bend, twist or taper moves with the vertices."
+                },
+                "box_in_deforming_blocks": {
+                  "const": "compile_error_or_trap_through_a_helper",
+                  "description": "A box written lexically inside bend, twist or taper is a compile error, and a trap when a helper writes it."
+                },
+                "shear": {
+                  "const": "a_box_turned_inside_an_unequal_scale_traps",
+                  "description": "A box written inside a turn that is not a multiple of 90 degrees, itself inside a place with an unequal scale, traps."
+                },
+                "other_blocks": {
+                  "const": "smooth_refine_and_displace_leave_outputs",
+                  "description": "smooth, refine and displace leave outputs where they are."
+                },
+                "host": {
+                  "const": "the_model_s_own_outputs_in_declaration_order",
+                  "description": "The host receives the outputs of the model itself, never those of a part."
+                },
+                "two_d_outputs": {
+                  "const": "compile_error",
+                  "description": "Declaring a 2D output kind in a render asset is a compile error."
+                },
+                "ops": {
+                  "type": "object",
+                  "description": "The model operations that write each kind.",
+                  "const": {
+                    "point3d": "out.point3d",
+                    "box3d": "out.box3d",
+                    "list_point3d": "out.list.point3d",
+                    "list_box3d": "out.list.box3d"
+                  },
+                  "properties": {
+                    "point3d": {
+                      "type": "string",
+                      "description": "The operation that writes a point."
+                    },
+                    "box3d": {
+                      "type": "string",
+                      "description": "The operation that writes a box."
+                    },
+                    "list_point3d": {
+                      "type": "string",
+                      "description": "The operation that appends a point."
+                    },
+                    "list_box3d": {
+                      "type": "string",
+                      "description": "The operation that appends a box."
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                "maximum_slots": {
+                  "const": 256,
+                  "description": "The output slots of a file, those of parts included."
+                }
+              },
+              "required": [
+                "kinds",
+                "declaration",
+                "lists",
+                "singular",
+                "list",
+                "unwritten",
+                "placement",
+                "point_in_deforming_blocks",
+                "box_in_deforming_blocks",
+                "shear",
+                "other_blocks",
+                "host",
+                "two_d_outputs",
+                "ops",
+                "maximum_slots"
+              ],
+              "additionalProperties": true
             },
             "layers": {
               "const": false,
@@ -4888,8 +5056,177 @@
               "description": "Whether a model asset may open clip blocks."
             },
             "model_parts": {
-              "const": false,
-              "description": "Whether a model asset may import another model asset."
+              "type": "object",
+              "description": "3D parts (M3): a render asset building an imported render asset where it calls it.",
+              "properties": {
+                "syntax": {
+                  "const": "<alias>.render(<seed>[, <input> = <value>, ...])",
+                  "description": "How a part is called: a statement."
+                },
+                "target": {
+                  "const": "imported_asset_with_render",
+                  "description": "What the alias must name."
+                },
+                "statement": {
+                  "const": true,
+                  "description": "The call is a statement and has no value."
+                },
+                "result": {
+                  "const": "void",
+                  "description": "The result type of the call."
+                },
+                "parameters": {
+                  "type": "array",
+                  "description": "The parameters: the seed, then each input of the part by name; `$uniform` stands for one input.",
+                  "const": [
+                    {
+                      "name": "seed",
+                      "required": true,
+                      "positional": true,
+                      "role": "seed"
+                    },
+                    {
+                      "name": "$uniform",
+                      "required": false,
+                      "positional": false,
+                      "default": "input_declaration"
+                    }
+                  ],
+                  "items": {
+                    "type": "object",
+                    "description": "One parameter.",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "The name."
+                      },
+                      "required": {
+                        "type": "boolean",
+                        "description": "The slot has no default."
+                      },
+                      "positional": {
+                        "type": "boolean",
+                        "description": "The slot accepts a positional argument."
+                      },
+                      "role": {
+                        "type": "string",
+                        "description": "Present on the seed slot, which takes an i32 or a seed."
+                      },
+                      "default": {
+                        "type": "string",
+                        "description": "An omitted input keeps the default of its declaration."
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                },
+                "evaluation_order": {
+                  "type": "array",
+                  "description": "The order the arguments are evaluated in.",
+                  "const": [
+                    "$uniform",
+                    "seed"
+                  ],
+                  "items": {
+                    "type": "string",
+                    "description": "A slot name."
+                  }
+                },
+                "placement": {
+                  "const": "the_scope_of_the_call",
+                  "description": "The part is built in the scope the call stands in."
+                },
+                "placement_arguments": {
+                  "const": false,
+                  "description": "Whether the call takes placement arguments; place blocks place a part."
+                },
+                "stream": {
+                  "const": "own_stream_from_the_seed",
+                  "description": "The part draws from its own stream, started from the seed."
+                },
+                "skins": {
+                  "const": "the_part_s_imports_textures_shared_by_key",
+                  "description": "The part generates its own skins; equal textures are shared."
+                },
+                "scale": {
+                  "const": "must_equal_the_model_scale",
+                  "description": "The part and the model must declare the same units per metre."
+                },
+                "size": {
+                  "const": "informative",
+                  "description": "The declared size of a part is informative."
+                },
+                "outputs_read": {
+                  "const": "<alias>.outputs.<name>",
+                  "description": "How a parent reads an output of a part."
+                },
+                "readable_outputs": {
+                  "const": "singular_point3d",
+                  "description": "Which outputs a parent can read."
+                },
+                "read_where": {
+                  "const": "the_block_of_the_call_after_the_call",
+                  "description": "Where a read is valid: in the block that called the part, after the call; elsewhere it traps."
+                },
+                "read_value": {
+                  "const": "in_the_frame_of_that_block",
+                  "description": "The value is in the coordinates of that block."
+                },
+                "host_outputs": {
+                  "const": "the_model_s_own_only",
+                  "description": "Which outputs reach the host."
+                },
+                "nesting": {
+                  "const": "parts_import_parts",
+                  "description": "A part can import parts of its own."
+                },
+                "render_op": {
+                  "const": "part.render",
+                  "description": "The model operation of the call."
+                },
+                "read_op": {
+                  "const": "part.get.point3d",
+                  "description": "The model operation of a read."
+                },
+                "maximum_parts": {
+                  "const": 256,
+                  "description": "The part instances of a file."
+                },
+                "fuel": {
+                  "const": 25,
+                  "description": "What a call costs before the part runs: its instruction and its reserve."
+                },
+                "effects": {
+                  "$ref": "#/$defs/effects",
+                  "description": "The effects of a call."
+                }
+              },
+              "required": [
+                "syntax",
+                "target",
+                "statement",
+                "result",
+                "parameters",
+                "evaluation_order",
+                "placement",
+                "placement_arguments",
+                "stream",
+                "skins",
+                "scale",
+                "size",
+                "outputs_read",
+                "readable_outputs",
+                "read_where",
+                "read_value",
+                "host_outputs",
+                "nesting",
+                "render_op",
+                "read_op",
+                "maximum_parts",
+                "fuel",
+                "effects"
+              ],
+              "additionalProperties": true
             },
             "optimizer": {
               "const": false,
@@ -4935,8 +5272,18 @@
                     "helper_returns": true,
                     "asset_constants": true,
                     "host_inputs": false,
-                    "collections": false,
+                    "collections": true,
                     "palettes": false
+                  },
+                  "lists": {
+                    "type": "list<vec3>",
+                    "literal": "[<vec3>, ...]",
+                    "index": true,
+                    "length": "list.len",
+                    "constants": true,
+                    "sort": false,
+                    "distinct": false,
+                    "maximum_elements": 256
                   }
                 },
                 {
@@ -5109,6 +5456,45 @@
                   "modifiers": {
                     "type": "string",
                     "description": "A `skin.*` builtin never changes the skin it is given."
+                  },
+                  "lists": {
+                    "type": "object",
+                    "description": "The lists of the type (M3): literals, indexing and list.len.",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "description": "The list type."
+                      },
+                      "literal": {
+                        "type": "string",
+                        "description": "How a list is written."
+                      },
+                      "index": {
+                        "type": "boolean",
+                        "description": "Whether an element is read by index."
+                      },
+                      "length": {
+                        "type": "string",
+                        "description": "The builtin that counts the elements."
+                      },
+                      "constants": {
+                        "type": "boolean",
+                        "description": "Whether an asset constant may be a list of the type."
+                      },
+                      "sort": {
+                        "type": "boolean",
+                        "description": "Whether the list can be sorted."
+                      },
+                      "distinct": {
+                        "type": "boolean",
+                        "description": "Whether repeated elements can be dropped."
+                      },
+                      "maximum_elements": {
+                        "type": "integer",
+                        "description": "The most elements of a list."
+                      }
+                    },
+                    "additionalProperties": true
                   }
                 },
                 "additionalProperties": true
@@ -5847,6 +6233,71 @@
                     "maximum"
                   ],
                   "additionalProperties": true
+                },
+                "path_points": {
+                  "type": "object",
+                  "description": "Points of the path of a sweep.",
+                  "properties": {
+                    "minimum": {
+                      "const": 2,
+                      "description": "The least."
+                    },
+                    "maximum": {
+                      "const": 256,
+                      "description": "The most."
+                    }
+                  },
+                  "required": [
+                    "minimum",
+                    "maximum"
+                  ],
+                  "additionalProperties": false
+                },
+                "tube_segments": {
+                  "type": "object",
+                  "description": "Segments along a tube.",
+                  "properties": {
+                    "minimum": {
+                      "const": 1,
+                      "description": "The least."
+                    },
+                    "maximum": {
+                      "const": 256,
+                      "description": "The most."
+                    }
+                  },
+                  "required": [
+                    "minimum",
+                    "maximum"
+                  ],
+                  "additionalProperties": false
+                },
+                "refine": {
+                  "type": "object",
+                  "description": "The count of refine.",
+                  "properties": {
+                    "minimum": {
+                      "const": 1,
+                      "description": "The least."
+                    },
+                    "maximum": {
+                      "const": 16,
+                      "description": "The most."
+                    }
+                  },
+                  "required": [
+                    "minimum",
+                    "maximum"
+                  ],
+                  "additionalProperties": false
+                },
+                "outputs": {
+                  "const": 256,
+                  "description": "Output slots of a file."
+                },
+                "parts": {
+                  "const": 256,
+                  "description": "Part instances of a file."
                 }
               },
               "required": [
@@ -5861,7 +6312,12 @@
                 "sides",
                 "rings",
                 "profile_points",
-                "outline_points"
+                "outline_points",
+                "path_points",
+                "tube_segments",
+                "refine",
+                "outputs",
+                "parts"
               ],
               "additionalProperties": true
             },
@@ -5892,6 +6348,62 @@
                 "skin_draw_reserve": {
                   "const": 64,
                   "description": "What a skin call reserves beyond its instruction, also when it reuses a texture."
+                },
+                "sweep_profile": {
+                  "const": "ceil_points_squared_over_3",
+                  "description": "What a sweep reserves for the checks and triangulation of its profile."
+                },
+                "block_reserve": {
+                  "const": 24,
+                  "description": "What a shaping block reserves when it opens."
+                },
+                "part_reserve": {
+                  "const": 24,
+                  "description": "What a part call reserves."
+                },
+                "smooth_vertex": {
+                  "const": 8,
+                  "description": "What smooth pays for each vertex."
+                },
+                "deform_vertex": {
+                  "const": 3,
+                  "description": "What bend, twist and taper pay for each vertex."
+                },
+                "displace_vertex": {
+                  "const": 18,
+                  "description": "What displace pays for each vertex."
+                },
+                "displace_triangle": {
+                  "const": 4,
+                  "description": "What displace pays for each triangle."
+                },
+                "sweep_path_point": {
+                  "const": 24,
+                  "description": "What a sweep reserves for each point of its path."
+                },
+                "pass_vertex": {
+                  "const": 3,
+                  "description": "What a closing block or part pays for each vertex it hands on."
+                },
+                "pass_triangle": {
+                  "const": 1,
+                  "description": "What a closing block or part pays for each triangle it hands on."
+                },
+                "refine_vertex": {
+                  "const": 5,
+                  "description": "What refine pays for each vertex it adds."
+                },
+                "refine_triangle": {
+                  "const": 2,
+                  "description": "What refine pays for each triangle it adds."
+                },
+                "point3d_output": {
+                  "const": 8,
+                  "description": "What a point3d output write reserves beyond its instruction."
+                },
+                "box3d_output": {
+                  "const": 16,
+                  "description": "What a box3d output write reserves beyond its instruction."
                 }
               },
               "required": [
@@ -5900,7 +6412,21 @@
                 "triangle",
                 "extrude_outline",
                 "place_reserve",
-                "skin_draw_reserve"
+                "skin_draw_reserve",
+                "sweep_profile",
+                "block_reserve",
+                "part_reserve",
+                "smooth_vertex",
+                "deform_vertex",
+                "displace_vertex",
+                "displace_triangle",
+                "sweep_path_point",
+                "pass_vertex",
+                "pass_triangle",
+                "refine_vertex",
+                "refine_triangle",
+                "point3d_output",
+                "box3d_output"
               ],
               "additionalProperties": true
             },
@@ -5925,6 +6451,251 @@
                 "vertex",
                 "triangle",
                 "skin_record"
+              ],
+              "additionalProperties": true
+            },
+            "shaping_blocks": {
+              "type": "object",
+              "description": "Shaping blocks (M3): blocks that collect what their body builds and process it when they close.",
+              "properties": {
+                "syntax": {
+                  "const": "<name>(<argument>, ...) { <statements> }",
+                  "description": "How a shaping block is written."
+                },
+                "keyword": {
+                  "const": "contextual_call_followed_by_a_block",
+                  "description": "The names are contextual: a block follows the call."
+                },
+                "positional_only": {
+                  "const": true,
+                  "description": "The arguments are positional."
+                },
+                "blocks": {
+                  "type": "array",
+                  "description": "Each block, its parameters, their range and what it does.",
+                  "const": [
+                    {
+                      "name": "smooth",
+                      "parameters": [
+                        {
+                          "name": "angle",
+                          "types": [
+                            "i32",
+                            "f32"
+                          ]
+                        }
+                      ],
+                      "range": "0_to_180",
+                      "meaning": "averages_normals_of_equal_positions_within_the_angle",
+                      "begin_op": "smooth.begin"
+                    },
+                    {
+                      "name": "refine",
+                      "parameters": [
+                        {
+                          "name": "count",
+                          "types": [
+                            "i32"
+                          ]
+                        }
+                      ],
+                      "range": "1_to_16",
+                      "meaning": "splits_each_triangle_into_count_squared",
+                      "begin_op": "refine.begin"
+                    },
+                    {
+                      "name": "bend",
+                      "parameters": [
+                        {
+                          "name": "angle",
+                          "types": [
+                            "i32",
+                            "f32"
+                          ]
+                        }
+                      ],
+                      "range": "minus_360_to_360",
+                      "meaning": "bends_the_y_axis_into_an_arc_toward_x",
+                      "begin_op": "bend.begin"
+                    },
+                    {
+                      "name": "twist",
+                      "parameters": [
+                        {
+                          "name": "angle",
+                          "types": [
+                            "i32",
+                            "f32"
+                          ]
+                        }
+                      ],
+                      "range": "finite",
+                      "meaning": "turns_about_y_growing_with_height_like_yaw",
+                      "begin_op": "twist.begin"
+                    },
+                    {
+                      "name": "taper",
+                      "parameters": [
+                        {
+                          "name": "scale",
+                          "types": [
+                            "i32",
+                            "f32"
+                          ]
+                        }
+                      ],
+                      "range": "positive",
+                      "meaning": "scales_x_and_z_from_one_at_the_bottom_to_scale_at_the_top",
+                      "begin_op": "taper.begin"
+                    },
+                    {
+                      "name": "displace",
+                      "parameters": [
+                        {
+                          "name": "amount",
+                          "types": [
+                            "i32",
+                            "f32"
+                          ]
+                        },
+                        {
+                          "name": "frequency",
+                          "types": [
+                            "i32",
+                            "f32"
+                          ]
+                        },
+                        {
+                          "name": "seed",
+                          "types": [
+                            "seed",
+                            "i32"
+                          ]
+                        }
+                      ],
+                      "range": "finite_amount_positive_frequency",
+                      "meaning": "moves_vertices_along_their_summed_normals_by_amount_times_noise",
+                      "begin_op": "displace.begin"
+                    }
+                  ],
+                  "items": {
+                    "type": "object",
+                    "description": "One shaping block.",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "The name."
+                      },
+                      "parameters": {
+                        "type": "array",
+                        "description": "The parameters in order.",
+                        "items": {
+                          "type": "object",
+                          "description": "One parameter.",
+                          "properties": {
+                            "name": {
+                              "type": "string",
+                              "description": "The name."
+                            },
+                            "types": {
+                              "type": "array",
+                              "description": "The value types it accepts.",
+                              "items": {
+                                "type": "string",
+                                "description": "A value type."
+                              }
+                            }
+                          },
+                          "additionalProperties": true
+                        }
+                      },
+                      "range": {
+                        "type": "string",
+                        "description": "The values it accepts."
+                      },
+                      "meaning": {
+                        "type": "string",
+                        "description": "What it does."
+                      },
+                      "begin_op": {
+                        "type": "string",
+                        "description": "The model operation that opens the block."
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                },
+                "frame": {
+                  "const": "the_block_s_own_identity_at_opening",
+                  "description": "The space the block processes in: its own, the identity where it opens."
+                },
+                "precision": {
+                  "const": "binary64_until_the_block_closes",
+                  "description": "Vertices in a block stay binary64 until the block closes."
+                },
+                "close": {
+                  "const": "processes_then_passes_to_the_enclosing_scope_like_a_primitive",
+                  "description": "At its end the block processes its buffer and hands it to the enclosing scope as one primitive."
+                },
+                "axis": {
+                  "const": "y_over_the_extent_of_the_block_s_vertices",
+                  "description": "bend, twist and taper act along Y over the extent of the vertices of the block."
+                },
+                "neutral": {
+                  "const": "an_argument_that_changes_nothing_is_the_identity",
+                  "description": "An argument that changes nothing leaves the vertices as they are."
+                },
+                "deformed_normals": {
+                  "const": "cofactor_of_the_jacobian",
+                  "description": "Normals under bend, twist and taper follow the cofactors of the Jacobian."
+                },
+                "displaced_normals": {
+                  "const": "from_the_moved_triangles",
+                  "description": "Normals after displace come from the moved triangles."
+                },
+                "weld": {
+                  "const": "equal_positions",
+                  "description": "smooth and displace treat vertices of equal positions as one point."
+                },
+                "maximum_open_scopes": {
+                  "const": 32,
+                  "description": "Scopes open at once, place blocks included."
+                },
+                "scope_cleanup": {
+                  "type": "array",
+                  "description": "What closes a block.",
+                  "const": [
+                    "end",
+                    "return",
+                    "break",
+                    "continue"
+                  ],
+                  "items": {
+                    "type": "string",
+                    "description": "A way of leaving."
+                  }
+                },
+                "effects": {
+                  "$ref": "#/$defs/effects",
+                  "description": "The effects of opening a block."
+                }
+              },
+              "required": [
+                "syntax",
+                "keyword",
+                "positional_only",
+                "blocks",
+                "frame",
+                "precision",
+                "close",
+                "axis",
+                "neutral",
+                "deformed_normals",
+                "displaced_normals",
+                "weld",
+                "maximum_open_scopes",
+                "scope_cleanup",
+                "effects"
               ],
               "additionalProperties": true
             }
@@ -5957,6 +6728,7 @@
             "layers",
             "clips",
             "model_parts",
+            "shaping_blocks",
             "optimizer",
             "types",
             "type_keywords",
@@ -6841,7 +7613,8 @@
             "parts2d",
             "seed",
             "vec3",
-            "skin"
+            "skin",
+            "list<vec3>"
           ],
           "description": "Source value type of a model asset."
         },
@@ -6940,7 +7713,12 @@
         "model_op": {
           "type": "string",
           "minLength": 1,
-          "description": "The sub-operation of the model page the overload compiles to, by its mnemonic. It is no 2D opcode."
+          "description": "The sub-operation of the model page the overload compiles to, by its mnemonic. It is no 2D opcode. Every overload has either this or `opcode`."
+        },
+        "opcode": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The 2D opcode of an overload a 2D builtin gains on a model type, such as list.len of a list<vec3> (M3), by its mnemonic."
         }
       },
       "required": [
@@ -6948,11 +7726,22 @@
         "result",
         "evaluation_order",
         "effects",
-        "constant_evaluable",
-        "model_op"
+        "constant_evaluable"
       ],
       "additionalProperties": true,
-      "description": "An overload of a builtin of a model asset."
+      "description": "An overload of a builtin of a model asset.",
+      "anyOf": [
+        {
+          "required": [
+            "model_op"
+          ]
+        },
+        {
+          "required": [
+            "opcode"
+          ]
+        }
+      ]
     },
     "modelBuiltin": {
       "type": "object",

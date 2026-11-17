@@ -33,6 +33,9 @@ struct Sample { double ns; u64 fuel; u32 vertices; u32 triangles; };
 const std::map<std::string, std::string> kSkins = {
     // A tiny skin: what a texture costs is charged to its own program.
     {"tile.ips", "asset tile {\n  size 8x8\n  input color tint = #a3713d\n  draw { rect(0, 0, 8, 8, tint) }\n}\n"},
+    // A part of one box (M3).
+    {"peg.ips", "import tile from \"tile.ips\"\nasset peg {\n  size 2x4x2\n  output point3d tip\n"
+                "  render {\n    box({0, 0, 0}, {2, 3, 4}, tile.draw(1))\n    tip = {0, 3, 0}\n  }\n}\n"},
 };
 
 std::vector<u8> compile(const std::string& source) {
@@ -68,7 +71,8 @@ std::string repeated(const std::string& statement, int count) {
 
 // A model whose render block makes one skin and then runs `body`.
 Sample solid(const std::string& body) {
-    auto loaded = model::loadModel(compile("import tile from \"tile.ips\"\nasset bench {\n  size 10x10x10\n  render {\n"
+    auto loaded = model::loadModel(compile("import tile from \"tile.ips\"\nimport peg from \"peg.ips\"\nasset bench {\n"
+                                           "  size 10x10x10\n  output point3d p\n  output list box3d b\n  render {\n"
                                            "    s = tile.draw(1)\n    v = {0.5, 0.25, 0.125}\n    x = 0.0\n" + body + "  }\n}\n"));
     model::validateModel(loaded);
     loaded.file.meta.fuel = 4'000'000'000ull;
@@ -182,5 +186,23 @@ int main() {
     for (int i = 0; i < 31; ++i) fresh += "    t = tile.draw(" + std::to_string(i + 2) + ")\n";
     row("skin call, new 8x8 texture", 31, solid(fresh), control);
     row("skin.roughness", 256, solid(repeated("t = skin.roughness(s, 0.5)", 256)), control);
+
+    std::printf("-- milestone M3\n");
+    row("tube, 16 sides, 12 segments", 32, solid(repeated("tube({0, 0, 0}, {0, 5, 0}, {5, 8, 0}, {9, 6, 0}, 1.0, 0.5, 16, 12, s)", 32)),
+        control);
+    row("sweep, 4 x 4 points", 128,
+        solid(repeated("sweep([{0, 0, 0}, {0, 5, 0}, {4, 6, 1}, {8, 4, 2}], [{-1, -1}, {1, -1}, {1, 1}, {-1, 1}], s)", 128)), control);
+    row("box in refine(1)", 256, solid(repeated("refine(1) { box({0, 0, 0}, {2, 3, 4}, s) }", 256)), control);
+    const auto refined = solid(repeated("refine(4) { box({0, 0, 0}, {2, 3, 4}, s) }", 64));
+    row("box in refine(4)", 64, refined, control);
+    row("  then smooth(30)", 64, solid(repeated("smooth(30.0) { refine(4) { box({0, 0, 0}, {2, 3, 4}, s) } }", 64)), refined);
+    row("  then bend(60)", 64, solid(repeated("bend(60.0) { refine(4) { box({0, 0, 0}, {2, 3, 4}, s) } }", 64)), refined);
+    row("  then twist(60)", 64, solid(repeated("twist(60.0) { refine(4) { box({0, 0, 0}, {2, 3, 4}, s) } }", 64)), refined);
+    row("  then taper(0.5)", 64, solid(repeated("taper(0.5) { refine(4) { box({0, 0, 0}, {2, 3, 4}, s) } }", 64)), refined);
+    row("  then displace", 64,
+        solid(repeated("displace(0.2, 0.7, 5) { refine(4) { box({0, 0, 0}, {2, 3, 4}, s) } }", 64)), refined);
+    row("part call of a box", 128, solid(repeated("peg.render(1)", 128)), control);
+    row("point3d write", 512, solid(repeated("p = v", 512)), control);
+    row("box3d write", 256, solid(repeated("b = {v, {1, 1, 1}}", 256)), control);
     return 0;
 }

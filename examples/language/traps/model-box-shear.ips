@@ -1,0 +1,16 @@
+// A box turned inside an unequal scale is no longer a box.
+import grid from "../skins/grid.ips"
+
+asset crate {
+  size 20x20x20
+  input f32 turn = 30.0
+  output box3d body
+  render {
+    place(scale = {2, 1, 1}) {
+      place(yaw = turn) {
+        box({0, 0, 0}, {4, 4, 4}, grid.draw(1))
+        body = {{0, 0, 0}, {4, 4, 4}}
+      }
+    }
+  }
+}

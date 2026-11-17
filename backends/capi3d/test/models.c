@@ -19,15 +19,20 @@ OFFSET(iprop3d_model_info, flags, 4); OFFSET(iprop3d_model_info, size_x, 8); OFF
 OFFSET(iprop3d_model_info, size_z, 16); OFFSET(iprop3d_model_info, units_per_meter, 20);
 OFFSET(iprop3d_model_info, fuel, 24); OFFSET(iprop3d_model_info, input_count, 32);
 OFFSET(iprop3d_model_info, skin_program_count, 36); OFFSET(iprop3d_model_info, container_flags, 40);
-LAYOUT(iprop3d_result_info, 96);
+LAYOUT(iprop3d_result_info, 104);
 OFFSET(iprop3d_result_info, flags, 4); OFFSET(iprop3d_result_info, bounds_min, 8);
 OFFSET(iprop3d_result_info, bounds_max, 20); OFFSET(iprop3d_result_info, size, 32);
 OFFSET(iprop3d_result_info, units_per_meter, 44); OFFSET(iprop3d_result_info, vertex_count, 48);
 OFFSET(iprop3d_result_info, triangle_count, 52); OFFSET(iprop3d_result_info, surface_count, 56);
 OFFSET(iprop3d_result_info, texture_count, 60); OFFSET(iprop3d_result_info, fuel_budget, 64);
 OFFSET(iprop3d_result_info, fuel_used, 72); OFFSET(iprop3d_result_info, work_budget, 80);
-OFFSET(iprop3d_result_info, work_used, 88);
+OFFSET(iprop3d_result_info, work_used, 88); OFFSET(iprop3d_result_info, output_count, 96);
 #if UINTPTR_MAX > 0xffffffffu
+LAYOUT(iprop3d_output_view, 56);
+OFFSET(iprop3d_output_view, flags, 4); OFFSET(iprop3d_output_view, output_index, 8);
+OFFSET(iprop3d_output_view, kind, 12); OFFSET(iprop3d_output_view, list, 16);
+OFFSET(iprop3d_output_view, value_count, 20); OFFSET(iprop3d_output_view, floats_per_value, 24);
+OFFSET(iprop3d_output_view, name, 32); OFFSET(iprop3d_output_view, values, 48);
 LAYOUT(iprop3d_skin_program_info, 40);
 OFFSET(iprop3d_skin_program_info, flags, 4); OFFSET(iprop3d_skin_program_info, program_index, 8);
 OFFSET(iprop3d_skin_program_info, width, 12); OFFSET(iprop3d_skin_program_info, height, 16);
@@ -122,7 +127,9 @@ int main(int argc, char** argv) {
     iprop_input_info_ex input;
     iprop_parameters *parameters = NULL, *tile_parameters = NULL;
     iprop3d_generate_options options;
-    iprop3d_result *first = NULL, *second = NULL, *narrow = NULL, *bare = NULL, *nothing = NULL;
+    iprop3d_result *first = NULL, *second = NULL, *narrow = NULL, *bare = NULL, *nothing = NULL, *posted = NULL;
+    iprop3d_model* post = NULL;
+    iprop3d_output_view output;
     iprop3d_result_info info, other_info;
     iprop3d_surface_view surface;
     iprop3d_texture_view texture, other_texture;
@@ -135,14 +142,14 @@ int main(int argc, char** argv) {
     uint64_t fixed_key, seeded_key, crate_fuel;
     uint32_t count = 99, index = 99;
     CHECK(argc == 2);
-    CHECK(IPROP3D_API_VERSION_MAJOR == 0 && IPROP3D_API_VERSION_MINOR == 1);
+    CHECK(IPROP3D_API_VERSION_MAJOR == 0 && IPROP3D_API_VERSION_MINOR == 2);
     CHECK(sizeof(iprop3d_alpha_mode) == 4 && IPROP3D_ALPHA_OPAQUE == 0 && IPROP3D_ALPHA_CUTOUT == 1 && IPROP3D_ALPHA_BLEND == 2);
 
     /* The library. */
     CHECK(iprop3d_library_info_init(&library, sizeof(library)) == IPROP_EX_OK);
     CHECK(library.struct_size == sizeof(library) && library.api_minor == 0 && library.max_texels == 0);
     CHECK(iprop3d_library_query(&library, NULL) == IPROP_EX_OK);
-    CHECK(library.api_major == 0 && library.api_minor == 1);
+    CHECK(library.api_major == 0 && library.api_minor == 2);
     CHECK(library.max_vertices == 65536 && library.max_triangles == 131072);
     CHECK(library.max_textures == 32 && library.max_texture_side == 2048 && library.max_texels == 4194304);
 
@@ -322,6 +329,37 @@ int main(int argc, char** argv) {
     CHECK(other_info.bounds_min[0] == 0.0f && other_info.bounds_max[1] == 0.0f && other_info.size[2] == 3.0f);
     CHECK(iprop3d_result_surface(nothing, 0, &surface, NULL) == IPROP_EX_E_ARGUMENT);
     CHECK(iprop3d_result_texture(nothing, 0, &other_texture, NULL) == IPROP_EX_E_ARGUMENT);
+
+    /* 3D outputs (API 0.2): the crate declares none; the post a point
+     * turned with its block, a list, a box and one never written. */
+    CHECK(info_of(first, &info) == 0 && info.output_count == 0);
+    CHECK(iprop3d_result_output(first, 0, &output, NULL) == IPROP_EX_E_ARGUMENT);
+    CHECK(load_model(argv[1], "outputs.iprop3d", &post) == 0);
+    CHECK(iprop3d_generate(post, &options, NULL, NULL, &posted, NULL) == IPROP_EX_OK);
+    CHECK(info_of(posted, &info) == 0 && info.output_count == 4);
+    CHECK(iprop3d_output_view_init(&output, sizeof(output)) == IPROP_EX_OK);
+    CHECK(output.struct_size == sizeof(output) && output.values == NULL && output.value_count == 0);
+    CHECK(iprop3d_result_output(posted, 0, &output, NULL) == IPROP_EX_OK);
+    CHECK(output.output_index == 0 && output.kind == IPROP3D_OUTPUT_POINT3D && output.list == 0);
+    CHECK(output.value_count == 1 && output.floats_per_value == 3 && same_name(output.name, "tip"));
+    CHECK(output.values[0] == 0.0f && output.values[1] == 16.0f && output.values[2] == -3.0f);
+    CHECK(iprop3d_result_output(posted, 1, &output, NULL) == IPROP_EX_OK);
+    CHECK(output.list == 1 && output.value_count == 2 && same_name(output.name, "marks"));
+    CHECK(output.values[2] == -1.0f && output.values[5] == -2.0f);
+    CHECK(iprop3d_result_output(posted, 2, &output, NULL) == IPROP_EX_OK);
+    CHECK(output.kind == IPROP3D_OUTPUT_BOX3D && output.value_count == 1 && output.floats_per_value == 15);
+    CHECK(output.values[0] == 0.0f && output.values[1] == 8.0f && output.values[2] == 0.0f);
+    CHECK(output.values[3] == 2.0f && output.values[4] == 16.0f && output.values[5] == 2.0f);
+    CHECK(output.values[6] == 1.0f && output.values[10] == 1.0f && output.values[14] == 1.0f);
+    CHECK(iprop3d_result_output(posted, 3, &output, NULL) == IPROP_EX_OK);
+    CHECK(output.value_count == 0 && output.values == NULL && same_name(output.name, "never"));
+    CHECK(iprop3d_result_output(posted, 4, &output, NULL) == IPROP_EX_E_ARGUMENT);
+    CHECK(iprop3d_result_output_find(posted, text("body"), &index, NULL) == IPROP_EX_OK && index == 2);
+    CHECK(iprop3d_result_output_find(posted, text("handle"), &index, NULL) == IPROP_EX_E_ARGUMENT && index == 2);
+    output.flags = 1;
+    CHECK(iprop3d_result_output(posted, 0, &output, NULL) == IPROP_EX_E_ARGUMENT);
+    iprop3d_model_free(post);
+    iprop3d_result_free(posted);
 
     /* Results and parameter sets outlive the model. */
     iprop3d_model_free(crate);

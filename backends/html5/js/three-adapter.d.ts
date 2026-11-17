@@ -48,6 +48,18 @@ export interface ModelSurface {
     indices: Uint32Array;
 }
 
+/** One output of a model (M3): a point is 3 floats, a box 15 (centre, size, x, y and z axis). */
+export interface ModelOutput {
+    index: number;
+    name: string;
+    kind: "point3d" | "box3d";
+    list: boolean;
+    count: number;
+    values: Float32Array;
+    points?: number[][];
+    boxes?: { center: number[]; size: number[]; axes: number[][] }[];
+}
+
 /** What model.generate() of api3d.js returns. */
 export interface ModelResult {
     bounds: { min: number[]; max: number[] };
@@ -59,6 +71,7 @@ export interface ModelResult {
     work: { budget: number; used: number };
     textures: ModelTexture[];
     surfaces: ModelSurface[];
+    outputs: ModelOutput[];
 }
 
 /** The colour and normal textures of one cache entry; three.js Texture objects. */
@@ -85,7 +98,15 @@ export interface AdapterOptions<Texture = unknown> {
 export function toObject3D<Three extends { Group: new () => unknown }>(
     result: ModelResult, THREE: Three, options?: AdapterOptions): InstanceType<Three["Group"]>;
 
-/** Releases the geometry and materials of an object made by toObject3D, and its textures when it owns them. */
+/**
+ * The model's outputs as a Group in the space of toObject3D: an empty Object3D
+ * at each point, named after its output (`name[i]` in a list), and a line box
+ * for each box. `color` is the line colour; `meters` scales as toObject3D does.
+ */
+export function outputsToObject3D<Three extends { Group: new () => unknown }>(
+    result: ModelResult, THREE: Three, options?: { color?: number; meters?: boolean }): InstanceType<Three["Group"]>;
+
+/** Releases the geometry and materials of an object made by toObject3D or outputsToObject3D, and its textures when it owns them. */
 export function disposeObject3D(object: unknown): void;
 
 /** Disposes and clears a texture cache. */

@@ -434,8 +434,11 @@ TEST_CASE("a vec3 range picks a point between its ends") {
                ContainsSubstring("sampler capture needs i32, f32, color or vec2, got vec3"));
     CHECK_THAT(diagnostic(with(thing("    s = stepper({0, 0, 0} to {1, 1, 1}).pick(3)"))),
                ContainsSubstring("stepper capture needs i32, f32, color or vec2, got vec3"));
-    CHECK_THAT(diagnostic(with(thing("", "", "  f(points: list<vec3>) { }"))),
+    // A list of vec3 is a path (M3); no sampler holds one.
+    CHECK_THAT(diagnostic(with(thing("", "", "  f(points: sampler<vec3>) { }"))),
                ContainsSubstring("a collection cannot hold 'vec3' values"));
+    CHECK_THAT(diagnostic({{"model.ips", "asset flat {\n  size 8x8\n  draw { }\n  f(points: list<vec3>) { }\n}\n"}}),
+               ContainsSubstring("type 'list<vec3>' belongs to a render asset"));
     CHECK_THAT(diagnostic(with(thing("    p = {1, 2, 3} % 2"))), ContainsSubstring("'%' requires i32 operands"));
     CHECK_THAT(diagnostic(with(thing("    if ({1, 2, 3} < {2, 3, 4}) { }"))), ContainsSubstring("comparison requires numeric operands"));
 }
@@ -466,7 +469,7 @@ TEST_CASE("the checker keeps drawing and modelling apart") {
     CHECK_THAT(diagnostic({{"model.ips", "asset deep {\n  size 8x8x8\n  draw { }\n}\n"}}),
                ContainsSubstring("belongs to a render asset"));
     CHECK_THAT(diagnostic({{"model.ips", "asset out {\n  size 8x8x8\n  output point p\n  render { }\n}\n"}}),
-               ContainsSubstring("not supported yet"));
+               ContainsSubstring("a render asset declares point3d and box3d outputs"));
     CHECK_THAT(diagnostic({{"model.ips", "asset zero {\n  size 8x8x8\n  scale 0\n  render { }\n}\n"}}),
                ContainsSubstring("positive number"));
     // Inputs belong to the entry block, whatever its name, and the entry is
@@ -481,9 +484,10 @@ TEST_CASE("the checker keeps drawing and modelling apart") {
     CHECK_THAT(diagnostic({{"model.ips", "import solid from \"solid.ips\"\nasset flat {\n  size 8x8\n  draw { }\n}\n"},
                            {"solid.ips", solid}}),
                ContainsSubstring("'solid' is a render asset; a draw asset cannot use a 3D model as a part"));
-    CHECK_THAT(diagnostic({{"model.ips", "import solid from \"solid.ips\"\nasset deep {\n  size 8x8x8\n  render { }\n}\n"},
+    // A model imports a render asset as a 3D part (M3), not as a skin.
+    CHECK_THAT(diagnostic({{"model.ips", "import solid from \"solid.ips\"\nasset deep {\n  size 8x8x8\n  render { s = solid.draw(1) }\n}\n"},
                            {"solid.ips", solid}}),
-               ContainsSubstring("'solid' is a render asset; a skin comes from an asset with draw { }"));
+               ContainsSubstring("'solid' is a render asset; build it with solid.render(seed, ...)"));
     // The types of render assets are no types of a draw asset: not in a
     // helper nobody calls, a result, a typed local or a constant.
     const auto flat = [](const std::string& declarations, const std::string& body, const std::string& helpers) {

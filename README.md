@@ -152,6 +152,15 @@ it, and one texture can dress a whole prop window by window:
     <img src="examples/models/lantern-sheet.png" alt="Eight lanterns from one source: four or six sides, domed, stepped or pointed roofs, rusted iron, glass panes and a glowing candle flame." width="1024">
 </p>
 
+A shape can follow a curve or a path; blocks smooth, bend, twist and roughen
+what they build; a model can be built from other models; and it hands the
+game points and boxes, such as where its lights hang and what collides. A
+street lamp, a railing, a boulder and a table, two seeds each:
+
+<p align="center">
+    <img src="examples/models/shapes-sheet.png" alt="Two street lamps with arms curved along a path and glowing glass bowls, two iron railings swept along a curved bay and a corner with twisted bars, two boulders pushed in and out by noise, and two tables standing on turned legs that are models of their own." width="1024">
+</p>
+
 Models run in the browser and in Godot today. They are a preview: the language and the
 `.iprop3d` format may still change. Start with the
 [models chapter](docs/language/models.md).

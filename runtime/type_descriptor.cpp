@@ -32,6 +32,7 @@ const char* kindName(Kind kind) {
     case Kind::Seed: return "seed";
     case Kind::Vec3: return "vec3";
     case Kind::Skin: return "skin";
+    case Kind::Box3d: return "box3d";
     }
     return "?";
 }
@@ -55,7 +56,7 @@ const char* valueTypeName(TypeDescriptor type) {
                 add(TypeDescriptor::list(description));
             }
         }
-        for (const Kind element : {Kind::I32, Kind::F32, Kind::Color, Kind::Vec2, Kind::Distribution})
+        for (const Kind element : {Kind::I32, Kind::F32, Kind::Color, Kind::Vec2, Kind::Distribution, Kind::Vec3})
             add(TypeDescriptor::list(element));
         return names;
     }();

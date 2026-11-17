@@ -22,6 +22,9 @@ ips::ValueType Emitter::emitCall(const ips::Call& call) {
         } else if constexpr (std::is_same_v<T, SkinCall>) {
             emitSkinCall(target);
             return ips::ValueType::Skin;
+        } else if constexpr (std::is_same_v<T, ModelPartCall>) {
+            emitModelPartCall(target);
+            return ips::ValueType::Void;
         } else {
             if (target.constant) {
                 emitConst(*target.constant);
@@ -307,6 +310,16 @@ void Emitter::emitSkinCall(const SkinCall& call) {
         emitConst(i32{0});
     }
     page(model::Op::SkinDraw, static_cast<u16>(call.program));
+}
+
+// The inputs in declaration order, then the seed (models v1.2, M3).
+void Emitter::emitModelPartCall(const ModelPartCall& call) {
+    for (const auto& input : call.inputs) {
+        if (const auto* arg = std::get_if<PlannedArgument>(&input)) emitArg(*arg);
+        else emitConst(std::get<Value>(input));
+    }
+    emitArg(call.seed);
+    page(model::Op::PartRender, static_cast<u16>(call.part));
 }
 
 void Emitter::emitPartCall(const PartCall& call) {

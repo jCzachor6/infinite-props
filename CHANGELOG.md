@@ -43,8 +43,8 @@ interfaces may change in any release until the contract is frozen.
 - **Examples.** A chair, a crate, a barrel and a sword in `examples/models`,
   each with several shapes chosen by the seed, and their skins: oak, cloth,
   metal, leather and a blade with its fuller.
-- **Hosts.** A separate C header, `iprop3d.h` (API 0.1, static library, no
-  ABI promise yet); `iprop3d.wasm` with `Iprop3D`, a worker and a three.js
+- **Hosts.** A separate C header, `iprop3d.h` (its own API version, static
+  library, no ABI promise yet); `iprop3d.wasm` with `Iprop3D`, a worker and a three.js
   adapter beside an unchanged `iprop.wasm`; `IpropModel` and
   `IpropModelInstance3D` in the Godot extension, which share one GPU texture
   per texture key. The other bindings have no model interface yet. See
@@ -90,6 +90,51 @@ interfaces may change in any release until the contract is frozen.
 - **Language description.** Schema 8 gains `source_rules.material_maps` and,
   under `models`, the alpha modes, map factors, windows and imported
   constants.
+
+### Models: shapes along a path, shaping blocks, outputs and parts
+
+Everything below is part of the models preview: existing `.ips` sources
+compile to the same bytes, existing `.iprop` files keep their image, outputs,
+RNG, fuel and work, and every model of the earlier corpus keeps its pins.
+
+- **Shapes along a path.** `tube(a, b, c, d, r0, r1, sides, segments, skin)`
+  runs a round section along a cubic Bézier curve with frames that never
+  twist; `sweep(path, profile, skin)` runs an outline along a
+  `list<vec3>` path, mitred at every corner. `list<vec3>` is new: literals,
+  constants, locals, parameters, indexing and `list.len`.
+- **Shaping blocks.** `smooth(angle)`, `refine(count)`, `bend(angle)`,
+  `twist(angle)`, `taper(scale)` and `displace(amount, frequency, seed)`
+  collect what their body builds and change it when they close: soft
+  shading, finer triangles, deformations along the block's height and a
+  surface pushed in and out by a noise in space. Copies of a vertex on a hard
+  edge move together, so displaced solids stay closed.
+- **Outputs.** `output point3d` and `output box3d`, singular or `list`, hand
+  a game points (where a light or a handle goes) and oriented boxes
+  (colliders). A value written in a `place` block moves, turns, scales and
+  mirrors with it, exactly as a vertex built there; a point follows a bend,
+  a twist and a taper too, and a box cannot bend.
+- **Parts.** A render asset imports another and builds it with
+  `alias.render(seed, input = value, ...)` where the call stands, with its
+  own seed and skins; `alias.outputs.name` reads the part's points in the
+  block that called it. A part and its model share their `scale`.
+- **Format.** Optional sections 14 (outputs) and 15 (parts); the new model
+  operations use the ranges reserved for them. A model without outputs or
+  parts keeps its bytes.
+- **Fuel.** Calibrated like M1's: a block pays 24 to open and 3 a vertex and
+  1 a triangle it hands on, plus 8 a vertex for `smooth`, 3 for the
+  deformations, 18 a vertex and 4 a triangle for `displace` and 5 and 2 for
+  what `refine` adds; a sweep 24 a point of its path; an output write 8 or
+  16. See the [contract](spec/models-v1.2.md#shaping-blocks).
+- **Hosts.** Model C API **0.2**: `output_count` and `iprop3d_result_output`
+  and `_find`. `iprop3d.wasm` returns `outputs`, the three.js adapter has
+  `outputsToObject3D`, and the model viewer draws them over the model. Godot's `IpropModel.outputs`, and
+  `IpropModelInstance3D` makes a `Marker3D` at every point and box colliders
+  in a `StaticBody3D`. `ipgen --dump` and its summary print the outputs, and
+  the `.glb` carries them as named nodes.
+- **Examples.** A street lamp with one arm or two, a railing with swept
+  rails and twisted bars, a boulder, and a table on four turned legs that
+  are parts of their own, with a stone skin; handbook sections and examples
+  for every addition. The model corpus grows to 75 generations.
 
 ## v1.1.0 — 2026-11-15
 

@@ -33,6 +33,9 @@
       "skins",
       "primitives",
       "placing",
+      "shaping",
+      "outputs",
+      "parts",
       "limits",
       "tools",
       "builtins",
@@ -87,7 +90,7 @@
           "heading": "Points and directions"
         },
         {
-          "heading": "More overloads of lerp"
+          "heading": "More overloads of lerp and list.len"
         }
       ],
       "demos": [
@@ -133,7 +136,8 @@
         }
       ],
       "demos": [
-        "model-primitives.ips"
+        "model-primitives.ips",
+        "model-paths.ips"
       ]
     },
     {
@@ -147,6 +151,46 @@
       ],
       "demos": [
         "model-place.ips"
+      ]
+    },
+    {
+      "id": "shaping",
+      "title": "Shaping blocks",
+      "chapter": "models.md",
+      "parts": [
+        {
+          "heading": "Shaping blocks"
+        }
+      ],
+      "demos": [
+        "model-shaping.ips"
+      ]
+    },
+    {
+      "id": "outputs",
+      "title": "Outputs",
+      "chapter": "models.md",
+      "parts": [
+        {
+          "heading": "Outputs"
+        }
+      ],
+      "demos": [
+        "model-outputs.ips"
+      ]
+    },
+    {
+      "id": "parts",
+      "title": "Parts",
+      "chapter": "models.md",
+      "parts": [
+        {
+          "heading": "Parts"
+        }
+      ],
+      "demos": [
+        "model-parts.ips",
+        "model-leg.ips"
       ]
     },
     {

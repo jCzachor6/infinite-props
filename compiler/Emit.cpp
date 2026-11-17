@@ -22,7 +22,7 @@ void Emitter::ins(Opcode opcode, u8 aux, u16 operand) {
     // opcode has a matching End in the validated output, so the vector is
     // balanced and empty at every function boundary.
     if (opcode == Opcode::If || opcode == Opcode::Block || opcode == Opcode::LayerBegin || opcode == Opcode::ClipBegin ||
-        (opcode == model::kModelPage && aux == static_cast<u8>(model::Op::PlaceBegin))) {
+        (opcode == model::kModelPage && model::opensScope(static_cast<model::Op>(aux)))) {
         labelKinds_.push_back(0);
     } else if (opcode == Opcode::Loop) {
         labelKinds_.push_back(1);
@@ -174,6 +174,21 @@ void Emitter::emitStmt(const ips::Stmt& stmt) {
         ins(Opcode::ClipBegin);
         for (const auto& child : clip->body) emitStmt(child);
         ins(Opcode::End);
+    } else if (const auto* shaping = std::get_if<ips::PlaceStmt>(&stmt); shaping && shaping->block != "place") {
+        // A shaping block (M3): its arguments in order, numbers as f32.
+        const auto& shape = *ips::findShapeBlock(shaping->block);
+        for (std::size_t i = 0; i < shape.count; ++i) {
+            const auto& value = *shaping->args[i].value;
+            if (shape.parameters[i].kind == ips::ShapeArgument::Degrees ||
+                shape.parameters[i].kind == ips::ShapeArgument::Number)
+                emitNumber(value);
+            else
+                emitExpr(value);
+        }
+        currentLine_ = static_cast<u32>(shaping->location.line);
+        page(shape.op);
+        for (const auto& child : shaping->body) emitStmt(child);
+        ins(Opcode::End);
     } else if (const auto* place = std::get_if<ips::PlaceStmt>(&stmt)) {
         // The arguments are pushed in the bit order of the mask, whatever
         // order the source names them in (spec models v1.2).
@@ -311,7 +326,20 @@ void Emitter::emitOutputWrite(const ips::Program* owner,
     const auto resource = [&] {
         return plan_.resourceSlotIndex.at({current_->partOwner.value_or(kRootParent), output.name});
     };
+    // A render asset's slots (M3) are numbered on their own.
+    const auto modelSlot = [&] {
+        return static_cast<u16>(plan_.modelSlotIndex.at({current_->partOwner.value_or(kRootParent), output.name}));
+    };
     switch (output.kind) {
+    case ips::OutputKind::Point3d:
+        emitExpr(value);
+        page(output.isList ? model::Op::OutListPoint3d : model::Op::OutPoint3d, modelSlot());
+        return;
+    case ips::OutputKind::Box3d:
+        // The checker admits only a `{at, size}` literal of two vec3 values.
+        for (const auto& element : std::get<ips::VectorLit>(value).elements) emitExpr(*element);
+        page(output.isList ? model::Op::OutListBox3d : model::Op::OutBox3d, modelSlot());
+        return;
     case ips::OutputKind::Part:
         emitExpr(value);
         ins(Opcode::OutListPart, 0, slot());

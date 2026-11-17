@@ -87,6 +87,7 @@ private:
     ips::ValueType emitSelection(const SelectionCall& call);
     void emitPartCall(const PartCall& call);
     void emitSkinCall(const SkinCall& call);
+    void emitModelPartCall(const ModelPartCall& call);
     // An instruction of the model page (models v1.2).
     void page(model::Op op, u16 operand = 0);
     // A value as f32: an i32 widens.

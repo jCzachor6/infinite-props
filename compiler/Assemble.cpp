@@ -182,8 +182,10 @@ std::vector<u8> Assembler::assemble() {
     code.writeU32(static_cast<u32>(plan_.functions.size()));
     code.writeBytes(table.data());
     code.writeBytes(streams.data());
-    code.writeU32(static_cast<u32>(plan_.parts.size()));
-    for (std::size_t i = 0; i < plan_.parts.size(); ++i) {
+    // A model's parts are a section of their own (M3), not this table.
+    const std::size_t tableParts = model ? 0 : plan_.parts.size();
+    code.writeU32(static_cast<u32>(tableParts));
+    for (std::size_t i = 0; i < tableParts; ++i) {
         const ips::Program* part = plan_.parts[i];
         sourcePath_ = plan_.sourcePath(part);
         code.writeU32(plan_.functionIndex.at(plan_.instances[i].path + ".draw"));
@@ -202,7 +204,7 @@ std::vector<u8> Assembler::assemble() {
     //      Every compiled part has one, so outputs read by a parent are in
     //      its coordinates and the host receives root coordinates. ----
     Writer instances;
-    if (!plan_.parts.empty()) {
+    if (!model && !plan_.parts.empty()) {
         instances.writeU32(static_cast<u32>(plan_.instances.size()));
         for (const auto& instance : plan_.instances) {
             instances.writeU32(plan_.pools.indexOf(instance.path));
@@ -249,7 +251,7 @@ std::vector<u8> Assembler::assemble() {
         for (const auto& function : plan_.functions)
             exports.writeU32(function.partOwner.value_or(kRootParent));
     }
-    Writer modelSection, skinsSection;
+    Writer modelSection, skinsSection, outputsSection, partsSection;
     if (model) {
         const f32 size[3] = {static_cast<f32>(*asset.sizeX), static_cast<f32>(*asset.sizeY), static_cast<f32>(*asset.sizeZ)};
         const auto scale = ips::modelScale(asset);
@@ -258,10 +260,30 @@ std::vector<u8> Assembler::assemble() {
         std::vector<model::SkinEntry> entries;
         for (const auto& skin : plan_.skins) entries.push_back({plan_.pools.indexOf(skin.alias), skin.bytes});
         model::writeSkinsSection(skinsSection, entries);
+        // M3: the 3D output slots and the parts, each only when present, so
+        // a model with neither keeps its bytes.
+        if (!plan_.modelSlots.empty()) {
+            std::vector<model::OutputEntry> slots;
+            for (const auto& slot : plan_.modelSlots)
+                slots.push_back({plan_.pools.indexOf(slot.name),
+                                 slot.kind == ips::OutputKind::Box3d ? model::ModelOutputKind::Box3d : model::ModelOutputKind::Point3d,
+                                 slot.isList, slot.owner == kRootParent ? model::kRootOwner : static_cast<u16>(slot.owner)});
+            model::writeOutputsSection(outputsSection, slots);
+        }
+        if (!plan_.parts.empty()) {
+            std::vector<model::PartEntry> parts;
+            for (std::size_t i = 0; i < plan_.parts.size(); ++i) {
+                const std::string prefix = plan_.instances[i].path + ".";
+                const u32 first = plan_.functionIndex.at(prefix + ips::entryFunction(plan_.parts[i]->asset)->name);
+                parts.push_back({plan_.pools.indexOf(plan_.instances[i].path), first,
+                                 static_cast<u32>(plan_.parts[i]->asset.functions.size()), plan_.instances[i].parent});
+            }
+            model::writePartsSection(partsSection, parts);
+        }
     }
-    const u32 sectionCount = 4 + (plan_.parts.empty() ? 0u : 1u) + (types.size() ? 1u : 0u) +
+    const u32 sectionCount = 4 + (!model && !plan_.parts.empty() ? 1u : 0u) + (types.size() ? 1u : 0u) +
         (collections.size() ? 1u : 0u) + (samplers.size() ? 1u : 0u) + (steppers.size() ? 1u : 0u) + (distributions.size() ? 1u : 0u) + (exports.size() ? 1u : 0u) +
-        (model ? 2u : 0u);
+        (model ? 2u : 0u) + (outputsSection.size() ? 1u : 0u) + (partsSection.size() ? 1u : 0u);
     // ---- file (spec §2) ----
     Writer file;
     for (const u8 magic : model ? model::kModelDialect.magic : kPropDialect.magic) {
@@ -281,7 +303,7 @@ std::vector<u8> Assembler::assemble() {
     section(static_cast<u32>(SectionId::Meta), meta.data());
     section(static_cast<u32>(SectionId::Const), consts.data());
     section(static_cast<u32>(SectionId::Code), code.data());
-    if (!plan_.parts.empty()) section(static_cast<u32>(SectionId::Parts), instances.data());
+    if (!model && !plan_.parts.empty()) section(static_cast<u32>(SectionId::Parts), instances.data());
     if (types.size()) section(static_cast<u32>(SectionId::Types), types.data());
     if (collections.size()) section(static_cast<u32>(SectionId::Collections), collections.data());
     if (samplers.size()) section(static_cast<u32>(SectionId::Samplers), samplers.data());
@@ -291,6 +313,8 @@ std::vector<u8> Assembler::assemble() {
     if (model) {
         section(static_cast<u32>(model::kModelSection), modelSection.data());
         section(static_cast<u32>(model::kSkinsSection), skinsSection.data());
+        if (outputsSection.size()) section(static_cast<u32>(model::kOutputsSection), outputsSection.data());
+        if (partsSection.size()) section(static_cast<u32>(model::kPartsSection), partsSection.data());
     }
     section(static_cast<u32>(SectionId::Debug), debug.data());
     file.writeBytes(meta.data());
@@ -305,6 +329,8 @@ std::vector<u8> Assembler::assemble() {
     file.writeBytes(steppers.data());
     file.writeBytes(modelSection.data());
     file.writeBytes(skinsSection.data());
+    file.writeBytes(outputsSection.data());
+    file.writeBytes(partsSection.data());
     file.writeBytes(debug.data());
     return file.data();
 }

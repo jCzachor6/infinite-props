@@ -222,6 +222,12 @@ change in any release until the models contract is frozen.
   with RGBA8 `Image` values. Equal `key`s mean equal pixels. `bounds_min`,
   `bounds_max`, `vertex_count`, `triangle_count`, `fuel_used` and `work`
   (`{budget, used}`) complete it. Returned images and arrays own their data.
+- **Outputs** — `outputs` lists the model's own
+  [outputs](../../docs/language/models.md#outputs) in declaration order and
+  in metres: `{index, name, kind ("point3d" or "box3d"), list, points}` with
+  a `PackedVector3Array`, or `boxes`, each `{transform, size}`: the
+  `Transform3D`'s basis is the box's axes and its origin the centre. A point
+  divides like the mesh's positions, so a point on a vertex is on it.
 - **Failures** — `generate` returns null, `last_error` holds status, reason,
   stage, location flags, PC and message, and the previous generation's
   properties stay. A failure inside a texture names its skin program
@@ -229,6 +235,11 @@ change in any release until the models contract is frozen.
 - **`IpropModelInstance3D` (MeshInstance3D)** — holds an `IpropModel` and a
   `seed`; it regenerates its mesh when either changes or the model's inputs
   do, and shows nothing while the model is not loaded or a generation fails.
+  With `markers` (on by default) it adds a `Marker3D` child at every point
+  output, named after it (`name_0`, `name_1` … in a list), and with
+  `colliders` (on by default) a `StaticBody3D` named `Colliders` holding a
+  `CollisionShape3D` with a `BoxShape3D` for every box output. These children
+  are rebuilt with the mesh and are not saved with a scene.
 
 `model-demo.tscn` shows six chairs from `assets/chair.iprop3d`, each from its
 own seed, turning under a lamp that follows the mouse: **Space** rolls new
@@ -239,7 +250,7 @@ cushion fabric.
 Godot.app/Contents/MacOS/Godot --path build/godot-project model-demo.tscn
 ```
 
-`godot_models` (ctest) runs headlessly: it compiles five models with `ipc`,
+`godot_models` (ctest) runs headlessly: it compiles eight models with `ipc`,
 generates them with `ipgen --dump` and with `IpropModel` for several seeds
 and inputs, and demands the same bits in every vertex, index, material
 number, texture and counter. It then checks the mesh against those arrays

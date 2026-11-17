@@ -194,3 +194,31 @@ limits allow costs under 1.3 million of the default 25,000,000. The numbers
 are one machine's and no test asserts a timing; the exact prices are pinned
 in `tests/model/program_test.cpp`. Work is unchanged: one step per vertex
 and per triangle.
+
+### Milestone M3
+
+The shapes along a path, the shaping blocks, the part call and the output
+writes were measured the same way (the rows after `-- milestone M3`). A
+block's own prices are the difference between a refined box in the block and
+the refined box alone, so each row prices the block and nothing else. The
+first estimates charged a closing block the 6 and 2 of a primitive for every
+vertex and triangle it hands on, and 8 a vertex for a deformation, which the
+measurement put at 1.4–3.0 ns per unit; an output write cost 12–18 ns per
+unit. Handing a vertex on transforms it once and rounds it at most once,
+less than a primitive's emission does, so it has prices of its own:
+
+| Statement | First estimate | Final prices | ns per unit |
+| --- | --- | --- | --- |
+| `tube`, 16 sides, 12 segments | primitive's 6 and 2 | unchanged | 4.0 |
+| `sweep`, 4 points of path and of profile | primitive's, profile `ceil(n*n/3)` | + 24 a point of the path | 4.2 |
+| a block around a box, handing it on (`refine(1)`) | 6 and 2 a vertex and triangle | 3 and 1 | 4.3 |
+| `refine(4)` of a box | 6 and 2 for what it adds | 5 and 2 | 4.2 |
+| `smooth(30)` | 8 a vertex | unchanged | 4.0 |
+| `bend`, `twist` | 8 a vertex | 3 | 4.1–4.2 |
+| `taper` | 8 a vertex | 3 | 3.2 |
+| `displace` | 16 a vertex, 4 a triangle | 18 and 4 | 4.2 |
+| a part call of one box | block's | block's | 3.8 |
+| a `point3d` / `box3d` write | 1 | 1 + 8 / 1 + 16 | 3.5 / 4.3 |
+
+`taper` shares the price of `bend` and `twist` though it needs no sine: one
+price for the three is simpler, and it errs on the dear side.

@@ -60,11 +60,17 @@ def main():
         for entry in builtin['overloads']:
             signatures += 1
             valid(entry['effects'])
-            assert entry['effects']['summary'] == 'intrinsic' and 'opcode' not in entry and entry['model_op'], builtin
+            # An overload a 2D builtin gains may be its 2D opcode on a model
+            # type (list.len of a list<vec3>, M3).
+            assert entry['effects']['summary'] == 'intrinsic' and ('opcode' in entry) != ('model_op' in entry), builtin
+            assert 'opcode' not in entry or builtin in models['extended_builtins'], builtin
             if entry['result'] == 'void':
                 assert entry['effects']['writes_canvas'], builtin
-    for part in ('place', 'skin_call'):
+    for part in ('place', 'skin_call', 'model_parts', 'shaping_blocks'):
         valid(models[part]['effects'])
+    # A part builds in its own stream; a shaping block draws nothing.
+    assert models['model_parts']['effects']['writes_canvas']
+    assert models['shaping_blocks']['effects'] == models['place']['effects']
     assert models['place']['effects'] == {'rng': 'none', 'writes_canvas': False, 'writes_outputs': False,
                                           'summary': 'intrinsic', 'may_trap': ['numeric_range', 'scope_depth']}
     # A texture is generated from its own seed and never moves the model's stream.

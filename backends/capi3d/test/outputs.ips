@@ -1,0 +1,22 @@
+// The outputs of the C API tests: a point, a list of points and a box, the
+// points written inside a turned block, and one output never written.
+import tile from "tile.ips"
+
+asset post {
+  size 10x20x10
+  output point3d tip
+  output list point3d marks
+  output box3d body
+  output point3d never
+
+  render {
+    s = tile.draw(1)
+    box({0, 0, 0}, {2, 16, 2}, s)
+    body = {{0, 0, 0}, {2, 16, 2}}
+    place(at = {0, 16, 0}, yaw = 90.0) {
+      tip = {3, 0, 0}
+      marks = {1, 0, 0}
+      marks = {2, 0, 0}
+    }
+  }
+}

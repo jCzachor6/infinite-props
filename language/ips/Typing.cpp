@@ -26,6 +26,8 @@ ValueType outputValueType(OutputKind kind) {
     case OutputKind::Ao:
     case OutputKind::Emission: return ValueType::Layer;
     case OutputKind::Part: return ValueType::Part2d;
+    case OutputKind::Point3d: return ValueType::Vec3;
+    case OutputKind::Box3d: return ValueType::Box3d;
     }
     return ValueType::Vec2;
 }
@@ -566,6 +568,10 @@ ValueType Typer::typePartRead(const Expr& expr) {
         error(locationOf(expr),
               "cannot read list output '" + read.output->name + "'");
     }
+    // A 3D part hands its parent points, read where it was built (M3).
+    if (read.kind == OutputKind::Box3d)
+        error(locationOf(expr), "cannot read box3d output '" + read.output->name + "' of a part; "
+                                "a parent reads a part's point3d outputs");
     return outputValueType(read.kind);
 }
 
@@ -582,7 +588,15 @@ ValueType Typer::typeVector(const VectorLit& vector) {
         return type;
     };
     switch (vector.elements.size()) {
-    case 2: return numericElements(ValueType::Vec2);
+    case 2:
+        // `{at, size}` of two points in space is the box of a box3d output.
+        if (modelAsset() && typeOf(*vector.elements[0]) == ValueType::Vec3) {
+            for (const auto& element : vector.elements)
+                if (const ValueType got = typeOf(*element); got != ValueType::Vec3)
+                    error(locationOf(*element), "a box {at, size} needs two vec3 values, got " + std::string(typeName(got)));
+            return ValueType::Box3d;
+        }
+        return numericElements(ValueType::Vec2);
     // Three numbers are a point in space in a render asset and the circle of
     // an output write in a draw asset.
     case 3: return numericElements(modelAsset() ? ValueType::Vec3 : ValueType::Circle);

@@ -4,6 +4,12 @@
 #include "godot_support.hpp"
 
 #include <godot_cpp/classes/base_material3d.hpp>
+#include <godot_cpp/classes/box_shape3d.hpp>
+#include <godot_cpp/classes/collision_shape3d.hpp>
+#include <godot_cpp/classes/marker3d.hpp>
+#include <godot_cpp/classes/static_body3d.hpp>
+#include <godot_cpp/variant/basis.hpp>
+#include <godot_cpp/variant/transform3d.hpp>
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/image_texture.hpp>
@@ -72,6 +78,7 @@ void IpropModel::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_skin_programs"), &IpropModel::get_skin_programs);
     ClassDB::bind_method(D_METHOD("get_surfaces"), &IpropModel::get_surfaces);
     ClassDB::bind_method(D_METHOD("get_textures"), &IpropModel::get_textures);
+    ClassDB::bind_method(D_METHOD("get_outputs"), &IpropModel::get_outputs);
     ClassDB::bind_method(D_METHOD("get_bounds_min"), &IpropModel::get_bounds_min);
     ClassDB::bind_method(D_METHOD("get_bounds_max"), &IpropModel::get_bounds_max);
     ClassDB::bind_method(D_METHOD("get_vertex_count"), &IpropModel::get_vertex_count);
@@ -97,6 +104,7 @@ void IpropModel::_bind_methods() {
     ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "skin_programs"), "", "get_skin_programs");
     ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "surfaces"), "", "get_surfaces");
     ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "textures"), "", "get_textures");
+    ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "outputs"), "", "get_outputs");
     ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "bounds_min"), "", "get_bounds_min");
     ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "bounds_max"), "", "get_bounds_max");
     ADD_PROPERTY(PropertyInfo(Variant::INT, "vertex_count"), "", "get_vertex_count");
@@ -466,11 +474,51 @@ Ref<ArrayMesh> IpropModel::generate(int64_t seed, const Dictionary& limits) {
         mesh->surface_set_name(surface, Dictionary(candidate_textures[view.texture_index])["name"]);
     }
 
+    // Outputs (M3): points and boxes in metres, in Godot's axes (the same
+    // right-handed +Y up as the model's), divided as the mesh's positions are
+    // so that a point on a vertex stays on it.
+    Array candidate_outputs;
+    for (uint32_t o = 0; o < info.output_count; ++o) {
+        iprop3d_output_view view;
+        String name;
+        if (iprop3d_output_view_init(&view, sizeof(view)) != IPROP_EX_OK ||
+            iprop3d_result_output(result, o, &view, failure.get()) != IPROP_EX_OK || !decodeName(view.name, name))
+            return readFailure();
+        Dictionary entry;
+        entry["index"] = static_cast<int64_t>(o);
+        entry["name"] = name;
+        entry["list"] = view.list != 0;
+        const float* v = view.values;
+        const auto point = [&](uint32_t at) { return Vector3(v[at] / units, v[at + 1] / units, v[at + 2] / units); };
+        if (view.kind == IPROP3D_OUTPUT_BOX3D) {
+            entry["kind"] = "box3d";
+            Array boxes;
+            for (uint32_t i = 0; i < view.value_count; ++i) {
+                const uint32_t at = i * 15;
+                Dictionary box;
+                // Basis(x, y, z) takes the axes as its columns.
+                const Basis basis(Vector3(v[at + 6], v[at + 7], v[at + 8]), Vector3(v[at + 9], v[at + 10], v[at + 11]),
+                                  Vector3(v[at + 12], v[at + 13], v[at + 14]));
+                box["transform"] = Transform3D(basis, point(at));
+                box["size"] = point(at + 3);
+                boxes.push_back(box);
+            }
+            entry["boxes"] = boxes;
+        } else {
+            entry["kind"] = "point3d";
+            PackedVector3Array points;
+            for (uint32_t i = 0; i < view.value_count; ++i) points.push_back(point(i * 3));
+            entry["points"] = points;
+        }
+        candidate_outputs.push_back(entry);
+    }
+
     Dictionary candidate_work;
     candidate_work["budget"] = static_cast<int64_t>(info.work_budget);
     candidate_work["used"] = static_cast<int64_t>(info.work_used);
     surfaces_ = candidate_surfaces;
     textures_ = candidate_textures;
+    outputs_ = candidate_outputs;
     bounds_min_ = Vector3(info.bounds_min[0], info.bounds_min[1], info.bounds_min[2]);
     bounds_max_ = Vector3(info.bounds_max[0], info.bounds_max[1], info.bounds_max[2]);
     vertex_count_ = info.vertex_count;
@@ -489,10 +537,16 @@ void IpropModelInstance3D::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_model"), &IpropModelInstance3D::get_model);
     ClassDB::bind_method(D_METHOD("set_seed", "seed"), &IpropModelInstance3D::set_seed);
     ClassDB::bind_method(D_METHOD("get_seed"), &IpropModelInstance3D::get_seed);
+    ClassDB::bind_method(D_METHOD("set_markers", "enabled"), &IpropModelInstance3D::set_markers);
+    ClassDB::bind_method(D_METHOD("get_markers"), &IpropModelInstance3D::get_markers);
+    ClassDB::bind_method(D_METHOD("set_colliders", "enabled"), &IpropModelInstance3D::set_colliders);
+    ClassDB::bind_method(D_METHOD("get_colliders"), &IpropModelInstance3D::get_colliders);
 
     ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "model", PROPERTY_HINT_RESOURCE_TYPE, "IpropModel"),
                  "set_model", "get_model");
     ADD_PROPERTY(PropertyInfo(Variant::INT, "seed"), "set_seed", "get_seed");
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "markers"), "set_markers", "get_markers");
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "colliders"), "set_colliders", "get_colliders");
 }
 
 void IpropModelInstance3D::_ready() {
@@ -502,10 +556,73 @@ void IpropModelInstance3D::_ready() {
 void IpropModelInstance3D::refresh() {
     if (model_.is_null() || !model_->is_loaded()) {
         set_mesh(Ref<Mesh>());
+        rebuild_outputs();
         return;
     }
     // A failed generation returns null: the node then shows nothing.
-    set_mesh(model_->generate(seed_));
+    const Ref<ArrayMesh> mesh = model_->generate(seed_);
+    set_mesh(mesh);
+    rebuild_outputs();
+}
+
+// The children of the outputs: removed and made again for each mesh.
+void IpropModelInstance3D::rebuild_outputs() {
+    for (const ObjectID id : output_nodes_) {
+        if (Node* node = Object::cast_to<Node>(ObjectDB::get_instance(id))) {
+            remove_child(node);
+            node->queue_free();
+        }
+    }
+    output_nodes_.clear();
+    if (model_.is_null() || get_mesh().is_null()) return;
+    const Array outputs = model_->get_outputs();
+    StaticBody3D* body = nullptr;
+    for (int64_t o = 0; o < outputs.size(); ++o) {
+        const Dictionary output = outputs[o];
+        const String name = output["name"];
+        const bool list = output["list"];
+        if (String(output["kind"]) == "point3d") {
+            if (!markers_) continue;
+            const PackedVector3Array points = output["points"];
+            for (int64_t i = 0; i < points.size(); ++i) {
+                Marker3D* marker = memnew(Marker3D);
+                marker->set_name(list ? name + String("_") + String::num_int64(i) : name);
+                marker->set_position(points[i]);
+                add_child(marker);
+                output_nodes_.push_back(ObjectID(marker->get_instance_id()));
+            }
+            continue;
+        }
+        if (!colliders_) continue;
+        const Array boxes = output["boxes"];
+        for (int64_t i = 0; i < boxes.size(); ++i) {
+            if (body == nullptr) {
+                body = memnew(StaticBody3D);
+                body->set_name("Colliders");
+                add_child(body);
+                output_nodes_.push_back(ObjectID(body->get_instance_id()));
+            }
+            const Dictionary box = boxes[i];
+            Ref<BoxShape3D> shape;
+            shape.instantiate();
+            shape->set_size(box["size"]);
+            CollisionShape3D* collider = memnew(CollisionShape3D);
+            collider->set_name(list ? name + String("_") + String::num_int64(i) : name);
+            collider->set_shape(shape);
+            collider->set_transform(box["transform"]);
+            body->add_child(collider);
+        }
+    }
+}
+
+void IpropModelInstance3D::set_markers(bool enabled) {
+    markers_ = enabled;
+    rebuild_outputs();
+}
+
+void IpropModelInstance3D::set_colliders(bool enabled) {
+    colliders_ = enabled;
+    rebuild_outputs();
 }
 
 void IpropModelInstance3D::set_model(const Ref<IpropModel>& model) {

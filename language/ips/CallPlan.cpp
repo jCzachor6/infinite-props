@@ -91,6 +91,21 @@ CallSignature skinCallSignature(std::span<const PartInput> inputs) {
     result.evaluationOrder.push_back(kSkinSizeSlot);
     return result;
 }
+// `alias.render(seed, inputs...)` (M3): a part builds in its own stream and
+// changes the model, like a 2D part draws.
+CallSignature modelPartCallSignature(std::span<const PartInput> inputs) {
+    std::vector<std::string> names;
+    for (const auto& input : inputs) names.push_back(input.name);
+    auto result = ordered(modelPartParameters(names));
+    result.effects = findOpcode(Opcode::PartDraw)->effects;
+    result.evaluationOrder.clear();
+    for (std::size_t i = 0; i < inputs.size(); ++i) {
+        result.evaluationOrder.push_back(kModelPartFirstInput + i);
+        result.defaults[kModelPartFirstInput + i] = inputs[i].declaration;
+    }
+    result.evaluationOrder.push_back(kModelPartSeedSlot);
+    return result;
+}
 BoundCallPlan bindCall(const Call& call, CallSignature signature, std::string_view function) {
     auto arguments = bindArguments(call, signature.parameters, function);
     return {std::move(signature), std::move(arguments)};
@@ -125,6 +140,15 @@ std::optional<BoundCallPlan> sourceCallPlan(const Program& program, const Call& 
             for (const auto& input : found->second->asset.inputs)
                 inputs.push_back({input.type, input.name, &input});
             return bindCall(call, model ? skinCallSignature(inputs) : partCallSignature(inputs), name);
+        }
+    }
+    if (model && name.ends_with(".render")) {
+        const auto found = parts.find(name.substr(0, name.size() - 7));
+        if (found != parts.end() && isModel(found->second->asset)) {
+            std::vector<PartInput> inputs;
+            for (const auto& input : found->second->asset.inputs)
+                inputs.push_back({input.type, input.name, &input});
+            return bindCall(call, modelPartCallSignature(inputs), name);
         }
     }
     return std::nullopt;

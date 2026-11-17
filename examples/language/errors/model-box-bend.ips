@@ -1,0 +1,13 @@
+// A box cannot bend: write a collider outside bend, twist and taper.
+import grid from "../skins/grid.ips"
+
+asset hook {
+  size 20x40x20
+  output box3d body
+  render {
+    bend(45.0) {
+      box({0, 0, 0}, {2, 30, 2}, grid.draw(1))
+      body = {{0, 0, 0}, {2, 30, 2}}
+    }
+  }
+}

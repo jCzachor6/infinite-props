@@ -307,10 +307,14 @@ struct ClipStmt {
 // `place(at = {0, 4, 0}, yaw = 90.0) { ... }` in a render asset: a placement
 // scope (models v1.2). Everything its body builds is moved, turned, scaled or
 // mirrored together. The arguments are named.
+// The shaping blocks of M3 share the node: `smooth(40.0) { ... }`, `refine`,
+// `bend`, `twist`, `taper` and `displace` name themselves in `block` and take
+// positional arguments.
 struct PlaceStmt {
     std::vector<Arg> args;
     std::vector<Stmt> body;
     SourceLocation location;
+    std::string block = "place";
 };
 
 struct Stmt
@@ -329,7 +333,9 @@ enum class InputType { Color, F32, U32, I32 };
 // A normal output is a layer export whose value is a direction layer; the
 // root's is published to the host as the normal image. The material maps
 // (v1.2) are layer exports of colour layers, published the same way.
-enum class OutputKind { Point, Rect, Circle, Mask, Layer, Part, Normal, Roughness, Metallic, Ao, Emission };
+enum class OutputKind { Point, Rect, Circle, Mask, Layer, Part, Normal, Roughness, Metallic, Ao, Emission, Point3d, Box3d };
+// The outputs of a render asset (models v1.2, M3): a point or a box in space.
+constexpr bool isModelOutput(OutputKind kind) { return kind == OutputKind::Point3d || kind == OutputKind::Box3d; }
 // An output that publishes an image of the root: normal or a material map.
 constexpr bool isImageOutput(OutputKind kind) {
     return kind == OutputKind::Normal || kind == OutputKind::Roughness || kind == OutputKind::Metallic ||

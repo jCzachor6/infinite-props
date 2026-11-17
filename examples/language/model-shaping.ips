@@ -1,0 +1,29 @@
+// Shaping blocks collect what their body builds and change it when they
+// close: refine adds vertices for the others to move, bend, twist and taper
+// deform along the height of the block, displace roughens, smooth softens.
+import grid from "skins/grid.ips"
+
+asset shapes {
+  size 150x60x40
+
+  render {
+    tile = grid.draw(1)
+    root = seed.initial()
+    place(at = {-60, 0, 0}) {
+      bend(60.0) { refine(6) { box({0, 0, 0}, {4, 40, 4}, tile) } }
+    }
+    place(at = {-25, 0, 0}) {
+      twist(120.0) { refine(8) { box({0, 0, 0}, {8, 40, 8}, tile) } }
+    }
+    place(at = {5, 0, 0}) {
+      taper(0.4) { cylinder({0, 0, 0}, 8.0, 40.0, 16, tile) }
+    }
+    place(at = {45, 0, 0}) {
+      smooth(60.0) {
+        displace(3.0, 0.08, root.fork("stone")) {
+          refine(6) { box({0, 0, 0}, {30, 24, 24}, tile) }
+        }
+      }
+    }
+  }
+}

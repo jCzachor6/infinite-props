@@ -30,7 +30,11 @@ static const field result_fields[] = {
     FIELD(iprop3d_result_info, triangle_count), FIELD(iprop3d_result_info, surface_count),
     FIELD(iprop3d_result_info, texture_count), FIELD(iprop3d_result_info, fuel_budget),
     FIELD(iprop3d_result_info, fuel_used), FIELD(iprop3d_result_info, work_budget),
-    FIELD(iprop3d_result_info, work_used)};
+    FIELD(iprop3d_result_info, work_used), FIELD(iprop3d_result_info, output_count)};
+static const field output_fields[] = {
+    FIELD(iprop3d_output_view, output_index), FIELD(iprop3d_output_view, kind), FIELD(iprop3d_output_view, list),
+    FIELD(iprop3d_output_view, value_count), FIELD(iprop3d_output_view, floats_per_value),
+    NAME(iprop3d_output_view), FIELD(iprop3d_output_view, values)};
 static const field surface_fields[] = {
     FIELD(iprop3d_surface_view, surface_index), FIELD(iprop3d_surface_view, texture_index),
     FIELD(iprop3d_surface_view, roughness), FIELD(iprop3d_surface_view, metallic),
@@ -60,6 +64,7 @@ static const field image_fields[] = {
 /* What the queries below read. `fail` selects a call that must be rejected. */
 static const iprop3d_model* model;
 static const iprop3d_result* result;
+static const iprop3d_result* posted; /* a result with outputs */
 
 static iprop_status_ex init_library(void* out, uint32_t n) { return iprop3d_library_info_init((iprop3d_library_info*)out, n); }
 static iprop_status_ex init_model(void* out, uint32_t n) { return iprop3d_model_info_init((iprop3d_model_info*)out, n); }
@@ -69,6 +74,7 @@ static iprop_status_ex init_result(void* out, uint32_t n) { return iprop3d_resul
 static iprop_status_ex init_surface(void* out, uint32_t n) { return iprop3d_surface_view_init((iprop3d_surface_view*)out, n); }
 static iprop_status_ex init_texture(void* out, uint32_t n) { return iprop3d_texture_view_init((iprop3d_texture_view*)out, n); }
 static iprop_status_ex init_image(void* out, uint32_t n) { return iprop_aux_image_view_ex_init((iprop_aux_image_view_ex*)out, n); }
+static iprop_status_ex init_output(void* out, uint32_t n) { return iprop3d_output_view_init((iprop3d_output_view*)out, n); }
 
 static iprop_status_ex query_library(void* out, int fail) {
     (void)fail;
@@ -91,6 +97,10 @@ static iprop_status_ex query_surface(void* out, int fail) {
 static iprop_status_ex query_texture(void* out, int fail) {
     return fail == 1 ? iprop3d_result_texture(NULL, 0, (iprop3d_texture_view*)out, NULL)
                      : iprop3d_result_texture(result, fail ? 2 : 0, (iprop3d_texture_view*)out, NULL);
+}
+static iprop_status_ex query_output(void* out, int fail) {
+    return fail == 1 ? iprop3d_result_output(NULL, 0, (iprop3d_output_view*)out, NULL)
+                     : iprop3d_result_output(posted, fail ? 9 : 0, (iprop3d_output_view*)out, NULL);
 }
 static iprop_status_ex query_image(void* out, int fail) {
     return fail == 1 ? iprop3d_result_texture_image(NULL, 0, 0, (iprop_aux_image_view_ex*)out, NULL)
@@ -169,7 +179,8 @@ int main(int argc, char** argv) {
     char path[1024];
     uint8_t* bytes; size_t length;
     iprop3d_model* loaded = NULL;
-    iprop3d_result *made = NULL, *zero = NULL, *prefix = NULL;
+    iprop3d_result *made = NULL, *zero = NULL, *prefix = NULL, *outputs_result = NULL;
+    iprop3d_model* outputs_model = NULL;
     iprop3d_generate_options options;
     iprop3d_result_info a, b;
     struct { uint32_t struct_size, flags, seed, tail; } wide;
@@ -193,6 +204,16 @@ int main(int argc, char** argv) {
     CHECK(prefixes(sizeof(iprop3d_surface_view), surface_fields, COUNT(surface_fields), 1, init_surface, query_surface) == 0);
     CHECK(prefixes(sizeof(iprop3d_texture_view), texture_fields, COUNT(texture_fields), 1, init_texture, query_texture) == 0);
     CHECK(prefixes(sizeof(iprop_aux_image_view_ex), image_fields, COUNT(image_fields), 1, init_image, query_image) == 0);
+    /* 3D outputs (API 0.2). */
+    CHECK(snprintf(path, sizeof(path), "%s/outputs.iprop3d", argv[1]) < (int)sizeof(path));
+    CHECK(read_fixture(path, &bytes, &length) == 0);
+    CHECK(iprop3d_model_load(bytes, (uint64_t)length, &outputs_model, NULL) == IPROP_EX_OK);
+    free(bytes);
+    CHECK(iprop3d_generate(outputs_model, &options, NULL, NULL, &outputs_result, NULL) == IPROP_EX_OK);
+    posted = outputs_result;
+    CHECK(prefixes(sizeof(iprop3d_output_view), output_fields, COUNT(output_fields), 1, init_output, query_output) == 0);
+    iprop3d_result_free(outputs_result);
+    iprop3d_model_free(outputs_model);
     CHECK(iprop3d_library_query(NULL, NULL) == IPROP_EX_E_ARGUMENT);
 
     /* Options as input: a four-byte prefix is seed zero, and an unknown tail
@@ -200,6 +221,9 @@ int main(int argc, char** argv) {
     options.seed = 0;
     CHECK(iprop3d_generate(loaded, &options, NULL, NULL, &zero, NULL) == IPROP_EX_OK);
     CHECK(iprop3d_generate(loaded, (const iprop3d_generate_options*)(const void*)&only_size, NULL, NULL, &prefix, NULL) == IPROP_EX_OK);
+    /* The tail padding of the info is the caller's: zero it to compare. */
+    memset(&a, 0, sizeof(a));
+    memset(&b, 0, sizeof(b));
     CHECK(iprop3d_result_info_init(&a, sizeof(a)) == IPROP_EX_OK && iprop3d_result_info_init(&b, sizeof(b)) == IPROP_EX_OK);
     CHECK(iprop3d_result_query(zero, &a, NULL) == IPROP_EX_OK && iprop3d_result_query(prefix, &b, NULL) == IPROP_EX_OK);
     CHECK(memcmp(&a, &b, sizeof(a)) == 0);

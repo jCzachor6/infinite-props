@@ -6,6 +6,7 @@
 #   tests/golden/shapes.ipa          -> test/assets/shapes.iprop
 #   examples/models/chair.ips        -> demo/chair.iprop3d (the model demo)
 #   examples/models/lantern.ips      -> demo/lantern.iprop3d
+#   examples/models/{streetlamp,railing,boulder,table}.ips -> demo/
 # Run from the repository root.
 
 set -e
@@ -23,6 +24,11 @@ cp examples/plant.iprop backends/html5/demo/plant.iprop
 # (model.html?model=lantern.iprop3d) shows material maps, glass and a flame.
 ./build/tools/ipc examples/models/chair.ips -o backends/html5/demo/chair.iprop3d
 ./build/tools/ipc examples/models/lantern.ips -o backends/html5/demo/lantern.iprop3d
+# Shapes along paths, shaping blocks, outputs and parts: the street lamp's
+# bulbs and the colliders show over the model (model.html?model=streetlamp.iprop3d).
+for model in streetlamp railing boulder table; do
+  ./build/tools/ipc "examples/models/$model.ips" -o "backends/html5/demo/$model.iprop3d"
+done
 
 # Conformance assets stay the golden fixtures (seed-independent by design).
 cp examples/portrait.iprop backends/html5/test/assets/portrait.iprop

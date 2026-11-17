@@ -355,10 +355,11 @@ def main():
         flat = {b['name'] for b in description['builtins']}
         added = {b['name']: b for b in models['builtins']}
         assert set(added) == {'box', 'cylinder', 'cone', 'band', 'sphere', 'lathe', 'extrude', 'quad', 'tri',
+            'tube', 'sweep',
             'vec3.len', 'vec3.dot', 'vec3.cross', 'vec3.normalize', 'skin.density', 'skin.fit', 'skin.shift',
             'skin.roughness', 'skin.metallic', 'skin.emission', 'skin.cutout', 'skin.two_sided', 'skin.crisp',
             'skin.blend', 'skin.region'}
-        assert [b['name'] for b in models['extended_builtins']] == ['lerp']
+        assert [b['name'] for b in models['extended_builtins']] == ['lerp', 'list.len']
         assert {'rect', 'pixel', 'poly', 'surface.paint', 'mask.from', 'noise.mask', 'part.draw', 'voronoi'} <= \
             set(models['unavailable_builtins']) < flat
         assert not {'sin', 'lerp', 'roll', 'choose', 'hash', 'noise.fbm', 'color.shade', 'seed.initial', 'list.len'} & \
@@ -383,7 +384,7 @@ def main():
         model('empty render block', 'render{}', True)
         # Every exported signature binds: one call per overload, arguments by type.
         values = {'vec3': '{1,2,3}', 'vec2': '{1,2}', 'f32': '0.5', 'i32': '8', 'skin': 's',
-                  'list<vec2>': '[{2,0},{2,2},{0,2}]'}
+                  'list<vec2>': '[{2,0},{2,2},{0,2}]', 'list<vec3>': '[{0,0,0},{0,4,0},{3,4,0}]'}
         for builtin in [*models['builtins'], *models['extended_builtins']]:
             for number, overload in enumerate(builtin['overloads']):
                 call = builtin['name'] + '(' + ','.join(values[p['type']] for p in overload['parameters']) + ')'
@@ -414,7 +415,27 @@ def main():
         model('skin parameters and results', 'render{box({0,0,0},{1,1,1},dull(tile.draw(seed)))} '
               'dull(s:skin)->skin{return skin.roughness(s,1)}', True)
         model('skin constants rejected', 'render{}', False, 'const skin s=tile.draw(1)')
-        model('collections of vec3 rejected', 'render{} f(ps:list<vec3>){}', False)
+        model('lists of vec3 accepted', 'render{n=list.len(f([{0,0,0}]))} f(ps:list<vec3>)->list<vec3>{return ps}', True)
+        model('samplers of vec3 rejected', 'render{} f(ps:sampler<vec3>){}', False)
+        flat_asset('lists of vec3 belong to render assets', 'draw{} f(ps:list<vec3>){}', False)
+        # Shaping blocks, 3D outputs and parts (M3).
+        for block in models['shaping_blocks']['blocks']:
+            arguments = ','.join('seed.initial()' if 'seed' in p['types'] else '2' if p['types'] == ['i32'] else '1.5'
+                                 for p in block['parameters'])
+            model(block['name'] + ' block', 'render{' + block['name'] + '(' + arguments + '){}}', True)
+            flat_asset(block['name'] + ' needs a render asset', 'draw{' + block['name'] + '(' + arguments + '){}}', False)
+        for kind in models['outputs']['kinds']:
+            value = '{1,2,3}' if kind['name'] == 'point3d' else '{{0,0,0},{1,1,1}}'
+            model(kind['name'] + ' output', 'render{o=' + value + '}', True, 'output ' + kind['name'] + ' o')
+            model(kind['name'] + ' list output', 'render{o=' + value + '}', True, 'output list ' + kind['name'] + ' o')
+            flat_asset(kind['name'] + ' output needs a render asset', 'output ' + kind['name'] + ' o draw{}', False)
+        model('2D outputs rejected in a render asset', 'render{}', False, 'output point p')
+        model('a box cannot bend', 'render{bend(30){o={{0,0,0},{1,1,1}}}}', False, 'output box3d o')
+        (root / 'peg.ips').write_text('asset peg {size 4x4x4 output point3d tip render{tip={0,4,0}}}')
+        report = check('a part is called and read', 'import peg from "peg.ips" asset t {size 8x8x8 output point3d o '
+                       'render{place(at={1,0,0}){peg.render(1);o=peg.outputs.tip}}}', True)
+        report = check('a part has no placement arguments', 'import peg from "peg.ips" asset t {size 8x8x8 '
+                       'render{peg.render(1,at={1,0,0})}}', False)
         model('collections of skins rejected', 'render{} f(ss:list<skin>){}', False)
         model('host inputs of vec3 rejected', 'render{}', False, 'input vec3 at={0,0,0}')
         for argument in models['place']['arguments']:
@@ -438,8 +459,8 @@ def main():
         model('skin has no placement', 'render{s=tile.draw(1,at={0,0})}', False)
         model('skin is no method receiver', 'render{s=tile.draw(1).fit()}', False)
         model('skin is not a number', 'render{s=tile.draw(1)+1}', False)
-        nonlocal_model = 'import solid from "solid.ips" asset t {size 8x8x8 render{}}'
-        check('a render asset is no skin', nonlocal_model, False)
+        check('a render asset is no skin', 'import solid from "solid.ips" asset t {size 8x8x8 render{s=solid.draw(1)}}', False)
+        check('a render asset is a part', 'import solid from "solid.ips" asset t {size 8x8x8 render{solid.render(1)}}', True)
         check('a render asset is no part', 'import solid from "solid.ips" asset t {size 8x8 draw{}}', False)
         model('inputs are visible in render', 'render{x=tall+1.0}', True, 'input f32 tall=2')
         model('inputs are not visible in helpers', 'render{f()} f(){x=tall}', False, 'input f32 tall=2')

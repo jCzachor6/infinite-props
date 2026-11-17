@@ -29,7 +29,12 @@
 //                alphaCutoff, twoSided, crisp, vertexCount, indexCount,
 //                positions, normals, tangents, uvs (Float32Array),
 //                indices (Uint32Array) }]
+//   outputs: [{ index, name, kind: "point3d" | "box3d", list, count,
+//               values (Float32Array), points | boxes }]
 // A surface is the triangles of one material; `texture` indexes `textures`.
+// `outputs` are the model's own, in declaration order: a point is 3 floats,
+// a box 15 (centre, size, then its x, y and z axes, a rotation). `points`
+// holds them as [x, y, z] and `boxes` as { center, size, axes: [x, y, z] }.
 // A texture's `images` hold its normal map and its material maps (roughness,
 // metallic, ao, emission; IMAGE_* kinds) in that order. A surface's numbers
 // multiply the maps of its texture; without a map they stand alone, and
@@ -64,6 +69,23 @@
     const OPTIONS = ["seed", "uniforms", "workLimit", "timeoutMs", "signal", "cancelFlag"];
     const CONTROLS = ["workLimit", "timeoutMs", "signal", "cancelFlag"];
 
+    // The values of an output as points or boxes (M3).
+    function describeOutput(output) {
+        const v = output.values, triple = function (at) { return [v[at], v[at + 1], v[at + 2]]; };
+        if (output.kind === "box3d") {
+            output.boxes = [];
+            for (let i = 0; i < output.count; ++i) {
+                const at = i * 15;
+                output.boxes.push({ center: triple(at), size: triple(at + 3),
+                    axes: [triple(at + 6), triple(at + 9), triple(at + 12)] });
+            }
+        } else {
+            output.points = [];
+            for (let i = 0; i < output.count; ++i) output.points.push(triple(i * 3));
+        }
+        return output;
+    }
+
     // The buffers of a result, each once: the transfer list of a postMessage.
     function transferables(result) {
         const buffers = new Set();
@@ -73,6 +95,7 @@
             buffers.add(texture.data.buffer);
             for (const image of texture.images) buffers.add(image.data.buffer);
         }
+        for (const output of result.outputs || []) buffers.add(output.values.buffer);
         return Array.from(buffers);
     }
 
@@ -110,6 +133,7 @@
                         const result = Module.modelGenerate(handle, seed, options.uniforms, execution);
                         for (const texture of result.textures)
                             texture.normal = texture.images.find(function (image) { return image.kind === NORMAL; }) || null;
+                        for (const output of result.outputs) describeOutput(output);
                         return result;
                     },
 

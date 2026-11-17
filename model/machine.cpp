@@ -1,6 +1,7 @@
 #include "iprop/model/Model.hpp"
 
 #include "iprop/VmInternals.hpp"
+#include "iprop/model/Blocks.hpp"
 
 #include <algorithm>
 #include <bit>
@@ -68,11 +69,62 @@ u64 textureKey(const SkinProgram& program, u32 seed, u32 width, u32 height, std:
     return fnv1a64(bytes);
 }
 
+// What a scope is (spec models v1.2, Placement scopes; M3 blocks).
+enum class ScopeKind : u8 { Root, Place, Smooth, Refine, Bend, Twist, Taper, Displace, Part };
+
+// Blocks that move vertices by a map of their own: a point follows them,
+// a box cannot.
+constexpr bool deforms(ScopeKind kind) {
+    return kind == ScopeKind::Bend || kind == ScopeKind::Twist || kind == ScopeKind::Taper;
+}
+
+// An open scope. Its map is relative to the frame of the buffer it writes
+// to: the model's mesh, or the buffer of the innermost open block.
+struct Scope {
+    ScopeKind kind = ScopeKind::Root;
+    Affine affine;
+    int block = -1; // -1: the model's mesh; otherwise an index into blocks_
+    u32 serial = 0; // unique in a generation; the root scope is 0
+    // From the frame of the asset that runs here (the model or a part): an
+    // unequal scale lies on the way, and a turn that is not a multiple of
+    // 90 degrees lies inside one, so a box is no longer a box.
+    bool unequal = false, sheared = false;
+};
+
+// An output value on its way to its slot (M3): a point, or a box as its
+// centre and its three edges, in the frame of the scope it is in.
+struct Pending {
+    u16 slot = 0;
+    bool box = false;
+    Point3 point;
+    Point3 edges[3];
+    bool flipped = false;
+};
+
+// A block that keeps its own buffer until it closes (M3).
+struct Block {
+    ScopeKind kind = ScopeKind::Root;
+    LocalMesh mesh;
+    std::vector<Pending> outputs;
+    f32 number = 0.f, frequency = 0.f; // the angle, scale or amount; displace's frequency
+    i32 count = 0;                     // refine
+    u32 seed = 0;                      // displace
+    u16 part = 0;                      // a part call: which part
+    u32 callScope = 0;                 // a part call: the serial of the scope it was called in
+};
+
+// The values of one output slot, rounded.
+struct SlotValues {
+    std::vector<Vec3> points;
+    std::vector<ModelBox> boxes;
+};
+
 // The model page of one generation: scopes, skins and the growing mesh.
 class Machine final : public detail::Extension {
 public:
-    Machine(const LoadedModel& model, const ExecutionLimits& limits) : model_(model), limits_(limits) {
-        scopes_.push_back(Affine{});
+    Machine(const LoadedModel& model, const ExecutionLimits& limits)
+        : model_(model), limits_(limits), slots_(model.outputs.size()) {
+        scopes_.push_back(Scope{});
     }
 
     bool step(Execution& ex, Instruction ins) override {
@@ -86,21 +138,330 @@ public:
     }
 
     bool opensScope(Instruction ins) const override {
-        return ins.opcode == kModelPage && ins.aux == static_cast<u8>(Op::PlaceBegin);
+        return ins.opcode == kModelPage && model::opensScope(static_cast<Op>(ins.aux));
     }
 
-    void closeScope(Execution&) override { scopes_.pop_back(); }
+    void closeScope(Execution& ex) override {
+        // Called while unwinding, outside step(): a broken rule of a block's
+        // processing becomes a trap here too.
+        try {
+            close(ex);
+        } catch (const Violation& violation) {
+            ex.trap(violation.what(), violation.reason);
+        }
+    }
+
+    // A part's entry has returned and closed its own scopes: its block is
+    // the innermost one.
+    void frameLeft(Execution& ex) override {
+        try {
+            close(ex);
+            ex.frame().lastPart = blocksClosedPart_;
+            const std::size_t depth = ex.frames.size() - 1;
+            if (partReads_.size() <= depth) partReads_.resize(depth + 1, 0);
+            partReads_[depth] = scopes_.back().serial;
+        } catch (const Violation& violation) {
+            ex.trap(violation.what(), violation.reason);
+        }
+    }
 
     ModelResult pack(detail::WorkBudget& work);
 
 private:
     const LoadedModel& model_;
     ExecutionLimits limits_;
-    std::vector<Affine> scopes_;
+    std::vector<Scope> scopes_;
+    std::vector<Block> blocks_;
     std::vector<Texture> textures_;
     std::vector<SkinRecord> skins_;
     u64 texels_ = 0;
     Mesh mesh_;
+    // Every vertex and triangle created so far, in the mesh and in open
+    // blocks: each ends up in the model, so the limits count them all.
+    u64 vertexTotal_ = 0, triangleTotal_ = 0;
+    std::vector<SlotValues> slots_;
+    u32 serials_ = 0;
+    // Per frame depth, the scope in which that frame last called a part:
+    // its outputs are read there (M3).
+    std::vector<u32> partReads_;
+    u16 blocksClosedPart_ = 0;
+
+    // Moves an output value through the innermost scope's map, into its
+    // slot when that scope writes to the frame of the slot's asset (the
+    // model's mesh, or the buffer of a part call), otherwise into the
+    // pending values of the block it writes to.
+    void deliver(Execution& ex, Pending value) {
+        const Scope& scope = scopes_.back();
+        value.point = mapPoint(scope.affine, value.point);
+        if (value.box)
+            for (Point3& edge : value.edges) edge = mapVector(scope.affine, edge);
+        value.flipped = value.flipped != scope.affine.flipped;
+        if (scope.block >= 0) {
+            Block& block = blocks_[static_cast<std::size_t>(scope.block)];
+            if (block.kind != ScopeKind::Part) {
+                block.outputs.push_back(value);
+                return;
+            }
+        }
+        commit(ex, value);
+    }
+
+    // Rounds a value into its slot: a later value replaces a singular one.
+    void commit(Execution& ex, const Pending& value) {
+        const ModelOutputDecl& decl = model_.outputs[value.slot];
+        SlotValues& slot = slots_[value.slot];
+        const auto rounded = [](double component) {
+            const f32 out = static_cast<f32>(component);
+            if (!std::isfinite(out)) throw Violation("model coordinate out of range");
+            return out;
+        };
+        ex.work(1);
+        if (!value.box) {
+            const Vec3 point{rounded(value.point.x), rounded(value.point.y), rounded(value.point.z)};
+            if (!decl.list) slot.points.clear();
+            slot.points.push_back(point);
+            return;
+        }
+        ModelBox box;
+        box.center[0] = rounded(value.point.x);
+        box.center[1] = rounded(value.point.y);
+        box.center[2] = rounded(value.point.z);
+        for (int i = 0; i < 3; ++i) {
+            const Point3& edge = value.edges[i];
+            const double length = std::sqrt((edge.x * edge.x + edge.y * edge.y) + edge.z * edge.z);
+            if (!(length > 0.0) || !std::isfinite(length)) throw Violation("degenerate direction", ErrorReason::RuntimeViolation);
+            box.size[i] = rounded(length);
+            // A mirrored box is the same box: its third axis turns round so
+            // that the axes form a rotation.
+            const double sign = i == 2 && value.flipped ? -1.0 : 1.0;
+            box.axes[i][0] = static_cast<f32>(sign * (edge.x / length));
+            box.axes[i][1] = static_cast<f32>(sign * (edge.y / length));
+            box.axes[i][2] = static_cast<f32>(sign * (edge.z / length));
+        }
+        if (!decl.list) slot.boxes.clear();
+        slot.boxes.push_back(box);
+    }
+
+    void writePoint(Execution& ex, u16 slot) {
+        const Vec3 p = popVec3(ex);
+        ex.spend(kPointOutputFuel);
+        if (!std::isfinite(p.x) || !std::isfinite(p.y) || !std::isfinite(p.z))
+            ex.trap("a point3d output needs finite components", ErrorReason::NumericRange);
+        Pending value;
+        value.slot = slot;
+        value.point = {p.x, p.y, p.z};
+        deliver(ex, value);
+    }
+
+    void writeBox(Execution& ex, u16 slot) {
+        const Vec3 size = popVec3(ex), at = popVec3(ex);
+        ex.spend(kBoxOutputFuel);
+        if (!std::isfinite(at.x) || !std::isfinite(at.y) || !std::isfinite(at.z) || !std::isfinite(size.x) ||
+            !std::isfinite(size.y) || !std::isfinite(size.z) || !(size.x > 0.f) || !(size.y > 0.f) || !(size.z > 0.f))
+            ex.trap("a box3d output needs finite values and a positive size", ErrorReason::NumericRange);
+        if (scopes_.back().sheared)
+            ex.trap("a box3d output cannot be turned inside an unequal scale", ErrorReason::RuntimeViolation);
+        for (auto block = blocks_.rbegin(); block != blocks_.rend() && block->kind != ScopeKind::Part; ++block)
+            if (deforms(block->kind))
+                ex.trap("a box3d output cannot be written inside bend, twist or taper", ErrorReason::RuntimeViolation);
+        Pending value;
+        value.slot = slot;
+        value.box = true;
+        // The centre of the box whose base centre is `at`, as for box().
+        value.point = {at.x, static_cast<double>(at.y) + static_cast<double>(size.y) * 0.5, at.z};
+        value.edges[0] = {static_cast<double>(size.x), 0.0, 0.0};
+        value.edges[1] = {0.0, static_cast<double>(size.y), 0.0};
+        value.edges[2] = {0.0, 0.0, static_cast<double>(size.z)};
+        deliver(ex, value);
+    }
+
+    // The buffer the innermost scope writes to, through that scope's map.
+    template<class... Rest> Target target(Rest&&... rest) {
+        const Scope& scope = scopes_.back();
+        if (scope.block < 0) return Target{mesh_, scope.affine, std::forward<Rest>(rest)...};
+        return Target{blocks_[static_cast<std::size_t>(scope.block)].mesh, scope.affine, std::forward<Rest>(rest)...};
+    }
+
+    void close(Execution& ex) {
+        const Scope scope = scopes_.back();
+        scopes_.pop_back();
+        if (scope.kind == ScopeKind::Place) return;
+        // A block: its buffer and its pending outputs go to the scope it was
+        // opened in, which is the innermost one again.
+        Block block = std::move(blocks_.back());
+        blocks_.pop_back();
+        if (block.kind == ScopeKind::Part) blocksClosedPart_ = block.part;
+        process(ex, block);
+        const auto vertices = static_cast<u64>(block.mesh.vertices.size());
+        const auto triangles = static_cast<u64>(block.mesh.triangles.size());
+        ex.spend(vertices * kPassVertexFuel + triangles * kPassTriangleFuel);
+        ex.work(vertices + triangles);
+        pass(target(Mapping{}, 0u), block.mesh);
+        for (const Pending& value : block.outputs) deliver(ex, value);
+    }
+
+    // What a closing block does to its buffer and its pending points. Every
+    // limit, fuel, memory and work is charged before the processing.
+    void process(Execution& ex, Block& block) {
+        LocalMesh& mesh = block.mesh;
+        const auto vertices = static_cast<u64>(mesh.vertices.size());
+        const auto triangles = static_cast<u64>(mesh.triangles.size());
+        if (block.kind != ScopeKind::Part) checkFinite(mesh);
+        switch (block.kind) {
+        case ScopeKind::Smooth:
+            ex.spend(vertices * kSmoothFuel);
+            ex.work(vertices);
+            smooth(mesh, block.number);
+            break;
+        case ScopeKind::Refine: {
+            const u32 n = static_cast<u32>(block.count);
+            const Counts counts = refineCounts(mesh, n);
+            const u64 added = counts.triangles - triangles;
+            if (vertexTotal_ + counts.vertices > kMaxVertices)
+                ex.trap("model exceeds 65536 vertices", ErrorReason::RuntimeViolation);
+            if (triangleTotal_ + added > kMaxTriangles)
+                ex.trap("model exceeds 131072 triangles", ErrorReason::RuntimeViolation);
+            ex.spend(counts.vertices * kRefineVertexFuel + added * kRefineTriangleFuel);
+            ex.allocateResource(counts.vertices * kVertexBytes + added * kTriangleBytes);
+            ex.work(static_cast<u64>(counts.vertices) + counts.triangles);
+            refine(mesh, n);
+            vertexTotal_ += counts.vertices;
+            triangleTotal_ += added;
+            break;
+        }
+        case ScopeKind::Bend: case ScopeKind::Twist: case ScopeKind::Taper: {
+            ex.spend(vertices * kDeformFuel);
+            ex.work(vertices);
+            const DeformKind kind = block.kind == ScopeKind::Bend    ? DeformKind::Bend
+                                    : block.kind == ScopeKind::Twist ? DeformKind::Twist
+                                                                     : DeformKind::Taper;
+            const Deformation deformation = model::deformation(kind, block.number, mesh);
+            deform(mesh, deformation);
+            for (Pending& value : block.outputs) value.point = deformPoint(deformation, value.point);
+            break;
+        }
+        case ScopeKind::Displace:
+            ex.spend(vertices * kDisplaceFuel + triangles * kDisplaceTriangleFuel);
+            ex.work(vertices + triangles);
+            displace(mesh, block.number, block.frequency, block.seed);
+            break;
+        default:
+            break;
+        }
+    }
+
+    // part.render: the part's entry runs in a frame of its own, with its own
+    // stream, inside a block whose frame is the scope it is called in.
+    void partRender(Execution& ex, u16 index) {
+        if (index >= model_.parts.size()) ex.trap("model part index out of range", ErrorReason::IndexRange);
+        if (ex.frames.size() >= kMaxCallDepth) ex.trap("call depth exceeds limit", ErrorReason::CallDepth);
+        const ModelPartDecl& part = model_.parts[index];
+        const auto& entry = model_.file.code.functions[part.firstFunction];
+        const u32 seed = static_cast<u32>(ex.popI32());
+        ex.spend(kBlockFuel);
+        detail::Frame next = ex.spareFrame();
+        ex.popArguments(next, entry);
+        ex.zeroLocals(next, entry);
+        next.functionIndex = static_cast<u16>(part.firstFunction);
+        next.stream = seed;
+        next.initialSeed = seed;
+        next.extensionFrame = true;
+        // A part's outputs belong to its latest call.
+        for (std::size_t i = 0; i < model_.outputs.size(); ++i)
+            if (model_.outputs[i].owner == index) slots_[i] = SlotValues{};
+        Block block;
+        block.kind = ScopeKind::Part;
+        block.part = index;
+        block.callScope = scopes_.back().serial;
+        blocks_.push_back(std::move(block));
+        scopes_.push_back(Scope{ScopeKind::Part, Affine{}, static_cast<int>(blocks_.size() - 1), ++serials_});
+        ++ex.frame().ip; // the caller resumes after part.render
+        ex.frames.push_back(std::move(next));
+    }
+
+    void partGetPoint(Execution& ex, u16 slot) {
+        const ModelOutputDecl& decl = model_.outputs[slot];
+        if (decl.owner != ex.frame().lastPart)
+            ex.trap("slot does not belong to the last called part", ErrorReason::InvalidOutput);
+        const std::size_t depth = ex.frames.size() - 1;
+        if (depth >= partReads_.size() || partReads_[depth] != scopes_.back().serial)
+            ex.trap("a part's outputs are read in the block that called it", ErrorReason::InvalidOutput);
+        if (slots_[slot].points.empty()) ex.trap("part output not written", ErrorReason::PartOutputMissing);
+        ex.push(slots_[slot].points.back());
+    }
+
+    // A label like `block`, and a scope the interpreter unwinds with it.
+    void openLabel(Execution& ex) {
+        auto& frame = ex.frame();
+        ex.ensureControl(frame.functionIndex);
+        const auto& info = ex.control[frame.functionIndex][frame.ip];
+        detail::Label label;
+        label.kind = 5u;
+        label.cont = info.endIndex;
+        label.end = info.endIndex;
+        label.stackHeight = frame.stack.size();
+        frame.labels.push_back(label);
+        detail::LayerScope scope;
+        scope.frameDepth = ex.frames.size();
+        scope.labelDepth = frame.labels.size();
+        scope.isExtension = true;
+        ex.layerScopes.push_back(std::move(scope));
+    }
+
+    // smooth, refine, bend, twist, taper and displace: the arguments are
+    // checked, then the block opens with a buffer and an identity frame.
+    void blockBegin(Execution& ex, Op op) {
+        const auto range = [&](bool valid, const char* message) {
+            if (!valid) ex.trap(message, ErrorReason::NumericRange);
+        };
+        Block block;
+        switch (op) {
+        case Op::SmoothBegin:
+            block.kind = ScopeKind::Smooth;
+            block.number = ex.popF32();
+            range(block.number >= 0.f && block.number <= 180.f, "smooth angle must be in 0..180");
+            break;
+        case Op::RefineBegin:
+            block.kind = ScopeKind::Refine;
+            block.count = ex.popI32();
+            range(block.count >= 1 && block.count <= static_cast<i32>(kMaxRefine), "refine count must be in 1..16");
+            break;
+        case Op::BendBegin:
+            block.kind = ScopeKind::Bend;
+            block.number = ex.popF32();
+            range(block.number >= -360.f && block.number <= 360.f, "bend angle must be in -360..360");
+            break;
+        case Op::TwistBegin:
+            block.kind = ScopeKind::Twist;
+            block.number = ex.popF32();
+            range(std::isfinite(block.number), "twist angle must be finite");
+            break;
+        case Op::TaperBegin:
+            block.kind = ScopeKind::Taper;
+            block.number = ex.popF32();
+            range(std::isfinite(block.number) && block.number > 0.f, "taper scale must be finite and positive");
+            break;
+        default:
+            block.kind = ScopeKind::Displace;
+            block.seed = static_cast<u32>(ex.popI32());
+            block.frequency = ex.popF32();
+            block.number = ex.popF32();
+            range(std::isfinite(block.number) && std::isfinite(block.frequency) && block.frequency > 0.f,
+                  "displace needs a finite amount and a positive frequency");
+            break;
+        }
+        if (ex.layerScopes.size() >= kMaxSurfaceScopes) ex.trap("scope depth exceeds 32", ErrorReason::RuntimeViolation);
+        ex.spend(kBlockFuel);
+        openLabel(ex);
+        const Scope& parent = scopes_.back();
+        Scope scope{block.kind, Affine{}, static_cast<int>(blocks_.size()), ++serials_};
+        // A box written inside is mapped through the scopes around the block
+        // when it closes: whether it shears is the same question as outside.
+        scope.unequal = parent.unequal;
+        scope.sheared = parent.sheared;
+        blocks_.push_back(std::move(block));
+        scopes_.push_back(scope);
+    }
 
     Vec3 popVec3(Execution& ex) { return ex.popScalar<Vec3>("stack type mismatch: expected vec3"); }
 
@@ -125,13 +486,27 @@ private:
         return points;
     }
 
+    std::vector<Vec3> popPath(Execution& ex) {
+        const auto list = ex.popHandle<ListValue>("list");
+        if (list.type != ValueType::list(ValueType::Vec3))
+            ex.trap("stack type mismatch: expected list<vec3>", ErrorReason::StackType);
+        std::vector<Vec3> points;
+        points.reserve(list.data->elements.size());
+        for (const Value& element : list.data->elements) {
+            const auto* point = std::get_if<Vec3>(&element);
+            if (!point) ex.trap("stack type mismatch: expected list<vec3>", ErrorReason::StackType);
+            points.push_back(*point);
+        }
+        return points;
+    }
+
     // Limits, fuel, memory and work of a primitive, before it emits.
     // `checks` is the fuel of argument checks that grow faster than the
     // primitive's vertices (an extrude outline).
     void reserve(Execution& ex, Counts counts, u64 checks) {
-        if (mesh_.vertices.size() + counts.vertices > kMaxVertices)
+        if (vertexTotal_ + counts.vertices > kMaxVertices)
             ex.trap("model exceeds 65536 vertices", ErrorReason::RuntimeViolation);
-        if (mesh_.triangles.size() + counts.triangles > kMaxTriangles)
+        if (triangleTotal_ + counts.triangles > kMaxTriangles)
             ex.trap("model exceeds 131072 triangles", ErrorReason::RuntimeViolation);
         ex.spend(counts.vertices * kVertexFuel + counts.triangles * kTriangleFuel + checks);
         ex.allocateResource(counts.vertices * kVertexBytes + counts.triangles * kTriangleBytes);
@@ -140,13 +515,16 @@ private:
     }
 
     template<class Shape> void build(Execution& ex, const Shape& shape, u32 skin, u64 checks = 0) {
-        reserve(ex, count(shape), checks);
+        const Counts counts = count(shape);
+        reserve(ex, counts, checks);
         const SkinRecord& record = skins_[skin - 1];
         const ModelTexture& texture = textures_[record.texture].image;
         const Mapping mapping{record.fit, record.density, record.shiftU, record.shiftV,
                               static_cast<double>(texture.assetWidth), static_cast<double>(texture.assetHeight),
                               record.region, record.regionX, record.regionY, record.regionW, record.regionH};
-        emit(Target{mesh_, scopes_.back(), mapping, skin}, shape);
+        emit(target(mapping, skin), shape);
+        vertexTotal_ += counts.vertices;
+        triangleTotal_ += counts.triangles;
     }
 
     void pushRecord(Execution& ex, const SkinRecord& record) {
@@ -175,24 +553,18 @@ private:
         if (mask & kPlaceYaw) placement.yaw = ex.popF32();
         if (mask & kPlaceAt) placement.at = popVec3(ex);
         if (ex.layerScopes.size() >= kMaxSurfaceScopes) ex.trap("scope depth exceeds 32", ErrorReason::RuntimeViolation);
-        const Affine child = place(scopes_.back(), placement);
+        const Scope& parent = scopes_.back();
+        Scope child{ScopeKind::Place, place(parent.affine, placement), parent.block, ++serials_};
+        // The arguments are finite now: place() checked them.
+        const bool turned = ((mask & kPlaceYaw) && !quarterTurn(placement.yaw)) ||
+                            ((mask & kPlacePitch) && !quarterTurn(placement.pitch)) ||
+                            ((mask & kPlaceRoll) && !quarterTurn(placement.roll));
+        const bool unequal = (mask & kPlaceScale3) &&
+                             (placement.scale[0] != placement.scale[1] || placement.scale[1] != placement.scale[2]);
+        child.unequal = parent.unequal || unequal;
+        child.sheared = parent.sheared || (parent.unequal && turned);
         ex.spend(kPlaceFuel);
-
-        // A label like `block`, and a scope the interpreter unwinds with it.
-        auto& frame = ex.frame();
-        ex.ensureControl(frame.functionIndex);
-        const auto& info = ex.control[frame.functionIndex][frame.ip];
-        detail::Label label;
-        label.kind = 5u;
-        label.cont = info.endIndex;
-        label.end = info.endIndex;
-        label.stackHeight = frame.stack.size();
-        frame.labels.push_back(label);
-        detail::LayerScope scope;
-        scope.frameDepth = ex.frames.size();
-        scope.labelDepth = frame.labels.size();
-        scope.isExtension = true;
-        ex.layerScopes.push_back(std::move(scope));
+        openLabel(ex);
         scopes_.push_back(child);
     }
 
@@ -227,7 +599,7 @@ private:
         std::size_t texture = textures_.size();
         for (std::size_t i = 0; i < textures_.size(); ++i) {
             const Texture& known = textures_[i];
-            if (known.program == index && known.seed == seed && known.width == width && known.height == height &&
+            if (known.program == program.identity && known.seed == seed && known.width == width && known.height == height &&
                 std::equal(values.begin(), values.end(), known.inputs.begin(), known.inputs.end(), sameValue)) {
                 texture = i;
                 break;
@@ -276,7 +648,7 @@ private:
         ex.work(used);
 
         Texture texture;
-        texture.program = index;
+        texture.program = program.identity;
         texture.seed = seed;
         texture.width = width;
         texture.height = height;
@@ -332,6 +704,10 @@ private:
         }
 
         case Op::PlaceBegin: placeBegin(ex, ins.operand); break;
+        case Op::SmoothBegin: case Op::RefineBegin: case Op::BendBegin: case Op::TwistBegin: case Op::TaperBegin:
+        case Op::DisplaceBegin:
+            blockBegin(ex, spec->op);
+            break;
 
         case Op::Box: {
             const u32 skin = popSkin(ex);
@@ -403,6 +779,22 @@ private:
             build(ex, checkTri(a, b, c), skin);
             break;
         }
+        case Op::Tube: {
+            const u32 skin = popSkin(ex);
+            const i32 segments = ex.popI32(), sides = ex.popI32();
+            const f32 r1 = ex.popF32(), r0 = ex.popF32();
+            const Vec3 d = popVec3(ex), c = popVec3(ex), b = popVec3(ex), a = popVec3(ex);
+            build(ex, checkTube(a, b, c, d, r0, r1, sides, segments), skin);
+            break;
+        }
+        case Op::Sweep: {
+            const u32 skin = popSkin(ex);
+            const auto profile = popPoints(ex);
+            const auto path = popPath(ex);
+            // The profile is checked like an extrude outline.
+            build(ex, checkSweep(path, profile), skin, outlineFuel(profile.size(), false) + path.size() * kPathPointFuel);
+            break;
+        }
 
         case Op::SkinDraw: skinDraw(ex, ins.operand); break;
         case Op::SkinDensity: case Op::SkinRoughness: case Op::SkinMetallic: case Op::SkinEmission: case Op::SkinCutout: {
@@ -468,6 +860,13 @@ private:
             pushRecord(ex, record);
             break;
         }
+
+        case Op::OutPoint3d: case Op::OutListPoint3d: writePoint(ex, ins.operand); break;
+        case Op::OutBox3d: case Op::OutListBox3d: writeBox(ex, ins.operand); break;
+        case Op::PartGetPoint3d: partGetPoint(ex, ins.operand); break;
+        case Op::PartRender:
+            partRender(ex, ins.operand);
+            return; // the caller's pointer has moved; the part's frame runs next
         }
         // place.begin opens a label at this instruction, like every opener.
         ++ex.frame().ip;
@@ -542,6 +941,20 @@ ModelResult Machine::pack(detail::WorkBudget& work) {
     for (Texture& texture : textures_) {
         work.spend();
         result.textures.push_back(std::move(texture.image));
+    }
+
+    // The model's own outputs, in declaration order; parts keep theirs.
+    for (std::size_t i = 0; i < model_.outputs.size(); ++i) {
+        const ModelOutputDecl& decl = model_.outputs[i];
+        if (decl.owner != kRootOwner) continue;
+        work.spend();
+        ModelOutput output;
+        output.name = decl.name;
+        output.kind = decl.kind;
+        output.list = decl.list;
+        output.points = std::move(slots_[i].points);
+        output.boxes = std::move(slots_[i].boxes);
+        result.outputs.push_back(std::move(output));
     }
     return result;
 }

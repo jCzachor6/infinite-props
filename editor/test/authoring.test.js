@@ -85,11 +85,13 @@ test("the grammar highlights every builtin the compiler reports, and no retired 
 test("the words of a model highlight only where the grammar gives them a meaning", () => {
     const grammar = JSON.parse(fs.readFileSync(path.join(__dirname, "../syntaxes/ips.tmLanguage.json"), "utf8"));
     const keyword = new RegExp(grammar.repository.modelKeywords.match);
-    for (const source of ["  render {", "render{", "  scale 100", "    place(at = {0, 4, 0}) {", "place (yaw = 90.0) {"])
+    for (const source of ["  render {", "render{", "  scale 100", "    place(at = {0, 4, 0}) {", "place (yaw = 90.0) {",
+        "    smooth(40.0) {", "bend(90.0) { refine(4) { box(a, b, s) } }", "displace(1.5, 0.1, root.fork(\"dents\")) {"])
         assert.ok(keyword.test(source), source);
     // A helper, a local or an argument of those names is an ordinary name.
     for (const source of ["render(1.0)", "render = 2", "scale = 1.5", "put(scale = 1.6) {",
-        "x = scale * 2.0", "place = 3", "replace(1)"])
+        "x = scale * 2.0", "place = 3", "replace(1)", "x = smooth(0.4)", "bend = 3", "taper(2)", "if (smooth(t) > 0.5) {",
+        "if (bend(a, b) == 0) { x = 1 }"])
         assert.equal(keyword.test(source), false, source);
     const skins = grammar.repository.modelTypes.patterns.map(pattern => new RegExp(pattern.match));
     const typed = source => skins.some(pattern => pattern.test(source));

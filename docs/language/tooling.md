@@ -145,7 +145,12 @@ its name.
   `--derive-normal` belong to images and are rejected. In the glTF file a
   skin's roughness, metallic and AO maps share one occlusion-roughness-metallic
   texture, its emission map is the emissive texture and glass is `BLEND`; the
-  picture shades them too.
+  picture shades them too. A model's [outputs](models.md#outputs) appear in
+  the JSON and in the dump, and in the glTF file as named nodes under the
+  model, named after their output (`name[i]` in a list): an empty node at
+  each point and, for each box, a node whose translation, rotation and scale
+  fit a unit cube centred on it to the box, each with `extras.iprop` set to
+  its kind.
 - `ipsheet chair.iprop3d --seeds 16 --columns 4` draws a grid of previews
   with their seeds. `--cell N` sets the cell size and `--view` and
   `--background` the picture.

@@ -1,0 +1,21 @@
+// Outputs hand a game points and boxes: where a light goes, what collides.
+// A value written in a block moves, turns and scales with the block.
+import grid from "skins/grid.ips"
+
+asset lamp {
+  size 60x60x20
+  output point3d bulb
+  output list box3d colliders
+
+  render {
+    tile = grid.draw(1)
+    reach = 20.0 to 30.0
+    box({0, 0, 0}, {4, 50, 4}, tile)
+    colliders = {{0, 0, 0}, {4, 50, 4}}
+    place(at = {0, 48, 0}, roll = -90.0) {       // the arm, laid toward +X
+      box({0, 0, 0}, {2, reach, 2}, tile)
+      colliders = {{0, 0, 0}, {2, reach, 2}}     // turned with the arm
+      bulb = {0, reach, 0}                       // the end of the arm
+    }
+  }
+}

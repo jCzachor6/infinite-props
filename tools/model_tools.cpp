@@ -212,12 +212,58 @@ std::vector<u8> encodeGlb(const model::ModelResult& result) {
         materials += "}";
     }
 
+    // The model's outputs (M3) as nodes under the model, in its units: an
+    // empty node at each point, and for each box a node placed, turned and
+    // scaled so that a unit cube would fill it. extras name their kind.
+    std::string children, outputNodes;
+    u32 nodeCount = 1;
+    for (const auto& output : result.outputs) {
+        const bool box = output.kind == model::ModelOutputKind::Box3d;
+        const std::size_t count = box ? output.boxes.size() : output.points.size();
+        for (std::size_t i = 0; i < count; ++i) {
+            const std::string name = output.list ? output.name + "[" + std::to_string(i) + "]" : output.name;
+            outputNodes += ",{\"name\":\"" + jsonEscape(name) + "\",\"extras\":{\"iprop\":\"" +
+                           (box ? "box3d" : "point3d") + "\"}";
+            if (box) {
+                const auto& value = output.boxes[i];
+                // The rotation whose columns are the box's axes, as a unit quaternion.
+                const auto m = [&](int row, int column) { return static_cast<double>(value.axes[column][row]); };
+                double q[4];
+                const double trace = m(0, 0) + m(1, 1) + m(2, 2);
+                if (trace > 0.0) {
+                    const double s = std::sqrt(trace + 1.0) * 2.0;
+                    q[3] = 0.25 * s; q[0] = (m(2, 1) - m(1, 2)) / s; q[1] = (m(0, 2) - m(2, 0)) / s; q[2] = (m(1, 0) - m(0, 1)) / s;
+                } else if (m(0, 0) > m(1, 1) && m(0, 0) > m(2, 2)) {
+                    const double s = std::sqrt(1.0 + m(0, 0) - m(1, 1) - m(2, 2)) * 2.0;
+                    q[3] = (m(2, 1) - m(1, 2)) / s; q[0] = 0.25 * s; q[1] = (m(0, 1) + m(1, 0)) / s; q[2] = (m(0, 2) + m(2, 0)) / s;
+                } else if (m(1, 1) > m(2, 2)) {
+                    const double s = std::sqrt(1.0 + m(1, 1) - m(0, 0) - m(2, 2)) * 2.0;
+                    q[3] = (m(0, 2) - m(2, 0)) / s; q[0] = (m(0, 1) + m(1, 0)) / s; q[1] = 0.25 * s; q[2] = (m(1, 2) + m(2, 1)) / s;
+                } else {
+                    const double s = std::sqrt(1.0 + m(2, 2) - m(0, 0) - m(1, 1)) * 2.0;
+                    q[3] = (m(1, 0) - m(0, 1)) / s; q[0] = (m(0, 2) + m(2, 0)) / s; q[1] = (m(1, 2) + m(2, 1)) / s; q[2] = 0.25 * s;
+                }
+                outputNodes += ",\"translation\":[" + number(value.center[0]) + "," + number(value.center[1]) + "," +
+                               number(value.center[2]) + "],\"rotation\":[" + number(static_cast<f32>(q[0])) + "," +
+                               number(static_cast<f32>(q[1])) + "," + number(static_cast<f32>(q[2])) + "," +
+                               number(static_cast<f32>(q[3])) + "],\"scale\":[" + number(value.size[0]) + "," +
+                               number(value.size[1]) + "," + number(value.size[2]) + "]";
+            } else {
+                const Vec3& point = output.points[i];
+                outputNodes += ",\"translation\":[" + number(point.x) + "," + number(point.y) + "," + number(point.z) + "]";
+            }
+            outputNodes += "}";
+            children += (children.empty() ? "" : ",") + std::to_string(nodeCount++);
+        }
+    }
+
     const double scale = 1.0 / static_cast<double>(result.unitsPerMeter);
     std::string json = "{\"asset\":{\"version\":\"2.0\",\"generator\":\"ipgen (Infinite Props)\"},\"scene\":0,"
                        "\"scenes\":[{\"nodes\":[0]}],\"nodes\":[{\"name\":\"model\",\"scale\":[" +
                        number(scale) + "," + number(scale) + "," + number(scale) + "]";
     if (!result.surfaces.empty()) json += ",\"mesh\":0";
-    json += "}]";
+    if (!children.empty()) json += ",\"children\":[" + children + "]";
+    json += "}" + outputNodes + "]";
     if (!result.surfaces.empty()) {
         json += ",\"meshes\":[{\"primitives\":[" + primitives + "]}],\"materials\":[" + materials + "]";
         json += ",\"textures\":[" + textures + "],\"images\":[" + images + "],\"samplers\":[" + samplers + "]";
@@ -450,7 +496,35 @@ void writeModelDump(std::ostream& out, const model::ModelResult& result, u32 see
         for (std::size_t j = 0; j < surface.indices.size(); ++j) out << (j ? "," : "") << surface.indices[j];
         out << "]}";
     }
-    out << "\n  ]\n}\n";
+    out << "\n  ]";
+    // The 3D outputs (M3), only for a model that declares some: a dump of
+    // any other model keeps its bytes.
+    if (!result.outputs.empty()) {
+        out << ",\n  \"outputs\": [";
+        for (std::size_t i = 0; i < result.outputs.size(); ++i) {
+            const auto& output = result.outputs[i];
+            const bool box = output.kind == model::ModelOutputKind::Box3d;
+            out << (i ? "," : "") << "\n    {\"name\": \"" << jsonEscape(output.name) << "\", \"kind\": \""
+                << (box ? "box3d" : "point3d") << "\", \"list\": " << (output.list ? "true" : "false") << ", \""
+                << (box ? "boxes" : "points") << "\": [";
+            if (box) {
+                for (std::size_t j = 0; j < output.boxes.size(); ++j) {
+                    const auto& value = output.boxes[j];
+                    out << (j ? ", " : "") << "{\"center\": " << triple(value.center) << ", \"size\": " << triple(value.size)
+                        << ", \"axes\": [" << triple(value.axes[0]) << "," << triple(value.axes[1]) << ","
+                        << triple(value.axes[2]) << "]}";
+                }
+            } else {
+                for (std::size_t j = 0; j < output.points.size(); ++j) {
+                    const f32 point[3] = {output.points[j].x, output.points[j].y, output.points[j].z};
+                    out << (j ? ", " : "") << triple(point);
+                }
+            }
+            out << "]}";
+        }
+        out << "\n  ]";
+    }
+    out << "\n}\n";
 }
 
 } // namespace iprop::tools

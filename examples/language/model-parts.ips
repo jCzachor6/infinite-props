@@ -1,0 +1,23 @@
+// alias.render builds an imported render asset where it is called, from a
+// seed of its own and with its own skins. Read its points in that block.
+import leg from "model-leg.ips"
+import wood from "skins/wood.ips"
+
+asset table {
+  size 90x60x60
+  output list point3d tops
+
+  render {
+    root = seed.initial()
+    tall = 44.0 to 52.0
+    for i in 0..4 {
+      x = float(i % 2) * 70.0 - 35.0
+      z = float(i / 2) * 40.0 - 20.0
+      place(at = {x, 0, z}) {
+        leg.render(root.fork(i), height = tall)
+        tops = leg.outputs.top
+      }
+    }
+    box({0, tall, 0}, {80, 3, 50}, 0.5, wood.draw(root.fork("top")))
+  }
+}

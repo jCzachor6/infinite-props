@@ -1,0 +1,39 @@
+// A boulder, one unit to a centimetre: a box refined into a fine mesh,
+// pushed in and out by two noises, one broad and one fine, and its sharp
+// edges smoothed away. The seed squashes and leans it and picks the noise;
+// `rough` sets how broken its surface is. The game reads `seat`, the top of
+// the stone, and `collider`, a box around it.
+import rock from "skins/stone.ips"
+
+asset boulder {
+  size 120x80x100
+  scale 100
+
+  input f32 rough = 0.5                  // 0 smooth, 1 broken
+
+  output point3d seat
+  output box3d collider
+
+  render {
+    root = seed.initial()
+    w = roll(root.fork("width"), 70.0, 110.0)
+    h = roll(root.fork("height"), 35.0, 70.0)
+    d = roll(root.fork("depth"), 60.0, 95.0)
+    lean = roll(root.fork("lean"), -12.0, 12.0)
+    stone = skin.fit(rock.draw(root.fork("stone")))
+
+    place(yaw = roll(root.fork("turn"), 0.0, 360.0), roll = lean) {
+      smooth(170.0) {
+        displace(3.0 + rough * 5.0, 0.08, root.fork("fine")) {
+          displace(h * 0.18, 0.018, root.fork("broad")) {
+            taper(roll(root.fork("taper"), 0.55, 0.85)) {
+              refine(10) { box({0, -6, 0}, {w, h + 6.0, d}, stone) }
+            }
+          }
+        }
+      }
+      seat = {0, h, 0}
+      collider = {{0, -6, 0}, {w * 0.9, h + 6.0, d * 0.9}}
+    }
+  }
+}

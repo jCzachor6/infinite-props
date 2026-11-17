@@ -23,17 +23,21 @@ light or shadow, and they repeat without a seam:
 
 Declare `size WxHxD` and write `render { ... }`. Import an asset that has
 `draw` and call `alias.draw(seed)` to get a `skin`. Build solids with `box`,
-`cylinder`, `cone`, `band`, `sphere`, `lathe`, `extrude`, `quad` and `tri`:
-the first argument of a solid is the middle of its base, the last one its
-skin. `+X` is right, `+Y` up and `+Z` toward the viewer; a model stands on
-`y = 0`. Wrap parts in `place(at = {x, y, z}, yaw = degrees) { ... }` to
-move, turn, scale or mirror them together. A point is a `vec3`, written
-`{x, y, z}`. A skin brings its asset's normal and material maps; modifiers
-such as `skin.fit`, `skin.blend` (glass) and `skin.region` (one window of a
-shared sheet) return changed copies, and `alias.name` reads a constant the
-skin's asset declares. Everything else works as in a draw asset: inputs,
-constants, palettes, helpers, loops, named seeds and random ranges. Drawing
-does not: a model has no canvas.
+`cylinder`, `cone`, `band`, `sphere`, `lathe`, `extrude`, `quad` and `tri`,
+and shapes along a path with `tube` and `sweep`: the first argument of a
+solid is the middle of its base, the last one its skin. `+X` is right, `+Y`
+up and `+Z` toward the viewer; a model stands on `y = 0`. Wrap parts in
+`place(at = {x, y, z}, yaw = degrees) { ... }` to move, turn, scale or mirror
+them together, and in shaping blocks such as `smooth(40.0) { ... }`,
+`bend(90.0) { ... }` or `displace(1.5, 0.1, seed) { ... }` to change their
+shape. A point is a `vec3`, written `{x, y, z}`. A skin brings its asset's
+normal and material maps; modifiers such as `skin.fit`, `skin.blend` (glass)
+and `skin.region` (one window of a shared sheet) return changed copies, and
+`alias.name` reads a constant the skin's asset declares. `output point3d` and
+`output box3d` hand the game points and colliders, and `alias.render(seed)`
+builds another render asset as a part. Everything else works as in a draw
+asset: inputs, constants, palettes, helpers, loops, named seeds and random
+ranges. Drawing does not: a model has no canvas.
 
 ## A render asset
 
@@ -50,10 +54,12 @@ model among others; nothing inside the model changes with it.
 both. Inputs, `const`, palettes, materials and helpers are declared as in a
 draw asset, and inputs are visible in `render` alone: pass them to helpers.
 
-A render asset has no canvas, so drawing calls, layers, masks, clips, parts
-and 2D geometry are compile errors there. It declares no `origin` and no
-outputs. Its imports are assets with `draw`, used as skins, and material
-libraries; a render asset cannot be imported.
+A render asset has no canvas, so drawing calls, layers, masks, clips, 2D
+parts and 2D geometry are compile errors there. It declares no `origin`; its
+outputs are [points and boxes in space](#outputs). Its imports are assets
+with `draw`, used as skins, other render assets, built as
+[parts](#parts), and material libraries. A draw asset cannot import a render
+asset.
 
 <!-- llm: skip -->
 `render`, `scale` and `place` are not reserved words: `render` is the entry
@@ -92,8 +98,13 @@ segment between them; `lerp(a, b, t)` gives the point at `t` without a draw.
 
 A `const` may be a `vec3`, computed while compiling with the operators and
 functions of this section. A `vec3` is also a local, a helper parameter and
-a helper result. It cannot be an input or an element of a list, a sampler, a
-stepper or a palette.
+a helper result. It cannot be an input or an element of a sampler, a stepper
+or a palette.
+
+A `list<vec3>` holds points, such as the path of a [sweep](#sweep):
+`[{0, 0, 0}, {0, h, 0}, {w, h, 0}]`. It is a literal of up to 256 points, a
+constant, a local, a parameter and a result, read with `path[i]` and
+`list.len(path)`; it cannot be sorted. A draw asset has no `list<vec3>`.
 
 In a render asset three numbers in braces are always a `vec3`; `vec3` and
 `skin` name types only there, and a draw asset that declares one is rejected.
@@ -124,9 +135,10 @@ pointing right and `b` up it points toward the viewer.
 Returns `v` scaled to length 1. The zero vector stays zero; a component that
 is not finite traps.
 
-### More overloads of lerp
+### More overloads of lerp and list.len
 
-In a render asset `lerp` also takes two `vec3` values and clamps `t` to 0–1:
+In a render asset `lerp` also takes two `vec3` values and clamps `t` to 0–1,
+and `list.len` counts a `list<vec3>`:
 
 <!-- model-extensions -->
 
@@ -399,6 +411,32 @@ from that side only, unless its skin is two-sided.
 Builds a triangle from three corners, counterclockwise as you look at it.
 The edge from `a` to `b` is the bottom of the image.
 
+### tube
+<!-- builtin: tube -->
+
+Runs a round section along a curve: an arm, a pipe, a handle, a branch. The
+curve leaves `a` toward `b` and arrives at `d` from `c`, a cubic Bézier
+curve; points on one line make a straight tube. The radius runs from `r0` at
+`a` to `r1` at `d`, either may be 0 for a point. `sides` (3–64) sets the
+roundness and `segments` (1–256) how many straight steps follow the curve:
+8 to 16 for a gentle bend. The section turns as little as it can along the
+curve, so a tube never twists, and its ends are closed. A vertical tube is
+shaded and skinned like a `cone`.
+
+### sweep
+<!-- builtin: sweep -->
+
+Runs an outline along a path: a rail, a frame, a moulding, a gutter. `path`
+is a `list<vec3>` of 2 to 256 points and `profile` an outline of 3 to 256
+`{x, y}` points around the path, as for an `extrude`. At every inner point
+of the path the two pieces meet in a mitre, as in a picture frame, and both
+ends are closed. On a path that rises less than 60 degrees the outline's `y`
+points up; on a steeper one it points back, or forward going down. Faces are
+flat: wrap the sweep in [smooth](#smooth) to round a round profile. A path
+that turns straight back on itself traps.
+
+<!-- example: ../../examples/language/model-paths.ips -->
+
 ## Placing parts
 
 `place(...) { ... }` builds everything in its block in a space of its own
@@ -437,6 +475,127 @@ size instead.
 <!-- example: ../../examples/language/model-place.ips -->
 <!-- example: ../../examples/language/errors/model-place.ips -->
 
+## Shaping blocks
+
+A shaping block collects what its body builds and changes it when it
+closes. Each takes its arguments in order, without names:
+
+| Block | Arguments | Changes |
+| --- | --- | --- |
+| `smooth(angle)` | 0–180 degrees | the shading of edges softer than `angle` |
+| `refine(count)` | 1–16 | splits every triangle into `count * count` |
+| `bend(angle)` | -360–360 degrees | bends the block's height into an arc toward `+X` |
+| `twist(angle)` | degrees | turns the block about `Y`, more with height |
+| `taper(scale)` | positive number | narrows or widens it toward the top |
+| `displace(amount, frequency, seed)` | numbers and a seed | moves its surface in and out with noise |
+
+A block works in a space of its own, the space where it opens, so a `place`
+around it moves the result and a `place` inside it moves what it changes.
+Blocks nest like `place`, up to 32 deep together, and close as `place` does,
+also on `return`, `break` and `continue`. An argument that changes nothing,
+such as `bend(0.0)` or a `displace` of `0.0`, leaves what the block holds
+exactly as it is, bit for bit.
+
+<!-- example: ../../examples/language/model-shaping.ips -->
+
+### smooth
+
+Vertices at the same point share their shading across every edge whose
+faces meet at less than `angle` from flat: `smooth(40.0)` rounds a lathe's
+gentle joints and keeps a box's corners sharp. It changes no position, only
+the light.
+
+### refine
+
+Splits every triangle into `count * count` smaller ones. A primitive has as
+few vertices as its shape needs, and a bend or a displacement moves only
+vertices: refine first, then deform, as in `bend(90.0) { refine(8) { ... } }`.
+A refined model costs `count * count` times as many triangles.
+
+### bend
+
+Bends the block along its height, the span from its lowest to its highest
+vertex, into an arc of `angle` degrees: a positive angle bends toward `+X`.
+Build the part upright, around the vertical axis, and lay it down
+afterwards. A vertex beyond the arc's centre would fold the shape and traps.
+
+### twist
+
+Turns the block about the vertical axis, by nothing at its lowest vertex and
+by `angle` at its highest, as `yaw` turns: a twisted bar, a rope, a screw.
+
+### taper
+
+Scales the block toward the vertical axis by 1 at its lowest vertex and by
+`scale` at its highest: 0.5 halves the top, 2 doubles it.
+
+### displace
+
+Moves every point of the block's surface along its normal by `amount` times
+a noise of `frequency` (waves per unit) from `seed`: dents, rocks, bark,
+lumps. Copies of a point on a hard edge move together, so no crack opens,
+and the shading follows the new shape. Refine first: a box has only its
+corners to move. Give the noise its own [named seed](random.md#named-seeds).
+
+<!-- example: ../../examples/language/traps/model-bend.ips -->
+
+## Outputs
+
+`output point3d name` and `output box3d name` hand the game what it needs
+beside the mesh: where to put a light, where to hold, what collides. With
+`list` an output keeps every value written, in order; without it a later
+value replaces an earlier one. An output never written has no value.
+
+```ips
+output point3d bulb
+output list box3d colliders
+// ...
+bulb = {0, reach, 0}
+colliders = {{0, 0, 0}, {4, 50, 4}}
+```
+
+A `point3d` takes a `vec3`. A `box3d` takes `{at, size}`, two `vec3`: the
+middle of its base and its size, as a `box`. The game receives a box as its
+centre, its size and its three axes.
+
+A value written inside a `place` block moves, turns, scales and mirrors with
+it, exactly like a vertex built there, so a point marks the same spot on the
+model whatever the block does. A point written inside `bend`, `twist` or
+`taper` follows the deformation too. A box cannot bend: writing one in such a
+block is a compile error, and a trap when a helper does it. A box turned by a
+quarter turn stays a box, but one turned by another angle inside a `place`
+that scales unequally is no box and traps. `smooth`, `refine` and `displace`
+leave outputs where they are.
+
+A render asset declares only these two kinds, and a draw asset neither.
+
+<!-- example: ../../examples/language/model-outputs.ips -->
+<!-- example: ../../examples/language/errors/model-box-bend.ips -->
+<!-- example: ../../examples/language/traps/model-box-shear.ips -->
+
+## Parts
+
+A render asset can import another and build it with
+`alias.render(seed, input = value, ...)`: a statement that builds the part
+in the current block, from its own seed, with its inputs and its own skins.
+`place` decides where it stands; the call takes no placement. Textures equal
+to the model's, or to another call's, are generated once.
+
+The part's `point3d` outputs are read as `alias.outputs.name`, in the block
+that called it and after the call: the value is a point of that block,
+ready to write to an output of the model or to place the next part at. A
+read anywhere else traps. A part's boxes and lists stay in the part, and
+only the model's own outputs reach the game. Parts may have parts.
+
+A part and its model must declare the same `scale`; to use a part made at
+another scale, call it inside `place(scale = ...)`. The size a part declares
+is its own, for its use as a model.
+
+<!-- example: ../../examples/language/model-parts.ips -->
+<!-- example: ../../examples/language/model-leg.ips -->
+<!-- example: ../../examples/language/errors/model-part-scale.ips -->
+<!-- example: ../../examples/language/traps/model-part-read.ips -->
+
 ## Writing good models
 
 Vary the **shape**, not only the sizes. Choose features with
@@ -471,17 +630,25 @@ Make a skin repeat: let patterns run off one edge and continue on the
 opposite one, and keep gaps and seams away from the edges.
 
 <!-- llm: skip -->
-Five larger examples are in [examples/models](../../examples/models/chair.ips):
+Larger examples are in [examples/models](../../examples/models/chair.ips):
 a [chair](../../examples/models/chair.ips) with four styles of back, a
 [crate](../../examples/models/crate.ips) with frames, braces and iron
 fittings, a [barrel](../../examples/models/barrel.ips) whose staves and heads
 are one turned profile, a [sword](../../examples/models/sword.ips) whose
-blade wears a fitted picture with its fuller, and a
+blade wears a fitted picture with its fuller, a
 [lantern](../../examples/models/lantern.ips) of rusted iron with glass panes
-and a glowing flame. Their skins are in
+and a glowing flame, a [street lamp](../../examples/models/streetlamp.ips)
+whose arms are tubes along a curve and whose `bulbs` tell the game where to
+put its lights, a [railing](../../examples/models/railing.ips) whose rails
+are swept along a straight, cornered or curved path and whose bars may be
+twisted, a [boulder](../../examples/models/boulder.ips) refined, tapered and
+displaced twice, and a [table](../../examples/models/table.ips) on four
+[turned legs](../../examples/models/parts/turned-leg.ips) that are parts of
+their own. Their skins are in
 [examples/models/skins](../../examples/models/skins/oak.ips): oak, woven
 cloth, metal, leather, the blade, and for the lantern wrought iron with
-roughness and metallic maps, glass, wax and a flame with an emission map.
+roughness and metallic maps, glass, wax and a flame with an emission map,
+and for the boulder a stone with lichen.
 
 ## Limits and failures
 
@@ -493,13 +660,23 @@ roughness and metallic maps, glass, wax and a flame with an emission map.
 | texels of all textures | 4,194,304 |
 | side of a texture | 2048 pixels |
 | skins, modifiers included | 1024 |
-| imported assets used as skins | 64 |
-| open `place` blocks | 32 |
+| imported assets used as skins, parts' included | 64 |
+| open `place` and shaping blocks | 32 |
+| points of a `sweep` path | 256 |
+| segments of a `tube` | 256 |
+| outputs, parts' included | 256 |
+| parts | 256 |
 
 A model program pays one fuel unit for each instruction. A primitive adds 6
-for each vertex and 2 for each triangle it adds, an `extrude` also a price
-that grows with the square of its outline's points, a `place` block 24 and
-a skin call 64; a texture spends the fuel of its own asset. A box costs
+for each vertex and 2 for each triangle it adds, an `extrude` and a `sweep`
+also a price that grows with the square of their outline's points, a `place`
+block 24 and a skin call 64; a texture spends the fuel of its own asset. A
+`sweep` adds 24 for each point of its path. A shaping block or a part call
+adds 24, and at its end 3 for every vertex and 1 for every triangle it hands
+on, plus what its work costs: 8 a vertex for `smooth`, 3 for `bend`,
+`twist` and `taper`, 18 a vertex and 4 a triangle for `displace`, and 5 for
+every vertex and 2 for every triangle `refine` adds. Writing an output costs
+8 for a point and 16 for a box. A box costs
 about 170 units, the chair of the examples 8,000 to 18,000 of its 25,000,000. A
 generation that passes a limit, runs out of fuel or meets a wrong argument
 traps and publishes nothing, as a draw asset does.
