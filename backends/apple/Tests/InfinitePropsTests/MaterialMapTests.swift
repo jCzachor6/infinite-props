@@ -11,6 +11,17 @@ final class MaterialMapTests: XCTestCase {
             .appendingPathComponent("../../../../build/binding-fixtures").standardized
     }
     private func bytes(_ name: String) throws -> Data { try Data(contentsOf: fixtures.appendingPathComponent(name)) }
+    /// Whether every pixel holds one value in red, green and blue. A plain
+    /// loop: a one-line closure is too slow for the type checker in CI.
+    private func isGrey(_ pixels: Data) -> Bool {
+        let bytes = [UInt8](pixels)
+        var offset = 0
+        while offset + 2 < bytes.count {
+            if bytes[offset] != bytes[offset + 1] || bytes[offset] != bytes[offset + 2] { return false }
+            offset += 4
+        }
+        return true
+    }
     private let kinds: [ImageKind] = [.normal, .roughness, .metallic, .ao, .emission]
     private let names = ["relief", "gloss", "metal", "shade", "glow"]
     private let files = ["normal", "roughness", "metallic", "ao", "emission"]
@@ -36,8 +47,7 @@ final class MaterialMapTests: XCTestCase {
         }
         // A scalar map holds one value in red, green and blue.
         for kind in [ImageKind.roughness, .metallic, .ao] {
-            let pixels = try XCTUnwrap(result.image(kind)).rgba
-            XCTAssertTrue(stride(from: 0, to: pixels.count, by: 4).allSatisfy { pixels[$0] == pixels[$0 + 1] && pixels[$0] == pixels[$0 + 2] })
+            XCTAssertTrue(isGrey(try XCTUnwrap(result.image(kind)).rgba))
         }
         XCTAssertEqual(result.normal, result.images[0])
         // The seed moves one roughness pixel and nothing else.
