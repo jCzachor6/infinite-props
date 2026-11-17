@@ -370,10 +370,11 @@ Image renderPreview(const model::ModelResult& result, const PreviewOptions& opti
                     } else {
                         // Over what is already there, by the texel's alpha.
                         auto& target = colour[at];
-                        const double a = albedo.a / 255.0, behind = target[3] / 255.0;
-                        const double covered = a + behind * (1.0 - a);
+                        const double opacity = albedo.a / 255.0, behind = target[3] / 255.0;
+                        const double covered = opacity + behind * (1.0 - opacity);
                         for (int channel = 0; channel < 3; ++channel)
-                            target[channel] = covered > 0.0 ? (shaded[channel] * a + target[channel] * behind * (1.0 - a)) / covered : 0.0;
+                            target[channel] = covered > 0.0
+                                ? (shaded[channel] * opacity + target[channel] * behind * (1.0 - opacity)) / covered : 0.0;
                         target[3] = covered * 255.0;
                     }
                 }

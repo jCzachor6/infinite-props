@@ -540,8 +540,8 @@ void Planner::prepareFunctionBody(const std::string& name) {
             const auto& member = std::get<ips::Member>(*expr);
             if (const auto* base = std::get_if<ips::Identifier>(member.object.get()))
                 if (const auto skin = plan_->skinIndex.find(base->name); skin != plan_->skinIndex.end()) {
-                    const auto& constants = plan_->assetConstants.at(plan_->skins[skin->second].program);
-                    if (const auto found = constants.find(member.name); found != constants.end()) planned.constant = found->second;
+                    const auto& skinConstants = plan_->assetConstants.at(plan_->skins[skin->second].program);
+                    if (const auto found = skinConstants.find(member.name); found != skinConstants.end()) planned.constant = found->second;
                 }
         }
         // The Typer decided which names read a palette: a bare name reads its
