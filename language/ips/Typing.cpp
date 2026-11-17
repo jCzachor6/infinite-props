@@ -20,7 +20,11 @@ ValueType outputValueType(OutputKind kind) {
     case OutputKind::Circle: return ValueType::Circle;
     case OutputKind::Mask: return ValueType::Mask;
     case OutputKind::Layer: return ValueType::Layer;
-    case OutputKind::Normal: return ValueType::Layer;
+    case OutputKind::Normal:
+    case OutputKind::Roughness:
+    case OutputKind::Metallic:
+    case OutputKind::Ao:
+    case OutputKind::Emission: return ValueType::Layer;
     case OutputKind::Part: return ValueType::Part2d;
     }
     return ValueType::Vec2;
@@ -388,6 +392,30 @@ ValueType Typer::typeMember(const Expr& expr, const Member& member) {
     if (path.segments.size() == 2 && path.segments[0] == "outputs") {
         return typePartRead(expr);
     }
+    // `alias.name`: an asset constant of an imported draw asset, read by a
+    // render asset (models v1.2): one layout shared by the texture and the
+    // shape. Its value is folded where it is used.
+    // A local or a parameter of that name is read instead.
+    if (modelAsset() && path.segments.size() == 1 && !path.base.empty() && std::holds_alternative<Identifier>(*member.object) &&
+        !locals_.contains(path.base)) {
+        if (const auto* imported = findPart(path.base)) {
+            std::vector<std::string> names;
+            for (const auto& constant : imported->constants) {
+                if (constant.name == member.name) {
+                    importConstantReads_.insert(&expr);
+                    return constant.type;
+                }
+                names.push_back(constant.name);
+            }
+            error(member.location, "'" + path.base + "' declares no constant '" + member.name + "'" + didYouMean(member.name, names));
+        }
+    }
+    if (!modelAsset() && path.segments.size() == 1 && std::holds_alternative<Identifier>(*member.object) && !locals_.contains(path.base))
+        if (const auto* imported = findPart(path.base))
+            for (const auto& constant : imported->constants)
+                if (constant.name == member.name)
+                    error(member.location, "'" + path.base + "." + member.name + "' reads a constant of an import, which only an asset "
+                                           "with render { } can do; a draw asset reads a part's outputs as '" + path.base + ".outputs.<name>'");
     const ValueType object = typeOf(*member.object);
     if (object == ValueType::Vec2) {
         if (member.name == "x" || member.name == "y") {

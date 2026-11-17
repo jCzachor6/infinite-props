@@ -36,9 +36,17 @@ struct PartOutput {
     std::string name;
 };
 
+// An asset constant of an import, which a render asset reads as
+// `alias.name` (models v1.2, shared layout): its value is folded.
+struct PartConstant {
+    std::string name;
+    ValueType type;
+};
+
 struct PartInfo {
     std::vector<PartInput> inputs;
     std::vector<PartOutput> outputs;
+    std::vector<PartConstant> constants;
     // The import is a render asset (models v1.2); a model cannot use one as
     // a skin and 3D parts do not exist yet.
     bool model = false;
@@ -105,6 +113,9 @@ public:
     void restoreScope(Scope scope);
 
     const std::map<std::string, ValueType>& locals() const { return locals_; }
+    // The member expressions read as an import's constant (`alias.name` in a
+    // render asset): the planner folds exactly these.
+    const std::set<const Expr*>& importConstantReads() const { return importConstantReads_; }
 
     // Resolves a user function to its surface, lazily checking it on first
     // use. The provider returns nullopt for undefined names and throws for
@@ -159,6 +170,7 @@ private:
     std::string ns_;
     std::map<std::string, ValueType> locals_;
     std::set<std::string> invalidLocals_;
+    std::set<const Expr*> importConstantReads_;
 
     [[noreturn]] void error(const SourceLocation& at, std::string message) const;
 

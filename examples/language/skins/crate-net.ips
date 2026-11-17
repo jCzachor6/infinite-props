@@ -1,0 +1,28 @@
+// One sheet for a whole crate, laid out once and named: planks for the
+// sides, a lid and a stencilled label side by side. A model reads where they
+// are as sheet.sideX and the rest, so the texture and the shape share one
+// layout, and changing a field here moves it on the model too.
+asset crateNet {
+  size 96x32
+  const f32 sideX = 0.0
+  const f32 lidX = 32.0
+  const f32 labelX = 64.0
+  const f32 field = 32.0
+  const f32 labelH = 16.0
+  input color wood = #9a6a3a
+
+  draw {
+    for i in 0..4 {
+      y = float(i) * 8.0
+      rect(0, y, 32, 7, color.shade(wood, -8 * i))
+      rect(0, y + 7.0, 32, 1, color.shade(wood, -60))
+    }
+    rect(32, 0, 32, 32, color.shade(wood, 12))
+    rect(32, 0, 32, 2, color.shade(wood, -40))
+    rect(32, 30, 32, 2, color.shade(wood, -40))
+    // The label: a pale card with an arrow that says which way is up.
+    rect(64, 0, 32, 16, #e8dcc0)
+    rect(78, 4, 4, 9, #2a2420)
+    poly([{74, 6}, {80, 1}, {86, 6}], #2a2420)
+  }
+}

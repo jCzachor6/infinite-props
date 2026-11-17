@@ -107,8 +107,10 @@ std::vector<u8> encodeGlb(const model::ModelResult& result) {
         return accessorCount++;
     };
 
-    // One image per texture and per normal image; a sampler per texture.
-    std::vector<int> colorTexture(result.textures.size(), -1), normalTexture(result.textures.size(), -1);
+    // One image per texture, per normal image, per packed occlusion-
+    // roughness-metallic image and per emission map; a sampler per texture.
+    struct Images { int color = -1, normal = -1, orm = -1, emission = -1; bool occlusion = false; };
+    std::vector<Images> made(result.textures.size());
     u32 imageCount = 0, textureCount = 0;
     const auto image = [&](const Canvas& canvas, u32 sampler) {
         const auto png = encodePng(canvasImage(canvas));
@@ -134,19 +136,38 @@ std::vector<u8> encodeGlb(const model::ModelResult& result) {
         const auto& texture = result.textures[surface.texture];
         const u32 sampler = (texture.repeats ? 1u : 0u) | (surface.crisp ? 2u : 0u);
         // Crisp and smooth uses of one texture are separate glTF textures.
-        int color = -1, normal = -1;
-        if (!surface.crisp && colorTexture[surface.texture] >= 0) {
-            color = colorTexture[surface.texture];
-            normal = normalTexture[surface.texture];
+        Images use;
+        if (!surface.crisp && made[surface.texture].color >= 0) {
+            use = made[surface.texture];
         } else {
-            color = image(texture.color, sampler);
-            for (const auto& extra : texture.images)
-                if (extra.kind == AuxImageKind::Normal && normal < 0) normal = image(extra.image, sampler);
-            if (!surface.crisp) {
-                colorTexture[surface.texture] = color;
-                normalTexture[surface.texture] = normal;
+            use.color = image(texture.color, sampler);
+            const Canvas* maps[6] = {};
+            for (const auto& extra : texture.images) {
+                const u32 kind = static_cast<u32>(extra.kind);
+                if (kind <= 5 && !maps[kind]) maps[kind] = &extra.image;
             }
+            if (maps[1]) use.normal = image(*maps[1], sampler);
+            // glTF reads occlusion from red, roughness from green and
+            // metallic from blue; an absent map is 255, so its factor stands.
+            const Canvas* scalar[3] = {maps[static_cast<u32>(AuxImageKind::Ao)], maps[static_cast<u32>(AuxImageKind::Roughness)],
+                                       maps[static_cast<u32>(AuxImageKind::Metallic)]};
+            if (scalar[0] || scalar[1] || scalar[2]) {
+                Canvas orm;
+                orm.width = texture.color.width;
+                orm.height = texture.color.height;
+                orm.pixels.assign(texture.color.pixels.size(), Color{255, 255, 255, 255});
+                for (std::size_t i = 0; i < orm.pixels.size(); ++i) {
+                    if (scalar[0]) orm.pixels[i].r = scalar[0]->pixels[i].r;
+                    if (scalar[1]) orm.pixels[i].g = scalar[1]->pixels[i].r;
+                    if (scalar[2]) orm.pixels[i].b = scalar[2]->pixels[i].r;
+                }
+                use.orm = image(orm, sampler);
+                use.occlusion = scalar[0] != nullptr;
+            }
+            if (maps[static_cast<u32>(AuxImageKind::Emission)]) use.emission = image(*maps[static_cast<u32>(AuxImageKind::Emission)], sampler);
+            if (!surface.crisp) made[surface.texture] = use;
         }
+        const int color = use.color, normal = use.normal;
 
         const std::size_t count = surface.positions.size() / 3;
         f32 low[3] = {0, 0, 0}, high[3] = {0, 0, 0};
@@ -173,15 +194,20 @@ std::vector<u8> encodeGlb(const model::ModelResult& result) {
                       "},\"indices\":" + std::to_string(indices) + ",\"material\":" + std::to_string(s) + "}";
         materials += "{\"name\":\"" + jsonEscape(texture.name) + "\",\"pbrMetallicRoughness\":{\"baseColorTexture\":{\"index\":" +
                      std::to_string(color) + "},\"metallicFactor\":" + number(surface.metallic) + ",\"roughnessFactor\":" +
-                     number(surface.roughness) + "}";
+                     number(surface.roughness);
+        if (use.orm >= 0) materials += ",\"metallicRoughnessTexture\":{\"index\":" + std::to_string(use.orm) + "}";
+        materials += "}";
         if (normal >= 0) materials += ",\"normalTexture\":{\"index\":" + std::to_string(normal) + "}";
+        if (use.occlusion) materials += ",\"occlusionTexture\":{\"index\":" + std::to_string(use.orm) + "}";
         if (surface.emission > 0.f) {
+            // The emission map when the texture has one, else its colour.
             const double factor = std::min(1.0, static_cast<double>(surface.emission));
-            materials += ",\"emissiveTexture\":{\"index\":" + std::to_string(color) + "},\"emissiveFactor\":[" +
-                         number(factor) + "," + number(factor) + "," + number(factor) + "]";
+            materials += ",\"emissiveTexture\":{\"index\":" + std::to_string(use.emission >= 0 ? use.emission : color) +
+                         "},\"emissiveFactor\":[" + number(factor) + "," + number(factor) + "," + number(factor) + "]";
         }
         if (surface.alpha == model::SkinAlpha::Cutout)
             materials += ",\"alphaMode\":\"MASK\",\"alphaCutoff\":" + number(surface.cutoff);
+        if (surface.alpha == model::SkinAlpha::Blend) materials += ",\"alphaMode\":\"BLEND\"";
         if (surface.twoSided) materials += ",\"doubleSided\":true";
         materials += "}";
     }
@@ -249,11 +275,24 @@ Image renderPreview(const model::ModelResult& result, const PreviewOptions& opti
         V3 n, t;
         double w, u, v;
     };
+    const V3 half = unit(light + toward);
+    // Opaque and cutout surfaces first; blended ones over them, in surface
+    // order, testing depth without writing it. A preview, not a contract.
+    for (int pass = 0; pass < 2; ++pass)
     for (const auto& surface : result.surfaces) {
+        const bool blend = surface.alpha == model::SkinAlpha::Blend;
+        if (blend != (pass == 1)) continue;
         const auto& texture = result.textures[surface.texture];
-        const Canvas* normalMap = nullptr;
-        for (const auto& extra : texture.images)
-            if (extra.kind == AuxImageKind::Normal && !normalMap) normalMap = &extra.image;
+        const Canvas* maps[6] = {};
+        for (const auto& extra : texture.images) {
+            const u32 kind = static_cast<u32>(extra.kind);
+            if (kind <= 5 && !maps[kind]) maps[kind] = &extra.image;
+        }
+        const Canvas* normalMap = maps[static_cast<u32>(AuxImageKind::Normal)];
+        const Canvas* roughnessMap = maps[static_cast<u32>(AuxImageKind::Roughness)];
+        const Canvas* metallicMap = maps[static_cast<u32>(AuxImageKind::Metallic)];
+        const Canvas* occlusionMap = maps[static_cast<u32>(AuxImageKind::Ao)];
+        const Canvas* emissionMap = maps[static_cast<u32>(AuxImageKind::Emission)];
         const auto corner = [&](u32 index) {
             const V3 p{surface.positions[index * 3], surface.positions[index * 3 + 1], surface.positions[index * 3 + 2]};
             const V3 q = p - centre;
@@ -301,11 +340,42 @@ Image renderPreview(const model::ModelResult& result, const PreviewOptions& opti
                         const V3 local{stored.r / 127.5 - 1.0, stored.g / 127.5 - 1.0, stored.b / 127.5 - 1.0};
                         n = unit(t * local.x + bitangent * local.y + n * local.z);
                     }
-                    const double lit = 0.30 + 0.74 * std::max(0.0, dot(n, light)) + 0.22 * std::max(0.0, dot(n, fill)) +
-                                       surface.emission;
-                    depth[at] = z;
-                    colour[at] = {std::min(255.0, albedo.r * lit), std::min(255.0, albedo.g * lit),
-                                  std::min(255.0, albedo.b * lit), 255.0};
+                    // Lambert light with ambient occlusion, a Blinn-Phong
+                    // highlight that narrows as roughness falls and takes
+                    // the albedo's tint on metal, a sky-to-ground reflection
+                    // that metal shows in its own colour, then emission.
+                    const double roughness = surface.roughness * (roughnessMap ? texel(*roughnessMap, u, v).r / 255.0 : 1.0);
+                    const double metallic = surface.metallic * (metallicMap ? texel(*metallicMap, u, v).r / 255.0 : 1.0);
+                    const double occlusion = occlusionMap ? texel(*occlusionMap, u, v).r / 255.0 : 1.0;
+                    const double diffuse = 0.30 * occlusion + 0.74 * std::max(0.0, dot(n, light)) + 0.22 * std::max(0.0, dot(n, fill));
+                    const double gloss = (1.0 - roughness) * (1.0 - roughness);
+                    const double highlight = gloss * std::pow(std::max(0.0, dot(n, half)), 2.0 + 120.0 * gloss) * occlusion;
+                    const V3 mirrored = n * (2.0 * dot(n, toward)) - toward;
+                    const double sky = 0.5 + 0.5 * std::clamp(mirrored.y, -1.0, 1.0);
+                    const double reflection = (0.3 + 0.75 * sky) * (0.6 + 0.4 * (1.0 - roughness)) * occlusion;
+                    const double base[3] = {static_cast<double>(albedo.r), static_cast<double>(albedo.g), static_cast<double>(albedo.b)};
+                    const Color glow = emissionMap ? texel(*emissionMap, u, v) : Color{};
+                    const double emitted[3] = {static_cast<double>(glow.r), static_cast<double>(glow.g), static_cast<double>(glow.b)};
+                    double shaded[3];
+                    for (int channel = 0; channel < 3; ++channel) {
+                        const double tint = 255.0 + (base[channel] - 255.0) * metallic;
+                        shaded[channel] = std::min(255.0, base[channel] * diffuse * (1.0 - 0.7 * metallic) +
+                                                              base[channel] * reflection * metallic +
+                                                              tint * highlight * (0.25 + 0.75 * metallic) +
+                                                              (emissionMap ? emitted[channel] : base[channel]) * surface.emission);
+                    }
+                    if (!blend) {
+                        depth[at] = z;
+                        colour[at] = {shaded[0], shaded[1], shaded[2], 255.0};
+                    } else {
+                        // Over what is already there, by the texel's alpha.
+                        auto& target = colour[at];
+                        const double a = albedo.a / 255.0, behind = target[3] / 255.0;
+                        const double covered = a + behind * (1.0 - a);
+                        for (int channel = 0; channel < 3; ++channel)
+                            target[channel] = covered > 0.0 ? (shaded[channel] * a + target[channel] * behind * (1.0 - a)) / covered : 0.0;
+                        target[3] = covered * 255.0;
+                    }
                 }
             }
         }

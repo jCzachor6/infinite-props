@@ -36,13 +36,13 @@ extern "C" {
 #endif
 
 /* Header API feature version, independent of the product/file versions.
- * API 0.7 uses ABI line 0.5. API 0.4/0.5/0.6 declarations, enum values,
+ * API 0.8 uses ABI line 0.5. API 0.4/0.5/0.6/0.7 declarations, enum values,
  * layouts and ownership cannot change in an additive API release.
  * Later APIs add symbols and separate sized descriptors; they do not
  * append fields to these structs. See docs/c-api-abi.md for the policy.
  * These macros describe this header, not a loaded library's capabilities. */
 #define IPROP_API_VERSION_MAJOR 0
-#define IPROP_API_VERSION_MINOR 7
+#define IPROP_API_VERSION_MINOR 8
 
 /* Opaque handles. */
 typedef struct iprop_program iprop_program; /* a loaded, validated .iprop */
@@ -208,6 +208,7 @@ typedef struct {
 #define IPROP_CAP_EXECUTION_LIMITS (UINT64_C(1) << 20)
 #define IPROP_CAP_AUX_IMAGES (UINT64_C(1) << 21)
 #define IPROP_CAP_DERIVED_NORMAL (UINT64_C(1) << 22)
+#define IPROP_CAP_MATERIAL_MAPS (UINT64_C(1) << 23)
 
 /* All fields except struct_size are output-only. Set struct_size to the
  * actual caller capacity, at least sizeof(uint32_t). Only complete fields
@@ -1005,8 +1006,8 @@ IPROP_API iprop_status_ex iprop_result_query_work(const iprop_result* result,
  * bytes are linear data, not colour: upload them without an sRGB transfer.
  * Alpha is 255 in every pixel, tagged IPROP_IMAGE_ALPHA_OPAQUE. `source`
  * tells an image the program authored from one the runtime derived.
- * program_aux_image_* describe what a program declares: zero or one normal
- * output of the root asset. A declared image is absent from the result of a
+ * program_aux_image_* describe what a program declares: the image outputs of
+ * the root asset, at most one of each kind, in kind order. A declared image is absent from the result of a
  * generation that never assigned it, so index results by result_aux_image_*.
  * Descriptors follow the sized policy of image views: four-byte minimum,
  * flags input and zero, only complete output fields written, size/flags,
@@ -1017,6 +1018,19 @@ IPROP_API iprop_status_ex iprop_result_query_work(const iprop_result* result,
  * first image of a kind and fails with E_ARGUMENT when there is none. */
 typedef uint32_t iprop_aux_image_kind;
 #define IPROP_AUX_IMAGE_NORMAL UINT32_C(1)
+/* API 0.8, IPROP_CAP_MATERIAL_MAPS: the material maps a root declares with
+ * `output roughness`, `metallic`, `ao` and `emission` (spec material maps
+ * v1.2). Each is tight top-left RGBA8 with the main image's dimensions and
+ * alpha 255, tagged IPROP_IMAGE_ALPHA_OPAQUE. Roughness, metallic and AO
+ * hold one linear value in R, G and B (255 is fully rough, metal,
+ * unoccluded): upload them without an sRGB transfer, like a normal image.
+ * Emission holds the colour of the glow, encoded like the main image's
+ * colours (sRGB). A result lists its images in this kind order, so a normal
+ * image is always the first. A host that does not know a kind can skip it. */
+#define IPROP_AUX_IMAGE_ROUGHNESS UINT32_C(2)
+#define IPROP_AUX_IMAGE_METALLIC UINT32_C(3)
+#define IPROP_AUX_IMAGE_AO UINT32_C(4)
+#define IPROP_AUX_IMAGE_EMISSION UINT32_C(5)
 typedef uint32_t iprop_aux_image_source;
 #define IPROP_AUX_IMAGE_AUTHORED UINT32_C(1)
 #define IPROP_AUX_IMAGE_DERIVED UINT32_C(2)

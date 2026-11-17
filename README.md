@@ -143,8 +143,16 @@ build/tools/ipc examples/models/chair.ips -o build/chair.iprop3d
 build/tools/ipgen build/chair.iprop3d --seed 7 -o build/chair.glb
 ```
 
-`examples/models` also has a crate, a barrel and a sword. Models run in the
-browser and in Godot today. They are a preview: the language and the
+`examples/models` also has a crate, a barrel, a sword and a lantern. A skin brings the
+[material maps](docs/language/material-maps.md) of its recipe, roughness,
+metallic, ambient occlusion and emission, glass blends over what is behind
+it, and one texture can dress a whole prop window by window:
+
+<p align="center">
+    <img src="examples/models/lantern-sheet.png" alt="Eight lanterns from one source: four or six sides, domed, stepped or pointed roofs, rusted iron, glass panes and a glowing candle flame." width="1024">
+</p>
+
+Models run in the browser and in Godot today. They are a preview: the language and the
 `.iprop3d` format may still change. Start with the
 [models chapter](docs/language/models.md).
 
@@ -170,7 +178,7 @@ brings the language into your editor.
 | [Website build](website/README.md) | [Changelog](CHANGELOG.md) |
 
 **Product 1.1.0 · Source language 1.1.0.** Binary format remains unversioned;
-C API 0.7 retains ABI/SONAME 0.5. 1.1 adds normal maps, published beside the
+C API 0.8 (with the unreleased material maps) retains ABI/SONAME 0.5. 1.1 adds normal maps, published beside the
 image from the same seed so engines can light a prop, and named seeds:
 `seed.initial().fork("leaves")` instead of hand-picked hash keys. Nothing is
 renamed or removed: 1.0 sources compile to the same bytes and existing

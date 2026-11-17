@@ -55,8 +55,9 @@ let cgImage = try image.makeCGImage()
 
 `image.normal` is the [normal map](../../docs/native-bindings.md#normal-maps-and-other-auxiliary-images)
 published with the image, or `nil`; `image.images` lists every auxiliary image
-and `program.images` what the program declares. Pass
-`deriveNormal: DerivedNormal()` to derive one for a prop that publishes none.
+and `program.images` what the program declares; `image.image(.roughness)`
+finds a [material map](../../docs/native-bindings.md#normal-maps-and-other-auxiliary-images).
+Pass `deriveNormal: DerivedNormal()` to derive one for a prop that publishes none.
 
 ```swift
 let lit = try program.generate(seed: 7, deriveNormal: DerivedNormal())

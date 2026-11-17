@@ -1,0 +1,18 @@
+// A display case: a wooden base, walls of glass and a lid. skin.blend mixes
+// the glass over what is behind it by its alpha; two-sided, the far walls
+// show through the near ones.
+import wood from "skins/wood.ips"
+import glass from "skins/glass.ips"
+
+asset showcase {
+  size 24x30x24
+
+  render {
+    root = seed.initial()
+    oak = wood.draw(root.fork("oak"))
+    pane = skin.blend(skin.two_sided(skin.fit(glass.draw(root.fork("glass")))))
+    box({0, 0, 0}, {24, 4, 24}, 0.5, oak)
+    box({0, 4, 0}, {20, 22, 20}, pane)
+    box({0, 26, 0}, {24, 3, 24}, 0.5, oak)
+  }
+}

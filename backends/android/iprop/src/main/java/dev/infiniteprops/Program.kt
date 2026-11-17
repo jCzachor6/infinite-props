@@ -22,11 +22,12 @@ data class Output @JvmOverloads constructor(val index: UInt, val owner: UInt, va
 data class Statistics(val fuelBudget: ULong, val fuelRemaining: ULong, val fuelUsed: ULong,
     val imageByteCount: ULong, val outputElementCount: ULong,
     val workBudget: ULong = 0u, val workRemaining: ULong = 0u, val workUsed: ULong = 0u)
-/** The C tag of each constant is its ordinal + 1. */
-enum class ImageKind { NORMAL }
+/** What an auxiliary image holds: a normal map (1.1) or a material map (1.2).
+ * The C tag of each constant is its ordinal + 1. */
+enum class ImageKind { NORMAL, ROUGHNESS, METALLIC, AO, EMISSION }
 enum class ImageSource { AUTHORED, DERIVED }
 
-/** An auxiliary image a program can publish: the normal output of its root. */
+/** An auxiliary image a program can publish: an image output of its root. */
 data class DeclaredImage(val index: UInt, val kind: ImageKind, val name: String)
 
 /** Asks for a normal map derived from the finished image when the program
@@ -38,8 +39,11 @@ data class DerivedNormal @JvmOverloads constructor(val depth: Float = 0f, val ro
 
 /** An image published beside the main one, owned by its result. A normal map
  * stores one direction per pixel: R is x rightward, G is y upward and B is z
- * toward the viewer, each byte b decoding as b / 127.5 - 1. The bytes are
- * linear data, not colour, and alpha is 255 everywhere (alphaMode == 2). */
+ * toward the viewer, each byte b decoding as b / 127.5 - 1. Roughness,
+ * metallic and AO maps hold one value in R, G and B (255 is fully rough,
+ * metal, unoccluded). These are linear data, not colour; an emission map
+ * holds the colour of the glow, encoded like the main image (sRGB). Alpha is
+ * 255 everywhere (alphaMode == 2). */
 data class AuxiliaryImage(val index: UInt, val kind: ImageKind, val source: ImageSource, val name: String,
     val width: UInt, val height: UInt, val rowStride: ULong,
     val pixelFormat: UInt, val alphaMode: UInt, val storageOrigin: UInt, val rgba: ByteArray)
@@ -49,7 +53,9 @@ data class GeneratedImage @JvmOverloads constructor(val width: UInt, val height:
     val rgba: ByteArray, val outputs: List<Output>, val statistics: Statistics, val resources: List<ResultResource> = emptyList(),
     val images: List<AuxiliaryImage> = emptyList()) {
     /** The normal map published with this image, authored or derived. */
-    val normal: AuxiliaryImage? get() = images.firstOrNull { it.kind == ImageKind.NORMAL }
+    val normal: AuxiliaryImage? get() = image(ImageKind.NORMAL)
+    /** The auxiliary image of a kind published with this image, or null. */
+    fun image(kind: ImageKind): AuxiliaryImage? = images.firstOrNull { it.kind == kind }
     fun output(name: String, owner: UInt = 0u): Output? = outputs.firstOrNull { it.owner == owner && it.name == name }
     fun resource(id: UInt): ResultResource? = if (id > 0u && id <= resources.size.toUInt()) resources[id.toInt() - 1] else null
 }

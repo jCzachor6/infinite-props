@@ -116,7 +116,8 @@ struct Program {
     std::vector<Collection> samplers;
     std::vector<Collection> steppers;
     std::vector<std::vector<u8>> distributions;
-    struct Export { TypeDescriptor type; std::string name; u32 owner; bool normal = false; };
+    // `image` is the AuxImageKind a normal or material map output publishes.
+    struct Export { TypeDescriptor type; std::string name; u32 owner; u32 image = 0; };
     std::vector<Export> resourceExports;
     std::map<std::string, u32> functionOwners;
 };
@@ -493,12 +494,15 @@ std::vector<u8> assemble(const std::string& source) {
             u32 owner = kRootParent;
             if (words.back() != "root" && !parseU32Text(words.back(), owner)) throw error("bad resource owner");
             if (output) {
-                // `normal` declares a layer export with the normal-output flag.
-                const bool normal = words[1] == "normal";
+                // `normal`, `roughness`, `metallic`, `ao` and `emission`
+                // declare a layer export with that image's flag.
+                u32 image = 0;
+                for (u32 kind = 1; kind <= kAuxImageKinds; ++kind)
+                    if (words[1] == auxImageKindName(kind)) image = kind;
                 ValueType type = ValueType::Layer;
-                if (!normal && (!parseValueType(words[1], type) || (type != ValueType::Mask && type != ValueType::Layer)))
-                    throw error("resource exports must be mask, layer or normal");
-                program.resourceExports.push_back({type, words[2], owner, normal});
+                if (!image && (!parseValueType(words[1], type) || (type != ValueType::Mask && type != ValueType::Layer)))
+                    throw error("resource exports must be mask, layer, normal, roughness, metallic, ao or emission");
+                program.resourceExports.push_back({type, words[2], owner, image});
             } else if (!program.functionOwners.emplace(words[1], owner).second) throw error("duplicate function owner");
             continue;
         }
@@ -1111,7 +1115,7 @@ std::vector<u8> assemble(const std::string& source) {
             exports.writeU32(output.owner); exports.writeU32(stringIndex.at(output.name));
             const auto type = std::find(program.types.begin(), program.types.end(), output.type);
             exports.writeU16(static_cast<u16>(type - program.types.begin()));
-            exports.writeU16(output.normal ? kResourceExportNormal : u16{0});
+            exports.writeU16(output.image ? resourceExportFlag(output.image) : u16{0});
         }
         for (const auto& [name, owner] : program.functionOwners) {
             (void)owner;

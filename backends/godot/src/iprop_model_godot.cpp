@@ -79,9 +79,16 @@ void IpropModel::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_fuel_used"), &IpropModel::get_fuel_used);
     ClassDB::bind_method(D_METHOD("get_work"), &IpropModel::get_work);
     ClassDB::bind_method(D_METHOD("get_last_error"), &IpropModel::get_last_error);
+    ClassDB::bind_method(D_METHOD("clear_texture_cache"), &IpropModel::clear_texture_cache);
+    ClassDB::bind_method(D_METHOD("get_cached_texture_count"), &IpropModel::get_cached_texture_count);
     BIND_CONSTANT(IMAGE_NORMAL);
+    BIND_CONSTANT(IMAGE_ROUGHNESS);
+    BIND_CONSTANT(IMAGE_METALLIC);
+    BIND_CONSTANT(IMAGE_AO);
+    BIND_CONSTANT(IMAGE_EMISSION);
     BIND_CONSTANT(ALPHA_OPAQUE);
     BIND_CONSTANT(ALPHA_CUTOUT);
+    BIND_CONSTANT(ALPHA_BLEND);
 
     ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "size"), "", "get_size");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "units_per_meter"), "", "get_units_per_meter");
@@ -224,6 +231,11 @@ Error IpropModel::reset_inputs() {
 
 Ref<ArrayMesh> IpropModel::generate(int64_t seed, const Dictionary& limits) {
     last_error_ = Dictionary();
+    // A cached texture that only the cache holds belongs to no mesh any more.
+    for (auto entry = texture_cache_.begin(); entry != texture_cache_.end();) {
+        if (entry->second.is_null() || entry->second->get_reference_count() <= 1) entry = texture_cache_.erase(entry);
+        else ++entry;
+    }
     const auto invalid = [&](const char* message) -> Ref<ArrayMesh> {
         last_error_["status"] = static_cast<int64_t>(IPROP_EX_E_ARGUMENT);
         last_error_["reason"] = static_cast<int64_t>(IPROP_REASON_INVALID_ARGUMENT);
@@ -270,7 +282,7 @@ Ref<ArrayMesh> IpropModel::generate(int64_t seed, const Dictionary& limits) {
         return readFailure();
 
     // Textures: the images as generated, and a GPU texture of each for the mesh.
-    struct Gpu { Ref<ImageTexture> colour, normal; bool repeats = false; };
+    struct Gpu { Ref<ImageTexture> colour, maps[6]; bool repeats = false; };
     std::vector<Gpu> gpu(info.texture_count);
     Array candidate_textures;
     for (uint32_t t = 0; t < info.texture_count; ++t) {
@@ -285,7 +297,7 @@ Ref<ArrayMesh> IpropModel::generate(int64_t seed, const Dictionary& limits) {
         char key[17];
         std::snprintf(key, sizeof(key), "%016llx", static_cast<unsigned long long>(view.key));
         Array images;
-        Ref<Image> normal;
+        Ref<Image> maps[6]; // by kind: normal, roughness, metallic, ao, emission
         for (uint32_t i = 0; i < view.image_count; ++i) {
             iprop_aux_image_view_ex aux;
             String aux_name;
@@ -295,7 +307,8 @@ Ref<ArrayMesh> IpropModel::generate(int64_t seed, const Dictionary& limits) {
                 return readFailure();
             const Ref<Image> image = imageOf(aux.width, aux.height, aux.byte_count, aux.pixels);
             if (image.is_null() || image->is_empty()) return readFailure();
-            if (aux.kind == IPROP_AUX_IMAGE_NORMAL && normal.is_null()) normal = image;
+            if (aux.kind >= IPROP_AUX_IMAGE_NORMAL && aux.kind <= IPROP_AUX_IMAGE_EMISSION && maps[aux.kind].is_null())
+                maps[aux.kind] = image;
             Dictionary entry;
             entry["index"] = static_cast<int64_t>(aux.image_index);
             entry["kind"] = static_cast<int64_t>(aux.kind);
@@ -315,10 +328,19 @@ Ref<ArrayMesh> IpropModel::generate(int64_t seed, const Dictionary& limits) {
         entry["repeats"] = view.repeats != 0;
         entry["image"] = colour;
         entry["images"] = images;
-        entry["normal"] = normal;
+        entry["normal"] = maps[IPROP_AUX_IMAGE_NORMAL];
         candidate_textures.append(entry);
-        gpu[t].colour = textureOf(colour, false);
-        if (normal.is_valid()) gpu[t].normal = textureOf(normal, true);
+        const auto upload = [&](const Ref<Image>& image, uint32_t kind) -> Ref<ImageTexture> {
+            if (image.is_null()) return Ref<ImageTexture>();
+            const std::string cached = std::string(key) + ":" + std::to_string(kind);
+            if (const auto found = texture_cache_.find(cached); found != texture_cache_.end()) return found->second;
+            const Ref<ImageTexture> texture = textureOf(image, kind == IPROP_AUX_IMAGE_NORMAL);
+            if (texture.is_valid()) texture_cache_[cached] = texture;
+            return texture;
+        };
+        gpu[t].colour = upload(colour, 0);
+        for (uint32_t kind = IPROP_AUX_IMAGE_NORMAL; kind <= IPROP_AUX_IMAGE_EMISSION; ++kind)
+            gpu[t].maps[kind] = upload(maps[kind], kind);
         gpu[t].repeats = view.repeats != 0;
         if (gpu[t].colour.is_null()) return readFailure();
     }
@@ -395,12 +417,27 @@ Ref<ArrayMesh> IpropModel::generate(int64_t seed, const Dictionary& limits) {
         Ref<StandardMaterial3D> material;
         material.instantiate();
         material->set_texture(BaseMaterial3D::TEXTURE_ALBEDO, texture.colour);
-        if (texture.normal.is_valid()) {
+        if (texture.maps[IPROP_AUX_IMAGE_NORMAL].is_valid()) {
             material->set_feature(BaseMaterial3D::FEATURE_NORMAL_MAPPING, true);
-            material->set_texture(BaseMaterial3D::TEXTURE_NORMAL, texture.normal);
+            material->set_texture(BaseMaterial3D::TEXTURE_NORMAL, texture.maps[IPROP_AUX_IMAGE_NORMAL]);
         }
+        // The numbers multiply the maps (material maps v1.2); a scalar map
+        // holds its value in red, green and blue alike.
         material->set_roughness(view.roughness);
         material->set_metallic(view.metallic);
+        if (texture.maps[IPROP_AUX_IMAGE_ROUGHNESS].is_valid()) {
+            material->set_texture(BaseMaterial3D::TEXTURE_ROUGHNESS, texture.maps[IPROP_AUX_IMAGE_ROUGHNESS]);
+            material->set_roughness_texture_channel(BaseMaterial3D::TEXTURE_CHANNEL_RED);
+        }
+        if (texture.maps[IPROP_AUX_IMAGE_METALLIC].is_valid()) {
+            material->set_texture(BaseMaterial3D::TEXTURE_METALLIC, texture.maps[IPROP_AUX_IMAGE_METALLIC]);
+            material->set_metallic_texture_channel(BaseMaterial3D::TEXTURE_CHANNEL_RED);
+        }
+        if (texture.maps[IPROP_AUX_IMAGE_AO].is_valid()) {
+            material->set_feature(BaseMaterial3D::FEATURE_AMBIENT_OCCLUSION, true);
+            material->set_texture(BaseMaterial3D::TEXTURE_AMBIENT_OCCLUSION, texture.maps[IPROP_AUX_IMAGE_AO]);
+            material->set_ao_texture_channel(BaseMaterial3D::TEXTURE_CHANNEL_RED);
+        }
         // Crisp: every texel a hard square, as pixel art wants it.
         material->set_texture_filter(view.crisp != 0 ? BaseMaterial3D::TEXTURE_FILTER_NEAREST
                                                      : BaseMaterial3D::TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC);
@@ -410,13 +447,17 @@ Ref<ArrayMesh> IpropModel::generate(int64_t seed, const Dictionary& limits) {
             material->set_transparency(BaseMaterial3D::TRANSPARENCY_ALPHA_SCISSOR);
             material->set_alpha_scissor_threshold(view.alpha_cutoff);
         }
+        // Glass mixes over what is behind it and writes no depth.
+        if (view.alpha_mode == IPROP3D_ALPHA_BLEND) material->set_transparency(BaseMaterial3D::TRANSPARENCY_ALPHA);
         if (view.two_sided != 0) material->set_cull_mode(BaseMaterial3D::CULL_DISABLED);
         if (view.emission > 0.f) {
-            // The colour image glows: white times the texture, times the amount.
+            // The emission map glows, else the colour image: white times the
+            // texture, times the amount.
             material->set_feature(BaseMaterial3D::FEATURE_EMISSION, true);
             material->set_emission(Color(1, 1, 1));
             material->set_emission_operator(BaseMaterial3D::EMISSION_OP_MULTIPLY);
-            material->set_texture(BaseMaterial3D::TEXTURE_EMISSION, texture.colour);
+            material->set_texture(BaseMaterial3D::TEXTURE_EMISSION, texture.maps[IPROP_AUX_IMAGE_EMISSION].is_valid()
+                                                                      ? texture.maps[IPROP_AUX_IMAGE_EMISSION] : texture.colour);
             material->set_emission_energy_multiplier(view.emission);
         }
         const int surface = mesh->get_surface_count() - 1;

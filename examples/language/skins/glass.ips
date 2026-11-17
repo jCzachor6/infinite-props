@@ -1,0 +1,17 @@
+// A pane of glass for a model: a pale tint at low alpha, a brighter rim and
+// one streak of reflection. With skin.blend the alpha says how much of what
+// is behind the pane shows through it.
+asset glass {
+  size 32x32
+  input color tint = #b8d8f0
+
+  draw {
+    layer pane(alpha = surface.source_over) {
+      rect(0, 0, 32, 32, color.set_a(tint, 64))
+      rect(0, 0, 32, 2, #e8f4ff90)
+      rect(0, 30, 32, 2, #e8f4ff90)
+      poly([{6, 32}, {12, 32}, {26, 0}, {20, 0}], #ffffff30)
+    }
+    surface.paint(pane, blend = surface.source_over)
+  }
+}

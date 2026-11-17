@@ -464,7 +464,8 @@ TEST_CASE("normal exports and new aux values survive tools and reject malformed 
     CHECK(failure(bytes) == ErrorReason::RuntimeViolation);
 
     const auto record = file.layout.find(SectionId::ResourceExports)->offset + 4;
-    for (const u16 flags : {u16{2}, u16{3}, u16{0x8000}, u16{0xffff}}) {
+    // Bits 1-4 are the material maps of v1.2; two image bits never load.
+    for (const u16 flags : {u16{3}, u16{0x20}, u16{0x8000}, u16{0xffff}}) {
         auto bad = bytes; patch16(bad, record + 10, flags);
         CHECK_THROWS_AS(loadFile(bad), FormatError);
     }

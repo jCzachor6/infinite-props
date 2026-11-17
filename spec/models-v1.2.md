@@ -196,11 +196,13 @@ unreachable code too.
 | 0x77 | `skin.cutout` | 0 | `[skin f32] -> [skin]` |
 | 0x78 | `skin.two_sided` | 0 | `[skin] -> [skin]` |
 | 0x79 | `skin.crisp` | 0 | `[skin] -> [skin]` |
+| 0x7A | `skin.blend` | 0 | `[skin] -> [skin]` |
+| 0x7B | `skin.region` | 0 | `[skin f32 f32 f32 f32] -> [skin]` |
 
 `skin` in a stack signature is an `i32`. An operand written 0 must be zero.
 An aux value outside this table fails validation, in unreachable code too.
 Ranges reserved for later milestones: `0x21–0x3F` scopes, `0x4C–0x6F`
-primitives, `0x7A–0x8F` skins, `0x90–0x9F` queries and outputs, `0xA0–0xAF`
+primitives, `0x7C–0x8F` skins, `0x90–0x9F` queries and outputs, `0xA0–0xAF`
 parts, `0xB0–0xBF` sculpting.
 
 ### The `vec3` operations
@@ -347,6 +349,18 @@ The instruction pushes a new record for the texture with these fields:
 | two-sided | no |
 | crisp | no |
 
+### Material maps on skins
+
+A texture carries every auxiliary image its program publishes: a normal map
+and the [material maps](material-maps-v1.2.md) roughness, metallic, ao and
+emission. A record's roughness, metallic and emission **multiply** the map of
+their kind, as glTF factors do. For each of the three, a new record starts at
+**1** instead of the default above when its texture has a map of that kind,
+so the map shows as painted; a modifier still sets the number. Without a map
+the number stands alone, and emission multiplies the texture's colour image.
+An AO map has no number. A texture without maps keeps the defaults, so a
+model that uses none is unchanged.
+
 ### Modifiers
 
 Each modifier pops a skin and its argument, copies the record with one field
@@ -363,6 +377,15 @@ changed and pushes the new record's number. The source record is unchanged.
 | `skin.cutout` | alpha = cutout, cutoff | in 0–1 |
 | `skin.two_sided` | two-sided = yes | — |
 | `skin.crisp` | crisp = yes | — |
+| `skin.blend` | alpha = blend | — |
+| `skin.region` | mapping = region, window (x, y, w, h) | inside the image |
+
+`skin.region` pops `h`, `w`, `y` and `x`, in the units of the declared size
+`aw × ah` of the texture's program. The window must have finite values,
+`w > 0`, `h > 0`, `x ≥ 0`, `y ≥ 0`, `x + w ≤ aw` and `y + h ≤ ah`, the sums
+computed in binary64; otherwise it traps with `NumericRange`
+(`skin region must lie inside the image`). A region record never marks its
+texture as repeating.
 
 A failed check traps with `NumericRange`. A generation holds at most 1024
 records; one more traps with `RuntimeViolation` (`model exceeds 1024 skin records`).
@@ -387,11 +410,15 @@ up the image. With `aw × ah` the declared size of the texture's program:
 ```
 repeat:  u = (s * density + shift.x) / aw      v = (t * density + shift.y) / ah
 fit:     u = s / fw                            v = t / fh
+region:  u = (x + c(s / fw) * w) / aw          v = (y + c(t / fh) * h) / ah
+         c(a) = 0 if not a > 0, 1 if a > 1, else a
 uv = (f32(u), f32(v))
 ```
 
 UV `(0, 0)` is the upper left corner of the image. A placement's scale does
-not change `(s, t)`.
+not change `(s, t)`. The clamp keeps every vertex of a region inside its
+window, also on a bevel or a pole whose face coordinates leave the face.
+Filtering in a host still reads texels next to the window's edge.
 
 A position that is not finite after rounding traps with `NumericRange`
 (`model coordinate out of range`).
@@ -747,7 +774,8 @@ A successful generation yields:
 - the **textures** in order of first generation: key, program name, width,
   height, declared size, the RGBA8 image and its auxiliary images;
 - the **surfaces**: the triangles grouped by the tuple (texture, roughness,
-  metallic, emission, alpha, cutoff, two-sided, crisp) of their records,
+  metallic, emission, alpha, cutoff, two-sided, crisp) of their records
+  (mapping, density, shift and a region change only UVs),
   compared by bits, in order of first use. A surface lists its vertices in
   emission order (positions, normals, tangents with sign, UVs) and `u32`
   indices, three per triangle. A vertex belongs to the surface of the
@@ -757,7 +785,9 @@ A successful generation yields:
 - fuel and work counters, and the vertex and triangle counts.
 
 The image of a texture has the 2D alpha contract. A surface whose alpha is
-opaque ignores it.
+opaque ignores it; a cutout surface drops a texel below the cutoff; a blend
+surface mixes the texel over what is behind it by its alpha and is drawn
+after the others, without writing depth.
 
 ## Source language
 
@@ -772,6 +802,12 @@ Source 1.2 adds the following, only in an asset that has `render`:
   point there, so the result lies on the segment.
 - The type `skin`; `alias.draw(seed, inputs…, size = {w, h})` as an
   expression for an imported asset that has `draw`; the `skin.*` modifiers.
+- `alias.NAME` for a `const` declaration of an imported asset that has
+  `draw`: the value is folded where it is read and nothing of the imported
+  asset runs. A local or a parameter named like the alias is read instead;
+  an unknown name is a compile error (`'ALIAS' declares no constant 'NAME'`).
+  The asset's own `const` initializers cannot read it, and an asset that has
+  `draw` cannot read its parts' constants.
 - The primitives of [the model page](#the-model-page) under their mnemonics,
   with `box` and `extrude` taking an optional bevel and `lathe` an optional
   crease before the skin.

@@ -61,6 +61,9 @@ enum class Op : u8 {
     SkinCutout = 0x77,
     SkinTwoSided = 0x78,
     SkinCrisp = 0x79,
+    // Material maps v1.2 (M2): alpha blending and a window of the image.
+    SkinBlend = 0x7A,
+    SkinRegion = 0x7B,
 };
 
 // The bits of place.begin's operand, in the stack order of their arguments.
@@ -85,6 +88,9 @@ inline constexpr TypeDescriptor kSkinSlot = TypeDescriptor::I32;
 // texel to a unit, is opaque, one-sided and filtered.
 inline constexpr f32 kSkinDensity = 1.f, kSkinRoughness = 0.8f, kSkinMetallic = 0.f, kSkinEmission = 0.f,
                      kSkinCutoff = 0.5f;
+// A texture with a roughness, metallic or emission map (material maps v1.2)
+// starts that number at 1: the number multiplies the map, as in glTF.
+inline constexpr f32 kSkinMapFactor = 1.f;
 
 struct OpSpec {
     Op op;

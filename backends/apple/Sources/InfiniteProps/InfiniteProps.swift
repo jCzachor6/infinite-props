@@ -79,10 +79,11 @@ public struct Output: Sendable {
     public let parts: [PartSnapshot]
 }
 
-public enum ImageKind: UInt32, Sendable { case normal = 1 }
+/// What an auxiliary image holds: a normal map (1.1) or a material map (1.2).
+public enum ImageKind: UInt32, Sendable { case normal = 1, roughness = 2, metallic = 3, ao = 4, emission = 5 }
 public enum ImageSource: UInt32, Sendable { case authored = 1, derived = 2 }
 
-/// An auxiliary image a program can publish: the normal output of its root.
+/// An auxiliary image a program can publish: an image output of its root.
 public struct DeclaredImage: Sendable, Equatable {
     public let index: UInt32
     public let kind: ImageKind
@@ -103,9 +104,11 @@ public struct DerivedNormal: Sendable, Equatable {
 
 /// An image published beside the main one, owned by its result. A normal map
 /// stores one direction per pixel: R is x rightward, G is y upward and B is z
-/// toward the viewer, each byte b decoding as b / 127.5 - 1. The bytes are
-/// linear data, not colour, and alpha is 255 everywhere (alphaMode == 2): use
-/// the main image's alpha for coverage.
+/// toward the viewer, each byte b decoding as b / 127.5 - 1. Roughness,
+/// metallic and AO maps hold one value in R, G and B (255 is fully rough,
+/// metal, unoccluded). These are linear data, not colour; an emission map
+/// holds the colour of the glow, encoded like the main image (sRGB). Alpha is
+/// 255 everywhere (alphaMode == 2): use the main image's alpha for coverage.
 public struct AuxiliaryImage: Sendable, Equatable {
     public let index: UInt32
     public let kind: ImageKind
@@ -130,7 +133,9 @@ public struct GeneratedImage: Sendable {
     /// Images published beside the main one, in result order.
     public let images: [AuxiliaryImage]
     /// The normal map published with this image, authored or derived.
-    public var normal: AuxiliaryImage? { images.first { $0.kind == .normal } }
+    public var normal: AuxiliaryImage? { image(.normal) }
+    /// The auxiliary image of a kind published with this image, if any.
+    public func image(_ kind: ImageKind) -> AuxiliaryImage? { images.first { $0.kind == kind } }
     public func resource(_ id: UInt32) -> ResultResource? {
         id > 0 && Int(id) <= resources.count ? resources[Int(id) - 1] : nil
     }

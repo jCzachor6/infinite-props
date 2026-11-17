@@ -10,7 +10,7 @@ preview, described in their own chapter.
 This handbook describes source language **1.1.0** and product **1.1.0**.
 Product, source, C API and ABI versions are independent, and the binary format
 is unversioned: `ipc --describe-language` reports the compiler's contracts.
-C API 0.7 uses ABI 0.5.
+C API 0.8 uses ABI 0.5.
 The generated book identifies its product, development/release status and source
 commit. Earlier documentation is available in Git history.
 
@@ -37,17 +37,18 @@ files; their contents are included in the generated book and tested by CI.
 17. [Imports and part composition](composition.md)
 18. [Captured layers, masks and clipping](surfaces.md)
 19. [Relief and normal maps](relief.md)
-20. [Models](models.md)
-21. [Writing idiomatic props](idioms.md)
-22. [Compiler tools and diagnostics](tooling.md)
-23. [Grammar](grammar.md)
-24. [Maintaining this documentation](development.md)
-25. [Migrating from 0.6 to 0.7](migration-v0.7.md)
-26. [Migrating from 0.7 to 0.8](migration-v0.8.md)
-27. [Migrating from 0.8 to 0.9](migration-v0.9.md)
-28. [Migrating from 0.9 to 1.0](migration-v1.0.md)
-29. [Migrating from 1.0 to 1.1](migration-v1.1.md)
-30. [Migrating from 1.1 to 1.2](migration-v1.2.md)
+20. [Material maps](material-maps.md)
+21. [Models](models.md)
+22. [Writing idiomatic props](idioms.md)
+23. [Compiler tools and diagnostics](tooling.md)
+24. [Grammar](grammar.md)
+25. [Maintaining this documentation](development.md)
+26. [Migrating from 0.6 to 0.7](migration-v0.7.md)
+27. [Migrating from 0.7 to 0.8](migration-v0.8.md)
+28. [Migrating from 0.8 to 0.9](migration-v0.9.md)
+29. [Migrating from 0.9 to 1.0](migration-v1.0.md)
+30. [Migrating from 1.0 to 1.1](migration-v1.1.md)
+31. [Migrating from 1.1 to 1.2](migration-v1.2.md)
 
 The [format and VM specifications](../../spec/README.md) define binary
 encoding, exact numerical/raster algorithms, validation and deterministic

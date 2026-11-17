@@ -56,6 +56,7 @@ void IpropAsset::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_declared_images"), &IpropAsset::get_declared_images);
     ClassDB::bind_method(D_METHOD("get_images"), &IpropAsset::get_images);
     ClassDB::bind_method(D_METHOD("get_normal_image"), &IpropAsset::get_normal_image);
+    ClassDB::bind_method(D_METHOD("get_image", "kind"), &IpropAsset::get_image);
     ClassDB::bind_method(D_METHOD("set_derive_normal", "enabled"), &IpropAsset::set_derive_normal);
     ClassDB::bind_method(D_METHOD("get_derive_normal"), &IpropAsset::get_derive_normal);
     ClassDB::bind_method(D_METHOD("set_normal_depth", "value"), &IpropAsset::set_normal_depth);
@@ -65,6 +66,10 @@ void IpropAsset::_bind_methods() {
     ClassDB::bind_method(D_METHOD("set_normal_detail", "value"), &IpropAsset::set_normal_detail);
     ClassDB::bind_method(D_METHOD("get_normal_detail"), &IpropAsset::get_normal_detail);
     BIND_CONSTANT(IMAGE_NORMAL);
+    BIND_CONSTANT(IMAGE_ROUGHNESS);
+    BIND_CONSTANT(IMAGE_METALLIC);
+    BIND_CONSTANT(IMAGE_AO);
+    BIND_CONSTANT(IMAGE_EMISSION);
     BIND_CONSTANT(SOURCE_AUTHORED);
     BIND_CONSTANT(SOURCE_DERIVED);
 
@@ -182,6 +187,14 @@ Error IpropAsset::set_input(const String& name, const Variant& value) {
     const Error result = setNamedInput(parameters_, name, value);
     if (result == OK) emit_changed();
     return result;
+}
+
+Ref<Image> IpropAsset::get_image(int64_t kind) const {
+    for (int64_t i = 0; i < images_.size(); ++i) {
+        const Dictionary entry = images_[i];
+        if (static_cast<int64_t>(entry["kind"]) == kind) return entry["image"];
+    }
+    return Ref<Image>();
 }
 
 Array IpropAsset::get_declared_images() const {

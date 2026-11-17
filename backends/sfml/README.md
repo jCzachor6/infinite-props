@@ -109,7 +109,8 @@ native.reset(); // owned.outputs, owned.resources and owned.pixels remain valid.
 ```
 
 `copyResult(result).images` holds owned copies of the auxiliary images and
-`normal()` returns the normal map among them, or null; `copyImages(result)`
+`normal()` returns the normal map among them, or null, and `image(kind)` a
+material map such as `IPROP_AUX_IMAGE_ROUGHNESS`; `copyImages(result)`
 copies only those, and `declaredImages(program)` lists what a program can
 publish. `generate` takes a final optional `const DerivedNormal*`: a non-null
 request derives a normal map for a prop that publishes none, with zero fields

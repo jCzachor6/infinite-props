@@ -346,3 +346,124 @@ TEST_CASE("ipsheet fills a sheet with previews of a model") {
     CHECK(run(ipsheetMain, {"ipsheet", image, "--seeds", "2", "-o", files.path("flat.png")}).code == 0);
     CHECK(tools::readPng(files.path("flat.png")).width == 32);
 }
+
+namespace {
+
+const char* const kPlate = R"(
+asset plate {
+  size 8x8
+  output roughness rough
+  output metallic metal
+  output ao shade
+  output emission glow
+  draw {
+    rect(0, 0, 8, 8, #707478)
+    layer r(alpha = surface.source_over) { rect(0, 0, 4, 8, #404040) }
+    rough = r
+    layer m(alpha = surface.source_over) { rect(0, 0, 8, 8, #ffffff) }
+    metal = m
+    layer a(alpha = surface.source_over) { rect(0, 6, 8, 2, #808080) }
+    shade = a
+    layer e(alpha = surface.source_over) { pixel(7, 7, #ff8000) }
+    glow = e
+  }
+}
+)";
+
+const char* const kGlass = R"(
+asset glass {
+  size 8x8
+  draw {
+    layer g(alpha = surface.source_over) { rect(0, 0, 8, 8, #c0e0ff60) }
+    surface.paint(g, blend = surface.source_over)
+  }
+}
+)";
+
+const char* const kMaterials = R"(
+import plate from "plate.ips"
+import glass from "glass.ips"
+import tile from "tile.ips"
+asset materials {
+  size 12x12x12
+  render {
+    box({0, 0, 0}, {4, 4, 4}, plate.draw(1))
+    quad({0, 0, 3}, {4, 0, 3}, {4, 4, 3}, {0, 4, 3}, skin.blend(glass.draw(2)))
+    box({6, 0, 0}, {4, 4, 4}, skin.emission(tile.draw(3), 2.0))
+  }
+}
+)";
+
+// The objects of a top-level JSON array, as text, in order.
+std::vector<std::string> objectsOf(const std::string& json, const std::string& key) {
+    const auto start = json.find("\"" + key + "\":[");
+    REQUIRE(start != std::string::npos);
+    std::vector<std::string> objects;
+    int depth = 0;
+    std::size_t begin = 0;
+    for (std::size_t i = start + key.size() + 3; i < json.size(); ++i) {
+        const char c = json[i];
+        if (c == '{' && depth++ == 0) begin = i;
+        if (c == '}' && --depth == 0) objects.push_back(json.substr(begin, i - begin + 1));
+        if (c == ']' && depth == 0) break;
+    }
+    return objects;
+}
+
+// The number after `"name":{"index":` in one material, or -1.
+long indexOf(const std::string& material, const std::string& name) {
+    const std::string key = "\"" + name + "\":{\"index\":";
+    const auto at = material.find(key);
+    return at == std::string::npos ? -1 : std::stol(material.substr(at + key.size()));
+}
+
+} // namespace
+
+TEST_CASE("ipgen writes material maps, emission maps and glass into the glTF") {
+    const Workspace files;
+    const std::map<std::string, std::string> sources{{"materials.ips", kMaterials}, {"plate.ips", kPlate},
+                                                     {"glass.ips", kGlass}, {"tile.ips", kTile}};
+    const auto compiled = compileSource("materials.ips", [&](std::string_view path) { return sources.at(std::string(path)); });
+    REQUIRE(compiled.succeeded());
+    const auto path = files.write("materials.iprop3d", compiled.bytes);
+    const auto result = run(ipgenMain, {"ipgen", path, "-o", files.path("materials.glb")});
+    INFO(result.err);
+    REQUIRE(result.code == 0);
+    CHECK_THAT(result.out, ContainsSubstring("\"alpha\": \"blend\""));
+    const auto glb = files.read("materials.glb");
+    REQUIRE(glb.size() > 28);
+    const std::string json(glb.begin() + 20, glb.begin() + 20 + word(glb, 12));
+
+    const auto materials = objectsOf(json, "materials");
+    REQUIRE(materials.size() == 3);
+    const long textures = static_cast<long>(objectsOf(json, "textures").size());
+    // Every texture a material names exists.
+    for (const auto& material : materials)
+        for (const char* slot : {"baseColorTexture", "metallicRoughnessTexture", "normalTexture", "occlusionTexture", "emissiveTexture"})
+            CHECK(indexOf(material, slot) < textures);
+
+    // The plate: one occlusion-roughness-metallic texture for both slots, its
+    // emission map as the emissive texture, factors of 1.
+    const auto& plate = materials[0];
+    INFO(plate);
+    CHECK(indexOf(plate, "metallicRoughnessTexture") >= 0);
+    CHECK(indexOf(plate, "occlusionTexture") == indexOf(plate, "metallicRoughnessTexture"));
+    CHECK(indexOf(plate, "emissiveTexture") >= 0);
+    CHECK(indexOf(plate, "emissiveTexture") != indexOf(plate, "baseColorTexture"));
+    CHECK(indexOf(plate, "emissiveTexture") != indexOf(plate, "metallicRoughnessTexture"));
+    CHECK_THAT(plate, ContainsSubstring("\"metallicFactor\":1,\"roughnessFactor\":1"));
+    CHECK_THAT(plate, !ContainsSubstring("alphaMode"));
+
+    // The glass blends; it has no maps.
+    const auto& glass = materials[1];
+    CHECK_THAT(glass, ContainsSubstring("\"alphaMode\":\"BLEND\""));
+    CHECK(indexOf(glass, "metallicRoughnessTexture") == -1);
+    CHECK(indexOf(glass, "emissiveTexture") == -1);
+
+    // Without an emission map the colour glows, as before maps.
+    const auto& tile = materials[2];
+    CHECK(indexOf(tile, "emissiveTexture") == indexOf(tile, "baseColorTexture"));
+    CHECK(indexOf(tile, "normalTexture") >= 0);
+    CHECK(indexOf(tile, "occlusionTexture") == -1);
+    CHECK_THAT(tile, ContainsSubstring("\"emissiveFactor\":[1,1,1]"));
+}

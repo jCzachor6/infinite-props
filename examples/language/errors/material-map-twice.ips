@@ -1,0 +1,7 @@
+// A host receives one image of each kind: one roughness map per asset.
+asset twoFinishes {
+    size 1x1
+    output roughness finish
+    output roughness wear
+    draw {}
+}

@@ -6,6 +6,7 @@
 #include "iprop/Instruction.hpp"
 #include "iprop/Meta.hpp"
 #include "iprop/Collections.hpp"
+#include "iprop/NormalMap.hpp"
 
 #include <span>
 #include <string>
@@ -15,13 +16,24 @@ namespace iprop {
 
 // Record flags (formerly a reserved zero field). A normal output is a layer
 // slot whose value must be a direction layer; the root's is published.
+// Material maps (v1.2) are layer slots of colour layers, bits 1-4; a record
+// sets one image bit at most, and bit k publishes AuxImageKind k + 1.
 inline constexpr u16 kResourceExportNormal = 1u << 0;
+inline constexpr u16 kResourceExportRoughness = 1u << 1;
+inline constexpr u16 kResourceExportMetallic = 1u << 2;
+inline constexpr u16 kResourceExportAo = 1u << 3;
+inline constexpr u16 kResourceExportEmission = 1u << 4;
+inline constexpr u16 kResourceExportImages = 0x1fu;
 struct ResourceExport {
     u32 owner = kRootParent;
     u32 nameIndex = 0;
     TypeDescriptor type;
     bool normal = false;
+    // The image the root's slot publishes: 0 for none, else an AuxImageKind.
+    u32 image = 0;
 };
+// The record flag of an image kind (1-5), and the kind of a flag.
+constexpr u16 resourceExportFlag(u32 kind) { return static_cast<u16>(1u << (kind - 1)); }
 
 // A fully parsed file. The LoadedFile OWNS its byte buffer: every span
 // (function code, strings) points into the internal storage, so the file is

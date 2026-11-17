@@ -153,6 +153,30 @@ Json normalMaps() {
         {"effects", operationEffects(kernel->effects)}});
 }
 
+// Material maps (spec material maps v1.2): additive to the schema-8 export.
+Json materialMaps() {
+    Json kinds = Json::array();
+    for (u32 kind = static_cast<u32>(AuxImageKind::Roughness); kind <= kAuxImageKinds; ++kind) {
+        const Color background = materialMapBackground(kind);
+        kinds.push_back(Json::object({
+            {"name", auxImageKindName(kind)}, {"image_code", kind}, {"flag_bit", kind - 1},
+            {"background_rgba", Json::array({background.r, background.g, background.b, background.a})},
+            {"published", kind == static_cast<u32>(AuxImageKind::Emission) ? "composite_rgb" : "composite_red_in_rgb"},
+            {"encoding", kind == static_cast<u32>(AuxImageKind::Emission) ? "colour_like_main_image" : "linear"}}));
+    }
+    return Json::object({
+        {"kinds", kinds},
+        {"output_syntax", "output <roughness|metallic|ao|emission> <name>"}, {"output_keyword", "contextual"},
+        {"output_storage", "flagged_layer_resource_export"}, {"outputs_per_asset", "one_per_kind"},
+        {"flags_per_record", "at_most_one_image_bit"},
+        {"output_value", "colour_layer_checked_at_write"}, {"list_outputs", false},
+        {"part_read", "layer_in_caller_coordinates"},
+        {"publication", "root_slot_painted_source_over_on_background_after_success"},
+        {"publication_order", Json::array({"normal", "roughness", "metallic", "ao", "emission"})},
+        {"published_alpha", 255}, {"publication_fuel", 0},
+        {"publication_work", "background_and_paint_then_one_step_per_pixel_for_red_in_rgb"}});
+}
+
 // Named seeds (spec named seeds v1.1).
 Json namedSeeds() {
     const auto* initial = findOpcode(Opcode::SeedInitial);
@@ -491,6 +515,7 @@ Json sourceRules() {
         {"maximum_slots", kMaxConstPoolEntries}, {"slot_bytes", 64}, {"write_read_fuel", 1},
         {"section_id", static_cast<u32>(SectionId::ResourceExports)}});
     rules["normal_maps"] = normalMaps();
+    rules["material_maps"] = materialMaps();
     rules["named_seeds"] = namedSeeds();
     rules["masks"] = Json::object({
         {"from_syntax", "mask.from(image)"}, {"clip_syntax", "clip(mask) { <statements> }"},
@@ -817,10 +842,20 @@ Json models() {
         {"skin_defaults", Json::object({{"mapping", "repeat"}, {"density", decimal(model::kSkinDensity)},
             {"shift", Json::array({0, 0})}, {"roughness", decimal(model::kSkinRoughness)},
             {"metallic", decimal(model::kSkinMetallic)}, {"emission", decimal(model::kSkinEmission)},
-            {"alpha", "opaque"}, {"cutoff", decimal(model::kSkinCutoff)}, {"two_sided", false}, {"crisp", false}})},
+            {"alpha", "opaque"}, {"cutoff", decimal(model::kSkinCutoff)}, {"two_sided", false}, {"crisp", false},
+            {"with_map", decimal(model::kSkinMapFactor)}})},
         {"mapping", Json::object({{"repeat", "face_units_times_density_plus_shift_over_declared_size"},
             {"fit", "image_once_across_the_face"}, {"uv_origin", "upper_left"},
-            {"unit", "one_texel_per_model_unit_at_density_one"}})},
+            {"unit", "one_texel_per_model_unit_at_density_one"},
+            {"region", "window_once_across_the_face_face_coordinates_clamped_to_the_face"},
+            {"region_units", "declared_size_of_the_skin_program"}, {"region_bleed", "filtering_reads_neighbouring_texels"}})},
+        {"alpha_modes", Json::array({"opaque", "cutout", "blend"})},
+        {"material_maps", Json::object({{"source", "published_images_of_the_skin_program"},
+            {"numbers", "multiply_the_map_of_their_kind"}, {"without_a_map", "the_number_alone"},
+            {"emission_without_a_map", "multiplies_the_colour"}, {"occlusion_number", false}})},
+        {"imported_constants", Json::object({{"syntax", "<alias>.<name>"}, {"declarations", "const_of_the_imported_draw_asset"},
+            {"evaluation", "folded_at_compile_time"}, {"shadowed_by", "a_local_or_parameter_named_like_the_alias"},
+            {"in_own_constants", false}, {"draw_assets", false}})},
         {"limits", Json::object({{"vertices", model::kMaxVertices}, {"triangles", model::kMaxTriangles},
             {"textures", model::kMaxTextures}, {"texels", model::kMaxTexels},
             {"texture_side", model::kMaxTextureSide}, {"skin_records", model::kMaxSkinRecords},

@@ -1,0 +1,20 @@
+// A skin of the corpus that names its own layout: a model reads the fields
+// as net.frontX and the rest, and the badge's outline as net.badge.
+asset net {
+  size 64x32
+  const f32 frontX = 0.0
+  const f32 sideX = 32.0
+  const f32 fieldW = 32.0
+  const f32 fieldH = 24.0
+  const f32 glassY = 24.0
+  const list<vec2> badge = [{0, 0}, {6, 0}, {7, 2}, {3, 4}, {-1, 2}]
+  input color tint = #b05a32
+  draw {
+    rect(0, 0, 32, 24, tint)
+    rect(32, 0, 32, 24, color.shade(tint, -30))
+    rect(0, 0, 32, 1, #f0e0c0)
+    rect(32, 23, 32, 1, #201008)
+    layer g(alpha = surface.source_over) { rect(0, 24, 64, 8, #9cc8ff58) }
+    surface.paint(g, blend = surface.source_over)
+  }
+}

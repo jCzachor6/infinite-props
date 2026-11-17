@@ -1,12 +1,15 @@
-# Auxiliary images and normal maps (C API 0.7, ABI 0.5)
+# Auxiliary images, normal and material maps (C API 0.8, ABI 0.5)
 
 A generation can publish images beside the main one. The first kind is the
 **normal map** of a prop whose root asset declares `output normal`; see
 [relief and normal maps](language/relief.md) for authoring and the
 [normal map contract](../spec/normal-maps-v1.1.md) for the exact bytes.
 `IPROP_CAP_AUX_IMAGES` (bit 21) advertises the queries and
-`IPROP_CAP_DERIVED_NORMAL` (bit 22) the derived fallback. Both use API 0.7 on
-ABI line 0.5: existing structures, enums and layouts are unchanged.
+`IPROP_CAP_DERIVED_NORMAL` (bit 22) the derived fallback, both since API 0.7.
+API 0.8 adds the four **material maps**, roughness, metallic, AO and emission
+(`IPROP_CAP_MATERIAL_MAPS`, bit 23); see [material maps](language/material-maps.md)
+and their [contract](../spec/material-maps-v1.2.md). Both versions use ABI
+line 0.5: existing structures, enums and layouts are unchanged.
 
 ```c
 uint32_t index;
@@ -26,11 +29,11 @@ authored image.
 ## What a program declares
 
 `iprop_program_aux_image_count` and `iprop_program_aux_image_get` describe the
-images a loaded program can publish: none, or the one normal output of its root
-asset, with its kind and exact name. Normal outputs of linked parts are internal
-and are not listed. A declaration is a promise of at most one image: a
-generation that never assigns the output publishes none, so use the result
-queries to index a result.
+images a loaded program can publish: the image outputs of its root asset, at
+most one of each kind, in kind order, with their kinds and exact names. Image
+outputs of linked parts are internal and are not listed. A declaration is a
+promise of at most one image: a generation that never assigns the output
+publishes none, so use the result queries to index a result.
 
 ## What a result carries
 
@@ -42,7 +45,7 @@ queries to index a result.
 | Field | Meaning |
 | --- | --- |
 | `image_index` | Position in the result's list |
-| `kind` | `IPROP_AUX_IMAGE_NORMAL` (1) |
+| `kind` | `IPROP_AUX_IMAGE_NORMAL` (1), `_ROUGHNESS` (2), `_METALLIC` (3), `_AO` (4) or `_EMISSION` (5); a result lists them in this order |
 | `source` | `IPROP_AUX_IMAGE_AUTHORED` (1): painted by the program. `IPROP_AUX_IMAGE_DERIVED` (2): made by the runtime on request |
 | `name` | The output's name, or `normal` for a derived image; byte-counted UTF-8 without a terminator |
 | `width`, `height` | Those of the main image, including size overrides |
@@ -71,6 +74,22 @@ use the main image's alpha for coverage.
   downward negates `y`, which for stored bytes is `255 - G`.
 - The map is in the image's own axes. A sprite drawn mirrored or rotated needs
   the same transform applied to the decoded vector.
+
+## Reading a material map
+
+| Kind | Holds | Where the prop painted nothing |
+| --- | --- | --- |
+| `IPROP_AUX_IMAGE_ROUGHNESS` | one value in R, G and B: 0 a mirror, 255 matt | 255 |
+| `IPROP_AUX_IMAGE_METALLIC` | one value in R, G and B: 0 not metal, 255 metal | 0 |
+| `IPROP_AUX_IMAGE_AO` | one value in R, G and B: 0 no ambient light, 255 all of it | 255 |
+| `IPROP_AUX_IMAGE_EMISSION` | the colour of the glow | black |
+
+Roughness, metallic and AO are linear data: upload them like a normal map,
+without an sRGB transfer, and read any one channel. Emission is a colour
+encoded like the main image's, so upload it as sRGB. Alpha is 255 in every
+pixel. A renderer that packs maps, such as glTF's occlusion (R), roughness
+(G) and metallic (B), copies the red channel of each into its slot. A host
+that does not know a kind skips it.
 
 ## Derived normal image
 

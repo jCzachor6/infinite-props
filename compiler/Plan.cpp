@@ -127,6 +127,8 @@ std::unique_ptr<Plan> Planner::plan() {
     };
     prepareConstants(entry_);
     for (const auto* part : plan_->parts) prepareConstants(*part);
+    // A render asset reads its skins' constants (models v1.2).
+    for (const auto& skin : plan_->skins) prepareConstants(*skin.program);
     const auto prepareDefaults = [&](const ips::Program& owner) {
         for (const auto& input : owner.asset.inputs) {
             if (plan_->inputDefaults.contains(&input)) continue;
@@ -323,7 +325,7 @@ void Planner::registerNames() {
             plan_->pools.addType(type);
             plan_->resourceSlotIndex.emplace(std::pair{owner, output.name},
                 static_cast<u16>(plan_->resourceExports.size()));
-            plan_->resourceExports.push_back({owner, output.name, type, output.kind == ips::OutputKind::Normal});
+            plan_->resourceExports.push_back({owner, output.name, type, ips::imageKindOf(output.kind)});
         }
     };
     exports(entry_, kRootParent);
@@ -532,6 +534,16 @@ void Planner::prepareFunctionBody(const std::string& name) {
         if (Value value; constants.fold(*expr, value)) planned.constant = value;
         if (const auto* id = std::get_if<ips::Identifier>(expr))
             if (const auto found = assetConstants.find(id->name); found != assetConstants.end()) planned.constant = found->second;
+        // `alias.name` in a render asset: the skin's folded constant, where
+        // the Typer read one (a local or a parameter of that name wins).
+        if (typer_->importConstantReads().contains(expr)) {
+            const auto& member = std::get<ips::Member>(*expr);
+            if (const auto* base = std::get_if<ips::Identifier>(member.object.get()))
+                if (const auto skin = plan_->skinIndex.find(base->name); skin != plan_->skinIndex.end()) {
+                    const auto& constants = plan_->assetConstants.at(plan_->skins[skin->second].program);
+                    if (const auto found = constants.find(member.name); found != constants.end()) planned.constant = found->second;
+                }
+        }
         // The Typer decided which names read a palette: a bare name reads its
         // shared list constant, an index lowers through the palette.
         if (const auto found = resolutions.find(expr); found != resolutions.end()) {

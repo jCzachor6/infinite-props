@@ -22,8 +22,9 @@ size          = "size", integer, (integer, [ integer ] | xdigits, [ xdigits ]), 
 origin        = "origin", expression, ",", expression, [ ";" ] ;
 input         = "input", input_type, name, "=", declaration_constant, [ ";" ] ;
 input_type    = "color" | "f32" | "u32" | "i32" ;
-output        = "output", [ "list" ], output_kind, name, [ ";" ] ; (* part requires list; mask/layer/normal forbid list *)
-output_kind   = "point" | "circle" | "rect" | "mask" | "layer" | "normal" | "part" ;
+output        = "output", [ "list" ], output_kind, name, [ ";" ] ; (* part requires list; mask, layer and the image kinds forbid list *)
+output_kind   = "point" | "circle" | "rect" | "mask" | "layer" | "normal"
+              | "roughness" | "metallic" | "ao" | "emission" | "part" ;
 palette       = "palette", name, "=", "[", [ expressions ], "]", [ ";" ] ;
 asset_constant = "const", (value_type | model_type), name, "=", expression, [ ";" ] ;  (* reserved "const" *)
 draw          = "draw", block ;
@@ -156,7 +157,9 @@ explicitly selects one operation. See [alpha composition](surfaces.md).
 only after `output`, and `.normal(...)` is the surface method on every
 receiver except the namespace `color`, where `color.normal` is the builtin.
 `encoding` is an option name only inside a capture's parentheses. See
-[relief and normal maps](relief.md).
+[relief and normal maps](relief.md). `roughness`, `metallic`, `ao` and
+`emission` are output kinds only after `output` and ordinary names
+everywhere else; see [material maps](material-maps.md).
 
 `seed`, `fork` and `initial` are not reserved words. `seed` names a type only
 after `:` or `->`; as an expression it reads the stream state, and

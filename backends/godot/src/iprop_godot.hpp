@@ -69,7 +69,8 @@ protected:
 
 public:
     // The C tags found in image dictionaries.
-    enum { IMAGE_NORMAL = 1, SOURCE_AUTHORED = 1, SOURCE_DERIVED = 2 };
+    enum { IMAGE_NORMAL = 1, IMAGE_ROUGHNESS = 2, IMAGE_METALLIC = 3, IMAGE_AO = 4, IMAGE_EMISSION = 5,
+           SOURCE_AUTHORED = 1, SOURCE_DERIVED = 2 };
 
     IpropAsset();
     ~IpropAsset() override;
@@ -116,9 +117,15 @@ public:
     // name}]: the normal output of its root asset, or nothing.
     godot::Array get_declared_images() const;
     // The latest generation's auxiliary images in result order: {index, kind,
-    // source, name, image}. kind is IMAGE_NORMAL; source is SOURCE_AUTHORED
-    // or SOURCE_DERIVED. Each Image owns its bytes.
+    // source, name, image}. kind is IMAGE_NORMAL or a material map
+    // (IMAGE_ROUGHNESS, IMAGE_METALLIC, IMAGE_AO, IMAGE_EMISSION), in that
+    // order; source is SOURCE_AUTHORED or SOURCE_DERIVED. Each Image owns its
+    // bytes. Roughness, metallic and AO hold one linear value in R, G and B;
+    // emission holds the colour of the glow, encoded like the main image
+    // (sRGB). Alpha is 255 everywhere.
     godot::Array get_images() const { return images_; }
+    // The latest generation's image of a kind, or null.
+    godot::Ref<godot::Image> get_image(int64_t kind) const;
     // The latest generation's normal map, or null. R is x rightward, G is y
     // upward and B is z toward the viewer, the convention Godot expects; a
     // byte b decodes as b / 127.5 - 1 and alpha is 255 everywhere.

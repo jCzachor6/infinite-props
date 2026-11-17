@@ -30,7 +30,7 @@ iprop::capi::CallOutcome queryLibrary(iprop_library_info_ex* out) noexcept {
         IPROP_CAP_PARAMETER_OVERRIDES | IPROP_CAP_GENERATE_EX |
         IPROP_CAP_RESULT_OUTPUTS | IPROP_CAP_TYPED_OUTPUTS |
         IPROP_CAP_PART_OUTPUTS | IPROP_CAP_RESULT_RESOURCES | IPROP_CAP_EXECUTION_LIMITS |
-        IPROP_CAP_AUX_IMAGES | IPROP_CAP_DERIVED_NORMAL;
+        IPROP_CAP_AUX_IMAGES | IPROP_CAP_DERIVED_NORMAL | IPROP_CAP_MATERIAL_MAPS;
 #define WRITE(field) iprop::capi::writeField(out, size, offsetof(iprop_library_info_ex, field), info.field)
     WRITE(product_major); WRITE(product_minor); WRITE(product_patch);
     WRITE(api_major); WRITE(api_minor); WRITE(abi_major); WRITE(abi_minor);

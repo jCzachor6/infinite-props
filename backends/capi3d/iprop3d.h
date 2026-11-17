@@ -190,6 +190,7 @@ IPROP_API iprop_status_ex iprop3d_result_query(const iprop3d_result* result, ipr
 typedef uint32_t iprop3d_alpha_mode;
 #define IPROP3D_ALPHA_OPAQUE UINT32_C(0) /* alpha is ignored */
 #define IPROP3D_ALPHA_CUTOUT UINT32_C(1) /* a texel below alpha_cutoff is not drawn */
+#define IPROP3D_ALPHA_BLEND UINT32_C(2)  /* mixed over what is behind it by alpha (glass) */
 
 /* The triangles of one host material, in the order the model emitted them.
  * A surface is every triangle that shares a texture and material numbers;
@@ -203,8 +204,11 @@ typedef uint32_t iprop3d_alpha_mode;
  *   uvs        2 floats per vertex; outside 0..1 where the texture repeats
  *   indices    index_count indices into this surface's vertices, three per
  *              triangle
- * roughness and metallic are 0-1; emission is a multiple of the texture's
- * colour, 0 for none. alpha_cutoff is 0-1 and applies in CUTOUT mode only;
+ * roughness and metallic are 0-1 and emission is 0 or more. Each multiplies
+ * its map of the texture's auxiliary images (material maps v1.2) when the
+ * texture has one, and a skin then starts it at 1; without a map it stands
+ * alone, and emission multiplies the texture's colour, 0 for none. An AO map
+ * applies as it is. alpha_cutoff is 0-1 and applies in CUTOUT mode only;
  * an opaque surface reports the value its skin holds, 0.5 unless the model
  * set one. two_sided and crisp are 0 or 1: crisp asks for unfiltered
  * (nearest) sampling without mipmaps. All floats are exact binary32 bits. */
@@ -240,9 +244,9 @@ IPROP_API iprop_status_ex iprop3d_result_surface(const iprop3d_result* result, u
  * texture beyond 0..1 and needs repeat wrapping, else 0 (clamp).
  * The pixel fields follow iprop_image_view_ex, with its alpha mode: the
  * image is what iprop_generate_ex gives for the same program, seed, size
- * and inputs. image_count is the number of auxiliary images (the normal
- * map, for a program that declares one). Pixels and the name are borrowed
- * from the result until iprop3d_result_free. */
+ * and inputs. image_count is the number of auxiliary images: the normal map
+ * and the material maps the program declares, in kind order. Pixels and the
+ * name are borrowed from the result until iprop3d_result_free. */
 typedef struct {
     uint32_t struct_size;
     uint32_t flags;
@@ -268,7 +272,9 @@ IPROP_API iprop_status_ex iprop3d_result_texture(const iprop3d_result* result, u
 /* The auxiliary images of a texture, with the descriptor and the rules of
  * iprop_result_aux_image_get/find. A normal image stores tangent-space
  * directions for the tangents of the surfaces above (spec models v1.2); its
- * bytes are linear data. Pixels and names are borrowed from the result. */
+ * bytes are linear data. Roughness, metallic and AO maps are linear data
+ * too; an emission map is a colour like the texture's (material maps v1.2).
+ * Pixels and names are borrowed from the result. */
 IPROP_API iprop_status_ex iprop3d_result_texture_image(const iprop3d_result* result, uint32_t texture_index,
                                                        uint32_t image_index, iprop_aux_image_view_ex* out,
                                                        iprop_error_ex* error);

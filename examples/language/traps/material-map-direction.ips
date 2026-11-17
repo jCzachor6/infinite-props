@@ -1,0 +1,10 @@
+// A material map takes a colour layer; directions belong to `output normal`.
+asset wrongMap {
+  size 4x4
+  output emission glow
+  draw {
+    rect(0, 0, 4, 4, #303030)
+    layer n(encoding = surface.normal) { rect(0, 0, 4, 4, color.normal(0.0, 0.0, 1.0)) }
+    glow = n
+  }
+}

@@ -66,6 +66,7 @@ add_executable(iprop_tests
     compiler/noise_masks_test.cpp
     compiler/blur_test.cpp
     compiler/relief_test.cpp
+    compiler/material_maps_test.cpp
     compiler/resource_exports_test.cpp
     compiler/gradients_test.cpp
     compiler/part_transforms_test.cpp
@@ -268,6 +269,8 @@ if(IPROP_NODE_EXECUTABLE)
     add_test(NAME normal_maps_v11 COMMAND ${IPROP_NODE_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/backends/html5/test/normal-map-conformance.js" "$<TARGET_FILE_DIR:ipc>"
         "$<TARGET_FILE:execution_limits_probe>")
+    add_test(NAME material_maps_v12 COMMAND ${IPROP_NODE_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/backends/html5/test/material-map-conformance.js" "$<TARGET_FILE_DIR:ipc>")
     add_test(NAME noise_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/backends/html5/test/noise-v09-conformance.js" "$<TARGET_FILE_DIR:ipc>")
     add_test(NAME compatibility_v08 COMMAND ${IPROP_NODE_EXECUTABLE}

@@ -139,7 +139,7 @@ int compare(const iprop3d_model* model, const iprop::model::LoadedModel& loaded,
 int main(int argc, char** argv) {
     CHECK(argc == 2);
     const std::string directory = argv[1];
-    for (const char* name : {"crate.iprop3d", "crate-debug.iprop3d", "empty.iprop3d"}) {
+    for (const char* name : {"crate.iprop3d", "crate-debug.iprop3d", "empty.iprop3d", "materials.iprop3d"}) {
         const auto bytes = readFile(directory + "/" + name);
         CHECK(!bytes.empty());
         iprop3d_model* model = nullptr;

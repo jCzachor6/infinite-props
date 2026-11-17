@@ -1,0 +1,31 @@
+// A model of the corpus for material maps (M2): a skin with every map, a
+// glass pane, windows of one net on bevelled and round solids, and the
+// net's own constants for the windows and an outline.
+import plate from "skins/plate.ips"
+import net from "skins/net.ips"
+
+asset materials {
+  size 60x40x40
+
+  render {
+    root = seed.initial()
+    metal = plate.draw(root.fork("plate"))
+    sides = choose(root.fork("sides"), 5, 7, 12, 30)
+    box({-18, 0, 0}, {roll(root.fork("w"), 6.0, 14.0), 9.5, 7.25}, roll(root.fork("bevel"), 0.0, 1.5), metal)
+    cylinder({0, 0, -9}, 3.3, 7.7, sides, skin.metallic(skin.roughness(metal, roll(root.fork("rough"), 0.1, 1.0)), 0.5))
+    lamp = skin.emission(metal, roll(root.fork("glow"), 0.0, 4.0))
+    sphere({0, 12, -9}, 2.6, sides, 9, lamp)
+
+    sheet = net.draw(root.fork("net"), tint = #8a4a2a)
+    front = skin.region(sheet, net.frontX, 0.0, net.fieldW, net.fieldH)
+    side = skin.region(sheet, net.sideX, 0.0, net.fieldW, net.fieldH)
+    glass = skin.blend(skin.two_sided(skin.region(sheet, 0.0, net.glassY, 64.0, 32.0 - net.glassY)))
+    place(at = {14, 0, 6}, yaw = roll(root.fork("turn"), -60.0, 60.0)) {
+      box({0, 0, 0}, {12, 10, 8}, roll(root.fork("round"), 0.2, 2.0), front)
+      cylinder({0, 10, 0}, 4.0, 3.0, sides, side)
+      lathe({0, 13, 0}, [{0, 0}, {3, 0}, {3.5, 2}, {1, 4}, {0, 4}], sides, 35.0, side)
+      quad({-6, 0, 4.5}, {6, 0, 4.5}, {6, 9, 4.5}, {-6, 9, 4.5}, glass)
+    }
+    extrude({-4, 0, 12}, net.badge, roll(root.fork("depth"), 0.5, 3.0), 0.3, front)
+  }
+}

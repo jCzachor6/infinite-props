@@ -1,0 +1,10 @@
+// A render asset reads the constants its skins declare; this one has none
+// of that name.
+import sheet from "../skins/crate-net.ips"
+
+asset crate {
+  size 20x20x20
+  render {
+    box({0, 0, 0}, {20, 20, 20}, skin.region(sheet.draw(1), sheet.sidex, 0.0, 32.0, 32.0))
+  }
+}

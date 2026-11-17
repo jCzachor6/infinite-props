@@ -30,6 +30,8 @@ iprop_capi3d_fixture(crate.iprop3d crate.ips)
 iprop_capi3d_fixture(crate-debug.iprop3d crate.ips --debug --no-compress)
 iprop_capi3d_fixture(empty.iprop3d empty.ips)
 iprop_capi3d_fixture(tile.iprop tile.ips)
+# Material maps, glass and windows (M2): the corpus model and its skins.
+iprop_capi3d_fixture(materials.iprop3d ../../../tests/model/corpus/materials.ips)
 add_custom_target(capi3d_fixtures DEPENDS ${IPROP_CAPI3D_FIXTURES})
 
 # iprop_capi3d_test(<name> <source>... [MODEL])

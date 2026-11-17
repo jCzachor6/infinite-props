@@ -225,7 +225,12 @@ class Statistics:
 
 
 class ImageKind(IntEnum):
+    """What an auxiliary image holds: a normal map (1.1) or a material map (1.2)."""
     NORMAL = 1
+    ROUGHNESS = 2
+    METALLIC = 3
+    AO = 4
+    EMISSION = 5
 
 
 class ImageSource(IntEnum):
@@ -233,9 +238,13 @@ class ImageSource(IntEnum):
     DERIVED = 2
 
 
+_IMAGE_KINDS = frozenset(int(kind) for kind in ImageKind)
+_IMAGE_SOURCES = frozenset(int(source) for source in ImageSource)
+
+
 @dataclass(frozen=True)
 class DeclaredImage:
-    """An auxiliary image a program can publish: the normal output of its root."""
+    """An auxiliary image a program can publish: an image output of its root."""
     index: int
     kind: ImageKind
     name: str
@@ -298,7 +307,11 @@ class GeneratedImage:
     @property
     def normal(self):
         """The normal map published with this image, or None."""
-        return next((image for image in self.images if image.kind == ImageKind.NORMAL), None)
+        return self.image_of(ImageKind.NORMAL)
+
+    def image_of(self, kind):
+        """The auxiliary image of a kind published with this image, or None."""
+        return next((image for image in self.images if image.kind == kind), None)
 
     def resource(self, resource_id):
         """Resolve a result-local nonzero ID; invalid IDs are never indices."""
@@ -360,7 +373,9 @@ class Program:
             for index in range(count.value):
                 declared = n.sized(n.AuxInfo)
                 self._native.call("program_aux_image_get", self._handle, index, c.byref(declared))
-                images.append(DeclaredImage(declared.image_index, ImageKind(declared.kind), n.text(declared.name)))
+                # A kind this package does not know is skipped, not an error.
+                if declared.kind in _IMAGE_KINDS:
+                    images.append(DeclaredImage(declared.image_index, ImageKind(declared.kind), n.text(declared.name)))
             self.images = tuple(images)
         except BaseException:
             self.close()
@@ -472,6 +487,8 @@ class Program:
         for index in range(count.value):
             view = n.sized(n.AuxImage)
             self._native.call("result_aux_image_get", result, index, c.byref(view))
+            if view.kind not in _IMAGE_KINDS or view.source not in _IMAGE_SOURCES:
+                continue  # a kind or source this package does not know is skipped, not an error
             images.append(AuxiliaryImage(view.image_index, ImageKind(view.kind), ImageSource(view.source), n.text(view.name),
                 view.width, view.height, view.row_stride, view.pixel_format, view.alpha_mode, view.origin,
                 c.string_at(view.pixels, view.byte_count) if view.byte_count else b""))

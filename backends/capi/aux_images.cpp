@@ -4,20 +4,33 @@
 
 #include <cstddef>
 
-// API 0.7: auxiliary images (spec normal maps v1.1). Queries only: every
-// image was published by the generation that produced the result.
+// API 0.7: auxiliary images (spec normal maps v1.1); 0.8 adds the material
+// maps (v1.2). Queries only: every image was published by the generation
+// that produced the result.
 
 static_assert(IPROP_AUX_IMAGE_NORMAL == static_cast<uint32_t>(iprop::AuxImageKind::Normal));
+static_assert(IPROP_AUX_IMAGE_ROUGHNESS == static_cast<uint32_t>(iprop::AuxImageKind::Roughness));
+static_assert(IPROP_AUX_IMAGE_METALLIC == static_cast<uint32_t>(iprop::AuxImageKind::Metallic));
+static_assert(IPROP_AUX_IMAGE_AO == static_cast<uint32_t>(iprop::AuxImageKind::Ao));
+static_assert(IPROP_AUX_IMAGE_EMISSION == static_cast<uint32_t>(iprop::AuxImageKind::Emission));
 static_assert(IPROP_AUX_IMAGE_AUTHORED == static_cast<uint32_t>(iprop::AuxImageSource::Authored));
 static_assert(IPROP_AUX_IMAGE_DERIVED == static_cast<uint32_t>(iprop::AuxImageSource::Derived));
 
 namespace {
 using namespace iprop::capi;
 
-// The root's normal output, the one auxiliary image a program can declare.
-const iprop::ResourceExport* declaredNormal(const iprop_program& program) noexcept {
+// The root's image outputs, at most one of each kind, in kind order: the
+// order a result lists the images in.
+uint32_t declaredCount(const iprop_program& program) noexcept {
+    uint32_t count = 0;
     for (const auto& exported : program.data->resourceExports)
-        if (exported.owner == iprop::kRootParent && exported.normal) return &exported;
+        if (exported.owner == iprop::kRootParent && exported.image) ++count;
+    return count;
+}
+const iprop::ResourceExport* declaredImage(const iprop_program& program, uint32_t index) noexcept {
+    for (uint32_t kind = 1; kind <= iprop::kAuxImageKinds; ++kind)
+        for (const auto& exported : program.data->resourceExports)
+            if (exported.owner == iprop::kRootParent && exported.image == kind && index-- == 0) return &exported;
     return nullptr;
 }
 
@@ -69,7 +82,7 @@ iprop_status_ex iprop_program_aux_image_count(const iprop_program* program, uint
     return checkedBoundary(error, out_count, sizeof(uint32_t), context, [&] {
         if (program == nullptr) return CallOutcome::argument("program is null");
         if (out_count == nullptr) return CallOutcome::argument("out_count is null");
-        *out_count = declaredNormal(*program) != nullptr ? 1u : 0u;
+        *out_count = declaredCount(*program);
         return CallOutcome{};
     });
 }
@@ -84,11 +97,11 @@ iprop_status_ex iprop_program_aux_image_get(const iprop_program* program, uint32
             return CallOutcome::argument("auxiliary image output is null or smaller than four bytes");
         if (readField<uint32_t>(out, capacity, offsetof(iprop_aux_image_info_ex, flags)) != 0)
             return CallOutcome::argument("auxiliary image flags are unsupported");
-        const auto* declared = declaredNormal(*program);
-        if (declared == nullptr || image_index != 0)
+        const auto* declared = declaredImage(*program, image_index);
+        if (declared == nullptr)
             return CallOutcome::argument("auxiliary image index is out of range");
         const auto& name = program->data->pool.strings[declared->nameIndex];
-        const iprop_aux_image_kind kind = IPROP_AUX_IMAGE_NORMAL;
+        const iprop_aux_image_kind kind = declared->image;
         writeField(out, capacity, offsetof(iprop_aux_image_info_ex, image_index), image_index);
         writeField(out, capacity, offsetof(iprop_aux_image_info_ex, kind), kind);
         writeName(out, capacity, name.data(), static_cast<uint32_t>(name.size()));

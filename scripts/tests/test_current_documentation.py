@@ -82,7 +82,7 @@ class CurrentDocumentationTest(unittest.TestCase):
         release = metadata(ROOT, "v" + self.product, publishing=True)
         self.assertEqual(release["product_version"], "1.1.0")
         self.assertEqual(release["language_version"], "1.1.0")
-        self.assertEqual(release["c_api_version"], "0.7")
+        self.assertEqual(release["c_api_version"], "0.8")
         self.assertEqual(release["c_abi_soversion"], "0.5")
         self.assertIn("migration-v1.1.md", release["notes"])
 

@@ -73,7 +73,39 @@ fun verifyBindings(load: (String) -> ByteArray) {
     }
     println("Kotlin/JNI execution limits: PASS work/deadline, active cancellation, deferred token close and recovery")
     verifyNormalMaps(load)
+    verifyMaterialMaps(load)
 
+}
+
+/** Material maps (spec material maps v1.2) against the CLI-rendered shared fixture. */
+fun verifyMaterialMaps(load: (String) -> ByteArray) {
+    val kinds = listOf(ImageKind.NORMAL, ImageKind.ROUGHNESS, ImageKind.METALLIC, ImageKind.AO, ImageKind.EMISSION)
+    val names = listOf("relief", "gloss", "metal", "shade", "glow")
+    val files = listOf("normal", "roughness", "metallic", "ao", "emission")
+    check(kinds.map { it.ordinal + 1 } == listOf(1, 2, 3, 4, 5))
+    Program(load("binding-maps.iprop")).use { program ->
+        // Declared out of order in the source; listed by kind.
+        check(program.images == kinds.indices.map { DeclaredImage(it.toUInt(), kinds[it], names[it]) })
+        val result = program.generate(5u)
+        check(result.rgba.contentEquals(load("binding-maps.rgba"))) { "CLI RGBA oracle mismatch with material maps" }
+        check(result.images.size == 5)
+        for ((i, image) in result.images.withIndex()) {
+            check(image.index == i.toUInt() && image.kind == kinds[i] && image.source == ImageSource.AUTHORED && image.name == names[i])
+            check(image.width == 8u && image.height == 4u && image.rowStride == 32uL && image.alphaMode == 2u)
+            check(image.rgba.contentEquals(load("binding-maps.${files[i]}.rgba"))) { "CLI ${files[i]} map oracle mismatch" }
+            check(result.image(kinds[i]) === image)
+        }
+        for (kind in listOf(ImageKind.ROUGHNESS, ImageKind.METALLIC, ImageKind.AO)) {
+            val pixels = result.image(kind)!!.rgba
+            check((pixels.indices step 4).all { pixels[it] == pixels[it + 1] && pixels[it] == pixels[it + 2] }) { "a scalar map is grey" }
+        }
+        check(result.normal === result.images[0])
+        val moved = program.generate(6u)
+        check(!moved.image(ImageKind.ROUGHNESS)!!.rgba.contentEquals(result.image(ImageKind.ROUGHNESS)!!.rgba))
+        check(moved.image(ImageKind.EMISSION)!!.rgba.contentEquals(result.image(ImageKind.EMISSION)!!.rgba))
+    }
+    Program(load("bindings.iprop")).use { program -> check(program.generate(5u).image(ImageKind.ROUGHNESS) == null) }
+    println("Kotlin/JNI material maps: PASS every map against the CLI in kind order and declarations")
 }
 
 /** Auxiliary images against the CLI-rendered shared fixtures. */

@@ -88,7 +88,13 @@ templates are not included in the native package.
   as an owned RGBA8 `Image`, or null, and `images` lists every auxiliary image
   as `{index, kind, source, name, image}` with the constants
   `IpropAsset.IMAGE_NORMAL`, `SOURCE_AUTHORED` and `SOURCE_DERIVED`.
-  `declared_images` lists what the loaded program can publish. Set
+  `declared_images` lists what the loaded program can publish.
+- **Material maps** — `images` also lists the roughness, metallic, AO and
+  emission maps of a prop that declares them (`IMAGE_ROUGHNESS`,
+  `IMAGE_METALLIC`, `IMAGE_AO`, `IMAGE_EMISSION`), after its normal map, and
+  `get_image(kind)` returns one or null. Roughness, metallic and AO hold one
+  linear value in R, G and B; emission is a colour. See
+  [material maps](../../docs/c-api-aux-images.md#reading-a-material-map). Set
   `derive_normal = true` to derive one for a prop that publishes none;
   `normal_depth`, `normal_rounding` and `normal_detail` tune it, zero keeping
   each default. Changing these emits `changed`; values out of range fail the
@@ -152,7 +158,7 @@ for slot in asset.output_slots:
 Keep `output_slots` and `resources` together when retaining a result. Both
 remain valid after a later generation, reload or destruction of the asset;
 IDs belong to that particular result. Generation negotiates typed parts
-through C API 0.7 and publishes the image, outputs, resources and auxiliary images together.
+through C API 0.8 and publishes the image, outputs, resources and auxiliary images together.
 
 Names are decoded using their exact UTF-8 byte count. Godot 4.5.2's UTF-8 parser
 stops at embedded NUL, so the adapter decodes bounded non-NUL segments and
@@ -196,10 +202,16 @@ change in any release until the models contract is frozen.
   because Godot's front faces are clockwise, and positions are divided by
   `units_per_meter`, because a scene is in metres. A material carries the
   colour texture, the normal map of a skin that publishes one, roughness and
-  metallic, repeat or clamp, nearest filtering for a `crisp` skin and
+  metallic, which multiply the skin's roughness and metallic maps read from
+  red, an AO map, repeat or clamp, nearest filtering for a `crisp` skin and
   mipmapped anisotropic filtering otherwise, alpha scissor for a cutout skin,
-  no culling for a two-sided one and the colour texture as emission for a
-  glowing one.
+  alpha blending for a glass one (`ALPHA_BLEND`), no culling for a two-sided
+  one, and for a glowing one the emission map, or the colour texture without
+  one, as emission.
+- **Shared textures** — meshes of one `IpropModel` share a GPU texture for
+  each texture key and image kind, across generations; a texture that no mesh
+  holds any more is dropped at the next `generate`. `clear_texture_cache()`
+  stops the sharing, and `get_cached_texture_count()` reports it.
 - **The generation's own numbers** stay available after `generate`, exactly
   as generated (model units, counterclockwise triangles): `surfaces` is a
   list of `{index, texture, roughness, metallic, emission, alpha_mode,
@@ -227,7 +239,7 @@ cushion fabric.
 Godot.app/Contents/MacOS/Godot --path build/godot-project model-demo.tscn
 ```
 
-`godot_models` (ctest) runs headlessly: it compiles four models with `ipc`,
+`godot_models` (ctest) runs headlessly: it compiles five models with `ipc`,
 generates them with `ipgen --dump` and with `IpropModel` for several seeds
 and inputs, and demands the same bits in every vertex, index, material
 number, texture and counter. It then checks the mesh against those arrays
@@ -293,4 +305,4 @@ run concurrently with generation.
 completed generation. On failure `generate` returns null and preserves the
 prior outputs/resources/work; `asset.last_error` exposes status, reason, stage,
 location flags, PC and message. Successful generation clears the error.
-This adapter builds against C API 0.7, retaining ABI 0.5.
+This adapter builds against C API 0.8, retaining ABI 0.5.

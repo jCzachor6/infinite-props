@@ -28,7 +28,7 @@ void parseResourceExports(std::span<const u8> data, const Section& section, Load
     for (const auto& output : file.meta.outputs) names.emplace(kRootParent, file.pool.strings[output.nameIndex]);
     for (u32 p = 0; p < file.code.parts.size(); ++p)
         for (const auto& output : file.code.parts[p].outputs) names.emplace(p, file.pool.strings[output.nameIndex]);
-    std::set<u32> normalOwners;
+    std::set<std::pair<u32, u16>> imageOwners;
     for (u32 i = 0; i < count; ++i) {
         const auto at = reader.position();
         const auto owner = reader.readU32(), name = reader.readU32();
@@ -39,16 +39,24 @@ void parseResourceExports(std::span<const u8> data, const Section& section, Load
         if (type >= file.collections.types.size() ||
             (file.collections.types[type] != ValueType::Mask && file.collections.types[type] != ValueType::Layer))
             throw FormatError("invalid resource export type descriptor", at + 8, ErrorReason::InvalidMetadata);
-        if (flags & ~kResourceExportNormal)
+        if (flags & ~kResourceExportImages)
             throw FormatError("unknown resource export flags", at + 10, ErrorReason::InvalidMetadata);
+        if (flags & (flags - 1))
+            throw FormatError("a resource export publishes one image at most", at + 10, ErrorReason::InvalidMetadata);
         const bool normal = (flags & kResourceExportNormal) != 0;
+        u32 image = 0;
+        for (u32 kind = 1; kind <= kAuxImageKinds; ++kind)
+            if (flags == resourceExportFlag(kind)) image = kind;
         if (normal && file.collections.types[type] != ValueType::Layer)
             throw FormatError("a normal output must be a layer export", at + 8, ErrorReason::InvalidMetadata);
-        if (normal && !normalOwners.insert(owner).second)
-            throw FormatError("an asset declares more than one normal output", at + 10, ErrorReason::InvalidMetadata);
+        if (image && file.collections.types[type] != ValueType::Layer)
+            throw FormatError("a material map output must be a layer export", at + 8, ErrorReason::InvalidMetadata);
+        if (image && !imageOwners.emplace(owner, flags).second)
+            throw FormatError(normal ? "an asset declares more than one normal output"
+                                     : "an asset declares more than one material map of a kind", at + 10, ErrorReason::InvalidMetadata);
         if (!names.emplace(owner, file.pool.strings[name]).second)
             throw FormatError("duplicate output name in resource exports", at + 4, ErrorReason::InvalidMetadata);
-        file.resourceExports.push_back({owner, name, file.collections.types[type], normal});
+        file.resourceExports.push_back({owner, name, file.collections.types[type], normal, image});
     }
     const auto functions = reader.readU32();
     if (functions != file.code.functions.size())
@@ -162,6 +170,9 @@ bool stepResourceExports(Execution& ex, Instruction ins) {
             auto value = ex.popLayer();
             if (declaration.normal && value.buffer->encoding != SurfaceBuffer::Encoding::Direction)
                 ex.trap("normal output needs a direction layer", ErrorReason::InvalidOutput);
+            if (declaration.image && !declaration.normal && value.buffer->encoding == SurfaceBuffer::Encoding::Direction)
+                ex.trap(std::string(auxImageKindName(declaration.image)) + " output needs a colour layer, not a direction layer",
+                        ErrorReason::InvalidOutput);
             value.mapping = mapExport(ex, *value.buffer, value.mapping);
             ex.resourceSlots[ins.operand] = std::move(value);
         }

@@ -427,10 +427,15 @@ OutputDecl ParserImpl::parseOutput() {
     case TokenKind::KeywordMask: outputKind = OutputKind::Mask; break;
     case TokenKind::KeywordLayer: outputKind = OutputKind::Layer; break;
     default:
-        // `part` and `normal` are contextual: neither is a reserved word.
+        // `part`, `normal` and the material maps are contextual: none is a
+        // reserved word.
         if (kind() == TokenKind::Identifier && tokens_[pos_].text == "part") outputKind = OutputKind::Part;
         else if (kind() == TokenKind::Identifier && tokens_[pos_].text == "normal") outputKind = OutputKind::Normal;
-        else failExpected("an output kind (point, rect, circle, mask, layer, normal or list part)");
+        else if (kind() == TokenKind::Identifier && tokens_[pos_].text == "roughness") outputKind = OutputKind::Roughness;
+        else if (kind() == TokenKind::Identifier && tokens_[pos_].text == "metallic") outputKind = OutputKind::Metallic;
+        else if (kind() == TokenKind::Identifier && tokens_[pos_].text == "ao") outputKind = OutputKind::Ao;
+        else if (kind() == TokenKind::Identifier && tokens_[pos_].text == "emission") outputKind = OutputKind::Emission;
+        else failExpected("an output kind (point, rect, circle, mask, layer, normal, roughness, metallic, ao, emission or list part)");
     }
     if (isList && isResourceOutput(outputKind)) failHere("resource exports cannot be lists");
     if (!isList && outputKind == OutputKind::Part) failHere("part outputs must be lists");

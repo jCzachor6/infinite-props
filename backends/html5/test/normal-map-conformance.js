@@ -338,7 +338,9 @@ function run(iprop, tool, directory, options = {}) {
     }
     // Export records: unknown flag bits, a flagged mask and two flagged layers of one owner.
     const flagged = (data, index, flags) => { const copy = Buffer.from(data); copy.writeUInt16LE(flags, sections(copy).get(10) + 4 + index * 12 + 10); return copy; };
-    for (const flags of [2, 3, 0x8000, 0xffff]) reject(flagged(wire, 0, flags), /unknown resource export flags/);
+    // Bits 1-4 are the material maps of v1.2 (material-map tests cover them).
+    for (const flags of [0x20, 0x8000, 0xffff]) reject(flagged(wire, 0, flags), /unknown resource export flags/);
+    reject(flagged(wire, 0, 3), /one image at most/);
     assert.deepEqual(generate(flagged(wire, 0, 0)).images, [], "without the flag the slot is an ordinary layer export");
     const mixed = compile("asset t{size 1x1 output mask region output layer plain output normal relief draw{}}", ["--no-opt", "--no-compress"]);
     reject(flagged(mixed, 0, 1), /a normal output must be a layer export/);

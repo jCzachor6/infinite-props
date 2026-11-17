@@ -1,4 +1,4 @@
-# C API 0.7 and ABI line 0.5
+# C API 0.8 and ABI line 0.5
 
 Product 0.7.0 intentionally removes variant/archetype controls and uses C ABI
 line 0.5. The earliest compatible product is 0.7.0. Clients must rebuild with
@@ -15,7 +15,7 @@ and complete-field reads/writes under their new layouts.
 The shared library uses SOVERSION/install identity 0.5. Windows uses the DLL
 name `ipropc-0.5.dll`; imported CMake targets resolve the current artifact.
 Package version selection rejects product requests before 0.7.0. Runtime
-queries report API 0.7 and ABI 0.5 independently; the file format is
+queries report API 0.8 and ABI 0.5 independently; the file format is
 unversioned, so the library's format fields are reserved zeros.
 
 Conformance checks the new sizes and every field offset, shared/static clients,
@@ -51,3 +51,11 @@ structure, enum value or entry point changes, so API 0.4–0.6 clients on ABI 0.
 remain compatible and see the same results. Programs that declare a normal
 output use the [normal map extension](../spec/normal-maps-v1.1.md) of the
 unversioned file format; a runtime without it rejects them at load.
+
+API 0.8 adds the [material maps](c-api-aux-images.md#reading-a-material-map):
+`IPROP_CAP_MATERIAL_MAPS` advertises image kinds 2–5 (roughness, metallic, AO
+and emission) in the queries of API 0.7. No structure, entry point or layout
+changes; a client built for 0.7 sees new kind values and may skip them.
+Programs that declare a material map use the
+[material map extension](../spec/material-maps-v1.2.md); a runtime without it
+rejects them at load.

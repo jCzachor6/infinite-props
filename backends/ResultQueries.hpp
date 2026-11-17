@@ -87,10 +87,15 @@ inline iprop_status_ex copyAuxImages(const iprop_result* result, std::vector<Aux
     return IPROP_EX_OK;
 }
 
+// The first image of a kind in a list (a normal or a material map), or null.
+inline const AuxImage* findAuxImage(const std::vector<AuxImage>& images, iprop_aux_image_kind kind) {
+    for (const auto& image : images) if (image.info.kind == kind) return &image;
+    return nullptr;
+}
+
 // The first normal image of a list, or null.
 inline const AuxImage* normalImage(const std::vector<AuxImage>& images) {
-    for (const auto& image : images) if (image.info.kind == IPROP_AUX_IMAGE_NORMAL) return &image;
-    return nullptr;
+    return findAuxImage(images, IPROP_AUX_IMAGE_NORMAL);
 }
 
 inline iprop_status_ex queryOutput(const iprop_result* result, std::uint32_t index,

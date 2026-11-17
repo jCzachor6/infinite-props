@@ -29,6 +29,8 @@ const corpus = [
     { name: "chair", source: "examples/models/chair.ips", seeds: [0, 1, 2, 3, 4, 5, 9, 13],
       uniforms: [{}, { finish: 5, fabric: 2 }] },
     { name: "empty", source: "backends/capi3d/test/empty.ips", seeds: [0, 9], uniforms: [{}] },
+    // Material maps, glass and windows (M2): numbers, alpha modes and maps.
+    { name: "materials", source: "tests/model/corpus/materials.ips", seeds: [1, 3, 6], uniforms: [{}] },
 ];
 
 function fnv1a64(bytes) {

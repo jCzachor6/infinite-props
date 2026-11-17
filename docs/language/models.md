@@ -28,9 +28,12 @@ the first argument of a solid is the middle of its base, the last one its
 skin. `+X` is right, `+Y` up and `+Z` toward the viewer; a model stands on
 `y = 0`. Wrap parts in `place(at = {x, y, z}, yaw = degrees) { ... }` to
 move, turn, scale or mirror them together. A point is a `vec3`, written
-`{x, y, z}`. Everything else works as in a draw asset: inputs, constants,
-palettes, helpers, loops, named seeds and random ranges. Drawing does not: a
-model has no canvas.
+`{x, y, z}`. A skin brings its asset's normal and material maps; modifiers
+such as `skin.fit`, `skin.blend` (glass) and `skin.region` (one window of a
+shared sheet) return changed copies, and `alias.name` reads a constant the
+skin's asset declares. Everything else works as in a draw asset: inputs,
+constants, palettes, helpers, loops, named seeds and random ranges. Drawing
+does not: a model has no canvas.
 
 ## A render asset
 
@@ -148,7 +151,8 @@ fine = wood.draw(root.fork("oak"), tint = #7c4a27, size = {128, 128})
 The texture is exactly the picture a host would generate from that asset
 with that seed, those inputs and that size. An asset that declares a
 [normal output](relief.md) brings its normal map along, and engines light the
-model with it. Give every skin a [named seed](random.md#named-seeds), so that
+model with it; one with [material maps](material-maps.md) brings those too,
+and they set how rough, metallic, shaded and glowing each pixel is. Give every skin a [named seed](random.md#named-seeds), so that
 adding one does not change the others.
 
 Calls with the same asset, seed, size and inputs share one texture, however
@@ -221,18 +225,22 @@ parts of one material do not start their pattern at the same place.
 <!-- builtin: skin.roughness -->
 
 Returns the skin with the given roughness, from 0 for a mirror to 1 for a
-matt surface. A new skin has 0.8.
+matt surface. A new skin has 0.8. When the texture has a roughness map, the
+number multiplies the map and a new skin has 1.
 
 ### skin.metallic
 <!-- builtin: skin.metallic -->
 
-Returns the skin with the given metalness, from 0 to 1. A new skin has 0.
+Returns the skin with the given metalness, from 0 to 1. A new skin has 0, or
+1 when the texture has a metallic map, which the number then multiplies.
 
 ### skin.emission
 <!-- builtin: skin.emission -->
 
-Returns the skin glowing in its own colours with the given strength, for
-lamps and screens. A new skin has 0; the number must not be negative.
+Returns the skin glowing with the given strength, for lamps and screens: in
+the colours of its emission map when the texture has one, else in its own
+colours. A new skin has 0, or 1 with an emission map; the number must not be
+negative.
 
 ### skin.cutout
 <!-- builtin: skin.cutout -->
@@ -253,7 +261,63 @@ are seen from behind, such as a `quad` of leaves or a `band`.
 Returns the skin with sharp square texels, for pixel art. A new skin is
 filtered smoothly.
 
+### skin.blend
+<!-- builtin: skin.blend -->
+
+Returns the skin mixed over what is behind it by the alpha of its texture,
+for glass, water and thin fabric. Paint the texture's colours in a
+`source_over` layer so that its alpha survives; together with
+`skin.two_sided`, the far side of a pane shows through the near one.
+
+<!-- example: ../../examples/language/model-glass.ips -->
+<!-- example: ../../examples/language/skins/glass.ips -->
+
+### skin.region
+<!-- builtin: skin.region -->
+
+Returns the skin showing one window of its texture once on each face, like
+`skin.fit` for that window alone. `x`, `y`, `w` and `h` are in the units of
+the size the skin's asset declares, and the window must lie inside it. Use
+it with one texture drawn for many faces: see
+[one sheet for many faces](#one-sheet-for-many-faces).
+
+<!-- example: ../../examples/language/traps/model-region.ips -->
+
 <!-- example: ../../examples/language/traps/model-roughness.ips -->
+
+## One sheet for many faces
+
+One texture can serve a whole prop: its asset draws the fields side by side,
+a front, a side, a lid, a label, and every solid shows its own field with
+`skin.region`. The asset names where each field lies with `const`
+declarations, and the model reads them as `alias.name`, so the layout lives
+in one place and moving a field in the texture moves it on the model:
+
+```ips
+import sheet from "skins/crate-net.ips"
+// ...
+s = skin.crisp(sheet.draw(seed.initial().fork("net")))
+planks = skin.region(s, sheet.sideX, 0.0, sheet.field, sheet.field)
+```
+
+A render asset reads any constant of a draw asset it imports: numbers,
+points, lists such as an outline that both the texture and an `extrude`
+use, samplers and distributions. A local or a parameter named like the
+import is read instead. The asset's own `const` declarations cannot read
+them, and a draw asset cannot read its parts' constants.
+
+A **decal** is a small window of such a sheet on a `quad` of its own, a
+fraction of a unit in front of the face it marks: a label, a number, a crack.
+With `skin.cutout` or `skin.blend` its transparent pixels let the face show
+through.
+
+Filtering reads texels on both sides of a window's edge. Leave a gutter of a
+texel or two between fields, or make the skin `skin.crisp`, so that no face
+shows a line of its neighbour.
+
+<!-- example: ../../examples/language/model-net.ips -->
+<!-- example: ../../examples/language/skins/crate-net.ips -->
+<!-- example: ../../examples/language/errors/model-constant.ips -->
 
 ## Primitives
 
@@ -407,14 +471,17 @@ Make a skin repeat: let patterns run off one edge and continue on the
 opposite one, and keep gaps and seams away from the edges.
 
 <!-- llm: skip -->
-Four larger examples are in [examples/models](../../examples/models/chair.ips):
+Five larger examples are in [examples/models](../../examples/models/chair.ips):
 a [chair](../../examples/models/chair.ips) with four styles of back, a
 [crate](../../examples/models/crate.ips) with frames, braces and iron
 fittings, a [barrel](../../examples/models/barrel.ips) whose staves and heads
-are one turned profile, and a [sword](../../examples/models/sword.ips) whose
-blade wears a fitted picture with its fuller. Their skins are in
+are one turned profile, a [sword](../../examples/models/sword.ips) whose
+blade wears a fitted picture with its fuller, and a
+[lantern](../../examples/models/lantern.ips) of rusted iron with glass panes
+and a glowing flame. Their skins are in
 [examples/models/skins](../../examples/models/skins/oak.ips): oak, woven
-cloth, metal, leather and the blade.
+cloth, metal, leather, the blade, and for the lantern wrought iron with
+roughness and metallic maps, glass, wax and a flame with an emission map.
 
 ## Limits and failures
 

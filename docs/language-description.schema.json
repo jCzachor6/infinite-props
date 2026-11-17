@@ -2809,6 +2809,185 @@
           ],
           "additionalProperties": true
         },
+        "material_maps": {
+          "type": "object",
+          "description": "Material maps (spec material maps v1.2): roughness, metallic, ambient occlusion and emission images a draw asset publishes beside its main image. Required from schema 8; additive to the normal map rules.",
+          "properties": {
+            "kinds": {
+              "type": "array",
+              "description": "The four material maps in their publication order, after the normal map.",
+              "const": [
+                {
+                  "name": "roughness",
+                  "image_code": 2,
+                  "flag_bit": 1,
+                  "background_rgba": [
+                    255,
+                    255,
+                    255,
+                    255
+                  ],
+                  "published": "composite_red_in_rgb",
+                  "encoding": "linear"
+                },
+                {
+                  "name": "metallic",
+                  "image_code": 3,
+                  "flag_bit": 2,
+                  "background_rgba": [
+                    0,
+                    0,
+                    0,
+                    255
+                  ],
+                  "published": "composite_red_in_rgb",
+                  "encoding": "linear"
+                },
+                {
+                  "name": "ao",
+                  "image_code": 4,
+                  "flag_bit": 3,
+                  "background_rgba": [
+                    255,
+                    255,
+                    255,
+                    255
+                  ],
+                  "published": "composite_red_in_rgb",
+                  "encoding": "linear"
+                },
+                {
+                  "name": "emission",
+                  "image_code": 5,
+                  "flag_bit": 4,
+                  "background_rgba": [
+                    0,
+                    0,
+                    0,
+                    255
+                  ],
+                  "published": "composite_rgb",
+                  "encoding": "colour_like_main_image"
+                }
+              ],
+              "items": {
+                "type": "object",
+                "description": "One material map.",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "The contextual output kind, as written after `output`."
+                  },
+                  "image_code": {
+                    "type": "integer",
+                    "description": "The auxiliary image kind of the C API and of every binding."
+                  },
+                  "flag_bit": {
+                    "type": "integer",
+                    "description": "The bit of the resource export record flags that marks the output; bit 0 is the normal map."
+                  },
+                  "background_rgba": {
+                    "type": "array",
+                    "description": "What the published image holds where its layer paints nothing: the value that changes nothing in a material.",
+                    "items": {
+                      "type": "integer",
+                      "description": "A byte: red, green, blue, alpha."
+                    }
+                  },
+                  "published": {
+                    "type": "string",
+                    "description": "What the host receives: the composite colour, or its red channel copied into green and blue."
+                  },
+                  "encoding": {
+                    "type": "string",
+                    "description": "How a host samples the bytes: linear data without an sRGB transfer, or a colour encoded like the main image (sRGB)."
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "output_syntax": {
+              "const": "output <roughness|metallic|ao|emission> <name>",
+              "description": "How a material map output is declared."
+            },
+            "output_keyword": {
+              "const": "contextual",
+              "description": "The kinds are contextual: none is a reserved word."
+            },
+            "output_storage": {
+              "const": "flagged_layer_resource_export",
+              "description": "A material map output is a layer resource export with one flag bit set."
+            },
+            "outputs_per_asset": {
+              "const": "one_per_kind",
+              "description": "An asset declares at most one output of each kind."
+            },
+            "flags_per_record": {
+              "const": "at_most_one_image_bit",
+              "description": "A resource export record sets at most one image bit, so an output is never both a normal map and a material map."
+            },
+            "output_value": {
+              "const": "colour_layer_checked_at_write",
+              "description": "The value written must be a colour layer; a direction layer traps when it is written."
+            },
+            "list_outputs": {
+              "const": false,
+              "description": "Whether a material map output may be a list."
+            },
+            "part_read": {
+              "const": "layer_in_caller_coordinates",
+              "description": "What reading a part call's material map output gives the caller."
+            },
+            "publication": {
+              "const": "root_slot_painted_source_over_on_background_after_success",
+              "description": "When and how the root's output becomes the published image."
+            },
+            "publication_order": {
+              "type": "array",
+              "description": "The order of a result's auxiliary images, whatever the order of the declarations.",
+              "const": [
+                "normal",
+                "roughness",
+                "metallic",
+                "ao",
+                "emission"
+              ],
+              "items": {
+                "type": "string",
+                "description": "An image kind."
+              }
+            },
+            "published_alpha": {
+              "const": 255,
+              "description": "The alpha of every published pixel."
+            },
+            "publication_fuel": {
+              "const": 0,
+              "description": "The fuel the publication spends."
+            },
+            "publication_work": {
+              "const": "background_and_paint_then_one_step_per_pixel_for_red_in_rgb",
+              "description": "The work the publication spends."
+            }
+          },
+          "required": [
+            "kinds",
+            "output_syntax",
+            "output_keyword",
+            "output_storage",
+            "outputs_per_asset",
+            "flags_per_record",
+            "output_value",
+            "list_outputs",
+            "part_read",
+            "publication",
+            "publication_order",
+            "published_alpha",
+            "publication_fuel",
+            "publication_work"
+          ],
+          "additionalProperties": true
+        },
         "masks": {
           "type": "object",
           "properties": {
@@ -5406,6 +5585,10 @@
                 "crisp": {
                   "const": false,
                   "description": "Whether texels stay sharp squares instead of being filtered."
+                },
+                "with_map": {
+                  "const": 1,
+                  "description": "Where the texture publishes a roughness, metallic or emission map, that number starts here instead: it multiplies the map."
                 }
               },
               "required": [
@@ -5418,7 +5601,8 @@
                 "alpha",
                 "cutoff",
                 "two_sided",
-                "crisp"
+                "crisp",
+                "with_map"
               ],
               "additionalProperties": true
             },
@@ -5441,13 +5625,114 @@
                 "unit": {
                   "const": "one_texel_per_model_unit_at_density_one",
                   "description": "The size of a texel on a model with the default skin."
+                },
+                "region": {
+                  "const": "window_once_across_the_face_face_coordinates_clamped_to_the_face",
+                  "description": "The window mapping of skin.region: the window once across each face; a face coordinate beyond its face is clamped to the face."
+                },
+                "region_units": {
+                  "const": "declared_size_of_the_skin_program",
+                  "description": "The units of a window: those of the size the skin program declares."
+                },
+                "region_bleed": {
+                  "const": "filtering_reads_neighbouring_texels",
+                  "description": "Filtering still reads texels next to a window: leave a gutter around each field or use skin.crisp."
                 }
               },
               "required": [
                 "repeat",
                 "fit",
                 "uv_origin",
-                "unit"
+                "unit",
+                "region",
+                "region_units",
+                "region_bleed"
+              ],
+              "additionalProperties": true
+            },
+            "alpha_modes": {
+              "type": "array",
+              "description": "How a skin uses the alpha of its texture: ignored, tested against the cutoff (skin.cutout) or blended over what is behind (skin.blend).",
+              "const": [
+                "opaque",
+                "cutout",
+                "blend"
+              ],
+              "items": {
+                "type": "string",
+                "description": "A mode."
+              }
+            },
+            "material_maps": {
+              "type": "object",
+              "description": "Material maps on skins (material maps v1.2).",
+              "properties": {
+                "source": {
+                  "const": "published_images_of_the_skin_program",
+                  "description": "A texture carries every image its program publishes: the normal map and the material maps."
+                },
+                "numbers": {
+                  "const": "multiply_the_map_of_their_kind",
+                  "description": "The roughness, metallic and emission numbers of a skin multiply the map of their kind."
+                },
+                "without_a_map": {
+                  "const": "the_number_alone",
+                  "description": "Without a map of its kind a number stands alone."
+                },
+                "emission_without_a_map": {
+                  "const": "multiplies_the_colour",
+                  "description": "Without an emission map, emission multiplies the colour of the texture, as before maps."
+                },
+                "occlusion_number": {
+                  "const": false,
+                  "description": "Whether a skin has a number for ambient occlusion; the map is used as it is."
+                }
+              },
+              "required": [
+                "source",
+                "numbers",
+                "without_a_map",
+                "emission_without_a_map",
+                "occlusion_number"
+              ],
+              "additionalProperties": true
+            },
+            "imported_constants": {
+              "type": "object",
+              "description": "A render asset reads the constants of a draw asset it imports: one layout shared by the texture and the shape.",
+              "properties": {
+                "syntax": {
+                  "const": "<alias>.<name>",
+                  "description": "How a constant is read."
+                },
+                "declarations": {
+                  "const": "const_of_the_imported_draw_asset",
+                  "description": "What can be read: the const declarations of the imported asset."
+                },
+                "evaluation": {
+                  "const": "folded_at_compile_time",
+                  "description": "The value is folded where it is read; nothing runs in the imported asset."
+                },
+                "shadowed_by": {
+                  "const": "a_local_or_parameter_named_like_the_alias",
+                  "description": "A local or a parameter named like the alias is read instead."
+                },
+                "in_own_constants": {
+                  "const": false,
+                  "description": "Whether the asset's own const declarations may read them."
+                },
+                "draw_assets": {
+                  "const": false,
+                  "description": "Whether a draw asset may read its imports' constants."
+                }
+              },
+              "required": [
+                "syntax",
+                "declarations",
+                "evaluation",
+                "shadowed_by",
+                "in_own_constants",
+                "draw_assets"
               ],
               "additionalProperties": true
             },
@@ -5686,6 +5971,9 @@
             "skin_call",
             "skin_defaults",
             "mapping",
+            "alpha_modes",
+            "material_maps",
+            "imported_constants",
             "limits",
             "fuel",
             "arena_bytes"
@@ -5702,6 +5990,7 @@
         "restrictions",
         "effect_order",
         "asset_constants",
+        "material_maps",
         "named_seeds",
         "models"
       ],

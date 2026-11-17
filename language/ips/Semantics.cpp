@@ -21,6 +21,16 @@
 namespace iprop::ips {
 namespace {
 
+const char* imageKindName(OutputKind kind) {
+    switch (kind) {
+    case OutputKind::Roughness: return "roughness";
+    case OutputKind::Metallic: return "metallic";
+    case OutputKind::Ao: return "ao";
+    case OutputKind::Emission: return "emission";
+    default: return "normal";
+    }
+}
+
 ValueType outputValueType(OutputKind kind) {
     switch (kind) {
     case OutputKind::Point: return ValueType::Vec2;
@@ -28,7 +38,11 @@ ValueType outputValueType(OutputKind kind) {
     case OutputKind::Circle: return ValueType::Circle;
     case OutputKind::Mask: return ValueType::Mask;
     case OutputKind::Layer: return ValueType::Layer;
-    case OutputKind::Normal: return ValueType::Layer;
+    case OutputKind::Normal:
+    case OutputKind::Roughness:
+    case OutputKind::Metallic:
+    case OutputKind::Ao:
+    case OutputKind::Emission: return ValueType::Layer;
     case OutputKind::Part: return ValueType::Part2d;
     }
     return ValueType::Vec2;
@@ -248,14 +262,16 @@ private:
             recover([&] { checkInputDefault(input); });
         }
 
-        bool normalDeclared = false;
+        std::set<unsigned> imagesDeclared;
         for (const auto& output : program_.asset.outputs) {
             if (atLimit()) return false;
             const bool valid = recover([&] {
                 declare("output", output.name, output.location, "an output");
-                // The host receives one normal image per generation.
-                if (output.kind == OutputKind::Normal && std::exchange(normalDeclared, true))
-                    error(output.location, "an asset declares at most one normal output");
+                // The host receives one image of each kind per generation.
+                if (isImageOutput(output.kind) && !imagesDeclared.insert(imageKindOf(output.kind)).second)
+                    error(output.location, std::string("an asset declares at most one ") +
+                                               (output.kind == OutputKind::Normal ? "normal output" :
+                                                std::string(imageKindName(output.kind)) + " map"));
             });
             namespaceValid = valid && namespaceValid;
         }
@@ -774,6 +790,9 @@ PartInfo partInfoOf(const Asset& asset) {
     }
     for (const auto& output : asset.outputs) {
         info.outputs.push_back(PartOutput{output.kind, output.isList, output.name});
+    }
+    for (const auto& constant : asset.constants) {
+        info.constants.push_back(PartConstant{constant.name, valueTypeOf(constant.type)});
     }
     return info;
 }

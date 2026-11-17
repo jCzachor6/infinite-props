@@ -15,6 +15,7 @@ static class Conformance
         PartOutputConformance.Run(path);
         ExecutionControls(path);
         NormalMaps(path);
+        MaterialMaps(path);
         if (args.Length > 1) InfiniteProps.Tests.PixelCorpus.Run(args[1]);
         var program = new Program(File.ReadAllBytes(Path.Combine(path, "bindings.iprop")));
         Require(program.Metadata.Width == 8 && program.Metadata.Height == 4 && program.Metadata.OriginX == 2, "metadata");
@@ -119,6 +120,45 @@ static class Conformance
             Require(program.Generate(5).Normal == null, "recovery after argument errors");
         }
         Console.WriteLine("Production C# normal maps: PASS authored and derived images against the CLI, declarations, work limits and argument errors");
+    }
+    // Material maps (spec material maps v1.2) against the CLI-rendered shared fixture.
+    static void MaterialMaps(string path)
+    {
+        Func<string, byte[]> load = name => File.ReadAllBytes(Path.Combine(path, name));
+        var kinds = new[] { ImageKind.Normal, ImageKind.Roughness, ImageKind.Metallic, ImageKind.Ao, ImageKind.Emission };
+        var names = new[] { "relief", "gloss", "metal", "shade", "glow" };
+        var files = new[] { "normal", "roughness", "metallic", "ao", "emission" };
+        Require(kinds.Select(kind => (uint)kind).SequenceEqual(new uint[] { 1, 2, 3, 4, 5 }), "kind values");
+        using (var program = new Program(load("binding-maps.iprop")))
+        {
+            // Declared out of order in the source; listed by kind.
+            Require(program.Images.Select(image => image.Kind).SequenceEqual(kinds) &&
+                program.Images.Select(image => image.Name).SequenceEqual(names) &&
+                program.Images.Select(image => image.Index).SequenceEqual(new uint[] { 0, 1, 2, 3, 4 }), "declared images");
+            var result = program.Generate(5);
+            Require(result.Rgba.SequenceEqual(load("binding-maps.rgba")), "native RGBA oracle with material maps");
+            Require(result.Images.Count == 5, "five published images");
+            for (int i = 0; i < 5; ++i)
+            {
+                var image = result.Images[i];
+                Require(image.Index == i && image.Kind == kinds[i] && image.Source == ImageSource.Authored && image.Name == names[i], "tags of " + files[i]);
+                Require(image.Width == 8 && image.Height == 4 && image.RowStride == 32 && image.AlphaMode == 2, "layout of " + files[i]);
+                Require(image.Rgba.SequenceEqual(load("binding-maps." + files[i] + ".rgba")), "native oracle of " + files[i]);
+                Require(ReferenceEquals(result.Image(kinds[i]), image), "lookup of " + files[i]);
+            }
+            foreach (var kind in new[] { ImageKind.Roughness, ImageKind.Metallic, ImageKind.Ao })
+            {
+                var pixels = result.Image(kind).Rgba;
+                for (int i = 0; i < pixels.Length; i += 4) Require(pixels[i] == pixels[i + 1] && pixels[i] == pixels[i + 2], "a scalar map is grey");
+            }
+            Require(ReferenceEquals(result.Normal, result.Images[0]), "the normal map comes first");
+            var moved = program.Generate(6);
+            Require(!moved.Image(ImageKind.Roughness).Rgba.SequenceEqual(result.Image(ImageKind.Roughness).Rgba) &&
+                moved.Image(ImageKind.Emission).Rgba.SequenceEqual(result.Image(ImageKind.Emission).Rgba), "seed-dependent roughness only");
+        }
+        using (var program = new Program(load("bindings.iprop")))
+            Require(program.Generate(5).Image(ImageKind.Roughness) == null, "no material map");
+        Console.WriteLine("Production C# material maps: PASS every map against the CLI in kind order and declarations");
     }
     static void ExecutionControls(string path)
     {

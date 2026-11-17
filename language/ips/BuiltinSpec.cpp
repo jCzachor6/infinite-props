@@ -467,6 +467,9 @@ const std::map<std::string, BuiltinSpec>& modelBuiltinSpecs() {
         result.emplace("skin.fit", spec({op({skin}, M::SkinFit, V::Skin)}));
         result.emplace("skin.two_sided", spec({op({skin}, M::SkinTwoSided, V::Skin)}));
         result.emplace("skin.crisp", spec({op({skin}, M::SkinCrisp, V::Skin)}));
+        result.emplace("skin.blend", spec({op({skin}, M::SkinBlend, V::Skin)}));
+        result.emplace("skin.region", spec({op({skin, {"x", V::F32}, {"y", V::F32}, {"w", V::F32}, {"h", V::F32}},
+                                               M::SkinRegion, V::Skin)}));
         return result;
     }();
     return table;

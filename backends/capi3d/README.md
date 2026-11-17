@@ -77,8 +77,10 @@ cover the model and every texture it generates.
   share it. Its `key` identifies the pixels across results and models: equal
   keys mean equal images, so a host may keep one GPU texture per key.
 - **Auxiliary images** of a texture, read with
-  `iprop3d_result_texture_image`: the normal map of a skin that declares
-  `output normal`.
+  `iprop3d_result_texture_image`: the normal map and the material maps
+  (roughness, metallic, AO, emission) of a skin that declares them. A
+  surface's `roughness`, `metallic` and `emission` multiply the maps of its
+  texture; without a map they stand alone.
 
 Conventions a renderer needs:
 
@@ -94,7 +96,11 @@ Conventions a renderer needs:
 - The colour image has the alpha contract of a 2D generation
   (`IPROP_IMAGE_ALPHA_LEGACY_DESTINATION`). A surface in
   `IPROP3D_ALPHA_OPAQUE` mode ignores alpha; in `IPROP3D_ALPHA_CUTOUT` a texel
-  below `alpha_cutoff` is not drawn.
+  below `alpha_cutoff` is not drawn; in `IPROP3D_ALPHA_BLEND` a texel is mixed
+  over what is behind it by its alpha: draw these surfaces last, without
+  writing depth.
+- Roughness, metallic and AO maps are linear data, like normal maps; an
+  emission map is a colour like the texture's.
 - `crisp == 1` asks for nearest sampling without mipmaps (pixel art);
   otherwise linear filtering with mipmaps is expected.
 

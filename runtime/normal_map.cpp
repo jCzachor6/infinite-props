@@ -266,37 +266,50 @@ void publishAuxImages(Execution& ex, const DerivedNormalRequest* derived) {
     WorkBudget& work = *ex.workBudget;
     work.location = {};
     const auto& exports = ex.file.resourceExports;
-    for (std::size_t i = 0; i < exports.size() && i < ex.resourceSlots.size(); ++i) {
-        if (exports[i].owner != kRootParent || !exports[i].normal) continue;
-        const auto* layer = std::get_if<LayerValue>(&ex.resourceSlots[i]);
-        if (!layer || !layer->buffer) break; // declared and never written
-        const Canvas& root = ex.canvas();
-        auto buffer = std::make_shared<SurfaceBuffer>();
-        buffer->raster.width = root.width; buffer->raster.height = root.height;
-        buffer->raster.scaleX = root.scaleX; buffer->raster.scaleY = root.scaleY;
-        initializeWork(buffer->raster.pixels, static_cast<std::size_t>(root.width) * root.height, kFlatDirection, work);
-        // One source-over paint with no clips onto the flat image: the
-        // ordinary paint, including the re-orientation of a D4 view.
-        RenderTarget flat{buffer, CompositionMode::SourceOver, {}};
-        std::swap(ex.target, flat);
-        try { paintSurface(ex, *layer, CompositionMode::SourceOver); }
-        catch (...) { std::swap(ex.target, flat); throw; }
-        std::swap(ex.target, flat);
-        AuxImage image;
-        image.kind = AuxImageKind::Normal;
-        image.source = AuxImageSource::Authored;
-        image.name = copyStringWork(ex.file.pool.strings[exports[i].nameIndex], work);
-        image.image = std::move(buffer->raster);
-        ex.auxImages.push_back(std::move(image));
-        break;
+    // By kind, whatever the order of the declarations: a normal map first,
+    // then roughness, metallic, AO and emission (material maps v1.2).
+    for (u32 kind = 1; kind <= kAuxImageKinds; ++kind) {
+        for (std::size_t i = 0; i < exports.size() && i < ex.resourceSlots.size(); ++i) {
+            if (exports[i].owner != kRootParent || exports[i].image != kind) continue;
+            const auto* layer = std::get_if<LayerValue>(&ex.resourceSlots[i]);
+            if (!layer || !layer->buffer) break; // declared and never written
+            const bool normal = kind == static_cast<u32>(AuxImageKind::Normal);
+            const Canvas& root = ex.canvas();
+            const std::size_t pixels = static_cast<std::size_t>(root.width) * root.height;
+            auto buffer = std::make_shared<SurfaceBuffer>();
+            buffer->raster.width = root.width; buffer->raster.height = root.height;
+            buffer->raster.scaleX = root.scaleX; buffer->raster.scaleY = root.scaleY;
+            initializeWork(buffer->raster.pixels, pixels, normal ? kFlatDirection : materialMapBackground(kind), work);
+            // One source-over paint with no clips onto the flat image: the
+            // ordinary paint, including the re-orientation of a D4 view.
+            RenderTarget flat{buffer, CompositionMode::SourceOver, {}};
+            std::swap(ex.target, flat);
+            try { paintSurface(ex, *layer, CompositionMode::SourceOver); }
+            catch (...) { std::swap(ex.target, flat); throw; }
+            std::swap(ex.target, flat);
+            // A scalar map is one value in R, G and B: the composite's red.
+            if (kind != static_cast<u32>(AuxImageKind::Emission) && !normal) {
+                work.spendEach(pixels);
+                for (Color& pixel : buffer->raster.pixels) pixel = Color{pixel.r, pixel.r, pixel.r, 255};
+            }
+            AuxImage image;
+            image.kind = static_cast<AuxImageKind>(kind);
+            image.source = AuxImageSource::Authored;
+            image.name = copyStringWork(ex.file.pool.strings[exports[i].nameIndex], work);
+            image.image = std::move(buffer->raster);
+            ex.auxImages.push_back(std::move(image));
+            break;
+        }
     }
-    if (derived && ex.auxImages.empty()) {
+    const bool published = !ex.auxImages.empty() && ex.auxImages.front().kind == AuxImageKind::Normal;
+    if (derived && !published) {
         AuxImage image;
         image.kind = AuxImageKind::Normal;
         image.source = AuxImageSource::Derived;
         image.name = kDerivedNormalName;
         image.image = deriveNormalImage(ex.canvas(), *derived, work);
-        ex.auxImages.push_back(std::move(image));
+        // The normal map keeps index 0, before any material map.
+        ex.auxImages.insert(ex.auxImages.begin(), std::move(image));
     }
 }
 

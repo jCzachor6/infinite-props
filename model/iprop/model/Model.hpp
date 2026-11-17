@@ -64,7 +64,8 @@ struct ModelInputs {
     ExecutionLimits limits{};
 };
 
-enum class SkinAlpha : u8 { Opaque = 0, Cutout = 1 };
+// Blend (v1.2, M2) mixes the texture over what is behind it by its alpha.
+enum class SkinAlpha : u8 { Opaque = 0, Cutout = 1, Blend = 2 };
 
 struct ModelTexture {
     u64 key = 0;

@@ -63,7 +63,8 @@ using (var program = importedAsset.Load())
 
 `image.Normal` is the [normal map](../../docs/native-bindings.md#normal-maps-and-other-auxiliary-images)
 published with the image, or null; `image.Images` lists every auxiliary image
-and `program.Images` what the program declares. Pass
+and `program.Images` what the program declares; `image.Image(ImageKind.Roughness)`
+finds a material map. Pass
 `deriveNormal: new DerivedNormal()` to derive one for a prop that publishes
 none.
 

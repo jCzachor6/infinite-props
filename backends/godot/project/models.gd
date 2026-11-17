@@ -29,6 +29,7 @@ const CORPUS := [
 	{"name": "chair", "source": "examples/models/chair.ips", "seeds": [1, 5, 13],
 	 "inputs": [{}, {"finish": "5", "fabric": "2"}]},
 	{"name": "empty", "source": "backends/capi3d/test/empty.ips", "seeds": [0, 9], "inputs": [{}]},
+	{"name": "materials", "source": "tests/model/corpus/materials.ips", "seeds": [1, 3, 6], "inputs": [{}]},
 ]
 
 var failures := 0
@@ -37,6 +38,12 @@ var tools := ""
 var work := ""
 var generations := 0
 var vertices := 0
+
+# The bytes of a GPU texture's first level: textures carry mipmaps.
+func level(texture: Texture2D) -> PackedByteArray:
+	var image := texture.get_image()
+	image.clear_mipmaps()
+	return image.get_data()
 
 func demand(condition: bool, message: String) -> void:
 	if not condition:
@@ -207,11 +214,27 @@ func check_mesh(model: IpropModel, mesh: ArrayMesh, label: String) -> void:
 		if raw.alpha_mode == IpropModel.ALPHA_CUTOUT:
 			demand(material.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
 				and bits(material.alpha_scissor_threshold) == bits(raw.alpha_cutoff), "%s surface %d: cutout" % [label, s])
+		elif raw.alpha_mode == IpropModel.ALPHA_BLEND:
+			demand(material.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA, "%s surface %d: glass" % [label, s])
 		else:
 			demand(material.transparency == BaseMaterial3D.TRANSPARENCY_DISABLED, "%s surface %d: opaque" % [label, s])
+		# Material maps (v1.2): each bound to its slot, read from red.
+		var maps := {}
+		for image in texture.images:
+			maps[image.kind] = image.image
+		for slot in [[IpropModel.IMAGE_ROUGHNESS, material.roughness_texture], [IpropModel.IMAGE_METALLIC, material.metallic_texture],
+				[IpropModel.IMAGE_AO, material.ao_texture]]:
+			var bound: Texture2D = slot[1]
+			demand((bound != null) == maps.has(slot[0]), "%s surface %d: map %d bound" % [label, s, slot[0]])
+			if bound != null:
+				demand(level(bound) == maps[slot[0]].get_data(), "%s surface %d: map %d bytes" % [label, s, slot[0]])
+		demand(material.ao_enabled == maps.has(IpropModel.IMAGE_AO), "%s surface %d: occlusion" % [label, s])
 		demand(material.emission_enabled == (raw.emission > 0.0), "%s surface %d: emission" % [label, s])
 		if raw.emission > 0.0:
-			demand(bits(material.emission_energy_multiplier) == bits(raw.emission) and material.emission_texture == material.albedo_texture
+			var glowing: bool = material.emission_texture == material.albedo_texture
+			if maps.has(IpropModel.IMAGE_EMISSION):
+				glowing = material.emission_texture != null and level(material.emission_texture) == maps[IpropModel.IMAGE_EMISSION].get_data()
+			demand(bits(material.emission_energy_multiplier) == bits(raw.emission) and glowing
 				and material.emission_operator == BaseMaterial3D.EMISSION_OP_MULTIPLY, "%s surface %d: glowing texture" % [label, s])
 
 # A value written as `ipgen --uniform` takes it, as set_input takes it.
@@ -363,6 +386,41 @@ func check_node(files: Dictionary) -> void:
 	demand(node.mesh == null, "no model, no mesh")
 	node.free()
 
+# Equal texture keys share one GPU texture between meshes; a texture no mesh
+# holds any more leaves the cache at the next generation.
+# Two meshes of one seed, released when this function returns (GDScript
+# temporaries live until then).
+func shared_meshes(model: IpropModel) -> void:
+	var first := model.generate(1)
+	var second := model.generate(1)
+	demand(first != null and second != null and first != second, "cache: two meshes")
+	if first == null or second == null:
+		return
+	var a := first.surface_get_material(0) as StandardMaterial3D
+	var b := second.surface_get_material(0) as StandardMaterial3D
+	demand(a.albedo_texture == b.albedo_texture and a.roughness_texture == b.roughness_texture, "cache: one texture per key")
+	demand(model.get_cached_texture_count() > 0, "cache: textures kept")
+
+func check_texture_cache(files: Dictionary) -> void:
+	var model := IpropModel.new()
+	demand(model.load_file(files["materials"]) == OK, "cache: load")
+	shared_meshes(model)
+	var other := model.generate(2)
+	demand(other != null, "cache: generate another seed")
+	var kept := model.get_cached_texture_count()
+	# Seed 2 keeps the net (its seed is a fork of the root's, so it changes
+	# too) only through its own mesh: the first two meshes' textures are gone.
+	var held := {}
+	for s in other.get_surface_count():
+		var material := other.surface_get_material(s) as StandardMaterial3D
+		for texture in [material.albedo_texture, material.normal_texture, material.roughness_texture, material.metallic_texture,
+				material.ao_texture, material.emission_texture]:
+			if texture != null:
+				held[texture] = true
+	demand(kept == held.size(), "cache: only the live mesh's textures stay (%d kept, %d held)" % [kept, held.size()])
+	model.clear_texture_cache()
+	demand(model.get_cached_texture_count() == 0, "cache: cleared")
+
 func _init() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.size() != 3:
@@ -376,6 +434,7 @@ func _init() -> void:
 	var files := check_corpus()
 	check_model(files)
 	check_node(files)
+	check_texture_cache(files)
 	if failures == 0:
 		print("godot models: PASS (%d exact generations of %d vertices; meshes, materials, failures and the node)" % [generations, vertices])
 	quit(1 if failures > 0 else 0)

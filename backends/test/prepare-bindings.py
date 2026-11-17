@@ -112,6 +112,27 @@ def prepare_normal(tools, output):
         assert (output / (name + ".normal.rgba")).read_bytes() != bytes([128, 128, 255, 255]) * 32
 
 
+MAP_KINDS = ("normal", "roughness", "metallic", "ao", "emission")
+
+
+def prepare_maps(tools, output):
+    """Material maps rendered by the CLI (spec material maps v1.2): the main
+    image and every auxiliary image of binding-maps at seed 5, as raw RGBA, in
+    the kind order a result lists them in."""
+    suffix = ".exe" if __import__("os").name == "nt" else ""
+    here = Path(__file__).resolve().parent
+    subprocess.run([tools / ("ipc" + suffix), here / "binding-maps.ips", "-o", output / "binding-maps.iprop"], check=True)
+    paths = {kind: output / ("binding-maps-" + kind + ".png") for kind in MAP_KINDS}
+    flags = [argument for kind in MAP_KINDS for argument in ("--" + kind + "-output", paths[kind])]
+    result = subprocess.run([tools / ("ipgen" + suffix), output / "binding-maps.iprop", "--seed", "5",
+                             "-o", output / "binding-maps.png", *flags], check=True, capture_output=True)
+    images = json.loads(result.stdout)["images"]
+    assert [(image["kind"], image["name"]) for image in images] == list(zip(MAP_KINDS, ("relief", "gloss", "metal", "shade", "glow")))
+    (output / "binding-maps.rgba").write_bytes(rgba_png(output / "binding-maps.png"))
+    for kind in MAP_KINDS:
+        (output / ("binding-maps." + kind + ".rgba")).write_bytes(rgba_png(paths[kind]))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("tools", type=Path)
@@ -125,6 +146,7 @@ def main():
     if args.normal_only:
         subprocess.run([args.tools / ("ipc" + suffix), here / "bindings.ips", "-o", args.output / "bindings.iprop"], check=True)
         prepare_normal(args.tools, args.output)
+        prepare_maps(args.tools, args.output)
         return
     prepare_execution(args.tools, args.output)
     if args.execution_only:
@@ -142,6 +164,7 @@ def main():
     (args.output / "bindings.json").write_bytes(result.stdout)
     (args.output / "bindings.rgba").write_bytes(rgba_png(args.output / "bindings.png"))
     prepare_normal(args.tools, args.output)
+    prepare_maps(args.tools, args.output)
     spec = importlib.util.spec_from_file_location("result_fixture", here / "result_fixture.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

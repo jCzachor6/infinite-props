@@ -31,6 +31,8 @@ struct SkinRecord {
     f32 roughness = kSkinRoughness, metallic = kSkinMetallic, emission = kSkinEmission, cutoff = kSkinCutoff;
     SkinAlpha alpha = SkinAlpha::Opaque;
     bool twoSided = false, crisp = false;
+    bool region = false;
+    f32 regionX = 0.f, regionY = 0.f, regionW = 0.f, regionH = 0.f;
 };
 
 bool sameValue(const UniformValue& a, const UniformValue& b) {
@@ -142,7 +144,8 @@ private:
         const SkinRecord& record = skins_[skin - 1];
         const ModelTexture& texture = textures_[record.texture].image;
         const Mapping mapping{record.fit, record.density, record.shiftU, record.shiftV,
-                              static_cast<double>(texture.assetWidth), static_cast<double>(texture.assetHeight)};
+                              static_cast<double>(texture.assetWidth), static_cast<double>(texture.assetHeight),
+                              record.region, record.regionX, record.regionY, record.regionW, record.regionH};
         emit(Target{mesh_, scopes_.back(), mapping, skin}, shape);
     }
 
@@ -239,6 +242,12 @@ private:
         }
         SkinRecord record;
         record.texture = static_cast<u32>(texture);
+        // A map's number starts at 1, so the map shows as painted.
+        for (const AuxImage& image : textures_[texture].image.images) {
+            if (image.kind == AuxImageKind::Roughness) record.roughness = kSkinMapFactor;
+            if (image.kind == AuxImageKind::Metallic) record.metallic = kSkinMapFactor;
+            if (image.kind == AuxImageKind::Emission) record.emission = kSkinMapFactor;
+        }
         pushRecord(ex, record);
     }
 
@@ -434,11 +443,28 @@ private:
             pushRecord(ex, record);
             break;
         }
-        case Op::SkinFit: case Op::SkinTwoSided: case Op::SkinCrisp: {
+        case Op::SkinFit: case Op::SkinTwoSided: case Op::SkinCrisp: case Op::SkinBlend: {
             SkinRecord record = skins_[popSkin(ex) - 1];
             if (spec->op == Op::SkinFit) record.fit = true;
             else if (spec->op == Op::SkinTwoSided) record.twoSided = true;
+            else if (spec->op == Op::SkinBlend) record.alpha = SkinAlpha::Blend;
             else record.crisp = true;
+            pushRecord(ex, record);
+            break;
+        }
+        case Op::SkinRegion: {
+            const f32 h = ex.popF32(), w = ex.popF32(), y = ex.popF32(), x = ex.popF32();
+            SkinRecord record = skins_[popSkin(ex) - 1];
+            const ModelTexture& texture = textures_[record.texture].image;
+            // In binary64, where the sums of two binary32 values are exact.
+            const double right = static_cast<double>(x) + static_cast<double>(w);
+            const double bottom = static_cast<double>(y) + static_cast<double>(h);
+            range(std::isfinite(x) && std::isfinite(y) && std::isfinite(w) && std::isfinite(h) && w > 0.f && h > 0.f &&
+                      x >= 0.f && y >= 0.f && right <= texture.assetWidth && bottom <= texture.assetHeight,
+                  "skin region must lie inside the image");
+            record.fit = true;
+            record.region = true;
+            record.regionX = x; record.regionY = y; record.regionW = w; record.regionH = h;
             pushRecord(ex, record);
             break;
         }

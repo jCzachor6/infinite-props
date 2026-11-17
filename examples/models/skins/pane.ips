@@ -1,0 +1,21 @@
+// Lantern glass: a pale tint you see through, soot gathered at the top where
+// the smoke rises, and one streak of reflection. With skin.blend its alpha
+// says how much of the inside shows.
+asset pane {
+  size 32x48
+  input color tint = #d8ecf0
+
+  draw {
+    root = seed.initial()
+    soot = roll(root.fork("soot"), 40.0, 150.0)
+    x = roll(root.fork("streak"), 2.0, 16.0)
+    layer glass(alpha = surface.source_over) {
+      rect(0, 0, 32, 48, color.set_a(tint, 40))
+      for k in 0..6 {
+        rect(0, float(k) * 2.0, 32, 2, color.set_a(#2a2622, int(soot * float(6 - k) / 6.0)))
+      }
+      poly([{x, 48}, {x + 4.0, 48}, {x + 14.0, 0}, {x + 10.0, 0}], #ffffff38)
+    }
+    surface.paint(glass, blend = surface.source_over)
+  }
+}

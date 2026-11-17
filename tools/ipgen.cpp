@@ -6,6 +6,7 @@
 
 #include "iprop/VM.hpp"
 
+#include <array>
 #include <cmath>
 #include <charconv>
 #include <cstdio>
@@ -32,7 +33,9 @@ struct Options {
     u64 timeoutMs = 0;
     bool workStats = false;
     std::string output; // PNG path; empty = <stem>-<seed>.png
-    std::string normalOutput; // PNG path of the normal image; empty = not written
+    // PNG path of each auxiliary image by kind (1 = normal, 2-5 the material
+    // maps); empty = not written.
+    std::array<std::string, kAuxImageKinds + 1> imageOutputs;
     bool deriveNormal = false;
     DerivedNormalRequest derived{};
     std::vector<std::pair<std::string, std::string>> uniforms;
@@ -43,6 +46,13 @@ struct Options {
     tools::PreviewOptions view{512, 512, 35.f, 20.f, tools::kPreviewBackground};
     std::string modelOnly; // the first option given that needs a model
 };
+
+// The kind of an `--<kind>-output` option (normal or a material map), or 0.
+u32 imageOutputKind(const std::string& arg) {
+    for (u32 kind = 1; kind <= kAuxImageKinds; ++kind)
+        if (arg == std::string("--") + auxImageKindName(kind) + "-output") return kind;
+    return 0;
+}
 
 void printUsage(std::FILE* out) {
     std::fprintf(out,
@@ -57,6 +67,8 @@ void printUsage(std::FILE* out) {
                  "                      #RRGGBB or #RRGGBBAA, numbers are decimal\n"
                  "  -o, --output PATH   PNG output path (default: <stem>-<seed>.png)\n"
                  "  --normal-output PATH  also write the normal image as a PNG\n"
+                 "  --roughness-output PATH, --metallic-output PATH, --ao-output PATH,\n"
+                 "  --emission-output PATH  also write that material map as a PNG\n"
                  "  --derive-normal     derive a normal image when the program publishes none\n"
                  "  --normal-depth F    derived depth in pixels (0 = size-relative default)\n"
                  "  --normal-rounding F derived Gaussian sigma in pixels, 0-64 (0 = default)\n"
@@ -250,8 +262,10 @@ bool writeBytes(const std::string& path, const std::vector<u8>& bytes) {
 int generateModelFile(const Options& options, const std::vector<u8>& bytes) {
     // --omit-part-outputs is accepted: a model has no part records to leave
     // out, and one command line then renders any compiled source.
-    if (options.sizeX != 0 || !options.normalOutput.empty() || options.deriveNormal)
-        return fail("--size, --normal-output and --derive-normal do not apply to a model; "
+    bool imageOutput = false;
+    for (const auto& path : options.imageOutputs) imageOutput = imageOutput || !path.empty();
+    if (options.sizeX != 0 || imageOutput || options.deriveNormal)
+        return fail("--size, --normal-output, the material map outputs and --derive-normal do not apply to a model; "
                     "a texture takes its size from the model source");
     model::LoadedModel loaded;
     try {
@@ -296,10 +310,10 @@ int generateModelFile(const Options& options, const std::vector<u8>& bytes) {
             const std::string base = options.skinsDir + "/" + (i < 10 ? "0" : "") + std::to_string(i) + "-" + texture.name;
             if (!tools::writePng(base + ".png", tools::canvasImage(texture.color)))
                 return fail("cannot write PNG '" + base + ".png'");
-            for (const auto& image : texture.images)
-                if (image.kind == AuxImageKind::Normal &&
-                    !tools::writePng(base + "-normal.png", tools::canvasImage(image.image)))
-                    return fail("cannot write PNG '" + base + "-normal.png'");
+            for (const auto& image : texture.images) {
+                const std::string path = base + "-" + auxImageKindName(static_cast<u32>(image.kind)) + ".png";
+                if (!tools::writePng(path, tools::canvasImage(image.image))) return fail("cannot write PNG '" + path + "'");
+            }
             texturePaths.push_back(base + ".png");
         }
     }
@@ -331,7 +345,8 @@ int generateModelFile(const Options& options, const std::vector<u8>& bytes) {
              << "\", \"size\": {\"x\": " << texture.color.width << ", \"y\": " << texture.color.height
              << "}, \"repeats\": " << (texture.repeats ? "true" : "false") << ", \"images\": [";
         for (std::size_t j = 0; j < texture.images.size(); ++j)
-            json << (j ? ", " : "") << "{\"kind\": \"normal\", \"name\": \"" << tools::jsonEscape(texture.images[j].name) << "\"}";
+            json << (j ? ", " : "") << "{\"kind\": \"" << auxImageKindName(static_cast<u32>(texture.images[j].kind))
+                 << "\", \"name\": \"" << tools::jsonEscape(texture.images[j].name) << "\"}";
         json << "]";
         if (i < texturePaths.size()) json << ", \"path\": \"" << tools::jsonEscape(texturePaths[i]) << "\"";
         json << "}";
@@ -343,7 +358,8 @@ int generateModelFile(const Options& options, const std::vector<u8>& bytes) {
              << surface.positions.size() / 3 << ", \"triangles\": " << surface.indices.size() / 3
              << ", \"roughness\": " << number(surface.roughness) << ", \"metallic\": " << number(surface.metallic)
              << ", \"emission\": " << number(surface.emission) << ", \"alpha\": \""
-             << (surface.alpha == model::SkinAlpha::Cutout ? "cutout" : "opaque") << "\"";
+             << (surface.alpha == model::SkinAlpha::Cutout ? "cutout" : surface.alpha == model::SkinAlpha::Blend ? "blend" : "opaque")
+             << "\"";
         if (surface.alpha == model::SkinAlpha::Cutout) json << ", \"cutoff\": " << number(surface.cutoff);
         json << ", \"two_sided\": " << (surface.twoSided ? "true" : "false") << ", \"crisp\": "
              << (surface.crisp ? "true" : "false") << "}";
@@ -400,9 +416,9 @@ int ipgenMain(int argc, char* argv[]) {
             }
         } else if (arg == "-o" || arg == "--output") {
             options.output = next("--output");
-        } else if (arg == "--normal-output") {
-            options.normalOutput = next("--normal-output");
-            if (invalid.empty() && options.normalOutput.empty()) invalid = "empty --normal-output path";
+        } else if (const u32 kind = imageOutputKind(arg); kind != 0) {
+            options.imageOutputs[kind] = next(arg.c_str());
+            if (invalid.empty() && options.imageOutputs[kind].empty()) invalid = "empty " + arg + " path";
         } else if (arg == "--derive-normal") {
             options.deriveNormal = true;
         } else if (arg == "--normal-depth" || arg == "--normal-rounding" || arg == "--normal-detail") {
@@ -517,16 +533,24 @@ int ipgenMain(int argc, char* argv[]) {
                                     : options.file.substr(0, options.file.rfind('.')) + "-" +
                                           std::to_string(options.seed) + ".png";
     const Canvas& canvas = result.image;
-    const AuxImage* normal = nullptr;
-    for (const auto& image : result.images) if (image.kind == AuxImageKind::Normal && !normal) normal = &image;
+    std::array<const AuxImage*, kAuxImageKinds + 1> published{};
+    for (const auto& image : result.images) {
+        const u32 kind = static_cast<u32>(image.kind);
+        if (kind <= kAuxImageKinds && !published[kind]) published[kind] = &image;
+    }
     // Checked before anything is written: a missing image leaves no file.
-    if (!options.normalOutput.empty() && !normal)
-        return fail("no normal image: the program publishes none; --derive-normal derives one");
+    for (u32 kind = 1; kind <= kAuxImageKinds; ++kind)
+        if (!options.imageOutputs[kind].empty() && !published[kind])
+            return fail(kind == static_cast<u32>(AuxImageKind::Normal)
+                            ? std::string("no normal image: the program publishes none; --derive-normal derives one")
+                            : std::string("no ") + auxImageKindName(kind) + " image: the program publishes none");
     if (!tools::writePng(pngPath, tools::canvasImage(canvas))) {
         return fail("cannot write PNG '" + pngPath + "'");
     }
-    if (!options.normalOutput.empty() && !tools::writePng(options.normalOutput, tools::canvasImage(normal->image)))
-        return fail("cannot write PNG '" + options.normalOutput + "'");
+    for (u32 kind = 1; kind <= kAuxImageKinds; ++kind)
+        if (!options.imageOutputs[kind].empty() &&
+            !tools::writePng(options.imageOutputs[kind], tools::canvasImage(published[kind]->image)))
+            return fail("cannot write PNG '" + options.imageOutputs[kind] + "'");
 
     // Result JSON to stdout: the declared inputs (for uniform editors), the
     // fuel readout and the structured outputs.
@@ -557,12 +581,13 @@ int ipgenMain(int argc, char* argv[]) {
         json << ",\n  \"images\": [";
         for (std::size_t i = 0; i < result.images.size(); ++i) {
             const auto& image = result.images[i];
-            json << (i ? "," : "") << "\n    {\"kind\": \"normal\", \"source\": \""
+            const u32 kind = static_cast<u32>(image.kind);
+            json << (i ? "," : "") << "\n    {\"kind\": \"" << auxImageKindName(kind) << "\", \"source\": \""
                  << (image.source == AuxImageSource::Authored ? "authored" : "derived") << "\", \"name\": ";
             json << '"' << tools::jsonEscape(image.name) << '"';
-            if (&image == normal && !options.normalOutput.empty()) {
+            if (&image == published[kind] && !options.imageOutputs[kind].empty()) {
                 json << ", \"path\": ";
-                json << '"' << tools::jsonEscape(options.normalOutput) << '"';
+                json << '"' << tools::jsonEscape(options.imageOutputs[kind]) << '"';
             }
             json << "}";
         }

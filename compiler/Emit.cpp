@@ -322,6 +322,10 @@ void Emitter::emitOutputWrite(const ips::Program* owner,
         return;
     case ips::OutputKind::Layer:
     case ips::OutputKind::Normal: // a flagged layer slot; the VM checks the encoding
+    case ips::OutputKind::Roughness:
+    case ips::OutputKind::Metallic:
+    case ips::OutputKind::Ao:
+    case ips::OutputKind::Emission:
         emitExpr(value);
         ins(Opcode::OutLayer, 0, resource());
         return;

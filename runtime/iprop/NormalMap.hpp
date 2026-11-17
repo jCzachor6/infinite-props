@@ -7,16 +7,31 @@
 
 namespace iprop {
 
-// An image published beside the main one (spec normal maps v1.1). The numeric
-// values are the host tags of the C API.
-enum class AuxImageKind : u32 { Normal = 1 };
+// An image published beside the main one (spec normal maps v1.1, material
+// maps v1.2). The numeric values are the host tags of the C API. A result
+// lists its images in this order, so a normal map is always the first.
+enum class AuxImageKind : u32 { Normal = 1, Roughness = 2, Metallic = 3, Ao = 4, Emission = 5 };
+inline constexpr u32 kAuxImageKinds = 5;
+// The source spelling of a kind (`output roughness name`), or null.
+constexpr const char* auxImageKindName(u32 kind) {
+    constexpr const char* names[] = {"normal", "roughness", "metallic", "ao", "emission"};
+    return kind >= 1 && kind <= kAuxImageKinds ? names[kind - 1] : nullptr;
+}
+// What a material map holds where its layer paints nothing: roughness and
+// AO 255, metallic and emission 0 (material maps v1.2).
+constexpr Color materialMapBackground(u32 kind) {
+    return kind == static_cast<u32>(AuxImageKind::Roughness) || kind == static_cast<u32>(AuxImageKind::Ao)
+        ? Color{255, 255, 255, 255} : Color{0, 0, 0, 255};
+}
 enum class AuxImageSource : u32 { Authored = 1, Derived = 2 };
 struct AuxImage {
     AuxImageKind kind = AuxImageKind::Normal;
     AuxImageSource source = AuxImageSource::Authored;
     std::string name;
-    // Tight top-left RGBA8 with the root canvas's dimensions. A normal image
-    // holds direction bytes and alpha 255 in every pixel.
+    // Tight top-left RGBA8 with the root canvas's dimensions and alpha 255
+    // in every pixel. A normal image holds direction bytes; roughness,
+    // metallic and AO hold one linear value in R, G and B; emission holds a
+    // colour encoded like the main image's.
     Canvas image;
 };
 

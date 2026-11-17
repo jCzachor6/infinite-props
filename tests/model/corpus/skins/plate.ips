@@ -1,0 +1,35 @@
+// A skin of the corpus with a normal map and all four material maps, each
+// moved by the seed: worn metal with rust, dents, grime and a glowing rivet.
+asset plate {
+  size 32x32
+  output normal relief
+  output roughness rough
+  output metallic metal
+  output ao shade
+  output emission glow
+  draw {
+    root = seed.initial()
+    rect(0, 0, 32, 32, #6e7276)
+    rust = noise.mask({0, 0}, {32, 32}, noise.mode_fbm, {0.12, 0.12}, 0.15, root.fork("rust"), octaves = 2, softness = 0.0,
+                      comparison = noise.above, warp_amount = 0.2)
+    clip(rust) { rect(0, 0, 32, 32, #7a4a2a) }
+    x = roll(root.fork("rivet x"), 4.0, 27.0)
+    y = roll(root.fork("rivet y"), 4.0, 27.0)
+    layer r(alpha = surface.source_over) {
+      rect(0, 0, 32, 32, #505050)
+      clip(rust) { rect(0, 0, 32, 32, #e0e0e0) }
+    }
+    rough = r
+    layer m(alpha = surface.source_over) {
+      rect(0, 0, 32, 32, #ffffff)
+      clip(rust) { rect(0, 0, 32, 32, #101010) }
+    }
+    metal = m
+    layer a(alpha = surface.source_over) { rect(0, 26, 32, 6, #707070a0) }
+    shade = a
+    layer e(alpha = surface.source_over) { oval(x, y, 2.5, 2.5, #ffd070) }
+    glow = e
+    layer n(encoding = surface.normal) { surface.paint(mask.from(r).normal(2.0, 0.5)) }
+    relief = n
+  }
+}

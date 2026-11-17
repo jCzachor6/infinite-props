@@ -4,7 +4,7 @@
 product/source 1.1.0: the retained 0.8 baseline, the explicit 0.9 extensions
 and the 1.1 [normal maps](normal-maps-v1.1.md) and
 [named seeds](named-seeds-v1.1.md), with precedence defined in one place.
-The binary format is unversioned; C API 0.7 and ABI/SONAME 0.5 are independent.
+The binary format is unversioned; C API 0.8 and ABI/SONAME 0.5 are independent.
 
 The [language handbook](../docs/language/index.md) defines authoring.
 See [1.0 to 1.1 migration](../docs/language/migration-v1.1.md),
@@ -13,6 +13,10 @@ See [1.0 to 1.1 migration](../docs/language/migration-v1.1.md),
 The frozen [1.0](iprop-v1.0.md), [0.9](iprop-v0.9.md), [0.8](iprop-v0.8.md),
 [materials](materials-0.8.md) and [0.7](iprop-v0.7.md) contracts remain for
 historical comparison.
+
+[Material maps](material-maps-v1.2.md) is the draft 1.2 extension of the 2D
+format: roughness, metallic, ambient occlusion and emission images beside the
+image, with C API 0.8.
 
 [Models](models-v1.2.md) specifies the `.iprop3d` format and the extended VM
 of 3D models. It is a **preview** outside the frozen set: it may change until

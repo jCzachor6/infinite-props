@@ -15,6 +15,7 @@
 
 static_assert(IPROP3D_ALPHA_OPAQUE == static_cast<uint32_t>(iprop::model::SkinAlpha::Opaque));
 static_assert(IPROP3D_ALPHA_CUTOUT == static_cast<uint32_t>(iprop::model::SkinAlpha::Cutout));
+static_assert(IPROP3D_ALPHA_BLEND == static_cast<uint32_t>(iprop::model::SkinAlpha::Blend));
 static_assert(sizeof(iprop::Color) == 4);
 static_assert(sizeof(iprop::f32) == sizeof(float) && sizeof(iprop::u32) == sizeof(uint32_t));
 

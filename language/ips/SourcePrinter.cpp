@@ -541,8 +541,9 @@ public:
         }
         for (const auto& output : asset.outputs) {
             indent(1); SourceOutput::Scope range(out_, output.sourceRange, false);
-            const char* kinds[] = {"point", "rect", "circle", "mask", "layer", "part", "normal"};
-            if (static_cast<unsigned>(output.kind) >= 7 || (output.kind == OutputKind::Part && !output.isList))
+            const char* kinds[] = {"point", "rect", "circle", "mask", "layer", "part", "normal",
+                                   "roughness", "metallic", "ao", "emission"};
+            if (static_cast<unsigned>(output.kind) >= 11 || (output.kind == OutputKind::Part && !output.isList))
                 throw SourceError{output.location, "invalid output kind in source printer"};
             out_ << "  output " << (output.isList ? "list " : "")
                  << kinds[static_cast<unsigned>(output.kind)] << ' ' << output.name; out_.finishRange(); out_ << '\n'; range.close();

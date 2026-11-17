@@ -34,6 +34,8 @@ bin/
 *.png
 !tests/golden/*.png
 !examples/portrait-sheet.png
+!examples/models/chair-sheet.png
+!examples/models/lantern-sheet.png
 !examples/showcase/readme-collection.png
 !website/public/social-preview.png
 !website/public/catemon/social-preview.png

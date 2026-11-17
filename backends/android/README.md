@@ -60,7 +60,8 @@ retains the runtime's legacy alpha tag.
 
 `image.normal` is the [normal map](../../docs/native-bindings.md#normal-maps-and-other-auxiliary-images)
 published with the image, or `null`; `image.images` lists every auxiliary
-image and `program.images` what the program declares. Pass
+image and `program.images` what the program declares;
+`image.image(ImageKind.ROUGHNESS)` finds a material map. Pass
 `deriveNormal = DerivedNormal()` to derive one for a prop that publishes none.
 `AuxiliaryImage.toBitmap()` keeps the exact bytes for a texture upload; they
 are data, so upload them without an sRGB conversion.

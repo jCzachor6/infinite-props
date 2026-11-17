@@ -27,6 +27,7 @@
       "part",
       "surfaces",
       "relief",
+      "material-maps",
       "procedural",
       "limits",
       "grammar",
@@ -266,6 +267,16 @@
       "id": "relief",
       "title": "Relief and normal maps",
       "chapter": "relief.md",
+      "parts": [
+        {
+          "heading": "At a glance"
+        }
+      ]
+    },
+    {
+      "id": "material-maps",
+      "title": "Material maps",
+      "chapter": "material-maps.md",
       "parts": [
         {
           "heading": "At a glance"

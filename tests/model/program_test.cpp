@@ -609,3 +609,168 @@ TEST_CASE("root inputs reach the model by name") {
     inputs.uniforms = {{"wide", wide}};
     CHECK(model::generateModel(loaded, inputs).boundsMax[0] == 4.5f);
 }
+
+namespace {
+
+// A skin with every material map, and a sheet that names its layout.
+const char* const kMetal = R"(
+asset metal {
+  size 16x8
+  output roughness rough
+  output metallic shine
+  output ao shade
+  output emission glow
+  draw {
+    rect(0, 0, 16, 8, #707478)
+    layer r(alpha = surface.source_over) { rect(0, 0, 8, 8, #404040) }
+    rough = r
+    layer m(alpha = surface.source_over) { rect(0, 0, 16, 8, #ffffff) }
+    shine = m
+    layer a(alpha = surface.source_over) { rect(0, 4, 16, 4, #808080) }
+    shade = a
+    layer e(alpha = surface.source_over) { pixel(15, 7, #ff8000) }
+    glow = e
+  }
+}
+)";
+
+const char* const kSheet = R"(
+asset sheet {
+  size 64x32
+  const f32 frontX = 16.0
+  const f32 frontW = 32.0
+  const f32 rows = 16.0
+  const vec2 badge = {6, 4}
+  const list<vec2> outline = [{0, 0}, {4, 0}, {4, 3}, {0, 3}]
+  draw { rect(0, 0, 64, 32, #a05030) }
+}
+)";
+
+const char* const kDice = R"(
+asset dice {
+  size 8x8
+  const distribution sizes = weighted {1: 50, 2: 50}
+  const sampler<f32> jitter = sampler(0.0 to 1.0)
+  draw { rect(0, 0, 8, 8, #808080) }
+}
+)";
+
+Sources withMaps(const std::string& source) {
+    return {{"model.ips", source}, {"oak.ips", kOak}, {"plain.ips", kPlain}, {"metal.ips", kMetal}, {"sheet.ips", kSheet},
+            {"dice.ips", kDice}};
+}
+std::string mapped(const std::string& body, const std::string& helpers = "") {
+    return "import metal from \"metal.ips\"\nimport sheet from \"sheet.ips\"\nimport flat from \"plain.ips\"\nasset thing {\n"
+           "  size 40x40x40\n  render {\n" + body + "\n  }\n" + helpers + "\n}\n";
+}
+
+} // namespace
+
+TEST_CASE("a skin's material maps reach its texture and start its numbers at one") {
+    const auto result = generate(withMaps(mapped(R"(
+    m = metal.draw(1)
+    box({0, 0, 0}, {4, 4, 4}, m)
+    box({8, 0, 0}, {4, 4, 4}, skin.roughness(skin.metallic(skin.emission(m, 3.0), 0.5), 0.25))
+    box({16, 0, 0}, {4, 4, 4}, flat.draw(2))
+)")));
+    REQUIRE(result.textures.size() == 2);
+    const auto& texture = result.textures[0];
+    REQUIRE(texture.images.size() == 4);
+    const std::vector<AuxImageKind> kinds{AuxImageKind::Roughness, AuxImageKind::Metallic, AuxImageKind::Ao, AuxImageKind::Emission};
+    for (std::size_t i = 0; i < kinds.size(); ++i) {
+        CHECK(texture.images[i].kind == kinds[i]);
+        CHECK(texture.images[i].image.width == 16);
+        CHECK(texture.images[i].image.height == 8);
+    }
+    CHECK(texture.images[0].image.at(0, 0).r == 0x40);
+    CHECK(texture.images[0].image.at(8, 0).r == 255);
+    CHECK(texture.images[3].image.at(15, 7) == Color{0xff, 0x80, 0x00, 255});
+    REQUIRE(result.surfaces.size() == 3);
+    // A map's number starts at 1; a modifier still sets it; a texture
+    // without maps keeps the defaults of M1.
+    CHECK(result.surfaces[0].roughness == 1.f);
+    CHECK(result.surfaces[0].metallic == 1.f);
+    CHECK(result.surfaces[0].emission == 1.f);
+    CHECK(result.surfaces[1].roughness == 0.25f);
+    CHECK(result.surfaces[1].metallic == 0.5f);
+    CHECK(result.surfaces[1].emission == 3.f);
+    CHECK(result.surfaces[2].roughness == model::kSkinRoughness);
+    CHECK(result.surfaces[2].metallic == model::kSkinMetallic);
+    CHECK(result.surfaces[2].emission == model::kSkinEmission);
+}
+
+TEST_CASE("skin.blend makes glass and skin.region shows a window once on every face") {
+    const auto result = generate(withMaps(mapped(R"(
+    s = sheet.draw(1)
+    quad({0, 0, 0}, {10, 0, 0}, {10, 5, 0}, {0, 5, 0}, skin.region(s, 16.0, 8.0, 32.0, 16.0))
+    quad({0, 0, 1}, {1, 0, 1}, {1, 1, 1}, {0, 1, 1}, skin.blend(skin.fit(s)))
+    box({0, 0, 4}, {3, 2, 1}, 0.25, skin.region(s, 0.0, 0.0, 16.0, 16.0))
+)")));
+    REQUIRE(result.surfaces.size() == 2);
+    CHECK(result.surfaces[1].alpha == model::SkinAlpha::Blend);
+    const auto& surface = result.surfaces[0];
+    // Lower left, lower right, upper right, upper left of the window.
+    const auto uv = [&](std::size_t vertex) { return std::pair<f32, f32>{surface.uvs[vertex * 2], surface.uvs[vertex * 2 + 1]}; };
+    CHECK(uv(0) == std::pair<f32, f32>{0.25f, 0.75f});
+    CHECK(uv(1) == std::pair<f32, f32>{0.75f, 0.75f});
+    CHECK(uv(2) == std::pair<f32, f32>{0.75f, 0.25f});
+    CHECK(uv(3) == std::pair<f32, f32>{0.25f, 0.25f});
+    // Every vertex of the bevelled box stays in its window, 0..1/4 by 0..1/2.
+    for (std::size_t v = 4; v < surface.uvs.size() / 2; ++v) {
+        CHECK(uv(v).first >= 0.f);
+        CHECK(uv(v).first <= 0.25f);
+        CHECK(uv(v).second >= 0.f);
+        CHECK(uv(v).second <= 0.5f);
+    }
+    // A region is a fit: the texture is not marked as repeating.
+    CHECK_FALSE(result.textures[0].repeats);
+}
+
+TEST_CASE("a window outside the image traps") {
+    for (const char* window : {"-1.0, 0.0, 4.0, 4.0", "0.0, 0.0, 0.0, 4.0", "60.0, 0.0, 8.0, 4.0", "0.0, 30.0, 4.0, 4.0",
+                               "0.0, 0.0, 4.0, 1.0 / 0.0"}) {
+        CHECK_THAT(trapMessage(withMaps(mapped(std::string("    s = skin.region(sheet.draw(1), ") + window + ")"))),
+                   ContainsSubstring("skin region must lie inside the image"));
+    }
+    CHECK_THAT(trapMessage(withMaps(mapped("    s = skin.region(sheet.draw(1), 0.0, 0.0, 64.0, 32.0)"))), ContainsSubstring("no trap"));
+}
+
+TEST_CASE("a render asset reads an import's constants as alias.name") {
+    const auto result = generate(withMaps(mapped(R"(
+    s = sheet.draw(1)
+    quad({0, 0, 0}, {10, 0, 0}, {10, 5, 0}, {0, 5, 0}, skin.region(s, sheet.frontX, 0.0, sheet.frontW, sheet.rows))
+    extrude({0, 0, 2}, sheet.outline, 1.0, s)
+    box({0, 0, 6}, {sheet.badge.x, sheet.badge.y, 1}, s)
+    side(s)
+)", "  side(s: skin) { box({0, 0, 9}, {sheet.frontW / 8.0, 1, 1}, s) }")));
+    REQUIRE(result.surfaces.size() == 1);
+    const auto& surface = result.surfaces[0];
+    CHECK(surface.uvs[0] == 0.25f);
+    CHECK(surface.uvs[2] == 0.75f);
+    CHECK(surface.uvs[1] == 0.5f);
+    const auto badge = generate(withMaps(mapped("    box({0, 0, 6}, {sheet.badge.x, sheet.badge.y, 1}, sheet.draw(1))")));
+    CHECK(badge.boundsMax[0] == 3.f);
+    CHECK(badge.boundsMax[1] == 4.f);
+    // A parameter named like the import is read as the parameter.
+    const auto shadowed = generate(withMaps(mapped("    s = sheet.draw(1)\n    side(s, {3, 1})",
+                                                   "  side(s: skin, sheet: vec2) { box({0, 0, 0}, {sheet.x, 1, 1}, s) }")));
+    CHECK(shadowed.boundsMax[0] == 1.5f);
+    // Samplers and distributions come through as well.
+    CHECK(generate(withMaps(R"(import sheet from "dice.ips"
+asset thing {
+  size 40x40x40
+  render {
+    s = sheet.draw(1)
+    box({0, 0, 0}, {1.0 to 3.0 with sheet.sizes, sheet.jitter.pick() + 1.0, 1}, s)
+  }
+}
+)" ), 3).vertexCount == 24);
+    // Unknown names, the asset's own constants and draw assets are errors.
+    CHECK_THAT(diagnostic(withMaps(mapped("    x = sheet.frontx"))), ContainsSubstring("'sheet' declares no constant 'frontx'"));
+    CHECK_THAT(diagnostic(withMaps("import sheet from \"sheet.ips\"\nasset thing {\n  size 4x4x4\n  const f32 half = sheet.frontW / 2.0\n"
+                                   "  render { }\n}\n")),
+               ContainsSubstring("const 'half': cannot read 'sheet'; only asset constants are allowed"));
+    CHECK_THAT(diagnostic({{"model.ips", "import sheet from \"sheet.ips\"\nasset flat {\n  size 8x8\n  draw {\n    x = sheet.frontX\n  }\n}\n"},
+                           {"sheet.ips", kSheet}}),
+               ContainsSubstring("'sheet.frontX' reads a constant of an import, which only an asset with render { } can do"));
+}

@@ -367,11 +367,27 @@ MODELS = {'status': 'preview',
                    'alpha': 'opaque',
                    'cutoff': 0.5,
                    'two_sided': False,
-                   'crisp': False},
+                   'crisp': False,
+                   'with_map': 1},
  'mapping': {'repeat': 'face_units_times_density_plus_shift_over_declared_size',
              'fit': 'image_once_across_the_face',
              'uv_origin': 'upper_left',
-             'unit': 'one_texel_per_model_unit_at_density_one'},
+             'unit': 'one_texel_per_model_unit_at_density_one',
+             'region': 'window_once_across_the_face_face_coordinates_clamped_to_the_face',
+             'region_units': 'declared_size_of_the_skin_program',
+             'region_bleed': 'filtering_reads_neighbouring_texels'},
+ 'alpha_modes': ['opaque', 'cutout', 'blend'],
+ 'material_maps': {'source': 'published_images_of_the_skin_program',
+                   'numbers': 'multiply_the_map_of_their_kind',
+                   'without_a_map': 'the_number_alone',
+                   'emission_without_a_map': 'multiplies_the_colour',
+                   'occlusion_number': False},
+ 'imported_constants': {'syntax': '<alias>.<name>',
+                        'declarations': 'const_of_the_imported_draw_asset',
+                        'evaluation': 'folded_at_compile_time',
+                        'shadowed_by': 'a_local_or_parameter_named_like_the_alias',
+                        'in_own_constants': False,
+                        'draw_assets': False},
  'limits': {'vertices': 65536,
             'triangles': 131072,
             'textures': 32,
@@ -391,6 +407,36 @@ MODELS = {'status': 'preview',
           'place_reserve': 24,
           'skin_draw_reserve': 64},
  'arena_bytes': {'vertex': 48, 'triangle': 16, 'skin_record': 64}}
+
+
+MATERIAL_MAPS = {
+    'output_syntax': 'output <roughness|metallic|ao|emission> <name>', 'output_keyword': 'contextual',
+    'output_storage': 'flagged_layer_resource_export', 'outputs_per_asset': 'one_per_kind',
+    'flags_per_record': 'at_most_one_image_bit', 'output_value': 'colour_layer_checked_at_write',
+    'list_outputs': False, 'part_read': 'layer_in_caller_coordinates',
+    'publication': 'root_slot_painted_source_over_on_background_after_success',
+    'publication_order': ['normal', 'roughness', 'metallic', 'ao', 'emission'],
+    'published_alpha': 255, 'publication_fuel': 0,
+    'publication_work': 'background_and_paint_then_one_step_per_pixel_for_red_in_rgb',
+    'kinds': [
+        {'name': 'roughness', 'image_code': 2, 'flag_bit': 1, 'background_rgba': [255, 255, 255, 255],
+         'published': 'composite_red_in_rgb', 'encoding': 'linear'},
+        {'name': 'metallic', 'image_code': 3, 'flag_bit': 2, 'background_rgba': [0, 0, 0, 255],
+         'published': 'composite_red_in_rgb', 'encoding': 'linear'},
+        {'name': 'ao', 'image_code': 4, 'flag_bit': 3, 'background_rgba': [255, 255, 255, 255],
+         'published': 'composite_red_in_rgb', 'encoding': 'linear'},
+        {'name': 'emission', 'image_code': 5, 'flag_bit': 4, 'background_rgba': [0, 0, 0, 255],
+         'published': 'composite_rgb', 'encoding': 'colour_like_main_image'}]}
+
+
+def read_material_maps(rules):
+    """Material maps (spec material maps v1.2): the published policy, exactly."""
+    maps = obj(rules['material_maps'], list(MATERIAL_MAPS), 'material map policy')
+    for key, wanted in MATERIAL_MAPS.items():
+        require(json.dumps(maps[key], sort_keys=True) == json.dumps(wanted, sort_keys=True) and
+                type(maps[key]) is type(wanted), 'material map policy ' + key)
+    require(not {kind['name'] for kind in MATERIAL_MAPS['kinds']} & set(rules.get('reserved_keywords', [])),
+            'material map keywords are contextual')
 
 
 def read_models(value, rules):
@@ -712,6 +758,8 @@ def read_language(value):
             overload['evaluation_order'] == ['x', 'y', 'z'] and overload['constant_evaluable'] is True and
             'opcode' not in overload and overload['effects']['rng'] == 'none' and
             not overload['effects']['writes_canvas'] and not overload['effects']['may_trap'], 'color.normal builtin')
+    if 'material_maps' in rules:  # required by schema 8; reduced fixtures omit it
+        read_material_maps(rules)
     if 'named_seeds' in rules:  # required by schema 7; reduced fixtures omit it
         read_named_seeds(value, rules)
     if 'models' in rules:  # required by schema 8; reduced fixtures omit it

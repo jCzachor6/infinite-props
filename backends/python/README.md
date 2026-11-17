@@ -64,8 +64,10 @@ and enables typed generation automatically.
 `image.normal` is the [normal map](../../docs/native-bindings.md#normal-maps-and-other-auxiliary-images)
 published with the image, or `None`; `image.images` lists every auxiliary
 image and `program.images` what the program declares. Each `AuxiliaryImage`
-has `kind`, `source` (`ImageSource.AUTHORED` or `DERIVED`), `name`, its size
-and owned `rgba` bytes, plus `to_pillow()`. `generate(derive_normal=True)`
+has `kind` (`ImageKind.NORMAL`, or a material map: `ROUGHNESS`, `METALLIC`,
+`AO`, `EMISSION`), `source` (`ImageSource.AUTHORED` or `DERIVED`), `name`, its
+size and owned `rgba` bytes, plus `to_pillow()`; `image.image_of(kind)` finds
+one. `generate(derive_normal=True)`
 derives one for a prop that publishes none; pass
 `DerivedNormal(depth=..., rounding=..., detail=...)` to set its parameters.
 
@@ -92,7 +94,8 @@ iprop-python stone.iprop stone.png --normal-output stone-normal.png --derive-nor
 
 `--normal-output` also saves the normal map and fails before writing anything
 when the prop publishes none; `--derive-normal` asks the runtime to derive
-one. The JSON gains an `images` list only when an image was published.
+one. `--roughness-output`, `--metallic-output`, `--ao-output` and
+`--emission-output` save the material maps the same way. The JSON gains an `images` list only when an image was published.
 
 ## Verify
 

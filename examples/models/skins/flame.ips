@@ -1,0 +1,19 @@
+// A candle flame: white at the wick, gold, then orange at the tip. It glows:
+// the emission map is the flame itself, so an engine lights it whatever the
+// scene's light does, and the colour image is how it looks unlit.
+asset flame {
+  size 16x32
+  output emission glow
+
+  draw {
+    root = seed.initial()
+    lean = roll(root.fork("lean"), -1.5, 1.5)
+    layer fire(alpha = surface.source_over) {
+      rect(0, 0, 16, 32, #ff8a20)
+      oval(8.0 + lean, 20, 5, 10, #ffc040)
+      oval(8.0 + lean * 0.5, 23, 3, 6, #fff2c0)
+    }
+    surface.paint(fire)
+    glow = fire
+  }
+}

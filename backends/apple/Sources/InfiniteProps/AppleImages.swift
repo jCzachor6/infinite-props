@@ -56,10 +56,13 @@ extension GeneratedImage {
 }
 
 extension AuxiliaryImage {
-    /// The stored bytes as an opaque image in a linear colour space: a normal
-    /// map is data, so no transfer function applies. For saving or inspection.
+    /// The stored bytes as an opaque image: a normal, roughness, metallic or
+    /// AO map is data, in a linear colour space with no transfer function; an
+    /// emission map is a colour, in sRGB like the main image. For saving or
+    /// inspection.
     public func makeCGImage() throws -> CGImage {
-        try cgImage(rgba, width, height, rowStride, space: CGColorSpace.linearSRGB, alpha: .noneSkipLast)
+        try cgImage(rgba, width, height, rowStride, space: kind == .emission ? CGColorSpace.sRGB : CGColorSpace.linearSRGB,
+                    alpha: .noneSkipLast)
     }
 
     /// A texture for `SKSpriteNode.normalTexture`, which SpriteKit lights with
@@ -70,8 +73,9 @@ extension AuxiliaryImage {
         return texture
     }
 
-    /// Uploads the exact bytes as linear `.rgba8Unorm`. A shader decodes a
-    /// sample as `rgb * 2 - 1` and normalizes it.
+    /// Uploads the exact bytes as `.rgba8Unorm`. A shader decodes a normal map
+    /// sample as `rgb * 2 - 1` and normalizes it, reads a scalar map from red,
+    /// and treats an emission map like the main image's colours.
     public func makeMetalTexture(device: MTLDevice) throws -> MTLTexture {
         try metalTexture(rgba, width, height, rowStride, device: device)
     }

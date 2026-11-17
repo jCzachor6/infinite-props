@@ -11,7 +11,7 @@ This is a **preview**. API 0.1 is independent of the 2D C API version and
 may change in any release until the model contract is frozen. No ABI is
 promised: the library is static (`iprop3dc`, CMake target `iprop::capi3d`),
 it is not part of the installed SDK, and a client is built together with it.
-[`iprop.h`](../backends/capi/iprop.h), C API 0.7 and ABI 0.5 are unchanged.
+[`iprop.h`](../backends/capi/iprop.h), the 2D C API 0.8 and ABI 0.5 do not depend on it.
 
 The header reuses the 2D interface instead of repeating it: status codes,
 structured errors, sized descriptors, input descriptors, parameter sets,
@@ -87,11 +87,17 @@ two of them.
 | `uvs` | 2 floats a vertex; beyond 0–1 where the texture repeats |
 | `indices` | `index_count` 32-bit indices into this surface's vertices, 3 a triangle |
 
-`roughness` and `metallic` are 0–1 and `emission` is a multiple of the
-texture's colour. `alpha_mode` is `IPROP3D_ALPHA_OPAQUE`, where the alpha of
-the texture is ignored, or `IPROP3D_ALPHA_CUTOUT`, where a texel below
-`alpha_cutoff` is not drawn. `two_sided` and `crisp` are 0 or 1; `crisp`
-asks for nearest sampling without mipmaps.
+`roughness` and `metallic` are 0–1 and `emission` is 0 or more. Each
+multiplies its [material map](c-api-aux-images.md#reading-a-material-map)
+when the texture has one, as a glTF factor does, and a skin then starts at 1;
+without a map the number stands alone and `emission` multiplies the
+texture's colour. An AO map applies as it is. `alpha_mode` is
+`IPROP3D_ALPHA_OPAQUE`, where the alpha of the texture is ignored,
+`IPROP3D_ALPHA_CUTOUT`, where a texel below `alpha_cutoff` is not drawn, or
+`IPROP3D_ALPHA_BLEND`, where the texel is mixed over what is behind it by its
+alpha (glass): draw such surfaces after the others, without writing depth.
+`two_sided` and `crisp` are 0 or 1; `crisp` asks for nearest sampling
+without mipmaps.
 
 A **texture** (`iprop3d_result_texture`) is the image one skin program
 generated for one seed, size and set of inputs. Its pixel fields follow
@@ -105,8 +111,8 @@ size generated.
 
 `iprop3d_result_texture_image` and `_find` return the images a texture
 publishes beside its picture, with the descriptor and the rules of
-[auxiliary images](c-api-aux-images.md): the normal map of a skin that
-declares one.
+[auxiliary images](c-api-aux-images.md): the normal map and the material
+maps of a skin that declares them, in kind order.
 
 Arrays, pixels and names are borrowed from the result until
 `iprop3d_result_free`. An array pointer is `NULL` exactly when its count is

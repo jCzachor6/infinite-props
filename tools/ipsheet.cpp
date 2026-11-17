@@ -146,7 +146,9 @@ int ipsheetMain(int argc, char* argv[]) {
     std::vector<std::pair<std::string, std::string>> overrides;
     // What each cell shows: the image, its normal image, or the image lit
     // from the upper left through the normal image (a review preview).
-    enum class Shown { Colour, Normal, Lit } shown = Shown::Colour;
+    // A material map (roughness, metallic, ao, emission) shows that image.
+    enum class Shown { Colour, Normal, Lit, Map } shown = Shown::Colour;
+    u32 mapKind = 0;
     bool deriveNormal = false;
     // Models (.iprop3d): every cell is a preview from a fixed camera.
     tools::PreviewOptions view;
@@ -169,7 +171,8 @@ int ipsheetMain(int argc, char* argv[]) {
                       << "  --columns N    grid columns (default: the seed count)\n"
                       << "  --uniform NAME=VALUE  fixed input override (repeatable)\n"
                       << "  --image KIND   color (default), normal or lit: the image, its normal\n"
-                      << "                 image, or the image lit from the upper left (a preview)\n"
+                      << "                 image, or the image lit from the upper left (a preview);\n"
+                      << "                 roughness, metallic, ao or emission: that material map\n"
                       << "  --derive-normal  derive a normal image when the program publishes none\n"
                       << "  -o PATH        output PNG (default: sheet.png)\n"
                       << "A model (<file.iprop3d>) fills each cell with a preview and its seed:\n"
@@ -235,8 +238,11 @@ int ipsheetMain(int argc, char* argv[]) {
             if (kind == "color") shown = Shown::Colour;
             else if (kind == "normal") shown = Shown::Normal;
             else if (kind == "lit") shown = Shown::Lit;
-            else {
-                std::cerr << "ipsheet: bad --image (expected color, normal or lit)\n";
+            else if (kind == "roughness" || kind == "metallic" || kind == "ao" || kind == "emission") {
+                shown = Shown::Map;
+                for (u32 k = 2; k <= kAuxImageKinds; ++k) if (kind == auxImageKindName(k)) mapKind = k;
+            } else {
+                std::cerr << "ipsheet: bad --image (expected color, normal, lit, roughness, metallic, ao or emission)\n";
                 return 1;
             }
         } else if (arg == "--derive-normal") {
@@ -313,8 +319,16 @@ int ipsheetMain(int argc, char* argv[]) {
             const GenerationResult generated = shown == Shown::Colour ? GenerationResult{} : vm.takeResult();
             const Canvas& canvas = shown == Shown::Colour ? vm.canvas() : generated.image;
             const Canvas* normal = nullptr;
-            for (const auto& image : generated.images) if (image.kind == AuxImageKind::Normal && !normal) normal = &image.image;
-            if (shown != Shown::Colour && !normal) {
+            const Canvas* map = nullptr;
+            for (const auto& image : generated.images) {
+                if (image.kind == AuxImageKind::Normal && !normal) normal = &image.image;
+                if (static_cast<u32>(image.kind) == mapKind && !map) map = &image.image;
+            }
+            if (shown == Shown::Map && !map) {
+                std::cerr << "ipsheet: no " << auxImageKindName(mapKind) << " image: the program publishes none\n";
+                return 1;
+            }
+            if ((shown == Shown::Normal || shown == Shown::Lit) && !normal) {
                 std::cerr << "ipsheet: no normal image: the program publishes none; --derive-normal derives one\n";
                 return 1;
             }
@@ -325,6 +339,7 @@ int ipsheetMain(int argc, char* argv[]) {
                 for (u32 x = 0; x < canvas.width; ++x) {
                     Color pixel = canvas.at(x, y);
                     if (shown == Shown::Normal) pixel = normal->at(x, y);
+                    else if (shown == Shown::Map) pixel = map->at(x, y);
                     else if (shown == Shown::Lit) {
                         // A fixed light from the upper left: ambient plus a
                         // Lambert term. A preview, not part of any contract.

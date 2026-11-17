@@ -1,0 +1,17 @@
+// Candle wax: cream, a little darker toward the base, with drips down from
+// the top.
+asset wax {
+  size 16x32
+  input color tint = #efe4c8
+
+  draw {
+    root = seed.initial()
+    rect(0, 0, 16, 32, tint)
+    rect(0, 24, 16, 8, color.shade(tint, -10))
+    for k in 0..3 {
+      drip = root.fork("drip").fork(k)
+      x = roll(drip.fork("x"), 1.0, 14.0)
+      rect(x, 0, 2, roll(drip.fork("length"), 4.0, 12.0), color.shade(tint, 8))
+    }
+  }
+}

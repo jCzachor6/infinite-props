@@ -283,6 +283,10 @@ ips::ValueType Emitter::emitPartRead(const ips::Expr& expr) {
         return ips::ValueType::Mask;
     case ips::OutputKind::Layer:
     case ips::OutputKind::Normal:
+    case ips::OutputKind::Roughness:
+    case ips::OutputKind::Metallic:
+    case ips::OutputKind::Ao:
+    case ips::OutputKind::Emission:
         ins(Opcode::PartGetLayer, 0, resource());
         return ips::ValueType::Layer;
     case ips::OutputKind::Point:

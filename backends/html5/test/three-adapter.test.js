@@ -156,6 +156,46 @@ test("a shared cache keeps one texture per key; disposal releases what an object
     assert.deepEqual(disposed, { geometry: 4, material: 4, texture: 5 });
 });
 
+test("material maps bind as three.js maps and a blended surface is transparent", { skip: !available && "three.js is not installed" }, async () => {
+    const { THREE, adapter } = await load();
+    const source = result();
+    const map = (kind, name, fill) => ({ index: kind - 1, kind, source: 1, name, width: 4, height: 2, data: image(4, 2, fill) });
+    const maps = [map(1, "relief", 128), map(2, "gloss", 64), map(3, "metal", 255), map(4, "shade", 200), map(5, "glow", 90)];
+    source.textures[0] = { ...source.textures[0], images: maps, normal: maps[0] };
+    source.surfaces[0] = { ...source.surfaces[0], roughness: 1, metallic: 1, emission: 1 };
+    source.surfaces[2] = { ...source.surfaces[2], alphaMode: 2 };
+    const textures = new Map();
+    const [plain, crisp, glass] = adapter.toObject3D(source, THREE, { textures }).children;
+    const material = plain.material;
+    // Linear data for the scalar maps; the emission map is a colour.
+    for (const [field, kind] of [["normalMap", 1], ["roughnessMap", 2], ["metalnessMap", 3], ["aoMap", 4]]) {
+        assert(material[field].isDataTexture, field);
+        assert.equal(material[field].image.data, maps[kind - 1].data);
+        assert.equal(material[field].colorSpace, THREE.NoColorSpace);
+        assert.equal(material[field].wrapS, THREE.RepeatWrapping);
+    }
+    assert.equal(material.emissiveMap.image.data, maps[4].data);
+    assert.equal(material.emissiveMap.colorSpace, THREE.SRGBColorSpace);
+    assert.equal(material.emissiveIntensity, 1);
+    assert.equal(material.roughness, 1);
+    assert.equal(material.metalness, 1);
+    // The crisp use has unfiltered copies of every map.
+    assert.notEqual(crisp.material.roughnessMap, material.roughnessMap);
+    assert.equal(crisp.material.roughnessMap.minFilter, THREE.NearestFilter);
+    // Glass: transparent, no depth writes, its alpha kept; an opaque surface is neither.
+    assert.equal(glass.material.transparent, true);
+    assert.equal(glass.material.depthWrite, false);
+    assert.equal(glass.material.alphaTest, 0);
+    assert.equal(material.transparent, false);
+    assert.equal(material.depthWrite, true);
+    // Every map of the cache is released.
+    let released = 0;
+    for (const entry of textures.values())
+        for (const texture of Object.values(entry).filter(Boolean)) texture.addEventListener("dispose", () => ++released);
+    adapter.disposeTextures(textures);
+    assert.equal(released, 2 * 6 + 1); // two samplings of a texture with five maps, one plain colour map
+});
+
 test("the transfer list of a result names each buffer once", () => {
     const { transferables } = require("../js/api3d.js")(null);
     const source = result();

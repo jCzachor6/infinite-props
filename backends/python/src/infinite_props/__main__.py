@@ -2,7 +2,9 @@ import argparse
 from dataclasses import asdict
 import json
 
-from . import Program, Color, F32, U32, I32, OutputKind
+from . import Program, Color, F32, U32, I32, ImageKind, OutputKind
+
+MAPS = (ImageKind.ROUGHNESS, ImageKind.METALLIC, ImageKind.AO, ImageKind.EMISSION)
 
 
 def main():
@@ -13,6 +15,9 @@ def main():
     parser.add_argument("--library")
     parser.add_argument("--input", action="append", default=[], metavar="NAME=VALUE")
     parser.add_argument("--normal-output", metavar="PATH", help="also save the normal map")
+    for kind in MAPS:
+        name = kind.name.lower()
+        parser.add_argument("--" + name + "-output", metavar="PATH", help="also save the " + name + " map")
     parser.add_argument("--derive-normal", action="store_true",
                         help="derive a normal map when the program publishes none")
     args = parser.parse_args()
@@ -41,9 +46,16 @@ def main():
         parser.error("part outputs are unsupported by the CLI JSON format; use Program.generate() for typed resources")
     if args.normal_output and image.normal is None:
         parser.error("the program publishes no normal map; --derive-normal derives one")
+    maps = {kind: getattr(args, kind.name.lower() + "_output") for kind in MAPS}
+    for kind, path in maps.items():
+        if path and image.image_of(kind) is None:
+            parser.error("the program publishes no " + kind.name.lower() + " map")
     image.to_pillow().save(args.output)
     if args.normal_output:
         image.normal.to_pillow().save(args.normal_output)
+    for kind, path in maps.items():
+        if path:
+            image.image_of(kind).to_pillow().save(path)
     report = {"width": image.width, "height": image.height, "alpha_mode": image.alpha_mode,
         "outputs": [{key: value for key, value in asdict(slot).items() if key != "parts"} for slot in image.outputs],
         "statistics": asdict(image.statistics)}

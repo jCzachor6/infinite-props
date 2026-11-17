@@ -1,0 +1,52 @@
+// Wrought iron for a lantern: dark hammered metal with rust in its pits.
+// Drawn flat, with the light left to the engine: the hammer marks are in the
+// normal map, and the material maps tell bare metal from rust, so the iron
+// shines where it is bare and goes dull and red where it has rusted.
+asset wrought {
+  size 32x32
+  input color tint = #3c3f44
+  input f32 rust = 0.4                   // 0 clean, 1 rusted through
+  output normal relief
+  output roughness finish
+  output metallic metal
+
+  draw {
+    root = seed.initial()
+    rect(0, 0, 32, 32, tint)
+
+    // Hammer marks: shallow dents, each drawn on both sides of an edge so
+    // that the texture repeats.
+    layer dents(alpha = surface.source_over) {
+      rect(0, 0, 32, 32, #808080)
+      for k in 0..14 {
+        mark = root.fork("dent").fork(k)
+        x = roll(mark.fork("x"), 0.0, 32.0)
+        y = roll(mark.fork("y"), 0.0, 32.0)
+        r = roll(mark.fork("r"), 1.5, 3.5)
+        for dx in -1..2 {
+          for dy in -1..2 {
+            oval(x + float(dx) * 32.0, y + float(dy) * 32.0, r, r, #5a5a5a)
+          }
+        }
+      }
+    }
+
+    // Rust where the noise rises above a level the input lowers.
+    spots = noise.mask({0, 0}, {32, 32}, noise.mode_fbm, {0.15, 0.15}, 0.35 - rust * 0.5, root.fork("rust"),
+                       octaves = 2, softness = 0.0, comparison = noise.above, warp_amount = 0.25)
+    clip(spots) { rect(0, 0, 32, 32, #6a3a1e) }
+
+    // Bare iron is half smooth and fully metal; rust is rough and is not.
+    layer smooth(alpha = surface.source_over) {
+      rect(0, 0, 32, 32, #8a8a8a)
+      clip(spots) { rect(0, 0, 32, 32, #f0f0f0) }
+    }
+    finish = smooth
+    layer bare(alpha = surface.source_over) {
+      rect(0, 0, 32, 32, #ffffff)
+      clip(spots) { rect(0, 0, 32, 32, #101010) }
+    }
+    metal = bare
+    relief = dents.normal(1.5, 0.6)
+  }
+}

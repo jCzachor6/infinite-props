@@ -102,8 +102,10 @@ uniforms])`.
 [normal map](../../docs/native-bindings.md#normal-maps-and-other-auxiliary-images)
 among them, or `null`. Each entry is `{index, kind, source, name, width,
 height, rowStride, pixelFormat, alphaMode, storageOrigin, data}` with an owned
-`Uint8Array`; `kind` is `iprop.IMAGE_NORMAL` and `source` is
-`iprop.SOURCE_AUTHORED` or `iprop.SOURCE_DERIVED`. Pass `deriveNormal: true`
+`Uint8Array`; `kind` is `iprop.IMAGE_NORMAL`, or one of the
+[material maps](../../docs/c-api-aux-images.md#reading-a-material-map)
+`IMAGE_ROUGHNESS`, `IMAGE_METALLIC`, `IMAGE_AO` and `IMAGE_EMISSION`, in that
+order, and `source` is `iprop.SOURCE_AUTHORED` or `iprop.SOURCE_DERIVED`. Pass `deriveNormal: true`
 to derive one for a prop that publishes none, or `{depth, rounding, detail}`
 to set its parameters (zero keeps a default):
 
@@ -158,10 +160,13 @@ model and every texture it generates. A result holds
 - `surfaces`: the triangles of one material each, as `positions`, `normals`,
   `tangents`, `uvs` (`Float32Array`) and `indices` (`Uint32Array`), with
   `texture`, `roughness`, `metallic`, `emission`, `alphaMode`
-  (`iprop3d.ALPHA_OPAQUE` or `ALPHA_CUTOUT`), `alphaCutoff`, `twoSided` and
-  `crisp`;
+  (`iprop3d.ALPHA_OPAQUE`, `ALPHA_CUTOUT` or `ALPHA_BLEND` for glass),
+  `alphaCutoff`, `twoSided` and `crisp`. The numbers multiply the material
+  maps of the texture; without a map they stand alone, and `emission` then
+  multiplies the colour;
 - `textures`: `{key, name, width, height, assetWidth, assetHeight, repeats,
-  data, images, normal}` with `data` an RGBA `Uint8Array`, rows from the top.
+  data, images, normal}` with `data` an RGBA `Uint8Array`, rows from the top,
+  and `images` the normal and material maps of the skin (`IMAGE_*` kinds).
   Equal keys mean equal pixels, in any result of any model, so a page can keep
   one GPU texture per key;
 - `bounds`, `size`, `unitsPerMeter`, `vertexCount`, `triangleCount`, `fuel`
@@ -181,7 +186,9 @@ request, options}`; it answers `ready`, `loaded` and `result` (or `error`),
 moving the arrays instead of copying them.
 
 **With three.js.** The conventions of a model are those of three.js, so the
-adapter converts nothing:
+adapter converts nothing. It binds the normal, roughness, metallic, AO and
+emission maps of a texture to a `MeshStandardMaterial` (colour and emission in
+sRGB, the rest as data) and makes a blended surface transparent:
 
 ```js
 import * as THREE from "three";
@@ -211,7 +218,7 @@ stage and message, and the 2D golden entries must hold in the model module.
 
 ## Typed part results
 
-Generation uses the same checked C API 0.7 implementation as native hosts.
+Generation uses the same checked C API 0.8 implementation as native hosts.
 Every output has `index`, `owner`, `count` and an ordered `parts` array in
 addition to its existing fields. Kind 3 denotes `output list part`; old float
 outputs retain their exact `valueBits`. Empty declarations remain present.

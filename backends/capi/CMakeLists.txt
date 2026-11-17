@@ -111,6 +111,14 @@ add_custom_command(OUTPUT ${aux_fixture}
 add_custom_target(capi_aux_fixture DEPENDS ${aux_fixture})
 add_dependencies(capi_golden capi_aux_fixture)
 
+# The shared material-map fixture of the host bindings (material maps v1.2).
+set(maps_fixture ${golden}/material-maps.iprop)
+add_custom_command(OUTPUT ${maps_fixture}
+    COMMAND $<TARGET_FILE:ipc> ${CMAKE_SOURCE_DIR}/backends/test/binding-maps.ips -o ${maps_fixture}
+    DEPENDS ipc ${CMAKE_SOURCE_DIR}/backends/test/binding-maps.ips)
+add_custom_target(capi_maps_fixture DEPENDS ${maps_fixture})
+add_dependencies(capi_golden capi_maps_fixture)
+
 set(owner_fixture ${golden}/output-owners.iprop)
 add_custom_command(OUTPUT ${owner_fixture}
     COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/test/output-owners.ips -o ${owner_fixture}
@@ -226,6 +234,7 @@ foreach(linkage shared static)
 endforeach()
 iprop_capi_test(capi_image_view test/image_view.c BOTH ARGS ${image_fixture})
 iprop_capi_test(capi_aux_images test/aux_images.c BOTH ARGS ${aux_fixture} ${image_fixture})
+iprop_capi_test(capi_material_maps test/material_maps.c BOTH ARGS ${maps_fixture} ${image_fixture})
 iprop_capi_test(capi_error_buffers test/error_buffers.c BOTH ARGS ${golden}/uniforms.iprop)
 iprop_capi_test(capi_checked test/checked.c BOTH ARGS ${golden}/uniforms.iprop)
 iprop_capi_test(capi_reflection test/reflection.c BOTH

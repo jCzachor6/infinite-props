@@ -170,6 +170,9 @@ async function main() {
             native.normalMaps.generations + " exact generations; " + native.normalMaps.workPairs + " exact C/WASM work counters; " +
             native.normalMaps.orientations + " part orientations; " + native.normalMaps.traps + " matching traps; " +
             native.normalMaps.rejections + " bytecode rejections)");
+        console.log("native/WASM material maps: PASS (" + native.materialMaps.pins + " hand-computed pins; " +
+            native.materialMaps.generations + " exact generations with " + native.materialMaps.images + " auxiliary images; " +
+            native.materialMaps.traps + " matching traps; " + native.materialMaps.rejections + " record rejections)");
         console.log("native/WASM named seeds: PASS (" + native.namedSeeds.vectors + " independent vectors; " +
             native.namedSeeds.checked + " exact seeds; " + native.namedSeeds.generations + " exact generations; " +
             native.namedSeeds.rejections + " bytecode rejections)");

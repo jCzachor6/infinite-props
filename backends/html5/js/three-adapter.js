@@ -15,8 +15,10 @@
 // up, counterclockwise front faces, tangents with a bitangent sign and
 // normal maps with green up the image. Each surface becomes one Mesh with a
 // MeshStandardMaterial; textures are DataTextures over the result's own
-// arrays, colour in sRGB and normal maps as linear data, uploaded top row
-// first so that UV (0, 0) is the upper left of the image.
+// arrays, colour and emission in sRGB, normal, roughness, metallic and
+// occlusion maps as linear data, uploaded top row first so that UV (0, 0) is
+// the upper left of the image. A surface's numbers multiply its maps, as
+// three.js does; a blended surface is transparent and writes no depth.
 //
 // This file is the only one that knows three.js; it imports nothing, the
 // caller hands its own THREE in.
@@ -28,7 +30,7 @@
 //   anisotropy  anisotropic filtering of smooth textures (default 4)
 //   meters      scale the group to metres (default true); false keeps model units
 
-const NORMAL = 1, CUTOUT = 1;
+const NORMAL = 1, ROUGHNESS = 2, METALLIC = 3, AO = 4, EMISSION = 5, CUTOUT = 1, BLEND = 2;
 
 function dataTexture(THREE, image, width, height, sampling) {
     const texture = new THREE.DataTexture(image, width, height, THREE.RGBAFormat, THREE.UnsignedByteType);
@@ -44,21 +46,32 @@ function dataTexture(THREE, image, width, height, sampling) {
     return texture;
 }
 
-// The colour and normal textures of one result texture for one sampling.
-// Filters live on a three.js texture, so a crisp and a smooth use of the
-// same image are two entries.
+// The colour, normal and material map textures of one result texture for
+// one sampling. Filters live on a three.js texture, so a crisp and a smooth
+// use of the same image are two entries.
 function texturesOf(THREE, source, crisp, options, cache) {
     const key = source.key + (crisp ? ":crisp" : ":smooth") + (source.repeats ? ":repeat" : ":clamp");
     let entry = cache.get(key);
     if (!entry) {
         const sampling = { repeats: source.repeats, crisp, anisotropy: options.anisotropy === undefined ? 4 : options.anisotropy };
-        const normal = source.normal || source.images.find(image => image.kind === NORMAL) || null;
+        const image = kind => source.images.find(candidate => candidate.kind === kind) || null;
+        const extra = (kind, color, label) => {
+            const found = image(kind);
+            if (!found) return null;
+            const texture = dataTexture(THREE, found.data, found.width, found.height, { ...sampling, color });
+            texture.name = source.name + " (" + label + ")";
+            return texture;
+        };
         entry = {
             map: dataTexture(THREE, source.data, source.width, source.height, { ...sampling, color: true }),
-            normalMap: normal ? dataTexture(THREE, normal.data, normal.width, normal.height, { ...sampling, color: false }) : null,
+            normalMap: extra(NORMAL, false, "normal"),
+            // A scalar map holds its value in red, green and blue alike.
+            roughnessMap: extra(ROUGHNESS, false, "roughness"),
+            metalnessMap: extra(METALLIC, false, "metallic"),
+            aoMap: extra(AO, false, "ao"),
+            emissiveMap: extra(EMISSION, true, "emission"),
         };
         entry.map.name = source.name;
-        if (entry.normalMap) entry.normalMap.name = source.name + " (normal)";
         cache.set(key, entry);
     }
     return entry;
@@ -70,7 +83,7 @@ export function toObject3D(result, THREE, options = {}) {
     const group = new THREE.Group();
     for (const surface of result.surfaces) {
         const source = result.textures[surface.texture];
-        const { map, normalMap } = texturesOf(THREE, source, surface.crisp, options, cache);
+        const { map, normalMap, roughnessMap, metalnessMap, aoMap, emissiveMap } = texturesOf(THREE, source, surface.crisp, options, cache);
 
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute("position", new THREE.BufferAttribute(surface.positions, 3));
@@ -85,15 +98,24 @@ export function toObject3D(result, THREE, options = {}) {
             name: source.name,
             map,
             normalMap,
+            roughnessMap,
+            metalnessMap,
+            aoMap,
             roughness: surface.roughness,
             metalness: surface.metallic,
             side: surface.twoSided ? THREE.DoubleSide : THREE.FrontSide,
         });
-        // Opaque surfaces ignore the image's alpha; cutout ones test it.
+        // Opaque surfaces ignore the image's alpha; cutout ones test it and
+        // blended ones mix over what is behind them.
         if (surface.alphaMode === CUTOUT) material.alphaTest = surface.alphaCutoff;
+        if (surface.alphaMode === BLEND) {
+            material.transparent = true;
+            material.depthWrite = false;
+        }
         if (surface.emission > 0) {
+            // The emission map when the texture has one, else its colour.
             material.emissive = new THREE.Color(1, 1, 1);
-            material.emissiveMap = map;
+            material.emissiveMap = emissiveMap || map;
             material.emissiveIntensity = surface.emission;
         }
 
@@ -128,9 +150,8 @@ export function disposeObject3D(object) {
 }
 
 export function disposeTextures(cache) {
-    for (const entry of cache.values()) {
-        entry.map.dispose();
-        if (entry.normalMap) entry.normalMap.dispose();
-    }
+    for (const entry of cache.values())
+        for (const texture of [entry.map, entry.normalMap, entry.roughnessMap, entry.metalnessMap, entry.aoMap, entry.emissiveMap])
+            if (texture) texture.dispose();
     cache.clear();
 }

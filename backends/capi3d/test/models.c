@@ -136,7 +136,7 @@ int main(int argc, char** argv) {
     uint32_t count = 99, index = 99;
     CHECK(argc == 2);
     CHECK(IPROP3D_API_VERSION_MAJOR == 0 && IPROP3D_API_VERSION_MINOR == 1);
-    CHECK(sizeof(iprop3d_alpha_mode) == 4 && IPROP3D_ALPHA_OPAQUE == 0 && IPROP3D_ALPHA_CUTOUT == 1);
+    CHECK(sizeof(iprop3d_alpha_mode) == 4 && IPROP3D_ALPHA_OPAQUE == 0 && IPROP3D_ALPHA_CUTOUT == 1 && IPROP3D_ALPHA_BLEND == 2);
 
     /* The library. */
     CHECK(iprop3d_library_info_init(&library, sizeof(library)) == IPROP_EX_OK);

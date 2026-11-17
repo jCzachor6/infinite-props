@@ -12,7 +12,9 @@ pixels/outputs. `ipgen --normal-output normal.png` also writes the
 [normal map](relief.md) of a prop that publishes one, and `--derive-normal`
 asks the runtime to derive one from the finished image when it does not;
 `ipsheet --image normal` and `--image lit` show a seed grid of the maps or of
-the props lit through them. The `.ipa` assembly language is the VM-level tool format.
+the props lit through them. `--roughness-output`, `--metallic-output`,
+`--ao-output` and `--emission-output` write the [material maps](material-maps.md),
+and `ipsheet --image roughness` (or `metallic`, `ao`, `emission`) shows one. The `.ipa` assembly language is the VM-level tool format.
 For exact binary32 transport, assembly accepts `bits:0xXXXXXXXX` with eight
 hexadecimal digits wherever it accepts f32 constants/defaults/origins. `ipdis`
 uses this spelling for subnormals and nonfinite values, preserving NaN payloads
@@ -136,11 +138,14 @@ its name.
   output path ending in `.png` writes a picture instead, and `--preview PATH`
   writes one beside the model. `--preview-size WxH`, `--view YAW,PITCH` and
   `--background COLOR` set the picture; `--skins-dir DIR` writes every
-  texture and its normal image; `--dump` prints every vertex, index and image
+  texture and its normal and material maps; `--dump` prints every vertex, index and image
   hash with floats as their bits, for comparing two runtimes. `--seed`,
   `--uniform`, `--work-limit`, `--timeout-ms` and `--work-stats` work as for
-  an image. `--size`, `--normal-output` and `--derive-normal` belong to
-  images and are rejected.
+  an image. `--size`, `--normal-output`, the material map outputs and
+  `--derive-normal` belong to images and are rejected. In the glTF file a
+  skin's roughness, metallic and AO maps share one occlusion-roughness-metallic
+  texture, its emission map is the emissive texture and glass is `BLEND`; the
+  picture shades them too.
 - `ipsheet chair.iprop3d --seeds 16 --columns 4` draws a grid of previews
   with their seeds. `--cell N` sets the cell size and `--view` and
   `--background` the picture.

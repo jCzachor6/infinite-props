@@ -1,6 +1,7 @@
 // Types of three-adapter.js and of the results of api3d.js (preview).
 
-/** An image published beside a texture's colour image; kind 1 is a normal map. */
+/** An image published beside a texture's colour image: kind 1 is a normal map, 2-5 the
+ * roughness, metallic, ao and emission maps. */
 export interface ModelImage {
     index: number;
     kind: number;
@@ -33,7 +34,7 @@ export interface ModelSurface {
     roughness: number;
     metallic: number;
     emission: number;
-    /** 0 opaque, 1 cutout. */
+    /** 0 opaque, 1 cutout, 2 blend (glass). */
     alphaMode: number;
     alphaCutoff: number;
     twoSided: boolean;

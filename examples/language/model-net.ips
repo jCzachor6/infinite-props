@@ -1,0 +1,19 @@
+// A crate from one unwrapped net. The sheet names its fields; each solid
+// shows the window of its field once, whatever its size, and the label is a
+// decal: a fitted quad standing just off the front face. Crisp texels never
+// read a neighbouring field.
+import sheet from "skins/crate-net.ips"
+
+asset netCrate {
+  size 24x20x16
+
+  render {
+    s = skin.crisp(sheet.draw(seed.initial().fork("net")))
+    planks = skin.region(s, sheet.sideX, 0.0, sheet.field, sheet.field)
+    lid = skin.region(s, sheet.lidX, 0.0, sheet.field, sheet.field)
+    label = skin.region(s, sheet.labelX, 0.0, sheet.field, sheet.labelH)
+    box({0, 0, 0}, {24, 18, 16}, 0.5, planks)
+    box({0, 18, 0}, {24, 2, 16}, 0.25, lid)
+    quad({-6, 5, 8.05}, {6, 5, 8.05}, {6, 11, 8.05}, {-6, 11, 8.05}, label)
+  }
+}

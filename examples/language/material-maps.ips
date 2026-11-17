@@ -1,0 +1,32 @@
+// A control panel for a game that lights its props: painted frame, bare
+// metal, grime gathered at the bottom and a lamp that glows. Each material
+// map is a layer beside the image; where it paints nothing a map keeps the
+// value that changes nothing (rough, not metal, unoccluded, dark).
+asset panel {
+  size 48x32
+  output roughness finish
+  output metallic metal
+  output ao grime
+  output emission lamp
+
+  draw {
+    rect(0, 0, 48, 32, #5c6670)
+    rect(4, 4, 40, 24, #9aa4ac)
+    oval(38, 9, 3, 3, #3a1810)
+
+    // Roughness, metallic and AO read the red of what a layer paints.
+    layer paint(alpha = surface.source_over) {
+      rect(0, 0, 48, 32, #d0d0d0)
+      rect(4, 4, 40, 24, #404040)
+    }
+    finish = paint
+    layer bare(alpha = surface.source_over) { rect(4, 4, 40, 24, #ffffff) }
+    metal = bare
+    layer dirt(alpha = surface.source_over) { rect(0, 24, 48, 8, #00000060) }
+    grime = dirt
+
+    // Emission keeps the colour of the glow.
+    layer light(alpha = surface.source_over) { oval(38, 9, 3, 3, #ff6a20) }
+    lamp = light
+  }
+}

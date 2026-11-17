@@ -1,0 +1,34 @@
+// The shared material-map fixture of the host bindings: the four material
+// maps and a normal map, declared out of order (a result lists them by kind),
+// each painted over part of the canvas, with one roughness pixel that moves
+// with the seed and partly covered pixels that blend toward the background.
+asset bindingMaps {
+  size 8x4
+  output emission glow
+  output ao shade
+  output roughness gloss
+  output normal relief
+  output metallic metal
+  draw {
+    rect(0, 0, 8, 4, #806040)
+    layer g(alpha = surface.source_over) {
+      rect(0, 0, 4, 4, #404040)
+      pixel(seed % 8, 3, #c0c0c0)
+    }
+    gloss = g
+    layer m(alpha = surface.source_over) {
+      rect(2, 0, 2, 2, #ff0000)
+      pixel(7, 3, #ff000080)
+    }
+    metal = m
+    layer a(alpha = surface.source_over) { rect(0, 2, 8, 2, #80808080) }
+    shade = a
+    layer e(alpha = surface.source_over) {
+      pixel(6, 1, #ffa020)
+      pixel(5, 1, #ffa02040)
+    }
+    glow = e
+    layer n(encoding = surface.normal) { rect(0, 0, 4, 4, color.normal(0.0, 0.5, 0.8)) }
+    relief = n
+  }
+}

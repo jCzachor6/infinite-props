@@ -259,7 +259,8 @@ std::string disassembleImpl(std::span<const u8> bytes, bool annotated) {
     }
     const auto ownerText = [](u32 owner) { return owner == kRootParent ? std::string("root") : std::to_string(owner); };
     for (const auto& output : loaded.resourceExports)
-        out << "export: " << (output.normal ? "normal" : valueTypeName(output.type)) << ' ' << pool.strings.at(output.nameIndex)
+        out << "export: " << (output.image ? auxImageKindName(output.image) : valueTypeName(output.type)) << ' '
+            << pool.strings.at(output.nameIndex)
             << ' ' << ownerText(output.owner) << '\n';
     for (u32 f = 0; f < loaded.functionOwners.size(); ++f)
         out << "owner: " << names.functions[f] << ' ' << ownerText(loaded.functionOwners[f]) << '\n';

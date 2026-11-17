@@ -188,6 +188,9 @@ struct GeneratedResult {
     std::vector<AuxiliaryImage> images;
     // The normal image published with this result, authored or derived.
     const AuxiliaryImage* normal() const { return backend::normalImage(images); }
+    // The image of a kind published with this result: IPROP_AUX_IMAGE_NORMAL
+    // or a material map (IPROP_AUX_IMAGE_ROUGHNESS, _METALLIC, _AO, _EMISSION).
+    const AuxiliaryImage* image(iprop_aux_image_kind kind) const { return backend::findAuxImage(images, kind); }
 };
 
 // Optional complete owned handoff for engine integration. Image-only viewers

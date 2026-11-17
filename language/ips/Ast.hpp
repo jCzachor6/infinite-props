@@ -327,10 +327,27 @@ enum class InputType { Color, F32, U32, I32 };
 
 // Resource exports are source-level outputs, separate from the frozen host enum.
 // A normal output is a layer export whose value is a direction layer; the
-// root's is published to the host as the normal image.
-enum class OutputKind { Point, Rect, Circle, Mask, Layer, Part, Normal };
+// root's is published to the host as the normal image. The material maps
+// (v1.2) are layer exports of colour layers, published the same way.
+enum class OutputKind { Point, Rect, Circle, Mask, Layer, Part, Normal, Roughness, Metallic, Ao, Emission };
+// An output that publishes an image of the root: normal or a material map.
+constexpr bool isImageOutput(OutputKind kind) {
+    return kind == OutputKind::Normal || kind == OutputKind::Roughness || kind == OutputKind::Metallic ||
+           kind == OutputKind::Ao || kind == OutputKind::Emission;
+}
 constexpr bool isResourceOutput(OutputKind kind) {
-    return kind == OutputKind::Mask || kind == OutputKind::Layer || kind == OutputKind::Normal;
+    return kind == OutputKind::Mask || kind == OutputKind::Layer || isImageOutput(kind);
+}
+// The image kind of an image output (the runtime's AuxImageKind), or 0.
+constexpr unsigned imageKindOf(OutputKind kind) {
+    switch (kind) {
+    case OutputKind::Normal: return 1;
+    case OutputKind::Roughness: return 2;
+    case OutputKind::Metallic: return 3;
+    case OutputKind::Ao: return 4;
+    case OutputKind::Emission: return 5;
+    default: return 0;
+    }
 }
 
 // `input color palette = #808d74`

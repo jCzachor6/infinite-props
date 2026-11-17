@@ -13,7 +13,9 @@
 // `data` is a copy, so results stay valid across calls.
 // `images` lists the images published beside the main one and `normal` is the
 // normal map among them, or null. `deriveNormal: true` asks the runtime to
-// derive one for a prop that publishes none.
+// derive one for a prop that publishes none. Material maps (1.2) follow the
+// normal map in kind order: IMAGE_ROUGHNESS, IMAGE_METALLIC, IMAGE_AO and
+// IMAGE_EMISSION.
 
 (function (root, factory) {
     if (typeof module === "object" && module.exports) {
@@ -25,7 +27,7 @@
     }
 })(typeof self !== "undefined" ? self : this, function (createModule) {
     // Auxiliary image tags of the C API.
-    const NORMAL = 1, AUTHORED = 1, DERIVED = 2;
+    const NORMAL = 1, ROUGHNESS = 2, METALLIC = 3, AO = 4, EMISSION = 5, AUTHORED = 1, DERIVED = 2;
 
     function create(wasmUrl) {
         return createModule({ locateFile: function () { return wasmUrl; } })
@@ -81,7 +83,8 @@
                 }
 
                 return { generate: generate, drawToCanvas: drawToCanvas,
-                    IMAGE_NORMAL: NORMAL, SOURCE_AUTHORED: AUTHORED, SOURCE_DERIVED: DERIVED };
+                    IMAGE_NORMAL: NORMAL, IMAGE_ROUGHNESS: ROUGHNESS, IMAGE_METALLIC: METALLIC, IMAGE_AO: AO,
+                    IMAGE_EMISSION: EMISSION, SOURCE_AUTHORED: AUTHORED, SOURCE_DERIVED: DERIVED };
             });
     }
 

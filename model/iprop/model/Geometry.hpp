@@ -75,6 +75,11 @@ struct Mapping {
     double density = 1.0;
     double shiftU = 0.0, shiftV = 0.0;
     double assetWidth = 1.0, assetHeight = 1.0;
+    // skin.region (v1.2, M2): each face shows this window of the image once,
+    // in asset units; implies fit. A face coordinate outside its face is
+    // clamped to the face, so no face samples beyond its window.
+    bool region = false;
+    double regionX = 0.0, regionY = 0.0, regionW = 1.0, regionH = 1.0;
 };
 
 // Where a primitive writes.

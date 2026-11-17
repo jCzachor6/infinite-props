@@ -68,10 +68,11 @@ namespace InfiniteProps
         public ulong WorkRemaining { get; internal set; }
         public ulong WorkUsed { get; internal set; }
     }
-    public enum ImageKind : uint { Normal = 1 }
+    /// <summary>What an auxiliary image holds: a normal map (1.1) or a material map (1.2).</summary>
+    public enum ImageKind : uint { Normal = 1, Roughness = 2, Metallic = 3, Ao = 4, Emission = 5 }
     public enum ImageSource : uint { Authored = 1, Derived = 2 }
 
-    /// <summary>An auxiliary image a program can publish: the normal output of its root.</summary>
+    /// <summary>An auxiliary image a program can publish: an image output of its root.</summary>
     public sealed class DeclaredImage
     {
         public uint Index { get; internal set; }
@@ -96,8 +97,11 @@ namespace InfiniteProps
     /// <summary>An image published beside the main one, owned by its result. A
     /// normal map stores one direction per pixel: R is x rightward, G is y
     /// upward and B is z toward the viewer, each byte b decoding as
-    /// b / 127.5 - 1. The bytes are linear data, not colour, and alpha is 255
-    /// everywhere (AlphaMode == 2): use the main image's alpha for coverage.</summary>
+    /// b / 127.5 - 1. Roughness, metallic and AO maps hold one value in R, G
+    /// and B (255 is fully rough, metal, unoccluded). These are linear data,
+    /// not colour; an emission map holds the colour of the glow, encoded like
+    /// the main image (sRGB). Alpha is 255 everywhere (AlphaMode == 2): use the
+    /// main image's alpha for coverage.</summary>
     public sealed partial class AuxiliaryImage
     {
         public uint Index { get; internal set; }
@@ -127,13 +131,12 @@ namespace InfiniteProps
         /// <summary>Images published beside the main one, in result order.</summary>
         public IReadOnlyList<AuxiliaryImage> Images { get; internal set; }
         /// <summary>The normal map published with this image, authored or derived, or null.</summary>
-        public AuxiliaryImage Normal
+        public AuxiliaryImage Normal { get { return Image(ImageKind.Normal); } }
+        /// <summary>The auxiliary image of a kind published with this image, or null.</summary>
+        public AuxiliaryImage Image(ImageKind kind)
         {
-            get
-            {
-                foreach (var image in Images) if (image.Kind == ImageKind.Normal) return image;
-                return null;
-            }
+            foreach (var image in Images) if (image.Kind == kind) return image;
+            return null;
         }
         public Output FindOutput(string name, uint owner = 0)
         {
@@ -218,7 +221,7 @@ namespace InfiniteProps
                         var info = Native.Sized<Native.AuxInfo>();
                         error.Check(Native.iprop_program_aux_image_get(handle, i, ref info, ref error.Value));
                         // A kind this package does not know is skipped, not an error.
-                        if (info.Kind != (uint)ImageKind.Normal) continue;
+                        if (info.Kind < (uint)ImageKind.Normal || info.Kind > (uint)ImageKind.Emission) continue;
                         images.Add(new DeclaredImage { Index = info.Index, Kind = (ImageKind)info.Kind, Name = Native.ReadString(info.Name) });
                     }
                     Images = images.AsReadOnly();
@@ -325,7 +328,7 @@ namespace InfiniteProps
                 var view = Native.Sized<Native.AuxImage>();
                 error.Check(Native.iprop_result_aux_image_get(result, i, ref view, ref error.Value));
                 // A kind or source this package does not know is skipped, not an error.
-                if (view.Kind != (uint)ImageKind.Normal ||
+                if (view.Kind < (uint)ImageKind.Normal || view.Kind > (uint)ImageKind.Emission ||
                     (view.Source != (uint)ImageSource.Authored && view.Source != (uint)ImageSource.Derived)) continue;
                 var pixels = new byte[checked((int)view.ByteCount)];
                 if (pixels.Length != 0) Marshal.Copy(view.Pixels, pixels, 0, pixels.Length);

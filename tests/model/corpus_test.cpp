@@ -98,6 +98,17 @@ const std::vector<Case>& cases() {
         {"tests/model/corpus/edges.ips", 6, {}},
         {"tests/model/corpus/edges.ips", 7, {}},
         {"tests/model/corpus/edges.ips", 8, {}},
+        // Material maps, glass, windows and shared constants (M2).
+        {"tests/model/corpus/materials.ips", 1, {}},
+        {"tests/model/corpus/materials.ips", 2, {}},
+        {"tests/model/corpus/materials.ips", 3, {}},
+        {"tests/model/corpus/materials.ips", 4, {}},
+        {"tests/model/corpus/materials.ips", 5, {}},
+        {"tests/model/corpus/materials.ips", 6, {}},
+        {"examples/models/lantern.ips", 1, {}},
+        {"examples/models/lantern.ips", 4, {}},
+        {"examples/models/lantern.ips", 6, {}},
+        {"examples/models/lantern.ips", 3, {{"rust", "0.9"}}},
     };
     return list;
 }

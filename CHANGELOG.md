@@ -18,7 +18,7 @@ interfaces may change in any release until the contract is frozen.
 
 - **Language.** `render { ... }`, `size WxHxD` and `scale N`; the types `vec3`
   and `skin`; `alias.draw(seed, inputs..., size = {w, h})` as an expression
-  that returns a skin, and nine `skin.*` modifiers; the primitives `box`,
+  that returns a skin, and eleven `skin.*` modifiers; the primitives `box`,
   `cylinder`, `cone`, `band`, `sphere`, `lathe`, `extrude`, `quad` and `tri`;
   `place(at =, yaw =, pitch =, roll =, scale =, mirror_x =, ...) { ... }`.
   None of the new words is reserved, and in a draw asset all of them stay
@@ -37,17 +37,17 @@ interfaces may change in any release until the contract is frozen.
   raster kernels; a texture spends the fuel of its own program. See the
   [contract](spec/models-v1.2.md#accounting-and-limits).
 - **Determinism.** Vertices, indices and textures are the same on every
-  platform, bit for bit. A corpus of 41 generations pins the SHA-256 of
-  every compiled file, surface array and texture; native builds and the WASM
-  module are checked against the same pins.
+  platform, bit for bit. A corpus of 51 generations pins the SHA-256 of
+  every compiled file, surface array, texture and material map; native
+  builds and the WASM module are checked against the same pins.
 - **Examples.** A chair, a crate, a barrel and a sword in `examples/models`,
   each with several shapes chosen by the seed, and their skins: oak, cloth,
   metal, leather and a blade with its fuller.
 - **Hosts.** A separate C header, `iprop3d.h` (API 0.1, static library, no
   ABI promise yet); `iprop3d.wasm` with `Iprop3D`, a worker and a three.js
   adapter beside an unchanged `iprop.wasm`; `IpropModel` and
-  `IpropModelInstance3D` in the Godot extension. The 2D C API stays **0.7**
-  on ABI **0.5**, and the other bindings have no model interface yet. See
+  `IpropModelInstance3D` in the Godot extension, which share one GPU texture
+  per texture key. The other bindings have no model interface yet. See
   [models in C](docs/c-api-models.md).
 - **Tools.** `ipc` writes `.iprop3d`; `ipval` validates it; `ipgen` writes a
   binary glTF, a picture, the textures or an exact dump; `ipsheet` draws a
@@ -63,6 +63,33 @@ interfaces may change in any release until the contract is frozen.
 - **Website and editor.** A models section with six chairs under a movable
   lamp; the editor highlights the additions, completes the builtins of
   render assets and previews a model.
+
+### Materials: maps, glass and one sheet for a whole prop
+
+- **Material maps (2D, additive).** `output roughness`, `output metallic`,
+  `output ao` and `output emission` publish images beside the image, from
+  colour layers: one value in R, G and B for the first three, the colour of
+  the glow for emission, each over the value that changes nothing. They use
+  four bits of the resource-export flags; a 1.1 runtime rejects a program
+  that declares one. See [material maps](docs/language/material-maps.md) and
+  the [contract](spec/material-maps-v1.2.md).
+- **C API 0.8** on ABI **0.5**: image kinds 2–5 and `IPROP_CAP_MATERIAL_MAPS`;
+  no layout or entry point changes. Every binding (Python, Swift, C#/Unity,
+  Kotlin/Android, Godot, SFML, WASM) names the kinds and finds an image by
+  kind; the pixel corpus covers them in every binding.
+- **Models.** A skin brings its maps, and its roughness, metallic and
+  emission multiply them (starting at 1 when the map exists, so models
+  without maps are unchanged). `skin.blend` makes glass; `skin.region` shows
+  one window of a texture on each face; a render asset reads the constants of
+  its skins as `alias.name`, so one sheet names its fields once. Hosts bind
+  the maps: three.js materials, Godot's `StandardMaterial3D`, glTF's
+  occlusion-roughness-metallic and emissive textures, and the preview.
+- **Tools.** `ipgen --roughness-output`, `--metallic-output`, `--ao-output`
+  and `--emission-output`; `ipsheet --image roughness` and the other kinds;
+  `ipa` and `ipdis` spell the new exports.
+- **Language description.** Schema 8 gains `source_rules.material_maps` and,
+  under `models`, the alpha modes, map factors, windows and imported
+  constants.
 
 ## v1.1.0 — 2026-11-15
 

@@ -21,6 +21,11 @@ first kind being the normal map of a prop that declares `output normal`, and
 `iprop_generate_derived_normal` can ask the runtime to derive one for a prop
 that does not. Existing structures, entry points and the ABI 0.5 install
 identity are unchanged.
+
+API 0.8 adds `IPROP_CAP_MATERIAL_MAPS`: the same list can carry the
+[material maps](../../docs/c-api-aux-images.md#reading-a-material-map) of a
+prop, roughness, metallic, AO and emission (kinds 2–5), after its normal map.
+Nothing else changes; a client that does not know a kind skips it.
 On Windows the static archive is named `ipropc_static` to avoid colliding
 with the DLL's import library. Shared consumers use the header's DLL import
 annotations; static consumers define `IPROP_CAPI_STATIC` (the CMake target
@@ -137,8 +142,9 @@ C++ linker, while its source is still compiled as C99.
   semantics. The pointer and bytes match the unchanged legacy image view.
   See [image views](../../docs/c-api-images.md).
 - `iprop_result_aux_image_count/get/find` — sized borrowed views of the images
-  published beside the main one under `IPROP_CAP_AUX_IMAGES`: kind, source,
-  name and opaque top-left RGBA8 pixels of the main image's size.
+  published beside the main one under `IPROP_CAP_AUX_IMAGES`: kind (normal,
+  roughness, metallic, AO, emission), source, name and opaque top-left RGBA8
+  pixels of the main image's size.
   `iprop_program_aux_image_count/get` list what a program declares, and
   `iprop_generate_derived_normal` adds an opt-in derived normal image. See
   [auxiliary images](../../docs/c-api-aux-images.md).

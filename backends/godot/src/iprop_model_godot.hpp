@@ -18,10 +18,14 @@
 
 #pragma once
 
+#include <map>
+#include <string>
+
 #include "iprop3d.h"
 #include "iprop_godot.hpp"
 
 #include <godot_cpp/classes/array_mesh.hpp>
+#include <godot_cpp/classes/image_texture.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -48,13 +52,19 @@ class IpropModel : public godot::Resource {
     godot::Vector3 bounds_min_{}, bounds_max_{};
     int64_t vertex_count_ = 0, triangle_count_ = 0, fuel_used_ = 0;
     godot::Dictionary work_{}, last_error_{};
+    // GPU textures by texture key and image kind (0 is the colour image):
+    // equal keys mean equal pixels, so the meshes of several generations
+    // share them. An entry that no mesh holds any more is dropped at the
+    // next generate.
+    std::map<std::string, godot::Ref<godot::ImageTexture>> texture_cache_;
 
 protected:
     static void _bind_methods();
 
 public:
     // The C tags found in the dictionaries below.
-    enum { IMAGE_NORMAL = 1, ALPHA_OPAQUE = 0, ALPHA_CUTOUT = 1 };
+    enum { IMAGE_NORMAL = 1, IMAGE_ROUGHNESS = 2, IMAGE_METALLIC = 3, IMAGE_AO = 4, IMAGE_EMISSION = 5,
+           ALPHA_OPAQUE = 0, ALPHA_CUTOUT = 1, ALPHA_BLEND = 2 };
 
     IpropModel();
     ~IpropModel() override;
@@ -108,6 +118,10 @@ public:
     // {budget, used}: the work of the model and all its textures.
     godot::Dictionary get_work() const { return work_; }
     godot::Dictionary get_last_error() const { return last_error_; }
+    // The GPU textures shared between generations, by texture key and image
+    // kind. clear_texture_cache stops sharing with the meshes made so far.
+    void clear_texture_cache() { texture_cache_.clear(); }
+    int64_t get_cached_texture_count() const { return static_cast<int64_t>(texture_cache_.size()); }
 };
 
 class IpropModelInstance3D : public godot::MeshInstance3D {

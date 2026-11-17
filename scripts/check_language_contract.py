@@ -133,6 +133,10 @@ def main():
         not m['constant_evaluable'] and m['effects']['rng'] == 'none' and not m['effects']['writes_canvas']
         for m in normal['methods'])
     assert all(b['name'] != 'normal' for b in description['builtins'])
+    maps = rules['material_maps']
+    assert [k['name'] for k in maps['kinds']] == ['roughness', 'metallic', 'ao', 'emission']
+    assert [k['image_code'] for k in maps['kinds']] == [2, 3, 4, 5] and maps['publication_order'][0] == 'normal'
+    assert not {'roughness', 'metallic', 'ao', 'emission'} & set(rules['reserved_keywords'])
     stored = [b for b in description['builtins'] if b['name'] == normal['color_builtin']]
     assert len(stored) == 1 and stored[0]['overloads'][0]['constant_evaluable'] and 'opcode' not in stored[0]['overloads'][0]
     assert rules['masks']['maximum_radius'] == 64
@@ -352,7 +356,8 @@ def main():
         added = {b['name']: b for b in models['builtins']}
         assert set(added) == {'box', 'cylinder', 'cone', 'band', 'sphere', 'lathe', 'extrude', 'quad', 'tri',
             'vec3.len', 'vec3.dot', 'vec3.cross', 'vec3.normalize', 'skin.density', 'skin.fit', 'skin.shift',
-            'skin.roughness', 'skin.metallic', 'skin.emission', 'skin.cutout', 'skin.two_sided', 'skin.crisp'}
+            'skin.roughness', 'skin.metallic', 'skin.emission', 'skin.cutout', 'skin.two_sided', 'skin.crisp',
+            'skin.blend', 'skin.region'}
         assert [b['name'] for b in models['extended_builtins']] == ['lerp']
         assert {'rect', 'pixel', 'poly', 'surface.paint', 'mask.from', 'noise.mask', 'part.draw', 'voronoi'} <= \
             set(models['unavailable_builtins']) < flat

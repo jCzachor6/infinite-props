@@ -87,7 +87,7 @@ set_target_properties(iprop_godot PROPERTIES
 set(IPROP_GODOT_PROJECT ${CMAKE_BINARY_DIR}/godot-project)
 file(MAKE_DIRECTORY ${IPROP_GODOT_PROJECT}/assets)
 foreach(file project.godot demo.tscn demo.gd conformance.gd pixel-corpus.gd part-outputs.gd normal-maps.gd
-             models.gd model-demo.tscn model-demo.gd)
+             material-maps.gd models.gd model-demo.tscn model-demo.gd)
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/project/${file}
                    ${IPROP_GODOT_PROJECT}/${file} COPYONLY)
 endforeach()
@@ -160,6 +160,12 @@ if(IPROP_BUILD_TESTS)
             --path ${IPROP_GODOT_PROJECT} --script res://normal-maps.gd
             -- ${CMAKE_BINARY_DIR}/binding-fixtures)
         set_tests_properties(godot_normal_maps PROPERTIES TIMEOUT 120)
+        add_test(NAME godot_material_maps COMMAND ${IPROP_GODOT_BINARY}
+            --headless --log-file ${CMAKE_BINARY_DIR}/godot-material-maps.log
+            --path ${IPROP_GODOT_PROJECT} --script res://material-maps.gd
+            -- ${CMAKE_BINARY_DIR}/binding-fixtures)
+        set_tests_properties(godot_material_maps PROPERTIES TIMEOUT 120
+            PASS_REGULAR_EXPRESSION "godot material maps: PASS" FAIL_REGULAR_EXPRESSION "FAIL ;SCRIPT ERROR")
         # Models (preview): the extension against the native tools, which the
         # script runs itself on the corpus of the WASM conformance.
         add_dependencies(iprop_godot ipc ipgen)

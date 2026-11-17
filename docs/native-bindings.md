@@ -3,7 +3,7 @@
 The [Apple](../backends/apple/README.md), [Unity](../backends/unity/README.md),
 [Android](../backends/android/README.md) and [Python](../backends/python/README.md)
 packages call the same [C API](../backends/capi/README.md). They require C API
-0.7 / ABI 0.5 and load compiled `.iprop` files. Compile `.ips` with `ipc` before
+0.7 or later on ABI 0.5 (0.8 adds material maps) and load compiled `.iprop` files. Compile `.ips` with `ipc` before
 shipping assets. No compiler, server or network connection is needed at runtime.
 
 ## Shared contract
@@ -96,11 +96,13 @@ the same file, seed and inputs.
 
 ## Normal maps and other auxiliary images
 
-A generation can publish images beside the main one. The first kind is the
-normal map of a prop that declares `output normal`
-([authoring](language/relief.md), [C API](c-api-aux-images.md)). Every binding
-exposes the full list, a convenience for the normal map and the opt-in request
-for a derived one; a result without auxiliary images has an empty list.
+A generation can publish images beside the main one: the normal map of a prop
+that declares `output normal` ([authoring](language/relief.md),
+[C API](c-api-aux-images.md)), then its material maps, roughness, metallic,
+AO and emission ([authoring](language/material-maps.md)). Every binding
+exposes the full list, a convenience for the normal map, a lookup by kind and
+the opt-in request for a derived normal map; a result without auxiliary
+images has an empty list.
 
 | Host | All images | Normal map | Derive one | Declared by the program |
 | --- | --- | --- | --- | --- |
@@ -112,16 +114,22 @@ for a derived one; a result without auxiliary images has an empty list.
 | Godot | `asset.images` | `asset.normal_image` | `asset.derive_normal = true` | `asset.declared_images` |
 | SFML | `copyResult(result).images` | `copyResult(result).normal()` | `generate(..., &request)` | `declaredImages(program)` |
 
-Each image carries its kind (1 = normal), its source (1 = authored by the
-program, 2 = derived by the runtime), its name and owned top-left RGBA8 bytes
-of the main image's size. An authored image always wins over a request, so one
+Each image carries its kind (1 = normal, 2 = roughness, 3 = metallic, 4 = AO,
+5 = emission, listed in that order), its source (1 = authored by the program,
+2 = derived by the runtime), its name and owned top-left RGBA8 bytes of the
+main image's size. Look one up with `image.image_of(ImageKind.ROUGHNESS)`
+(Python), `image.image(.roughness)` (Swift), `image.Image(ImageKind.Roughness)`
+(C#), `image.image(ImageKind.ROUGHNESS)` (Kotlin), `asset.get_image(kind)`
+(Godot) or `copyResult(result).image(kind)` (SFML). An authored image always wins over a request, so one
 code path serves both kinds of program. A kind or source a wrapper does not
 know is skipped, never an error.
 
 A normal map stores one direction per pixel: R is x rightward, G is y
 **upward** and B is z toward the viewer, each byte `b` decoding as
 `b / 127.5 - 1`. The bytes are linear data: upload them without an sRGB
-transfer, and normalize after decoding. Alpha is 255 everywhere (alpha tag 2);
+transfer, and normalize after decoding. Roughness, metallic and AO maps hold
+one linear value in R, G and B, uploaded the same way; an emission map is a
+colour like the main image's. Alpha is 255 everywhere (alpha tag 2);
 coverage is the main image's alpha. Green-up is the convention of Godot's
 `CanvasTexture.normal_texture` and of Unity's normal maps, so neither needs a
 channel flip: Unity flips only the row order on upload, as for the main image,

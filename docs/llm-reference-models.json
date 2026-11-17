@@ -110,11 +110,17 @@
         },
         {
           "heading": "Skin modifiers"
+        },
+        {
+          "heading": "One sheet for many faces"
         }
       ],
       "demos": [
         "skins/grid.ips",
-        "model-skins.ips"
+        "model-skins.ips",
+        "model-glass.ips",
+        "model-net.ips",
+        "skins/crate-net.ips"
       ]
     },
     {

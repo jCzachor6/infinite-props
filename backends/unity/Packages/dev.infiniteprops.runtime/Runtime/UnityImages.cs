@@ -54,8 +54,10 @@ namespace InfiniteProps
         /// <summary>Creates a caller-owned linear texture with the exact bytes,
         /// rows flipped for Unity like the main image. A normal map keeps its
         /// meaning: green still points up on the displayed sprite, the
-        /// convention Unity expects, and alpha 255 lets UnpackNormal read it.</summary>
-        public Texture2D ToTexture2D() => GeneratedImage.Upload(Rgba, Width, Height, RowStride, true);
+        /// convention Unity expects, and alpha 255 lets UnpackNormal read it.
+        /// Roughness, metallic and AO maps upload the same way, as linear data;
+        /// an emission map uploads as a colour, like the main image.</summary>
+        public Texture2D ToTexture2D() => GeneratedImage.Upload(Rgba, Width, Height, RowStride, Kind != ImageKind.Emission);
 
         /// <summary>Binds a normal texture made by <see cref="ToTexture2D"/> to a
         /// sprite renderer through its property block, so a lit 2D material

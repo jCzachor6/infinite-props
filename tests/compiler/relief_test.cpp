@@ -275,7 +275,7 @@ TEST_CASE("normal outputs captures and methods have located diagnostics", "[reli
     const std::string body = "draw{layer n(encoding=surface.normal){}relief=n}}";
     rejectSource("asset t{size 1x1 output normal a output normal b draw{}}", "an asset declares at most one normal output");
     rejectSource("asset t{size 1x1 output list normal relief draw{}}", "resource exports cannot be lists");
-    rejectSource("asset t{size 1x1 output relief draw{}}", "an output kind (point, rect, circle, mask, layer, normal or list part)");
+    rejectSource("asset t{size 1x1 output relief draw{}}", "an output kind (point, rect, circle, mask, layer, normal, roughness, metallic, ao, emission or list part)");
     rejectSource("asset t{size 1x1 output normal relief draw{relief=#fff}}", "output 'relief' expects layer, got color");
     rejectSource("asset t{size 1x1 output normal relief draw{layer n{}relief=mask.from(n)}}", "output 'relief' expects layer, got mask");
     rejectSource("asset t{size 1x1 draw{layer n(encoding=surface.source_over){}}}", "layer encoding must be surface.normal");

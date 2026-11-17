@@ -30,6 +30,11 @@
 //                positions, normals, tangents, uvs (Float32Array),
 //                indices (Uint32Array) }]
 // A surface is the triangles of one material; `texture` indexes `textures`.
+// A texture's `images` hold its normal map and its material maps (roughness,
+// metallic, ao, emission; IMAGE_* kinds) in that order. A surface's numbers
+// multiply the maps of its texture; without a map they stand alone, and
+// emission then multiplies the colour. alphaMode is ALPHA_OPAQUE,
+// ALPHA_CUTOUT (alphaCutoff applies) or ALPHA_BLEND (glass).
 // Geometry is right-handed with +Y up, triangles are counterclockwise from
 // outside, UV (0, 0) is the upper left of the image, and a tangent is xyz
 // plus a sign w with w * cross(normal, tangent) pointing up the image.
@@ -54,7 +59,8 @@
     }
 })(typeof self !== "undefined" ? self : this, function (createModule) {
     // Tags of the C API: auxiliary image kinds and sources, alpha modes.
-    const NORMAL = 1, AUTHORED = 1, DERIVED = 2, OPAQUE = 0, CUTOUT = 1;
+    const NORMAL = 1, ROUGHNESS = 2, METALLIC = 3, AO = 4, EMISSION = 5, AUTHORED = 1, DERIVED = 2,
+        OPAQUE = 0, CUTOUT = 1, BLEND = 2;
     const OPTIONS = ["seed", "uniforms", "workLimit", "timeoutMs", "signal", "cancelFlag"];
     const CONTROLS = ["workLimit", "timeoutMs", "signal", "cancelFlag"];
 
@@ -127,8 +133,9 @@
                 limits: { vertices: library.maxVertices, triangles: library.maxTriangles, textures: library.maxTextures,
                     textureSide: library.maxTextureSide, texels: library.maxTexels },
                 module: Module,
-                IMAGE_NORMAL: NORMAL, SOURCE_AUTHORED: AUTHORED, SOURCE_DERIVED: DERIVED,
-                ALPHA_OPAQUE: OPAQUE, ALPHA_CUTOUT: CUTOUT,
+                IMAGE_NORMAL: NORMAL, IMAGE_ROUGHNESS: ROUGHNESS, IMAGE_METALLIC: METALLIC, IMAGE_AO: AO,
+                IMAGE_EMISSION: EMISSION, SOURCE_AUTHORED: AUTHORED, SOURCE_DERIVED: DERIVED,
+                ALPHA_OPAQUE: OPAQUE, ALPHA_CUTOUT: CUTOUT, ALPHA_BLEND: BLEND,
             };
         });
     }

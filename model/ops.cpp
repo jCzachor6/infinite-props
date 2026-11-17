@@ -66,6 +66,8 @@ constexpr OpSpec kSpecs[] = {
     fixed(Op::SkinCutout, "skin.cutout", {kSkin, T::F32}, kSkin),
     fixed(Op::SkinTwoSided, "skin.two_sided", {kSkin}, kSkin),
     fixed(Op::SkinCrisp, "skin.crisp", {kSkin}, kSkin),
+    fixed(Op::SkinBlend, "skin.blend", {kSkin}, kSkin),
+    fixed(Op::SkinRegion, "skin.region", {kSkin, T::F32, T::F32, T::F32, T::F32}, kSkin),
 };
 
 } // namespace

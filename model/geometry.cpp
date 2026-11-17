@@ -103,7 +103,11 @@ public:
         out.tangent[2] = static_cast<f32>(tangent.z);
         out.tangent[3] = static_cast<f32>(m.flipped ? -w : w);
         const Mapping& map = target_.mapping;
-        if (map.fit) {
+        if (map.region) {
+            const auto clamped = [](double value) { return !(value > 0.0) ? 0.0 : value > 1.0 ? 1.0 : value; };
+            out.uv[0] = static_cast<f32>((map.regionX + clamped(s / fw) * map.regionW) / map.assetWidth);
+            out.uv[1] = static_cast<f32>((map.regionY + clamped(tt / fh) * map.regionH) / map.assetHeight);
+        } else if (map.fit) {
             out.uv[0] = static_cast<f32>(s / fw);
             out.uv[1] = static_cast<f32>(tt / fh);
         } else {

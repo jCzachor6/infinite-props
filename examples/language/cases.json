@@ -185,10 +185,15 @@
     {"file": "errors/normal-encoding.ips", "expect": "compile-error", "message": "a layer takes either 'alpha' or 'encoding', not both"},
     {"file": "traps/normal-colour-layer.ips", "expect": "trap", "message": "normal output needs a direction layer"},
     {"file": "traps/normal-smoothing.ips", "expect": "trap", "message": "normal smoothing must be finite and in 0..64"},
+    {"file": "material-maps.ips", "expect": "pass"},
+    {"file": "errors/material-map-twice.ips", "expect": "compile-error", "message": "an asset declares at most one roughness map"},
+    {"file": "traps/material-map-direction.ips", "expect": "trap", "message": "emission output needs a colour layer, not a direction layer"},
     {"file": "stool.ips", "expect": "pass"},
     {"file": "skins/wood.ips", "expect": "pass"},
     {"file": "skins/cloth.ips", "expect": "pass"},
     {"file": "skins/grid.ips", "expect": "pass"},
+    {"file": "skins/glass.ips", "expect": "pass"},
+    {"file": "skins/crate-net.ips", "expect": "pass"},
     {"file": "model-primitives.ips", "expect": "pass"},
     {"file": "model-place.ips", "expect": "pass"},
     {"file": "model-skins.ips", "expect": "pass"},
@@ -203,6 +208,10 @@
     {"file": "errors/model-import.ips", "expect": "compile-error", "message": "'stool' is a render asset"},
     {"file": "traps/model-bevel.ips", "expect": "trap", "message": "bevel must be positive and less than half the shortest side"},
     {"file": "traps/model-skin.ips", "expect": "trap", "message": "skin is unassigned"},
-    {"file": "traps/model-roughness.ips", "expect": "trap", "message": "skin roughness must be in 0..1"}
+    {"file": "traps/model-roughness.ips", "expect": "trap", "message": "skin roughness must be in 0..1"},
+    {"file": "model-glass.ips", "expect": "pass"},
+    {"file": "model-net.ips", "expect": "pass"},
+    {"file": "errors/model-constant.ips", "expect": "compile-error", "message": "'sheet' declares no constant 'sidex'"},
+    {"file": "traps/model-region.ips", "expect": "trap", "message": "skin region must lie inside the image"}
   ]
 }

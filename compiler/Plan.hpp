@@ -77,7 +77,9 @@ struct PlannedResourceExport {
     u32 owner = kRootParent;
     std::string name;
     ips::ValueType type;
-    bool normal = false; // a normal output: the record's flag bit 0
+    // The image a normal or material map output publishes (an AuxImageKind,
+    // 0 for none): the record's flag bit image - 1.
+    unsigned image = 0;
 };
 
 // One part instance of the flattened import tree. The same program may back

@@ -1,0 +1,11 @@
+// A window must lie inside the image of its skin, in the units of the size
+// that asset declares: grid is 16x16, so this window runs off its side.
+import grid from "../skins/grid.ips"
+
+asset crate {
+  size 20x20x20
+  input f32 left = 12.0
+  render {
+    box({0, 0, 0}, {20, 20, 20}, skin.region(grid.draw(1), left, 0.0, 8.0, 8.0))
+  }
+}
