@@ -1,0 +1,14 @@
+// A sculpt block takes lumps: a box has no place in it. Write a slab in the
+// block, or the box beside it.
+import grid from "../skins/grid.ips"
+
+asset rock {
+  size 30x30x30
+  render {
+    tile = grid.draw(1)
+    sculpt(1.0, 2.0, tile) {
+      ball({0, 10, 0}, 8.0)
+      box({0, 0, 0}, {12, 4, 12}, tile)
+    }
+  }
+}

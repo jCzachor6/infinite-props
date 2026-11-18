@@ -2,6 +2,7 @@
 
 #include "iprop/VmInternals.hpp"
 #include "iprop/model/Blocks.hpp"
+#include "iprop/model/Sculpt.hpp"
 
 #include <algorithm>
 #include <bit>
@@ -69,8 +70,10 @@ u64 textureKey(const SkinProgram& program, u32 seed, u32 width, u32 height, std:
     return fnv1a64(bytes);
 }
 
+bool finite(const Vec3& v) { return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z); }
+
 // What a scope is (spec models v1.2, Placement scopes; M3 blocks).
-enum class ScopeKind : u8 { Root, Place, Smooth, Refine, Bend, Twist, Taper, Displace, Part };
+enum class ScopeKind : u8 { Root, Place, Smooth, Refine, Bend, Twist, Taper, Displace, Part, Sculpt, Carve };
 
 // Blocks that move vertices by a map of their own: a point follows them,
 // a box cannot.
@@ -111,6 +114,10 @@ struct Block {
     u32 seed = 0;                      // displace
     u16 part = 0;                      // a part call: which part
     u32 callScope = 0;                 // a part call: the serial of the scope it was called in
+    // A sculpt (M6): its cell is `number`, its blend `frequency`; the lumps
+    // in its frame, in the order written, and the skin it wears.
+    std::vector<Lump> lumps;
+    u32 skin = 0;
 };
 
 // The values of one output slot, rounded.
@@ -288,7 +295,7 @@ private:
     void close(Execution& ex) {
         const Scope scope = scopes_.back();
         scopes_.pop_back();
-        if (scope.kind == ScopeKind::Place) return;
+        if (scope.kind == ScopeKind::Place || scope.kind == ScopeKind::Carve) return;
         // A block: its buffer and its pending outputs go to the scope it was
         // opened in, which is the innermost one again.
         Block block = std::move(blocks_.back());
@@ -348,15 +355,165 @@ private:
             ex.work(vertices + triangles);
             displace(mesh, block.number, block.frequency, block.seed);
             break;
+        case ScopeKind::Sculpt:
+            sculpt(ex, block);
+            break;
         default:
             break;
         }
+    }
+
+    // A closing sculpt (M6): the field is sampled on its grid, the surface
+    // is found and counted, and only then built, each step paid before it
+    // allocates.
+    void sculpt(Execution& ex, Block& block) {
+        const double cell = block.number, blend = block.frequency;
+        const SculptGrid grid = sculptGrid(block.lumps, cell, blend);
+        const u64 samples = grid.samples();
+        if (samples == 0) return; // nothing was added
+        const u64 lumps = block.lumps.size();
+        // What the kernel works in is charged before it is allocated and
+        // given back when the block is built.
+        struct Scratch {
+            Execution& ex;
+            u64 bytes = 0;
+            void take(u64 size) {
+                ex.allocateResource(size);
+                bytes += size;
+            }
+            ~Scratch() { ex.resources.release(bytes); }
+        } scratch{ex};
+        ex.spend(samples * lumps * kSculptSampleFuel);
+        scratch.take(samples * kSculptSampleBytes);
+        ex.work(samples * lumps);
+        const std::vector<double> field = sculptSamples(block.lumps, blend, cell, grid);
+        // The surface is counted before it is built: a point is one vertex
+        // at least.
+        ex.work(samples);
+        const SculptCounts counts = sculptCount(grid, field);
+        if (vertexTotal_ + counts.points > kMaxVertices) ex.trap("model exceeds 65536 vertices", ErrorReason::RuntimeViolation);
+        if (triangleTotal_ + counts.triangles > kMaxTriangles)
+            ex.trap("model exceeds 131072 triangles", ErrorReason::RuntimeViolation);
+        scratch.take(samples * kSculptCellBytes + counts.points * kSculptPointBytes + counts.triangles * kSculptTriangleBytes);
+        const SculptNet net = sculptNet(grid, field, cell);
+        const u64 triangles = net.triangles.size();
+        if (vertexTotal_ + net.vertices > kMaxVertices) ex.trap("model exceeds 65536 vertices", ErrorReason::RuntimeViolation);
+        ex.spend(net.vertices * kVertexFuel + triangles * kTriangleFuel +
+                 net.points.size() * kSculptNormalSamples * lumps * kSculptSampleFuel);
+        ex.allocateResource(net.vertices * kVertexBytes + triangles * kTriangleBytes);
+        ex.work(static_cast<u64>(net.vertices) + triangles + net.points.size() * kSculptNormalSamples * lumps);
+        const SkinRecord& record = skins_[block.skin - 1];
+        const ModelTexture& texture = textures_[record.texture].image;
+        Mapping mapping;
+        mapping.density = record.density;
+        mapping.shiftU = record.shiftU;
+        mapping.shiftV = record.shiftV;
+        mapping.assetWidth = static_cast<double>(texture.assetWidth);
+        mapping.assetHeight = static_cast<double>(texture.assetHeight);
+        sculptMesh(block.mesh, net, block.lumps, blend, cell, mapping, block.skin);
+        vertexTotal_ += net.vertices;
+        triangleTotal_ += static_cast<u32>(triangles);
+    }
+
+    // The sculpt block whose buffer the innermost scope writes to, or null.
+    Block* sculpting() {
+        const int index = scopes_.back().block;
+        if (index < 0) return nullptr;
+        Block& block = blocks_[static_cast<std::size_t>(index)];
+        return block.kind == ScopeKind::Sculpt ? &block : nullptr;
+    }
+    // Geometry of any other kind has no place among lumps.
+    void notSculpting(Execution& ex) {
+        if (sculpting()) ex.trap("a sculpt block takes lumps: ball, capsule and slab", ErrorReason::RuntimeViolation);
+    }
+
+    void sculptBegin(Execution& ex) {
+        const u32 skin = popSkin(ex);
+        const f32 blend = ex.popF32(), cell = ex.popF32();
+        if (!(std::isfinite(cell) && cell > 0.f)) ex.trap("sculpt cell must be finite and positive", ErrorReason::NumericRange);
+        if (!(std::isfinite(blend) && blend >= 0.f)) ex.trap("sculpt blend must be finite and not negative", ErrorReason::NumericRange);
+        const SkinRecord& record = skins_[skin - 1];
+        if (record.fit || record.region)
+            ex.trap("sculpt takes a skin that repeats, not skin.fit or skin.region", ErrorReason::RuntimeViolation);
+        notSculpting(ex);
+        if (ex.layerScopes.size() >= kMaxSurfaceScopes) ex.trap("scope depth exceeds 32", ErrorReason::RuntimeViolation);
+        ex.spend(kBlockFuel);
+        openLabel(ex);
+        Block block;
+        block.kind = ScopeKind::Sculpt;
+        block.number = cell;
+        block.frequency = blend;
+        block.skin = skin;
+        const Scope& parent = scopes_.back();
+        Scope scope{ScopeKind::Sculpt, Affine{}, static_cast<int>(blocks_.size()), ++serials_};
+        scope.unequal = parent.unequal;
+        scope.sheared = parent.sheared;
+        blocks_.push_back(std::move(block));
+        scopes_.push_back(scope);
+    }
+
+    // carve: a scope of its sculpt block; lumps written in it are cut out.
+    void carveBegin(Execution& ex) {
+        if (!sculpting()) ex.trap("carve belongs in a sculpt block", ErrorReason::RuntimeViolation);
+        if (carving()) ex.trap("carve cannot be nested", ErrorReason::RuntimeViolation);
+        if (ex.layerScopes.size() >= kMaxSurfaceScopes) ex.trap("scope depth exceeds 32", ErrorReason::RuntimeViolation);
+        openLabel(ex);
+        const Scope& parent = scopes_.back();
+        Scope scope{ScopeKind::Carve, parent.affine, parent.block, ++serials_};
+        scope.unequal = parent.unequal;
+        scope.sheared = parent.sheared;
+        scopes_.push_back(scope);
+    }
+
+    // Whether a carve scope lies between the innermost scope and its sculpt.
+    bool carving() const {
+        for (std::size_t i = scopes_.size(); i > 0; --i) {
+            const Scope& scope = scopes_[i - 1];
+            if (scope.kind == ScopeKind::Carve) return true;
+            if (scope.kind != ScopeKind::Place) return false;
+        }
+        return false;
+    }
+
+    // A lump joins its sculpt block in the block's frame. The scopes on the
+    // way may move, turn, mirror and scale it equally: a field stretched
+    // unequally is no distance any more.
+    void lump(Execution& ex, const char* name, Lump shape) {
+        Block* block = sculpting();
+        if (!block) ex.trap((std::string(name) + " belongs in a sculpt block").c_str(), ErrorReason::RuntimeViolation);
+        if (block->lumps.size() >= kMaxLumps) ex.trap("sculpt exceeds 64 lumps", ErrorReason::RuntimeViolation);
+        const Affine& affine = scopes_.back().affine;
+        Point3 column[3];
+        double size[3];
+        for (int i = 0; i < 3; ++i) {
+            column[i] = {affine.a[0][i], affine.a[1][i], affine.a[2][i]};
+            size[i] = std::sqrt((column[i].x * column[i].x + column[i].y * column[i].y) + column[i].z * column[i].z);
+        }
+        const double scale = size[0], slack = scale * 1.0e-9;
+        const auto across = [&](int i, int j) {
+            return (column[i].x * column[j].x + column[i].y * column[j].y) + column[i].z * column[j].z;
+        };
+        if (!(scale > 0.0) || std::fabs(size[1] - scale) > slack || std::fabs(size[2] - scale) > slack ||
+            std::fabs(across(0, 1)) > slack * scale || std::fabs(across(0, 2)) > slack * scale ||
+            std::fabs(across(1, 2)) > slack * scale)
+            ex.trap("a lump takes an equal scale on every axis", ErrorReason::RuntimeViolation);
+        shape.carve = carving();
+        shape.a = mapPoint(affine, shape.a);
+        shape.b = mapPoint(affine, shape.b);
+        for (int i = 0; i < 3; ++i) {
+            shape.axes[i] = {column[i].x / size[i], column[i].y / size[i], column[i].z / size[i]};
+            shape.radii[i] = shape.radii[i] * scale;
+        }
+        shape.round = shape.round * scale;
+        ex.allocateResource(kLumpBytes);
+        block->lumps.push_back(shape);
     }
 
     // part.render: the part's entry runs in a frame of its own, with its own
     // stream, inside a block whose frame is the scope it is called in.
     void partRender(Execution& ex, u16 index) {
         if (index >= model_.parts.size()) ex.trap("model part index out of range", ErrorReason::IndexRange);
+        notSculpting(ex);
         if (ex.frames.size() >= kMaxCallDepth) ex.trap("call depth exceeds limit", ErrorReason::CallDepth);
         const ModelPartDecl& part = model_.parts[index];
         const auto& entry = model_.file.code.functions[part.firstFunction];
@@ -453,6 +610,7 @@ private:
                   "displace needs a finite amount and a positive frequency");
             break;
         }
+        notSculpting(ex);
         if (ex.layerScopes.size() >= kMaxSurfaceScopes) ex.trap("scope depth exceeds 32", ErrorReason::RuntimeViolation);
         ex.spend(kBlockFuel);
         openLabel(ex);
@@ -507,6 +665,7 @@ private:
     // `checks` is the fuel of argument checks that grow faster than the
     // primitive's vertices (an extrude outline).
     void reserve(Execution& ex, Counts counts, u64 checks) {
+        notSculpting(ex);
         if (vertexTotal_ + counts.vertices > kMaxVertices)
             ex.trap("model exceeds 65536 vertices", ErrorReason::RuntimeViolation);
         if (triangleTotal_ + counts.triangles > kMaxTriangles)
@@ -734,6 +893,63 @@ private:
         case Op::DisplaceBegin:
             blockBegin(ex, spec->op);
             break;
+        case Op::SculptBegin: sculptBegin(ex); break;
+        case Op::CarveBegin: carveBegin(ex); break;
+        case Op::LumpBall: {
+            const f32 radius = ex.popF32();
+            const Vec3 at = popVec3(ex);
+            range(finite(at) && std::isfinite(radius) && radius > 0.f, "ball needs a finite centre and a positive radius");
+            Lump shape;
+            shape.a = shape.b = {at.x, at.y, at.z};
+            shape.radii[0] = shape.radii[1] = shape.radii[2] = radius;
+            lump(ex, "ball", shape);
+            break;
+        }
+        case Op::LumpBall3: {
+            const Vec3 radii = popVec3(ex), at = popVec3(ex);
+            range(finite(at) && finite(radii) && radii.x > 0.f && radii.y > 0.f && radii.z > 0.f,
+                  "ball needs a finite centre and positive radii");
+            Lump shape;
+            shape.a = shape.b = {at.x, at.y, at.z};
+            shape.radii[0] = radii.x;
+            shape.radii[1] = radii.y;
+            shape.radii[2] = radii.z;
+            lump(ex, "ball", shape);
+            break;
+        }
+        case Op::LumpCapsule: case Op::LumpCapsule2: {
+            const f32 r1 = ex.popF32(), r0 = spec->op == Op::LumpCapsule2 ? ex.popF32() : r1;
+            const Vec3 b = popVec3(ex), a = popVec3(ex);
+            range(finite(a) && finite(b) && std::isfinite(r0) && std::isfinite(r1) && r0 > 0.f && r1 > 0.f,
+                  "capsule needs finite ends and positive radii");
+            Lump shape;
+            shape.kind = LumpKind::Capsule;
+            shape.a = {a.x, a.y, a.z};
+            shape.b = {b.x, b.y, b.z};
+            // Both radii scale with the scope; the third slot is unused.
+            shape.radii[0] = r0;
+            shape.radii[1] = r1;
+            lump(ex, "capsule", shape);
+            break;
+        }
+        case Op::LumpSlab: {
+            const f32 rounding = ex.popF32();
+            const Vec3 size = popVec3(ex), at = popVec3(ex);
+            range(finite(at) && finite(size) && size.x > 0.f && size.y > 0.f && size.z > 0.f,
+                  "slab needs a finite centre and a positive size");
+            range(std::isfinite(rounding) && rounding >= 0.f &&
+                      rounding * 2.f <= std::min(size.x, std::min(size.y, size.z)),
+                  "slab round must be from 0 to half its smallest side");
+            Lump shape;
+            shape.kind = LumpKind::Slab;
+            shape.a = shape.b = {at.x, at.y, at.z};
+            shape.radii[0] = static_cast<double>(size.x) * 0.5;
+            shape.radii[1] = static_cast<double>(size.y) * 0.5;
+            shape.radii[2] = static_cast<double>(size.z) * 0.5;
+            shape.round = rounding;
+            lump(ex, "slab", shape);
+            break;
+        }
 
         case Op::Box: {
             const u32 skin = popSkin(ex);

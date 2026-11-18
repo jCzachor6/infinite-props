@@ -57,6 +57,8 @@ constexpr OpSpec kSpecs[] = {
     fixed(Op::TwistBegin, "twist.begin", {T::F32}),
     fixed(Op::TaperBegin, "taper.begin", {T::F32}),
     fixed(Op::DisplaceBegin, "displace.begin", {T::F32, T::F32, T::I32}),
+    fixed(Op::SculptBegin, "sculpt.begin", {T::F32, T::F32, kSkin}),
+    fixed(Op::CarveBegin, "carve.begin", {}),
 
     fixed(Op::Box, "box", {T::Vec3, T::Vec3, kSkin}),
     fixed(Op::BoxBevel, "box.bevel", {T::Vec3, T::Vec3, T::F32, kSkin}),
@@ -94,6 +96,12 @@ constexpr OpSpec kSpecs[] = {
     indexed(Op::OutListBox3d, "out.list.box3d", {T::Vec3, T::Vec3}),
     indexed(Op::PartGetPoint3d, "part.get.point3d", {}, T::Vec3),
     dynamic(Op::PartRender, "part.render"),
+
+    fixed(Op::LumpBall, "lump.ball", {T::Vec3, T::F32}),
+    fixed(Op::LumpBall3, "lump.ball3", {T::Vec3, T::Vec3}),
+    fixed(Op::LumpCapsule, "lump.capsule", {T::Vec3, T::Vec3, T::F32}),
+    fixed(Op::LumpCapsule2, "lump.capsule2", {T::Vec3, T::Vec3, T::F32, T::F32}),
+    fixed(Op::LumpSlab, "lump.slab", {T::Vec3, T::Vec3, T::F32}),
 };
 
 } // namespace

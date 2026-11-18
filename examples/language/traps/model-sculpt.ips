@@ -1,0 +1,13 @@
+// A sculpt block samples its lumps on a grid of at most 128 cells a side: a
+// ball 40 units wide with a cell of 0.25 asks for 178.
+import grid from "../skins/grid.ips"
+
+asset rock {
+  size 50x50x50
+  input f32 cell = 0.25
+  render {
+    sculpt(cell, 2.0, grid.draw(1)) {
+      ball({0, 20, 0}, 20.0)
+    }
+  }
+}

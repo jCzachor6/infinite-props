@@ -517,6 +517,12 @@ const std::map<std::string, BuiltinSpec>& modelBuiltinSpecs() {
                                                M::SkinRegion, V::Skin)}));
         // The level of detail the host asked for (M5).
         result.emplace("model.lod", spec({op({}, M::ModelLod, V::I32)}));
+        // The lumps of a sculpt block (M6): each is placed by its centre.
+        result.emplace("ball", spec({op({at, {"radius", V::F32}}, M::LumpBall), op({at, {"radii", V::Vec3}}, M::LumpBall3)}));
+        result.emplace("capsule", spec({op({{"a", V::Vec3}, {"b", V::Vec3}, {"radius", V::F32}}, M::LumpCapsule),
+                                        op({{"a", V::Vec3}, {"b", V::Vec3}, {"r0", V::F32}, {"r1", V::F32}},
+                                           M::LumpCapsule2)}));
+        result.emplace("slab", spec({op({at, {"size", V::Vec3}, {"round", V::F32}}, M::LumpSlab)}));
         return result;
     }();
     return table;
@@ -589,7 +595,7 @@ OperationEffects builtinEffects(const BuiltinSpec& spec, const BuiltinOverload* 
             number |= parameter.type != ValueType::Skin;
         }
         if (skin) check(EffectCheck::UnassignedHandle);
-        if (op == model::Op::Vec3Normalize || (skin && number)) check(EffectCheck::NumericRange);
+        if (op == model::Op::Vec3Normalize || (skin && number) || model::isLump(op)) check(EffectCheck::NumericRange);
         return effects;
     }
     if (overload && overload->opcode) {

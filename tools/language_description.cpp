@@ -912,6 +912,7 @@ Json models() {
                 types.push_back(ips::typeName(V::Seed));
                 types.push_back(ips::typeName(V::I32));
                 break;
+            case ips::ShapeArgument::Skin: types.push_back(ips::typeName(V::Skin)); break;
             }
             parameters.push_back(Json::object({{"name", std::string(parameter.name)}, {"types", std::move(types)}}));
         }
@@ -921,16 +922,43 @@ Json models() {
             : name == "bend" ? "bends_the_y_axis_into_an_arc_toward_x"
             : name == "twist" ? "turns_about_y_growing_with_height_like_yaw"
             : name == "taper" ? "scales_x_and_z_from_one_at_the_bottom_to_scale_at_the_top"
+            : name == "sculpt" ? "joins_its_lumps_into_one_surface_meshed_on_a_grid_of_cell"
+            : name == "carve" ? "cuts_its_lumps_out_of_what_the_sculpt_block_holds"
             : "moves_vertices_along_their_summed_normals_by_amount_times_noise";
         const char* range = name == "smooth" ? "0_to_180" : name == "refine" ? "1_to_16"
             : name == "bend" ? "minus_360_to_360" : name == "twist" ? "finite"
-            : name == "taper" ? "positive" : "finite_amount_positive_frequency";
+            : name == "taper" ? "positive" : name == "sculpt" ? "positive_cell_blend_not_negative_repeating_skin"
+            : name == "carve" ? "none" : "finite_amount_positive_frequency";
         shapes.push_back(Json::object({{"name", name}, {"parameters", std::move(parameters)}, {"range", range},
             {"meaning", meaning}, {"begin_op", mnemonic(block.op)}}));
     }
+    // Sculpting (M6): what a sculpt block takes and how its surface is found.
+    auto lumps = Json::array();
+    for (const char* name : {"ball", "capsule", "slab"}) lumps.push_back(name);
+    auto sculpt = Json::object({{"block", "sculpt"}, {"carve", "carve"}, {"lumps", std::move(lumps)},
+        {"contents", "lumps_carve_place_and_control_flow"},
+        {"other_geometry", "compile_error_or_trap_through_a_helper"},
+        {"lump_outside", "compile_error_in_render_or_trap_through_a_helper"},
+        {"nesting", "no_sculpt_in_sculpt_and_no_carve_in_carve"},
+        {"anchor", "center"}, {"order", "lumps_apply_in_program_order"},
+        {"join", "smooth_minimum_of_radius_blend"}, {"cut", "smooth_maximum_with_the_negated_lump"},
+        {"zero_blend", "exact_minimum_and_maximum"}, {"inside", "field_below_zero"},
+        {"capsule", "two_balls_and_the_cone_that_touches_both"}, {"slab", "box_with_edges_rounded_by_round"},
+        {"grid", "nodes_at_multiples_of_cell_in_the_block_s_frame"},
+        {"margin", "one_blend_and_one_cell_beyond_the_joined_lumps"},
+        {"mesh", "surface_nets_one_vertex_per_crossed_cell_at_the_mean_of_its_edge_crossings"},
+        {"diagonal", "from_the_cell_of_lowest_index"}, {"closed", true},
+        {"normals", "field_gradient_by_central_differences_a_quarter_cell_wide"},
+        {"mapping", "three_planar_projections_by_the_axis_the_triangle_faces_most_x_before_y_before_z"},
+        {"projection_frames", "those_of_the_faces_of_a_box"}, {"seams", "one_vertex_per_projection"},
+        {"skin", "repeating_only_fit_and_region_trap"},
+        {"placement", "moves_turns_mirrors_and_scales_equally_an_unequal_scale_traps"},
+        {"empty", "builds_nothing"}, {"level_of_detail", "the_cell_may_depend_on_model_lod"},
+        {"maximum_lumps", model::kMaxLumps}, {"maximum_cells_per_axis", model::kMaxSculptCells}});
     OperationEffects blockEffects;
     blockEffects.checks = static_cast<u16>(EffectCheck::NumericRange) | static_cast<u16>(EffectCheck::ScopeDepth);
     auto shaping = Json::object({{"syntax", "<name>(<argument>, ...) { <statements> }"},
+        {"without_parameters", "<name> { <statements> }"},
         {"keyword", "contextual_call_followed_by_a_block"}, {"positional_only", true}, {"blocks", std::move(shapes)},
         {"frame", "the_block_s_own_identity_at_opening"}, {"precision", "binary64_until_the_block_closes"},
         {"close", "processes_then_passes_to_the_enclosing_scope_like_a_primitive"},
@@ -958,7 +986,8 @@ Json models() {
         {"winding", "counterclockwise_from_outside"}, {"angle_unit", "degrees"},
         {"geometry_kernel", "binary64_no_fma_one_rounding_to_binary32_per_component"},
         {"inputs", "render_only"}, {"origin", false}, {"outputs", std::move(outputs)}, {"layers", false}, {"clips", false},
-        {"model_parts", std::move(parts)}, {"shaping_blocks", std::move(shaping)}, {"optimizer", false},
+        {"model_parts", std::move(parts)}, {"shaping_blocks", std::move(shaping)}, {"sculpt", std::move(sculpt)},
+        {"optimizer", false},
         {"types", Json::array({std::move(vec3), std::move(skin)})},
         {"type_keywords", "contextual_type_position"}, {"types_in_draw_assets", "compile_error"},
         {"compound_of_three", Json::object({{"render", ips::typeName(V::Vec3)}, {"draw", ips::typeName(V::Circle)}})},
@@ -993,7 +1022,7 @@ Json models() {
             {"outline_points", bounds(3, model::kMaxOutlinePoints)},
             {"path_points", bounds(2, model::kMaxPathPoints)}, {"tube_segments", bounds(1, model::kMaxTubeSegments)},
             {"refine", bounds(1, model::kMaxRefine)}, {"outputs", model::kMaxModelOutputs},
-            {"parts", model::kMaxModelParts}})},
+            {"parts", model::kMaxModelParts}, {"lumps", model::kMaxLumps}, {"sculpt_cells", model::kMaxSculptCells}})},
         {"fuel", Json::object({{"instruction", 1}, {"vertex", model::kVertexFuel}, {"triangle", model::kTriangleFuel},
             {"extrude_outline", "ceil_points_squared_over_3_or_over_2_with_a_bevel"},
             {"sweep_profile", "ceil_points_squared_over_3"}, {"sweep_path_point", model::kPathPointFuel},
@@ -1003,9 +1032,13 @@ Json models() {
             {"smooth_vertex", model::kSmoothFuel}, {"deform_vertex", model::kDeformFuel},
             {"displace_vertex", model::kDisplaceFuel}, {"displace_triangle", model::kDisplaceTriangleFuel},
             {"refine_vertex", model::kRefineVertexFuel}, {"refine_triangle", model::kRefineTriangleFuel},
-            {"point3d_output", model::kPointOutputFuel}, {"box3d_output", model::kBoxOutputFuel}})},
+            {"point3d_output", model::kPointOutputFuel}, {"box3d_output", model::kBoxOutputFuel},
+            {"sculpt_sample_per_lump", model::kSculptSampleFuel},
+            {"sculpt_normal_samples", model::kSculptNormalSamples}})},
         {"arena_bytes", Json::object({{"vertex", model::kVertexBytes}, {"triangle", model::kTriangleBytes},
-            {"skin_record", model::kSkinRecordBytes}})}});
+            {"skin_record", model::kSkinRecordBytes}, {"lump", model::kLumpBytes},
+            {"sculpt_node", model::kSculptSampleBytes + model::kSculptCellBytes},
+            {"sculpt_point", model::kSculptPointBytes}, {"sculpt_triangle", model::kSculptTriangleBytes}})}});
 }
 } // namespace
 

@@ -169,6 +169,8 @@ std::span<const ShapeBlock> shapeBlocks() {
         {"twist", model::Op::TwistBegin, {{{"angle", A::Degrees}}}, 1},
         {"taper", model::Op::TaperBegin, {{{"scale", A::Number}}}, 1},
         {"displace", model::Op::DisplaceBegin, {{{"amount", A::Number}, {"frequency", A::Number}, {"seed", A::Seed}}}, 3},
+        {"sculpt", model::Op::SculptBegin, {{{"cell", A::Number}, {"blend", A::Number}, {"skin", A::Skin}}}, 3},
+        {"carve", model::Op::CarveBegin, {}, 0},
     };
     return blocks;
 }

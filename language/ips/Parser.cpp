@@ -698,6 +698,11 @@ Stmt ParserImpl::parseIdentifierStatement() {
     if (match(TokenKind::Assign)) {
         return Stmt{VarDecl{name.text, parseExpr(), name.location}};
     }
+    // `carve { ... }` (M6): a shaping block with no parameter is written
+    // without parentheses. One that has parameters gets here only when they
+    // are missing, and its check says which.
+    if (kind() == TokenKind::LBrace && findShapeBlock(name.text))
+        return Stmt{PlaceStmt{{}, parseBlock(), name.location, name.text}};
     // Otherwise it must be a call (possibly through a member chain).
     auto primary = node(Identifier{name.text, name.location});
     primary->sourceRange = primary->sourceCoreRange = {start, pos_};
@@ -715,6 +720,8 @@ Stmt ParserImpl::parseIdentifierStatement() {
     if (auto* call = std::get_if<Call>(expr.get());
         call && (name.text == "place" || findShapeBlock(name.text)) && kind() == TokenKind::LBrace &&
         std::holds_alternative<Identifier>(*call->callee)) {
+        if (const ShapeBlock* shape = findShapeBlock(name.text); shape && shape->count == 0)
+            throw SourceError{name.location, name.text + " takes no arguments; write " + name.text + " { ... }"};
         auto args = std::move(call->args);
         return Stmt{PlaceStmt{std::move(args), parseBlock(), name.location, name.text}};
     }

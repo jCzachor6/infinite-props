@@ -105,6 +105,8 @@ private:
     std::uint32_t loopDepth_ = 0;
     std::uint32_t surfaceDepth_ = 0; // open layer/clip blocks
     std::uint32_t deformDepth_ = 0;  // open bend, twist and taper blocks (M3)
+    std::uint32_t sculptDepth_ = 0;  // open sculpt blocks (M6)
+    std::uint32_t carveDepth_ = 0;   // open carve blocks (M6)
 
     // vec3 and skin are the types of render assets (models v1.2). A list of
     // vec3 is one too (M3); no other collection holds either.
@@ -149,10 +151,13 @@ private:
         const auto savedDepth = loopDepth_;
         const auto savedSurfaceDepth = surfaceDepth_;
         const auto savedDeformDepth = deformDepth_;
+        const auto savedSculptDepth = sculptDepth_, savedCarveDepth = carveDepth_;
         if (recover([&] { checkStmt(stmt); })) return;
         loopDepth_ = savedDepth;
         surfaceDepth_ = savedSurfaceDepth;
         deformDepth_ = savedDeformDepth;
+        sculptDepth_ = savedSculptDepth;
+        carveDepth_ = savedCarveDepth;
         markInvalidBindings(stmt);
     }
 
@@ -409,6 +414,8 @@ private:
         const std::uint32_t savedLoopDepth = std::exchange(loopDepth_, 0);
         const std::uint32_t savedSurfaceDepth = std::exchange(surfaceDepth_, 0);
         const std::uint32_t savedDeformDepth = std::exchange(deformDepth_, 0);
+        const std::uint32_t savedSculptDepth = std::exchange(sculptDepth_, 0);
+        const std::uint32_t savedCarveDepth = std::exchange(carveDepth_, 0);
 
         current_ = &function;
         try {
@@ -427,6 +434,8 @@ private:
             loopDepth_ = savedLoopDepth;
             surfaceDepth_ = savedSurfaceDepth;
             deformDepth_ = savedDeformDepth;
+            sculptDepth_ = savedSculptDepth;
+            carveDepth_ = savedCarveDepth;
             typer_.restoreScope(std::move(savedScope));
             throw;
         }
@@ -435,6 +444,8 @@ private:
         loopDepth_ = savedLoopDepth;
         surfaceDepth_ = savedSurfaceDepth;
         deformDepth_ = savedDeformDepth;
+        sculptDepth_ = savedSculptDepth;
+        carveDepth_ = savedCarveDepth;
         typer_.restoreScope(std::move(savedScope));
     }
 
@@ -475,6 +486,7 @@ private:
             checkVarDecl(*decl);
         } else if (const auto* exprStmt = std::get_if<ExprStmt>(&stmt)) {
             (void)typer_.typeOf(*exprStmt->expr);
+            checkSculptCall(*exprStmt->expr);
         } else if (const auto* ifStmt = std::get_if<IfStmt>(&stmt)) {
             checkCondition(*ifStmt->condition, ifStmt->location, "if");
             for (const auto& s : ifStmt->thenBranch) {
@@ -576,11 +588,50 @@ private:
         --surfaceDepth_;
     }
 
+    // A sculpt block (M6) takes lumps and nothing else that builds geometry,
+    // and a lump means nothing outside one. What one function shows is a
+    // compile error; what goes through a helper traps when it runs.
+    void checkSculptCall(const Expr& expr) {
+        if (!model_) return;
+        const auto* call = std::get_if<Call>(&expr);
+        if (!call) return;
+        if (const auto* name = std::get_if<Identifier>(call->callee.get())) {
+            const BuiltinSpec* builtin = findBuiltin(name->name, true);
+            if (!builtin || !builtin->overloads.front().modelOp) return;
+            const auto op = static_cast<model::Op>(*builtin->overloads.front().modelOp);
+            if (model::isPrimitive(op) && sculptDepth_ > 0)
+                error(call->location, name->name + " cannot be written in a sculpt block, which takes lumps: "
+                                                   "ball, capsule and slab");
+            if (model::isLump(op) && sculptDepth_ == 0 && current_ == entryFunction(program_.asset))
+                error(call->location, name->name + " is a lump and belongs in a sculpt block, such as "
+                                                   "sculpt(1.0, 2.0, skin) { " + name->name + "(...) }");
+            return;
+        }
+        const auto* member = std::get_if<Member>(call->callee.get());
+        if (!member || member->name != "render" || sculptDepth_ == 0) return;
+        const auto* alias = std::get_if<Identifier>(member->object.get());
+        if (!alias) return;
+        for (const auto& import : program_.imports)
+            if (import.alias == alias->name)
+                error(call->location, "a part cannot be built in a sculpt block, which takes lumps: "
+                                      "ball, capsule and slab");
+    }
+
     // `smooth(40.0) { ... }` and the other shaping blocks (M3): positional
     // arguments of the block's kinds, the same depth limit as place.
     void checkShapeBlock(const PlaceStmt& block) {
         const ShapeBlock& shape = *findShapeBlock(block.block);
         if (!model_) error(block.location, block.block + " shapes 3D geometry; it is available in a render asset");
+        const bool sculpting = block.block == "sculpt", carving = block.block == "carve";
+        if (carving) {
+            if (carveDepth_ > 0) error(block.location, "carve cannot be written in another carve");
+            if (sculptDepth_ == 0 && current_ == entryFunction(program_.asset))
+                error(block.location, "carve belongs in a sculpt block: it cuts its lumps out of the block's surface");
+        } else if (sculptDepth_ > 0) {
+            if (sculpting) error(block.location, "a sculpt block cannot hold another; write the second one after it");
+            error(block.location, block.block + " cannot be written in a sculpt block, which takes lumps, carve and place; "
+                                                "write the sculpt block in " + block.block + " instead");
+        }
         std::string names;
         for (std::size_t i = 0; i < shape.count; ++i) names += (i ? ", " : "") + std::string(shape.parameters[i].name);
         if (block.args.size() != shape.count)
@@ -601,6 +652,7 @@ private:
             case ShapeArgument::Number: need(isNumeric(got), "a number"); break;
             case ShapeArgument::Count: need(got == ValueType::I32, "an i32"); break;
             case ShapeArgument::Seed: need(got == ValueType::Seed || got == ValueType::I32, "a seed"); break;
+            case ShapeArgument::Skin: need(got == ValueType::Skin, "a skin"); break;
             }
         }
         if (surfaceDepth_ >= kMaxSurfaceScopes)
@@ -609,10 +661,14 @@ private:
         const bool deforming = block.block == "bend" || block.block == "twist" || block.block == "taper";
         ++surfaceDepth_;
         if (deforming) ++deformDepth_;
+        if (sculpting) ++sculptDepth_;
+        if (carving) ++carveDepth_;
         for (const auto& child : block.body) {
             if (atLimit()) break;
             checkRecoveringStmt(child);
         }
+        if (carving) --carveDepth_;
+        if (sculpting) --sculptDepth_;
         if (deforming) --deformDepth_;
         --surfaceDepth_;
     }

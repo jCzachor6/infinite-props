@@ -63,11 +63,11 @@ a scene of many props needs: levels of detail, textures the host holds
 (the same geometry, counters and failures with them as without), the file
 of a stored texture and eight threads on one model; the native/WASM runner
 adds the texture cache and the pool of workers of the JavaScript API.
-`model_corpus` pins 80 generations of the
+`model_corpus` pins 83 generations of the
 showcase props, the handbook's models, a model of edge cases, a model of
 material maps, glass and windows, a model of paths, blocks, outputs and parts
-a bench in tiling skins and a hydrant on paving from a diagram that
-repeats: the
+a bench in tiling skins, a hydrant on paving from a diagram that
+repeats, and lumps sculpted into boulders and sandbags: the
 SHA-256 of every compiled file, surface array, texture and texture map in
 `tests/fixtures/model-corpus-v1.2.json`. Every native runner must give
 those bytes, and the WASM runner checks the same file. A runner that differs

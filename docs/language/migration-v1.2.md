@@ -30,12 +30,14 @@ All additions belong to assets that have `render`:
 | `place(at = ..., yaw = ...) { ... }` | A block that moves, turns, scales or mirrors what it builds |
 | `tube`, `sweep`, `list<vec3>` | Shapes along a curve or a path of points |
 | `smooth`, `refine`, `bend`, `twist`, `taper`, `displace` blocks | Blocks that change the shape of what they build |
+| `sculpt(cell, blend, skin) { ... }`, `carve { ... }`, `ball`, `capsule`, `slab` | A block that joins lumps into one smooth surface |
+| `model.lod()` | The level of detail the game asks for |
 | `output point3d name`, `output box3d name` | Points and boxes handed to the game |
 | `alias.render(seed)`, `alias.outputs.name` | An imported render asset built as a part, and its points |
 
 None of the new words is reserved. In an asset with `draw` every one of them
-stays an ordinary name: a helper called `box`, `render`, `place` or `bend`,
-a local called `skin`, an import alias `vec3` and a part input `scale`
+stays an ordinary name: a helper called `box`, `ball`, `render`, `place`,
+`bend` or `carve`, a local called `skin`, an import alias `vec3` and a part input `scale`
 compile as they did. `{a, b, c}` remains the value of a circle output there,
 and `smooth(x)` the 2D function: it is a block only before `{` in a render
 asset.

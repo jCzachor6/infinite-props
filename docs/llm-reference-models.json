@@ -34,6 +34,7 @@
       "primitives",
       "placing",
       "shaping",
+      "sculpting",
       "outputs",
       "parts",
       "limits",
@@ -167,6 +168,19 @@
       ]
     },
     {
+      "id": "sculpting",
+      "title": "Sculpting",
+      "chapter": "models.md",
+      "parts": [
+        {
+          "heading": "Sculpting"
+        }
+      ],
+      "demos": [
+        "model-sculpt.ips"
+      ]
+    },
+    {
       "id": "outputs",
       "title": "Outputs",
       "chapter": "models.md",
@@ -261,6 +275,19 @@
           "after": "build(s: skin, tall: f32) {"
         }
       ]
+    },
+    {
+      "id": "model-sculpt",
+      "title": "Build a sculpt from lumps",
+      "file": "errors/model-sculpt.ips",
+      "diagnostic_code": "IPS-TYPE-001",
+      "explanation": "A sculpt block takes lumps and joins them. A slab is the lump that looks like a box.",
+      "replacements": [
+        {
+          "before": "      box({0, 0, 0}, {12, 4, 12}, tile)",
+          "after": "      slab({0, 2, 0}, {12, 4, 12}, 1.0)"
+        }
+      ]
     }
   ],
   "style_pairs": [
@@ -301,6 +328,8 @@
     "box": "Give furniture and crates a small bevel (0.3 to 1.0); a sharp edge looks drawn rather than made.",
     "cylinder": "8 sides for a rung, 16 to 24 for a seat or a barrel.",
     "quad": "Give a flat piece that is seen from behind a two-sided skin.",
-    "skin.fit": "For one picture on one face; leave materials such as wood repeating."
+    "skin.fit": "For one picture on one face; leave materials such as wood repeating.",
+    "ball": "Three or four overlapping balls of different sizes make a boulder; one ball is a sphere with a worse mesh.",
+    "capsule": "Give a root or a limb two radii, and a blend near the smaller one."
   }
 }

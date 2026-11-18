@@ -348,7 +348,10 @@ tables the compiler binds calls with, the `place` arguments from the table
 its checker and its emitter share, and the limits from the model runtime's
 constants. `shaping_blocks` lists the blocks a render asset opens like
 `place`, each with its positional arguments, their range and the operation
-that opens it; `outputs` the two output kinds, the value each takes and what
+that opens it, a block without parameters being written without
+parentheses; `sculpt` the rules of sculpting: the block, `carve`, the lumps
+and where they belong, how lumps join and are cut, the grid, the surface
+and how the skin is laid on; `outputs` the two output kinds, the value each takes and what
 a host receives, and how a value written inside a block moves; and
 `model_parts` the part call, its seed and inputs, where its outputs may be
 read and in which frame. The top-level `builtins` and `source_rules.types`

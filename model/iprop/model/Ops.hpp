@@ -44,6 +44,10 @@ enum class Op : u8 {
     TwistBegin = 0x24,
     TaperBegin = 0x25,
     DisplaceBegin = 0x26,
+    // Sculpting (M6): a block that joins lumps into one surface, and the
+    // scope inside it whose lumps are cut out.
+    SculptBegin = 0x27,
+    CarveBegin = 0x28,
 
     Box = 0x40,
     BoxBevel = 0x41,
@@ -88,6 +92,13 @@ enum class Op : u8 {
 
     // 3D parts (M3): the operand is the part.
     PartRender = 0xA0,
+
+    // The lumps of a sculpt block (M6).
+    LumpBall = 0xB0,
+    LumpBall3 = 0xB1,
+    LumpCapsule = 0xB2,
+    LumpCapsule2 = 0xB3,
+    LumpSlab = 0xB4,
 };
 
 // The bits of place.begin's operand, in the stack order of their arguments.
@@ -132,8 +143,13 @@ const OpSpec* findOp(u8 aux);
 const OpSpec* findOp(std::string_view mnemonic);
 // Whether a sub-operation opens a scope that the matching `end` closes.
 constexpr bool opensScope(Op op) {
-    return op == Op::PlaceBegin || (op >= Op::SmoothBegin && op <= Op::DisplaceBegin);
+    return op == Op::PlaceBegin || (op >= Op::SmoothBegin && op <= Op::CarveBegin);
 }
+
+// Whether a sub-operation emits the geometry of a primitive, and whether it
+// adds a lump to a sculpt block.
+constexpr bool isPrimitive(Op op) { return op >= Op::Box && op <= Op::Sweep; }
+constexpr bool isLump(Op op) { return op >= Op::LumpBall && op <= Op::LumpSlab; }
 
 // Whether a 2D instruction belongs to the instruction set of a model
 // program: everything that needs no canvas, surface, 2D output, part or 2D
@@ -158,6 +174,11 @@ inline constexpr std::size_t kMaxPathPoints = 256;  // a sweep's path
 inline constexpr u32 kMaxTubeSegments = 256;
 // Arena charges, fixed across hosts.
 inline constexpr u64 kVertexBytes = 48, kTriangleBytes = 16, kSkinRecordBytes = 64;
+// A sculpt block (M6): a lump it holds, and what its kernel works in until
+// the block is built: a node of its grid while it is sampled and while the
+// surface is built, a point and a triangle of the surface.
+inline constexpr u64 kLumpBytes = 160;
+inline constexpr u64 kSculptSampleBytes = 8, kSculptCellBytes = 4, kSculptPointBytes = 104, kSculptTriangleBytes = 13;
 
 // The tariff of the model page (spec models v1.2, Accounting): what an
 // instruction pays beyond its own unit. Calibrated against plain
@@ -173,6 +194,10 @@ inline constexpr u64 kSkinDrawFuel = 64; // skin.draw, also when the texture exi
 // triangle it adds. A sweep pays per point of its path, an output write per
 // value. Calibrated like the rest (benchmarks/model-tariff.cpp).
 inline constexpr u64 kBlockFuel = 24;
+// A sculpt (M6) pays one unit for each sample of its field and each lump the
+// sample visits: every node of its grid, and six samples for the normal of
+// each vertex. Its vertices and triangles pay what a primitive's do.
+inline constexpr u64 kSculptSampleFuel = 1, kSculptNormalSamples = 6;
 inline constexpr u64 kPassVertexFuel = 3, kPassTriangleFuel = 1;
 inline constexpr u64 kSmoothFuel = 8;
 inline constexpr u64 kDeformFuel = 3;
@@ -181,6 +206,10 @@ inline constexpr u64 kRefineVertexFuel = 5, kRefineTriangleFuel = 2;
 inline constexpr u64 kPathPointFuel = 24;
 inline constexpr u64 kPointOutputFuel = 8, kBoxOutputFuel = 16;
 inline constexpr u32 kMaxRefine = 16;
+// A sculpt block (M6): its lumps, and the cells along one axis of the grid
+// it samples.
+inline constexpr u32 kMaxLumps = 64;
+inline constexpr u32 kMaxSculptCells = 128;
 // The checks and the triangulation of an extrude outline of n points grow
 // with n squared: ceil(n*n/3), and ceil(n*n/2) with a bevel, whose inset
 // outline is checked again.

@@ -1,0 +1,71 @@
+// A wall of sandbags, one unit to a centimetre. Every bag is a sculpt block
+// of its own: a slab with soft edges, two bellies where the sand settled and
+// a neck tied off at one end, so no two bags lie alike. The seed picks how
+// long the wall is, how high it is stacked and how every bag is filled and
+// laid; `dye` is the cloth. model.lod() widens the cell of the sculpt for a
+// wall seen from afar, and the farthest level leaves the knots out: they are
+// thinner than its cell. The game reads `collider` and `top`.
+import sack from "skins/textures/cloth.ips"
+
+asset sandbags {
+  size 260x70x60
+  scale 100
+
+  input color dye = #a8946c
+
+  output box3d collider
+  output point3d top
+
+  render {
+    root = seed.initial()
+    // Every roll comes before the level is read, so no level changes one.
+    count = choose(root.fork("count"), 3, 3, 4)
+    rows = choose(root.fork("rows"), 2, 3, 3)
+    long = roll(root.fork("long"), 56.0, 64.0)
+    deep = roll(root.fork("deep"), 30.0, 35.0)
+    tall = roll(root.fork("tall"), 14.0, 17.0)
+
+    level = model.lod()
+    cell = 2.5 + 1.5 * float(min(level, 2))    // 2.5, 4, then 5.5 centimetres
+    cloth = skin.density(sack.draw(root.fork("cloth"), dye = dye), 6.0)
+
+    rise = tall * 0.86                         // a bag sinks into the row below
+    for row in 0..rows {
+      bags = count - row
+      for i in 0..bags {
+        s = root.fork("bag").fork(row).fork(i)
+        x = (float(i) - float(bags - 1) * 0.5) * (long + 1.0)
+        z = roll(s.fork("z"), -2.5, 2.5)
+        place(at = {x, float(row) * rise, z}, yaw = roll(s.fork("yaw"), -5.0, 5.0) + 180.0 * float((row + i) % 2)) {
+          bag(s, long, deep, tall, cell, level, cloth)
+        }
+      }
+    }
+
+    width = float(count) * (long + 1.0)
+    height = float(rows - 1) * rise + tall
+    collider = {{0, 0, 0}, {width, height, deep + 5.0}}
+    top = {0, height, 0}
+  }
+
+  // One bag lying along x, its middle on the ground at the origin.
+  bag(s: seed, long: f32, deep: f32, tall: f32, cell: f32, level: i32, cloth: skin) {
+    sculpt(cell, tall * 0.4, cloth) {
+      slab({0, tall * 0.5, 0}, {long - 6.0, tall, deep}, tall * 0.45)
+      // Where the sand settled: one belly on each side of the middle.
+      left = roll(s.fork("left"), -0.3, -0.08) * long
+      ball({left, tall * 0.56, roll(s.fork("lz"), -0.12, 0.12) * deep}, {long * 0.2, tall * 0.6, deep * 0.44})
+      right = roll(s.fork("right"), 0.05, 0.28) * long
+      ball({right, tall * 0.52, roll(s.fork("rz"), -0.12, 0.12) * deep}, {long * 0.19, tall * 0.62, deep * 0.42})
+      // The neck: gathered cloth, tied where the string bites.
+      capsule({long * 0.5 - 8.0, tall * 0.5, 0}, {long * 0.5 + 2.0, tall * 0.52, 0}, tall * 0.34, tall * 0.2)
+      if (level < 2) {
+        ball({long * 0.5 + 4.0, tall * 0.54, 0}, {2.5, tall * 0.3, tall * 0.34})
+        carve {
+          ball({long * 0.5 + 0.5, tall * 0.5 + tall * 0.42, 0}, tall * 0.2)
+          ball({long * 0.5 + 0.5, tall * 0.5 - tall * 0.42, 0}, tall * 0.2)
+        }
+      }
+    }
+  }
+}

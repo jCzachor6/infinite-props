@@ -80,11 +80,13 @@ std::string placeArgumentNames();
 
 // The shaping blocks of a render asset (models v1.2, M3), such as
 // `smooth(40.0) { }`: positional arguments, checked and lowered in order.
+// A block with no parameter (`carve { }`, M6) is written without parentheses.
 enum class ShapeArgument : u8 {
     Degrees, // a number of degrees
     Count,   // an i32
     Number,  // a number
     Seed,    // a seed
+    Skin,    // a skin
 };
 struct ShapeParameter {
     std::string_view name;

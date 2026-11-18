@@ -2,6 +2,41 @@
 
 ## Unreleased
 
+### Shapes that grow together (models preview)
+
+Sculpting: a block that joins lumps into one smooth surface. Existing
+sources compile to identical bytecode, existing programs keep their image,
+outputs, RNG, fuel and work, and the 80 model generations of the earlier
+corpus keep every pin. See [sculpting](docs/language/models.md#sculpting)
+and the [contract](spec/models-v1.2.md#sculpting).
+
+- **Sculpt blocks.** `sculpt(cell, blend, skin) { ... }` joins the lumps
+  written in it into one closed surface: lumps nearer than `blend` grow
+  together, and `cell` is the size of the detail. A `place` in the block
+  moves, turns, mirrors and scales lumps; the blocks around it change a
+  sculpt like any other geometry.
+- **Lumps.** `ball(at, radius)` and `ball(at, radii)`, `capsule(a, b,
+  radius)` and `capsule(a, b, r0, r1)`, `slab(at, size, round)`. A lump is
+  placed by its centre and belongs in a sculpt block.
+- **Carving.** `carve { ... }`, written without parentheses, cuts its lumps
+  out of what the block holds so far.
+- **Skins.** A sculpt wears a repeating skin laid on from three sides, as
+  onto the faces of a box, so a pattern never stretches.
+- **Names.** In a render asset `ball`, `capsule` and `slab` are builtins
+  now: a helper of one of those names in a preview model needs another name.
+  Draw assets keep them, and `sculpt` and `carve` are words only before a
+  block in a render asset.
+- **Format.** Operations `0x27 sculpt.begin`, `0x28 carve.begin` and
+  `0xB0`–`0xB4` for the lumps on the model page. An earlier runtime rejects
+  each while loading. Hosts and their APIs do not change: a sculpt reaches
+  them as vertices and triangles.
+- **Limits and prices.** 64 lumps in a block and 128 cells of its grid on an
+  axis; one fuel unit for every node of the grid and every lump, then
+  vertices and triangles as a primitive pays, and 6 units for every point
+  of the surface and every lump.
+- **Examples.** A wall of sandbags with three levels of detail. The model
+  corpus grows to 83 generations.
+
 ### Many props in a scene (models preview, and 2D additive)
 
 Levels of detail, textures generated once, generation off the main thread

@@ -41,9 +41,11 @@ list_type     = "list", "<", (scalar_type | sampler_type | stepper_type), ">" ;
 value_type    = scalar_type | list_type | sampler_type | stepper_type | "layer" | "mask" ;
 block         = "{", { ";" | statement }, "}" ;
 clip_scope    = "clip", "(", expression, ")", block ;
-statement     = layer_capture | clip_scope | place_scope | assignment | call_statement | if | while | for
+statement     = layer_capture | clip_scope | place_scope | shape_scope | assignment | call_statement | if | while | for
               | "break" | "continue" | return ;
 place_scope   = "place", "(", [ arguments ], ")", block ;  (* contextual: a call of that name followed by a block *)
+shape_scope   = ("smooth" | "refine" | "bend" | "twist" | "taper" | "displace" | "sculpt"), "(", [ arguments ], ")", block
+              | "carve", block ;  (* contextual like place; a block without parameters has no parentheses *)
 assignment    = [ "distribution" | "layer" | "mask" | list_type | sampler_type | stepper_type | model_type ], name, "=", expression ;
 call_statement = (name | "mask" | "sampler" | "stepper"), { postfix_suffix } ;  (* must end as a call, capture, pick or list method *)
 if            = "if", "(", expression, ")", block,

@@ -82,7 +82,8 @@ test("the grammar highlights every builtin the compiler reports, and no retired 
     }
     // A member call is not a bare builtin, and a value named like one is not a call.
     for (const source of ["items.pick(3)", "noise(1.0, 2.0, 3)", "fill(d, 1.0)", "stream_push(1)", "i32trunc(1.5)",
-        "refill(1)", "rect = 2", "box = 2", "skin = wood", "toolbox(1)", "s.fit()", "vec3 p = up"])
+        "refill(1)", "rect = 2", "box = 2", "skin = wood", "toolbox(1)", "s.fit()", "vec3 p = up", "ball = 2",
+        "football(1)", "slab = {1, 2, 3}"])
         assert.equal(builtin.test(source), false, source);
 });
 
@@ -90,11 +91,13 @@ test("the words of a model highlight only where the grammar gives them a meaning
     const grammar = JSON.parse(fs.readFileSync(path.join(__dirname, "../syntaxes/ips.tmLanguage.json"), "utf8"));
     const keyword = new RegExp(grammar.repository.modelKeywords.match);
     for (const source of ["  render {", "render{", "  scale 100", "    place(at = {0, 4, 0}) {", "place (yaw = 90.0) {",
-        "    smooth(40.0) {", "bend(90.0) { refine(4) { box(a, b, s) } }", "displace(1.5, 0.1, root.fork(\"dents\")) {"])
+        "    smooth(40.0) {", "bend(90.0) { refine(4) { box(a, b, s) } }", "displace(1.5, 0.1, root.fork(\"dents\")) {",
+        "    sculpt(1.5, 4.0, skin.density(moss, 2.0)) {", "      carve {", "carve{ ball(at, 2.0) }"])
         assert.ok(keyword.test(source), source);
     // A helper, a local or an argument of those names is an ordinary name.
     for (const source of ["render(1.0)", "render = 2", "scale = 1.5", "put(scale = 1.6) {",
         "x = scale * 2.0", "place = 3", "replace(1)", "x = smooth(0.4)", "bend = 3", "taper(2)", "if (smooth(t) > 0.5) {",
+        "sculpt = 2", "sculpt(1)", "carve = 1", "carve(2)", "x = carve", "recarve {",
         "if (bend(a, b) == 0) { x = 1 }"])
         assert.equal(keyword.test(source), false, source);
     const skins = grammar.repository.modelTypes.patterns.map(pattern => new RegExp(pattern.match));

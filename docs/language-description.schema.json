@@ -6298,6 +6298,14 @@
                 "parts": {
                   "const": 256,
                   "description": "Part instances of a file."
+                },
+                "lumps": {
+                  "const": 64,
+                  "description": "Lumps of a sculpt block."
+                },
+                "sculpt_cells": {
+                  "const": 128,
+                  "description": "Cells of a sculpt block's grid on an axis."
                 }
               },
               "required": [
@@ -6317,7 +6325,9 @@
                 "tube_segments",
                 "refine",
                 "outputs",
-                "parts"
+                "parts",
+                "lumps",
+                "sculpt_cells"
               ],
               "additionalProperties": true
             },
@@ -6404,6 +6414,14 @@
                 "box3d_output": {
                   "const": 16,
                   "description": "What a box3d output write reserves beyond its instruction."
+                },
+                "sculpt_sample_per_lump": {
+                  "const": 1,
+                  "description": "What a sculpt block pays for a sample of its field, for each lump it holds: once for every node of its grid."
+                },
+                "sculpt_normal_samples": {
+                  "const": 6,
+                  "description": "The samples a sculpt block pays for each point of its surface, for its normal."
                 }
               },
               "required": [
@@ -6426,7 +6444,9 @@
                 "refine_vertex",
                 "refine_triangle",
                 "point3d_output",
-                "box3d_output"
+                "box3d_output",
+                "sculpt_sample_per_lump",
+                "sculpt_normal_samples"
               ],
               "additionalProperties": true
             },
@@ -6445,12 +6465,32 @@
                 "skin_record": {
                   "const": 64,
                   "description": "Bytes of a skin."
+                },
+                "lump": {
+                  "const": 160,
+                  "description": "Bytes of a lump of a sculpt block."
+                },
+                "sculpt_node": {
+                  "const": 12,
+                  "description": "Bytes a sculpt block works in for each node of its grid, given back when its surface is built."
+                },
+                "sculpt_point": {
+                  "const": 104,
+                  "description": "Bytes a sculpt block works in for each point of its surface, given back likewise."
+                },
+                "sculpt_triangle": {
+                  "const": 13,
+                  "description": "Bytes a sculpt block works in for each triangle of its surface, given back likewise."
                 }
               },
               "required": [
                 "vertex",
                 "triangle",
-                "skin_record"
+                "skin_record",
+                "lump",
+                "sculpt_node",
+                "sculpt_point",
+                "sculpt_triangle"
               ],
               "additionalProperties": true
             },
@@ -6461,6 +6501,10 @@
                 "syntax": {
                   "const": "<name>(<argument>, ...) { <statements> }",
                   "description": "How a shaping block is written."
+                },
+                "without_parameters": {
+                  "const": "<name> { <statements> }",
+                  "description": "How a block that has no parameter is written: without parentheses."
                 },
                 "keyword": {
                   "const": "contextual_call_followed_by_a_block",
@@ -6576,6 +6620,41 @@
                       "range": "finite_amount_positive_frequency",
                       "meaning": "moves_vertices_along_their_summed_normals_by_amount_times_noise",
                       "begin_op": "displace.begin"
+                    },
+                    {
+                      "name": "sculpt",
+                      "parameters": [
+                        {
+                          "name": "cell",
+                          "types": [
+                            "i32",
+                            "f32"
+                          ]
+                        },
+                        {
+                          "name": "blend",
+                          "types": [
+                            "i32",
+                            "f32"
+                          ]
+                        },
+                        {
+                          "name": "skin",
+                          "types": [
+                            "skin"
+                          ]
+                        }
+                      ],
+                      "range": "positive_cell_blend_not_negative_repeating_skin",
+                      "meaning": "joins_its_lumps_into_one_surface_meshed_on_a_grid_of_cell",
+                      "begin_op": "sculpt.begin"
+                    },
+                    {
+                      "name": "carve",
+                      "parameters": [],
+                      "range": "none",
+                      "meaning": "cuts_its_lumps_out_of_what_the_sculpt_block_holds",
+                      "begin_op": "carve.begin"
                     }
                   ],
                   "items": {
@@ -6682,6 +6761,7 @@
               },
               "required": [
                 "syntax",
+                "without_parameters",
                 "keyword",
                 "positional_only",
                 "blocks",
@@ -6696,6 +6776,174 @@
                 "maximum_open_scopes",
                 "scope_cleanup",
                 "effects"
+              ],
+              "additionalProperties": true
+            },
+            "sculpt": {
+              "type": "object",
+              "description": "Sculpting (M6): a block that joins lumps into one surface, meshed on a grid and skinned from three sides.",
+              "properties": {
+                "block": {
+                  "const": "sculpt",
+                  "description": "The block that joins lumps into one surface."
+                },
+                "carve": {
+                  "const": "carve",
+                  "description": "The block, written without parentheses, whose lumps are cut out."
+                },
+                "lumps": {
+                  "type": "array",
+                  "description": "The builtins that add a lump: valid only in a sculpt block.",
+                  "items": {
+                    "enum": [
+                      "ball",
+                      "capsule",
+                      "slab"
+                    ]
+                  },
+                  "minItems": 3,
+                  "maxItems": 3
+                },
+                "contents": {
+                  "const": "lumps_carve_place_and_control_flow",
+                  "description": "What builds anything in a sculpt block."
+                },
+                "other_geometry": {
+                  "const": "compile_error_or_trap_through_a_helper",
+                  "description": "A primitive, a part or a shaping block in a sculpt block."
+                },
+                "lump_outside": {
+                  "const": "compile_error_in_render_or_trap_through_a_helper",
+                  "description": "A lump or a carve outside a sculpt block."
+                },
+                "nesting": {
+                  "const": "no_sculpt_in_sculpt_and_no_carve_in_carve",
+                  "description": "What cannot hold itself."
+                },
+                "anchor": {
+                  "const": "center",
+                  "description": "A lump is placed by its centre, not by the middle of its base."
+                },
+                "order": {
+                  "const": "lumps_apply_in_program_order",
+                  "description": "Lumps join and cut in the order they are written."
+                },
+                "join": {
+                  "const": "smooth_minimum_of_radius_blend",
+                  "description": "How a lump joins what the block holds."
+                },
+                "cut": {
+                  "const": "smooth_maximum_with_the_negated_lump",
+                  "description": "How a carved lump is cut out."
+                },
+                "zero_blend": {
+                  "const": "exact_minimum_and_maximum",
+                  "description": "A blend of zero joins and cuts sharply."
+                },
+                "inside": {
+                  "const": "field_below_zero",
+                  "description": "Zero is outside."
+                },
+                "capsule": {
+                  "const": "two_balls_and_the_cone_that_touches_both",
+                  "description": "The shape of a capsule of two radii."
+                },
+                "slab": {
+                  "const": "box_with_edges_rounded_by_round",
+                  "description": "The shape of a slab."
+                },
+                "grid": {
+                  "const": "nodes_at_multiples_of_cell_in_the_block_s_frame",
+                  "description": "Where the field is sampled."
+                },
+                "margin": {
+                  "const": "one_blend_and_one_cell_beyond_the_joined_lumps",
+                  "description": "How far the grid reaches."
+                },
+                "mesh": {
+                  "const": "surface_nets_one_vertex_per_crossed_cell_at_the_mean_of_its_edge_crossings",
+                  "description": "How the surface is built."
+                },
+                "diagonal": {
+                  "const": "from_the_cell_of_lowest_index",
+                  "description": "How a quad of the net is split."
+                },
+                "closed": {
+                  "const": true,
+                  "description": "Every edge of the surface is walked as often one way as the other."
+                },
+                "normals": {
+                  "const": "field_gradient_by_central_differences_a_quarter_cell_wide",
+                  "description": "Where a vertex takes its normal from."
+                },
+                "mapping": {
+                  "const": "three_planar_projections_by_the_axis_the_triangle_faces_most_x_before_y_before_z",
+                  "description": "How the skin is laid on."
+                },
+                "projection_frames": {
+                  "const": "those_of_the_faces_of_a_box",
+                  "description": "Right and up of the image on each side."
+                },
+                "seams": {
+                  "const": "one_vertex_per_projection",
+                  "description": "A point on the border of two sides is a vertex in each."
+                },
+                "skin": {
+                  "const": "repeating_only_fit_and_region_trap",
+                  "description": "The mapping a sculpt's skin may have."
+                },
+                "placement": {
+                  "const": "moves_turns_mirrors_and_scales_equally_an_unequal_scale_traps",
+                  "description": "What a place does to a lump."
+                },
+                "empty": {
+                  "const": "builds_nothing",
+                  "description": "A block without a joined lump."
+                },
+                "level_of_detail": {
+                  "const": "the_cell_may_depend_on_model_lod",
+                  "description": "The cell is an ordinary argument."
+                },
+                "maximum_lumps": {
+                  "const": 64,
+                  "description": "Lumps of one block."
+                },
+                "maximum_cells_per_axis": {
+                  "const": 128,
+                  "description": "Cells of the grid on an axis."
+                }
+              },
+              "required": [
+                "block",
+                "carve",
+                "lumps",
+                "contents",
+                "other_geometry",
+                "lump_outside",
+                "nesting",
+                "anchor",
+                "order",
+                "join",
+                "cut",
+                "zero_blend",
+                "inside",
+                "capsule",
+                "slab",
+                "grid",
+                "margin",
+                "mesh",
+                "diagonal",
+                "closed",
+                "normals",
+                "mapping",
+                "projection_frames",
+                "seams",
+                "skin",
+                "placement",
+                "empty",
+                "level_of_detail",
+                "maximum_lumps",
+                "maximum_cells_per_axis"
               ],
               "additionalProperties": true
             }
@@ -6729,6 +6977,7 @@
             "clips",
             "model_parts",
             "shaping_blocks",
+            "sculpt",
             "optimizer",
             "types",
             "type_keywords",

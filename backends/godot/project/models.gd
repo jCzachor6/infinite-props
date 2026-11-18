@@ -35,6 +35,8 @@ const CORPUS := [
 	{"name": "parts", "source": "examples/language/model-parts.ips", "seeds": [1], "inputs": [{}]},
 	# A collider turned by a yaw and a roll: the box's axes are the basis's columns.
 	{"name": "boulder", "source": "examples/models/boulder.ips", "seeds": [1, 6], "inputs": [{}, {"rough": "0.9"}]},
+	# Sculpt blocks (M6): lumps joined and carved on a grid.
+	{"name": "sculpt", "source": "examples/language/model-sculpt.ips", "seeds": [1], "inputs": [{}]},
 ]
 
 var failures := 0

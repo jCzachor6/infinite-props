@@ -143,6 +143,11 @@ const std::vector<Case>& cases() {
         // corpus pins level 0, the levels are compared in [scale].
         {"examples/models/hydrant.ips", 1, {}},
         {"examples/models/hydrant.ips", 4, {{"paint", "#2f6f4a"}}},
+        // Sculpt blocks (M6): lumps joined and carved on a grid and skinned
+        // from three sides.
+        {"examples/language/model-sculpt.ips", 1, {}},
+        {"examples/models/sandbags.ips", 1, {}},
+        {"examples/models/sandbags.ips", 3, {{"dye", "#6f7a52"}}},
     };
     return list;
 }

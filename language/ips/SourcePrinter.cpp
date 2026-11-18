@@ -429,13 +429,18 @@ class SourcePrinter {
                 out_ << "clip("; expression(*node.mask); out_ << ')';
                 block(node.body, level);
             } else if constexpr (std::is_same_v<T, PlaceStmt>) {
-                out_ << node.block << '(';
-                for (std::size_t i = 0; i < node.args.size(); ++i) {
-                    if (i) out_ << ", ";
-                    if (node.args[i].name) out_ << *node.args[i].name << " = ";
-                    expression(*node.args[i].value);
+                out_ << node.block;
+                // A block with no parameter (`carve`) has no parentheses.
+                const ShapeBlock* shape = findShapeBlock(node.block);
+                if (!(shape && shape->count == 0 && node.args.empty())) {
+                    out_ << '(';
+                    for (std::size_t i = 0; i < node.args.size(); ++i) {
+                        if (i) out_ << ", ";
+                        if (node.args[i].name) out_ << *node.args[i].name << " = ";
+                        expression(*node.args[i].value);
+                    }
+                    out_ << ')';
                 }
-                out_ << ')';
                 block(node.body, level);
             } else {
                 static_assert(std::is_same_v<T, VarDecl>, "a new statement node must be printed");

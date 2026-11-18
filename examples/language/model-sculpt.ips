@@ -1,0 +1,36 @@
+// A sculpt block joins lumps into one smooth surface: balls, capsules and
+// slabs written in it grow together within `blend` units, carve cuts its
+// lumps out again, and the skin is laid on from three sides.
+import grid from "skins/grid.ips"
+
+asset lumps {
+  size 90x40x50
+
+  render {
+    tile = grid.draw(1)
+    // A boulder of three balls with a hollow on top.
+    place(at = {-24, 0, 0}) {
+      sculpt(1.5, 4.0, tile) {
+        ball({0, 10, 0}, 10.0)
+        ball({9, 7, 3}, {8.0, 6.0, 7.0})
+        ball({-7, 5, -4}, 6.0)
+        carve {
+          ball({1, 22, 2}, 6.0)
+        }
+      }
+    }
+    // A stump: a trunk that tapers, four roots placed around it and a flat
+    // top. A finer cell keeps the thin ends of the roots.
+    place(at = {22, 0, 0}) {
+      sculpt(1.0, 3.0, tile) {
+        capsule({0, 4, 0}, {0, 24, 0}, 6.0, 4.0)
+        for i in 0..4 {
+          place(yaw = 90.0 * float(i) + 20.0) {
+            capsule({4, 4, 0}, {16, 1.5, 0}, 3.0, 1.5)
+          }
+        }
+        slab({0, 27, 0}, {11, 3, 11}, 1.5)
+      }
+    }
+  }
+}

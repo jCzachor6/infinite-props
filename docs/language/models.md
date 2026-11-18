@@ -30,7 +30,9 @@ up and `+Z` toward the viewer; a model stands on `y = 0`. Wrap parts in
 `place(at = {x, y, z}, yaw = degrees) { ... }` to move, turn, scale or mirror
 them together, and in shaping blocks such as `smooth(40.0) { ... }`,
 `bend(90.0) { ... }` or `displace(1.5, 0.1, seed) { ... }` to change their
-shape. A point is a `vec3`, written `{x, y, z}`. A skin brings its asset's
+shape. Round, grown shapes come from `sculpt(cell, blend, skin) { ... }`,
+which melts `ball`, `capsule` and `slab` lumps into one surface. A point is a
+`vec3`, written `{x, y, z}`. A skin brings its asset's
 normal and material maps; modifiers such as `skin.fit`, `skin.blend` (glass)
 and `skin.region` (one window of a shared sheet) return changed copies, and
 `alias.name` reads a constant the skin's asset declares. `output point3d` and
@@ -540,6 +542,84 @@ corners to move. Give the noise its own [named seed](random.md#named-seeds).
 
 <!-- example: ../../examples/language/traps/model-bend.ips -->
 
+## Sculpting
+
+A primitive has flat or turned faces. A boulder, a cushion, a root or a
+melted candle has neither. `sculpt` builds such a shape from **lumps** that
+grow into one another:
+
+```ips
+sculpt(1.5, 4.0, moss) {
+  ball({0, 10, 0}, 10.0)
+  capsule({0, 10, 0}, {14, 18, 0}, 4.0, 2.0)
+  carve {
+    ball({0, 21, 2}, 6.0)
+  }
+}
+```
+
+A lump is a `ball`, a `capsule` or a `slab`. It is written only in a sculpt
+block, takes no skin, and `at` is its **centre**, not the middle of its base.
+When the block closes it joins its lumps into one closed surface:
+
+- `blend` is how far lumps reach for each other. Two lumps nearer than
+  `blend` units grow together in a smooth neck; `0.0` leaves the sharp
+  crease of two solids pushed into each other.
+- Lumps in `carve { ... }` are cut out of what the block holds so far, with
+  the same softness. Order matters: write a carve after the lumps it cuts.
+  `carve` has no parentheses and cannot hold another carve.
+- `cell` is the size of the detail. The block looks at its lumps on a grid of
+  `cell` units and builds a vertex in every cell the surface crosses, so half
+  the cell is four times the triangles, and a lump thinner than a cell or two
+  is rounded away. A tenth to a twentieth of the shape's size is a good
+  start. The grid lies on whole multiples of `cell` in the block's own space,
+  so a lump that moves a little changes the shape a little.
+
+The skin is laid on from three sides, as onto the faces of a box: every
+triangle shows it from the side it faces most, at the skin's density, so a
+pattern never stretches. Use a skin that repeats and has no direction, such
+as stone, moss, bark or cloth. `skin.fit` and `skin.region` trap here: a
+sculpt has no faces to fit.
+
+Only lumps, `carve`, `place` and control flow build anything in the block. A
+`place` moves, turns and mirrors lumps and scales them by one number; a scale
+that differs by axis traps, so stretch a ball with three radii instead. A
+primitive, a part or a shaping block written in a sculpt block is a compile
+error. Wrap the sculpt block in them instead: `smooth`, `displace` and the
+others change a sculpt like any other geometry. A helper may hold lumps and
+be called in the block; called anywhere else, it traps.
+
+A block takes at most 64 lumps, and its grid at most 128 cells a side. It
+pays for every node of the grid once for each lump, so many lumps on a fine
+grid are slow: [levels of detail](#levels-of-detail) can widen the cell far
+away, as in `sculpt(1.0 * float(1 << model.lod()), 3.0, moss) { ... }`, and
+leave out lumps thinner than the cell, as the
+[sandbags](../../examples/models/sandbags.ips) drop their knots.
+
+<!-- example: ../../examples/language/model-sculpt.ips -->
+<!-- example: ../../examples/language/errors/model-sculpt.ips -->
+<!-- example: ../../examples/language/traps/model-sculpt.ips -->
+
+### ball
+<!-- builtin: ball -->
+
+A ball of `radius` around `at`. With `radii = {x, y, z}` in its place, a ball
+stretched by axis: an egg, a pebble, a cushion. Every radius is positive.
+
+### capsule
+<!-- builtin: capsule -->
+
+A rod with round ends from `a` to `b`: a limb, a root, a finger, a handle.
+With `r0` and `r1` it tapers from `r0` at `a` to `r1` at `b` like a carrot:
+two balls and the cone that touches both. Both radii are positive.
+
+### slab
+<!-- builtin: slab -->
+
+A box of `size` centred on `at`, its edges rounded by `round`: a brick, a
+seat, a stepping stone. `round` runs from 0 to half the smallest side; a
+slab still joins its neighbours within `blend`.
+
 ## Outputs
 
 `output point3d name` and `output box3d name` hand the game what it needs
@@ -676,9 +756,11 @@ are swept along a straight, cornered or curved path and whose bars may be
 twisted, a [boulder](../../examples/models/boulder.ips) refined, tapered and
 displaced twice, a [table](../../examples/models/table.ips) on four
 [turned legs](../../examples/models/parts/turned-leg.ips) that are parts of
-their own, and a [bench](../../examples/models/bench.ips) whose skins
+their own, a [bench](../../examples/models/bench.ips) whose skins
 [repeat without a seam](textures.md): planks, dressed stone, worn enamel and
-cloth in [skins/textures](../../examples/models/skins/textures/planks.ips). Their skins are in
+cloth in [skins/textures](../../examples/models/skins/textures/planks.ips),
+and a [wall of sandbags](../../examples/models/sandbags.ips), every bag
+[sculpted](#sculpting) from a slab, two bellies and a tied neck. Their skins are in
 [examples/models/skins](../../examples/models/skins/oak.ips): oak, woven
 cloth, metal, leather, the blade, and for the lantern wrought iron with
 roughness and metallic maps, glass, wax and a flame with an emission map,
@@ -700,6 +782,8 @@ and for the boulder a stone with lichen.
 | segments of a `tube` | 256 |
 | outputs, parts' included | 256 |
 | parts | 256 |
+| lumps of a `sculpt` block | 64 |
+| cells along a side of a `sculpt` grid | 128 |
 
 A model program pays one fuel unit for each instruction. A primitive adds 6
 for each vertex and 2 for each triangle it adds, an `extrude` and a `sweep`
@@ -709,7 +793,10 @@ block 24 and a skin call 64. A newly generated texture spends the remaining mode
 adds 24, and at its end 3 for every vertex and 1 for every triangle it hands
 on, plus what its work costs: 8 a vertex for `smooth`, 3 for `bend`,
 `twist` and `taper`, 18 a vertex and 4 a triangle for `displace`, and 5 for
-every vertex and 2 for every triangle `refine` adds. Writing an output costs
+every vertex and 2 for every triangle `refine` adds. A `sculpt` block pays 1
+for every node of its grid and every lump, then for its vertices and
+triangles as a primitive does, and 6 more for every point of its surface and
+every lump to shade it. Writing an output costs
 8 for a point and 16 for a box. A box costs
 about 170 units. The default model budget is 150,000,000. A
 generation that passes a limit, runs out of fuel or meets a wrong argument

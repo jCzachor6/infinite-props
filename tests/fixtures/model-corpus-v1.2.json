@@ -2341,6 +2341,50 @@
       "surface 1 indices sha256:2cf1386730139edd8a5c7daf189b60178f3d0f43d3a14795fea212b166342966",
       "output 0 top point3d single values 1 sha256:7120a8b3d20067e4b14562e768530104167399c043fe5ecb248901133785f58c",
       "output 1 collider box3d single values 1 sha256:508dfe1bbd816fbfbe658c47c4fba4f7abf0d21704cae0b111c7f4a0a4d99fbf"
+    ]},
+    {"case": "examples/language/model-sculpt.ips seed 1", "pins": [
+      "program sha256:07c735ffd0c3e1d3029fe326c0ddd2271cb4fa0eeb3544e1d6e128f4738eb4c5",
+      "vertices 4631 triangles 6948 fuel 846938/150000000 work 945705/100000000",
+      "size 1119092736,1109393408,1112014848 units 1120403456 bounds 3256062809,3220516501,3246569647 1108958295,1105727033,1099085999",
+      "texture 0 grid e39bfc89411ff132 16x16 of 16x16 repeats sha256:e2d7ed961cb03336968ebedb6ac1c27474eec6f2ade0de78639a4c1d298e1a75",
+      "surface 0 texture 0 roughness 1061997773 metallic 0 emission 0 alpha 0 cutoff 1056964608 one-sided filtered vertices 4631 indices 20844",
+      "surface 0 positions sha256:efbdf9849042f52e9fb9398f173740a97f6dec77ba2f35cc7e38cc05cc706e23",
+      "surface 0 normals sha256:965b4a71d924b229c1d4e1a76c1c2c251fa6c0939905975fe45ebed7f5e12829",
+      "surface 0 tangents sha256:2facaa18ba68ea1dea9372df5a5e8bd81aaa60af8d6ab7e252cc83f6af38773e",
+      "surface 0 uvs sha256:9920a99819c9851d057a6d37e966c6b1182e849bbcc07eed0fb15a3cff9b7e29",
+      "surface 0 indices sha256:8d33b5fd32beef6bfeb39f3bc7d4936d5d4ed85dbd5f8b46c87243f5c7347cdc"
+    ]},
+    {"case": "examples/models/sandbags.ips seed 1", "pins": [
+      "program sha256:5399a49933d2862730b86085dd12ed6f3c78ece13c950953db98568488209dd7",
+      "vertices 8553 triangles 13568 fuel 6692464/150000000 work 18633079/100000000",
+      "size 1132593152,1116471296,1114636288 units 1120403456 bounds 3266065103,3223448381,3248753315 1119680707,1111563533,1100735796",
+      "texture 0 sack 92ef301508a15859 256x256 of 256x256 repeats sha256:fede7e79a883e495bb029e55f505c9127c024ae71792f3a5179875b9e4373a33",
+      "texture 0 image 0 kind 1 relief sha256:e5ffae831430356489eac9968627ad9fc6c22771a2efec8254f58e9cdcd081a6",
+      "texture 0 image 1 kind 2 finish sha256:7a0309e35ddfa22832a47dd558f2ed7818ab52e06a0c9c65e1f0c35e12af9f86",
+      "surface 0 texture 0 roughness 1065353216 metallic 0 emission 0 alpha 0 cutoff 1056964608 one-sided filtered vertices 8553 indices 40704",
+      "surface 0 positions sha256:69cfedf19fab2d77f0cd989f3ef373f9043f9943c88985eef0a61d8a5984e6ed",
+      "surface 0 normals sha256:ad9c3037efe30399e67e0bed6b5ad8bf47766c8a59915b5722f06c6c8a8f4f29",
+      "surface 0 tangents sha256:e9d7caeaf3f287d1704525809670e5ea1340c3e97008719a7fcd090062c987bb",
+      "surface 0 uvs sha256:e45be25258990a604db4fd8d21e7217d9905be12524aba07c0509dccf7102a3f",
+      "surface 0 indices sha256:ba1c2446314517594481a2cfba75f84ea8536a0d986eb8782d44c449b605e8fa",
+      "output 0 collider box3d single values 1 sha256:184993b4fc4a204c2312fa6f9540a48d83a9a2f716e69d795ba7731fa9e94188",
+      "output 1 top point3d single values 1 sha256:64be104e650e4e0d33d3ce10c366f9b3dd0939e7288c7451872dc83d11ec0c77"
+    ]},
+    {"case": "examples/models/sandbags.ips seed 3 dye=#6f7a52", "pins": [
+      "program sha256:5399a49933d2862730b86085dd12ed6f3c78ece13c950953db98568488209dd7",
+      "vertices 8015 triangles 12540 fuel 6410273/150000000 work 18316992/100000000",
+      "size 1132593152,1116471296,1114636288 units 1120403456 bounds 3265731656,3222652065,3246885909 1119410993,1110004881,1100782427",
+      "texture 0 sack e8b75473bafa16eb 256x256 of 256x256 repeats sha256:8f7f565fe1e7dc80fd433d6094b8aea8680fb9c17b696877c6ffafb488c99f9b",
+      "texture 0 image 0 kind 1 relief sha256:e5ffae831430356489eac9968627ad9fc6c22771a2efec8254f58e9cdcd081a6",
+      "texture 0 image 1 kind 2 finish sha256:7a0309e35ddfa22832a47dd558f2ed7818ab52e06a0c9c65e1f0c35e12af9f86",
+      "surface 0 texture 0 roughness 1065353216 metallic 0 emission 0 alpha 0 cutoff 1056964608 one-sided filtered vertices 8015 indices 37620",
+      "surface 0 positions sha256:986b0452f44d0882a309b6f17ff32e473e6091a3a5e1e99c900fe01c49a67cf4",
+      "surface 0 normals sha256:9e726c38f0e49c295fee480a5267d6913f0c72fdcc6670eb8c5fcdbc560a390a",
+      "surface 0 tangents sha256:f9dd30d9d4102e81d76903170b4d055fbf2896f72d3805b9a1295dd33643f3bf",
+      "surface 0 uvs sha256:1cecc26a4a57c71937fdaadc01b165ec8d5ec808231ecd3157ca2d83a72847bc",
+      "surface 0 indices sha256:e2d30fa31f88857f3e91885070126e224646ea0499ad0cdcd3f2068ce8708622",
+      "output 0 collider box3d single values 1 sha256:90b6dfc5d0bb1ebd9eb6ec948fbc614d604ecd46b209cf09b5610f02a42b0dc4",
+      "output 1 top point3d single values 1 sha256:b41fe33a6dd506e379414661239c5e6ae1d831b698862810576947141d8ece04"
     ]}
   ]
 }

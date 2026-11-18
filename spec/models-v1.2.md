@@ -1,6 +1,6 @@
 # Models: the `.iprop3d` format and the extended VM (1.2 preview)
 
-**Status:** Preview contract of milestones M1–M3, not frozen. Sub-operation
+**Status:** Preview contract of milestones M1–M6, not frozen. Sub-operation
 numbers, section layouts and source spellings may change until the model
 contract is frozen; a file written by a preview toolchain need not load in a
 later one. Nothing here changes a `.iprop` file, the
@@ -23,6 +23,7 @@ states the rules an implementation must follow bit for bit.
 - [Primitives](#primitives)
 - [Shapes along a path](#shapes-along-a-path)
 - [Shaping blocks](#shaping-blocks)
+- [Sculpting](#sculpting)
 - [Outputs](#outputs)
 - [Parts](#parts)
 - [Ownership](#ownership)
@@ -231,6 +232,8 @@ unreachable code too.
 | 0x24 | `twist.begin` | 0 | `[f32] -> []`, opens a block |
 | 0x25 | `taper.begin` | 0 | `[f32] -> []`, opens a block |
 | 0x26 | `displace.begin` | 0 | `[f32 f32 i32] -> []`, opens a block |
+| 0x27 | `sculpt.begin` | 0 | `[f32 f32 skin] -> []`, opens a block |
+| 0x28 | `carve.begin` | 0 | `[] -> []`, opens a scope |
 | 0x40 | `box` | 0 | `[vec3 vec3 skin] -> []` |
 | 0x41 | `box.bevel` | 0 | `[vec3 vec3 f32 skin] -> []` |
 | 0x42 | `cylinder` | 0 | `[vec3 f32 f32 i32 skin] -> []` |
@@ -264,6 +267,11 @@ unreachable code too.
 | 0x94 | `out.list.box3d` | slot | `[vec3 vec3] -> []` |
 | 0x95 | `part.get.point3d` | slot | `[] -> [vec3]` |
 | 0xA0 | `part.render` | part | `[inputs… i32] -> []`, runs the part |
+| 0xB0 | `lump.ball` | 0 | `[vec3 f32] -> []` |
+| 0xB1 | `lump.ball3` | 0 | `[vec3 vec3] -> []` |
+| 0xB2 | `lump.capsule` | 0 | `[vec3 vec3 f32] -> []` |
+| 0xB3 | `lump.capsule2` | 0 | `[vec3 vec3 f32 f32] -> []` |
+| 0xB4 | `lump.slab` | 0 | `[vec3 vec3 f32] -> []` |
 
 `skin` in a stack signature is an `i32`. An operand written 0 must be zero.
 An aux value outside this table fails validation, in unreachable code too.
@@ -272,9 +280,9 @@ whose kind and list flag match the operation (`out.point3d` a singular
 `point3d`, `part.get.point3d` a singular `point3d`), else validation fails.
 `part.render P` names an entry of the [parts section](#the-parts-section)
 and takes the parameters of its entry, then the seed. Ranges reserved for
-later milestones: `0x27–0x3F` scopes, `0x4C–0x4F` and `0x52–0x6F`
+later milestones: `0x29–0x3F` scopes, `0x4C–0x4F` and `0x52–0x6F`
 primitives, `0x7C–0x8F` skins, `0x90` and `0x96–0x9F` queries and outputs,
-`0xA1–0xAF` parts, `0xB0–0xBF` sculpting.
+`0xA1–0xAF` parts, `0xB5–0xBF` sculpting.
 
 ### The `vec3` operations
 
@@ -381,7 +389,8 @@ the tangent sign.
 ## Blocks and buffers
 
 A **block** is a scope with a buffer of its own: the
-[shaping blocks](#shaping-blocks) and the [call of a part](#parts). Its
+[shaping blocks](#shaping-blocks), the [sculpt block](#sculpting) and the
+[call of a part](#parts). Its
 frame is where it opens: the block's scope is the identity map, not flipped,
 and scopes opened inside it compose from there. Every scope therefore maps
 into the frame of the innermost open block, or of the model when none is
@@ -1058,6 +1067,223 @@ noise3 = b0*(1-w) + b1*w
 `(1,1,0) (-1,1,0) (1,-1,0) (-1,-1,0) (1,0,1) (-1,0,1) (1,0,-1) (-1,0,-1)
 (0,1,1) (0,-1,1) (0,1,-1) (0,-1,-1) (1,1,0) (0,-1,1) (-1,1,0) (0,-1,-1)`.
 
+## Sculpting
+
+A **sculpt block** joins **lumps** into one closed surface. `sculpt.begin`
+pops a skin record, then `blend`, then `cell`, and checks in this order:
+`cell` is finite and positive (`NumericRange`, `sculpt cell must be finite
+and positive`), `blend` is finite and not negative (`NumericRange`, `sculpt
+blend must be finite and not negative`), the record maps by repeat
+(`RuntimeViolation`, `sculpt takes a skin that repeats, not skin.fit or
+skin.region`), the innermost open block is no sculpt block (below), and the
+nesting limit of [place](#placement-scopes). It reserves 24 fuel units and
+opens a [block](#blocks-and-buffers).
+
+While the innermost open block is a sculpt block, a primitive, `tube`,
+`sweep`, the opening of a shaping block or of a sculpt block and
+`part.render` trap with `RuntimeViolation` (`a sculpt block takes lumps:
+ball, capsule and slab`), after their own argument checks and before they
+reserve anything. `place.begin`, outputs and everything that builds no
+geometry work as in any block.
+
+`carve.begin` opens a **carve scope**: a scope with the map of the scope it
+opens in and no buffer. It traps with `RuntimeViolation` when the innermost
+open block is no sculpt block (`carve belongs in a sculpt block`) and when a
+carve scope is already open in that block (`carve cannot be nested`), then
+checks the nesting limit. It costs its instruction alone.
+
+### Lumps
+
+A lump instruction pops its arguments and checks them (`NumericRange`):
+
+| Instruction | Arguments | Check |
+| --- | --- | --- |
+| `lump.ball` | `at`, `radius` | finite, `radius > 0` (`ball needs a finite centre and a positive radius`) |
+| `lump.ball3` | `at`, `radii` | finite, every radius `> 0` (`ball needs a finite centre and positive radii`) |
+| `lump.capsule` | `a`, `b`, `radius` | finite, `radius > 0` (`capsule needs finite ends and positive radii`); `r0 = r1 = radius` |
+| `lump.capsule2` | `a`, `b`, `r0`, `r1` | finite, both `> 0` (the same message) |
+| `lump.slab` | `at`, `size`, `round` | finite, every size component `> 0` (`slab needs a finite centre and a positive size`); `round` finite, not negative and, in binary32, `round * 2 <= min(size.x, size.y, size.z)` (`slab round must be from 0 to half its smallest side`) |
+
+Then, with `RuntimeViolation`: the innermost open block is a sculpt block
+(`ball belongs in a sculpt block`, with the lump's source name `ball`,
+`capsule` or `slab`); the block holds fewer than 64 lumps (`sculpt exceeds 64
+lumps`); and the current scope's map is a rotation, a mirror and one scale.
+With `c0`, `c1`, `c2` the columns of its matrix `A`, `l_i = sqrt((c_i.x*c_i.x
++ c_i.y*c_i.y) + c_i.z*c_i.z)`, `k = l_0` and `e = k * 1e-9`, it traps (`a
+lump takes an equal scale on every axis`) unless `k > 0`, `|l_1 - k| <= e`,
+`|l_2 - k| <= e` and each of `|dot(c0, c1)|`, `|dot(c0, c2)|`, `|dot(c1,
+c2)|` is at most `e * k`.
+
+The block keeps the lump in its own frame, charged 160 bytes: its centre
+`point(at)`, or its ends `point(a)` and `point(b)`; its axes `x_i = c_i /
+l_i`, each component divided separately; its radii, half sizes and `round`
+multiplied by `k`, a half size being `size * 0.5`. A lump written while a
+carve scope is open is **carved**. Lumps keep the order they were written
+in.
+
+### The field
+
+`dot(a, b)` is `(a.x*b.x + a.y*b.y) + a.z*b.z`, `len(v)` is `sqrt(dot(v,
+v))`, `min(x, y)` is `y` when `y < x` and else `x`, and `max(x, y)` is `y`
+when `x < y` and else `x`. The **distance** `d` of a lump at a point `p`,
+negative inside:
+
+```
+ball      q = (dot(x_0, p - at), dot(x_1, p - at), dot(x_2, p - at))
+          three equal radii r:  d = len(q) - r
+          else  u = (q.x/r.x, q.y/r.y, q.z/r.z)     v = (u.x/r.x, u.y/r.y, u.z/r.z)
+                k0 = len(u)     k1 = len(v)
+                k1 == 0:  d = -min(r.x, min(r.y, r.z))
+                else      d = max(k0 * (k0 - 1) / k1, len(q) - max(r.x, max(r.y, r.z)))
+
+capsule   pa = p - a     ba = b - a     L = len(ba)
+          not L > |r0 - r1|:  d = len(pa) - r0 if r0 >= r1, else len(p - b) - r1
+          else  t = dot(pa, ba) / L           rho = sqrt(max(dot(pa, pa) - t*t, 0))
+                s = (r0 - r1) / L             c = sqrt(1 - s*s)
+                k = t*c - rho*s
+                k <= 0:      d = len(pa) - r0
+                k >= L*c:    d = len(p - b) - r1
+                else         d = (t*s + rho*c) - r0
+
+slab      w = p - at     q_i = |dot(x_i, w)| - (h_i - round)        // h: half sizes
+          o = (max(q_0, 0), max(q_1, 0), max(q_2, 0))
+          d = (len(o) + min(max(q_0, max(q_1, q_2)), 0)) - round
+```
+
+A capsule is two balls and the cone that touches both, a slab a box whose
+edges are rounded by `round`. The **field** `F(p)` of a block starts at
+positive infinity and takes its lumps in order:
+
+```
+join(x, y) = m                          when blend is 0
+           = m - h*h / (4 * blend)      otherwise
+             with m = min(x, y) and h = max(blend - |x - y|, 0)
+
+a lump:          F = join(F, d)
+a carved lump:   F = -join(-F, d)
+```
+
+A point is **inside** when `F(p) < 0`; zero is outside.
+
+### The grid
+
+When the block closes, the lumps that are not carved bound its grid; with
+none of them the block builds nothing and pays nothing more. The reach `R`
+of a lump is its largest radius for a ball, `max(r0, r1)` for a capsule and
+`len(h)` for a slab. Over those lumps and their centres, or both ends of a
+capsule, `low` is the smallest `centre - R` and `high` the largest `centre
++ R` on each axis. On each axis
+
+```
+first = floor((low - blend) / cell) - 1        last = ceil((high + blend) / cell) + 1
+```
+
+Both must be finite and at most `1e9` in size (`NumericRange`, `sculpt lumps
+are out of range for their cell`), and `last - first` at most 128
+(`RuntimeViolation`, `sculpt grid exceeds 128 cells on an axis`). The grid
+has `N = last - first + 1` nodes on the axis; node `(i, j, k)` is the point
+`((first.x + i) * cell, (first.y + j) * cell, (first.z + k) * cell)`, the
+integer sum converted to binary64 before the product. A join lowers the
+field by less than `blend`, so every node on the outside of the grid is
+outside and the surface is closed.
+
+The block pays one fuel unit and one work step for every node and every
+lump it holds, carved ones too, and is charged 8 bytes a node; then it
+samples `F` at every node.
+
+### The net
+
+Cell `(i, j, k)` has the eight nodes `(i + a, j + b, k + c)` with `a`, `b`,
+`c` in 0 and 1. A cell with nodes on both sides gets a **point**. Its twelve
+edges are taken in this order, each from its first node to its second:
+
+```
+along x:  (0,0,0)-(1,0,0)  (0,1,0)-(1,1,0)  (0,0,1)-(1,0,1)  (0,1,1)-(1,1,1)
+along y:  (0,0,0)-(0,1,0)  (1,0,0)-(1,1,0)  (0,0,1)-(0,1,1)  (1,0,1)-(1,1,1)
+along z:  (0,0,0)-(0,0,1)  (1,0,0)-(1,0,1)  (0,1,0)-(0,1,1)  (1,1,0)-(1,1,1)
+```
+
+An edge whose ends lie on different sides, with the field `A` at its first
+node and `B` at its second, crosses at `x = from + (to - from) * t` with `t
+= A / (A - B)`, on each axis, `from` and `to` being the 0 or 1 of its nodes.
+With `sum` the crossings added in edge order, starting from zero, and `n`
+their number, the point is `((first + (i, j, k)) + sum / n) * cell` on each
+axis. Points are numbered in rising `k`, then `j`, then `i`.
+
+A grid edge that has four cells around it and ends on different sides makes
+two triangles. The edges are taken along x, then along y, then along z, each
+group in rising `k`, then `j`, then `i` of the edge's lower node `(i, j, k)`.
+The ring of the four cells is
+
+```
+along x:  (i, j-1, k-1)  (i, j, k-1)  (i, j, k)  (i, j-1, k)
+along y:  (i-1, j, k-1)  (i-1, j, k)  (i, j, k)  (i, j, k-1)
+along z:  (i-1, j-1, k)  (i, j-1, k)  (i, j, k)  (i-1, j, k)
+```
+
+with its second and fourth cell exchanged when the lower node is outside.
+Starting from its cell of the lowest index, the index of cell `(i, j, k)`
+being `(k * (N.y - 1) + j) * (N.x - 1) + i`, the ring names the points `p0`,
+`p1`, `p2`, `p3` and the triangles are `(p0, p1, p2)` and `(p0, p2, p3)`:
+counterclockwise seen from outside. Every edge of the net is walked as often
+one way as the other; a surface thinner than a cell may meet itself along an
+edge.
+
+Finding the net costs one work step a node. The points alone, and the
+triangles, must fit the limits of the model (`model exceeds 65536 vertices`,
+`model exceeds 131072 triangles`); then the block is charged 4 bytes a node,
+104 a point and 13 a triangle.
+
+### Skin and vertices
+
+A triangle is mapped from the side it faces most. With `n = cross(p1 - p0,
+p2 - p0)`, its axis is x when `|n.x| >= |n.y|` and `|n.x| >= |n.z|`, else y
+when `|n.y| >= |n.z|`, else z, and its side the positive one unless that
+component of `n` is negative. A side has the image frame of that
+[box face](#box):
+
+| Side | right `r` | up `u` |
+| --- | --- | --- |
+| +X | `(0, 0, -1)` | `(0, 1, 0)` |
+| -X | `(0, 0, 1)` | `(0, 1, 0)` |
+| +Y | `(1, 0, 0)` | `(0, 0, -1)` |
+| -Y | `(1, 0, 0)` | `(0, 0, 1)` |
+| +Z | `(1, 0, 0)` | `(0, 1, 0)` |
+| -Z | `(-1, 0, 0)` | `(0, 1, 0)` |
+
+Triangles are taken in order and their corners in order; a point becomes a
+vertex the first time a triangle of a side uses it, so a point on the border
+of two sides is a vertex in each. The vertices together must fit the limit
+of the model. The block then pays, as a primitive, 6 fuel units a vertex and
+2 a triangle, one work step for each and 48 and 16 bytes, and 6 fuel units
+and 6 work steps for every point and every lump it holds.
+
+The normal of a point `p`, shared by its vertices, is the gradient of the
+field by central differences, with `h = cell * 0.25`:
+
+```
+g = (F(p + (h,0,0)) - F(p - (h,0,0)),  F(p + (0,h,0)) - F(p - (0,h,0)),  F(p + (0,0,h)) - F(p - (0,0,h)))
+```
+
+divided by its length. When that length is zero or not finite, the normal is
+the sum of `cross(p1 - p0, p2 - p0)` over the triangles at the point, in
+order and corner by corner, divided by its length; and when that fails too,
+`(0, 1, 0)`. A vertex of side `(r, u)` has
+
+```
+tangent = r - n * dot(n, r), divided by its length; when that is zero or not finite,
+          cross(u, n) divided by its length; and when that fails too, r
+w = +1
+s = dot(p, r)        t = -dot(p, u)
+uv = (f32((s * density + shift.x) / aw), f32((t * density + shift.y) / ah))
+```
+
+with the density, the shift and the declared size of the block's skin
+record, which every vertex and triangle carries. Positions stay in binary64
+in the block's buffer. The memory charged by the node, the point and the
+triangle while the block worked is given back, and the block closes as
+[blocks](#blocks-and-buffers) do, from the third step.
+
 ## Outputs
 
 `out.point3d` and `out.list.point3d` pop a point and reserve 8 fuel units;
@@ -1147,6 +1373,8 @@ asset's. A part's entry that returns values fails with `InvalidSignature`.
 | parts of a file | 256 |
 | points of a sweep path | 256 |
 | segments of a tube | 256 |
+| lumps of a sculpt block | 64 |
+| cells of a sculpt grid on an axis | 128 |
 
 A primitive that would pass a vertex or triangle limit traps with
 `RuntimeViolation` (`model exceeds 65536 vertices`, `model exceeds 131072
@@ -1159,8 +1387,9 @@ extrude also `ceil(n*n/3)` for an outline of `n` points, `ceil(n*n/2)` with a
 bevel, because the checks and the triangulation of an outline grow with the
 square of its points; a sweep `ceil(n*n/3)` for its profile. `place.begin`
 reserves 24 more and `skin.draw` 64 more, also when it reuses a texture.
-Shaping blocks and parts pay as their sections state. A texture's own generation spends the
-embedded program's budget, not the model's. These prices put a vertex, a
+Shaping blocks, sculpt blocks and parts pay as their sections state. A
+texture's generation runs with the fuel the model has left, and what it
+spends is taken from the model. These prices put a vertex, a
 triangle and a placement at about the CPU time per unit of a plain
 instruction; the `vec3` operations and the skin modifiers cost one unit each.
 
@@ -1171,8 +1400,9 @@ to the model. Deadlines and cancellation stop either.
 
 **Memory.** A vertex is charged 48 bytes, a triangle 16 and a skin record 64
 to the 64 MiB generation arena, when a primitive or `refine` makes it;
-passing it out of a block charges nothing. Textures are bounded by their own
-limits.
+passing it out of a block charges nothing. A lump is charged 160 bytes, and
+a [sculpt block](#sculpting) what it works in until it has built its
+surface. Textures are bounded by their own limits.
 
 A failed generation publishes nothing.
 
@@ -1295,6 +1525,15 @@ Source 1.2 adds the following, only in an asset that has `render`:
   `twist(a) { … }`, `taper(k) { … }` and
   `displace(amount, frequency, seed) { … }`, positional arguments only; they
   share the limit of 32 open scopes with `place`.
+- The sculpt block `sculpt(cell, blend, skin) { … }`, positional arguments
+  only; `carve { … }`, without parentheses (`carve() { … }` is a compile
+  error); and the lumps `ball(at, radius)`, `ball(at, radii)`,
+  `capsule(a, b, radius)`, `capsule(a, b, r0, r1)` and
+  `slab(at, size, round)`. Lexically inside a sculpt block, a primitive,
+  `tube`, `sweep`, a part call, a shaping block or another sculpt block is a
+  compile error, as is a `carve` inside a `carve`. In `render` itself a lump
+  or a `carve` outside a sculpt block is a compile error; in a helper it is
+  left to the machine, which traps unless the helper runs in a sculpt block.
 - `output point3d NAME`, `output box3d NAME` and their `list` forms; a
   `point3d` is assigned a `vec3`, a `box3d` the literal `{at, size}` of two
   `vec3`. Assigning a `box3d` lexically inside `bend`, `twist` or `taper` is a

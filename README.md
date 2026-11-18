@@ -183,6 +183,15 @@ that repeats. The levels share their textures, which are generated once:
     <img src="examples/models/hydrant-sheet.png" alt="Four red fire hydrants on cobbled paving, each drawn three times: whole, with fewer sides and no bolts, and as a six-sided post without outlets, from about 1400 triangles down to 132." width="1024">
 </p>
 
+Round shapes that grow into one another come from lumps: a `sculpt` block
+joins balls, capsules and slabs into one smooth surface and lays the skin on
+from three sides. Six walls of sandbags, every bag a block of its own with
+its sand settled differently:
+
+<p align="center">
+    <img src="examples/models/sandbags-sheet.png" alt="Six low walls of tan sandbags stacked like bricks in two or three rows, three or four bags long; every bag sags differently and ends in a tied neck, and the weave of the cloth shows." width="1020">
+</p>
+
 Models run in the browser and in Godot today. They are a preview: the language and the
 `.iprop3d` format may still change. Start with the
 [models chapter](docs/language/models.md).

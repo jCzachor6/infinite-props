@@ -359,6 +359,7 @@ add_executable(iprop_model_tests
     model/blocks_test.cpp
     model/parts_test.cpp
     model/scale_test.cpp
+    model/sculpt_test.cpp
     model/corpus_test.cpp)
 target_link_libraries(iprop_model_tests PRIVATE iprop_compiler ipgen_lib ipsheet_lib ipval_lib ipdis_lib
     iprop_model_tools Catch2::Catch2WithMain)

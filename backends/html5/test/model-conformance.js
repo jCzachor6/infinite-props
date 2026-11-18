@@ -30,6 +30,9 @@ const corpus = [
     { name: "bench", source: "examples/models/bench.ips", seeds: [1, 2], uniforms: [{}, { paint: "#7a3b2e" }] },
     // Levels of detail on a skin of a tiled Voronoi diagram (M5).
     { name: "hydrant", source: "examples/models/hydrant.ips", seeds: [1, 4], uniforms: [{}, { paint: "#2f6f4a" }] },
+    // Sculpt blocks (M6): lumps joined and carved on a grid.
+    { name: "model-sculpt", source: "examples/language/model-sculpt.ips", seeds: [1], uniforms: [{}] },
+    { name: "sandbags", source: "examples/models/sandbags.ips", seeds: [1, 3], uniforms: [{}, { dye: "#6f7a52" }] },
     { name: "chair", source: "examples/models/chair.ips", seeds: [0, 1, 2, 3, 4, 5, 9, 13],
       uniforms: [{}, { finish: 5, fabric: 2 }] },
     { name: "empty", source: "backends/capi3d/test/empty.ips", seeds: [0, 9], uniforms: [{}] },

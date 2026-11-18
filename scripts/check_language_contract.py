@@ -358,7 +358,7 @@ def main():
             'tube', 'sweep',
             'vec3.len', 'vec3.dot', 'vec3.cross', 'vec3.normalize', 'skin.density', 'skin.fit', 'skin.shift',
             'skin.roughness', 'skin.metallic', 'skin.emission', 'skin.cutout', 'skin.two_sided', 'skin.crisp',
-            'skin.blend', 'skin.region', 'model.lod'}
+            'skin.blend', 'skin.region', 'model.lod', 'ball', 'capsule', 'slab'}
         assert [b['name'] for b in models['extended_builtins']] == ['lerp', 'list.len']
         assert {'rect', 'pixel', 'poly', 'surface.paint', 'mask.from', 'noise.mask', 'part.draw', 'voronoi'} <= \
             set(models['unavailable_builtins']) < flat
@@ -391,6 +391,9 @@ def main():
                 named = builtin['name'] + '(' + ','.join(p['name'] + '=' + values[p['type']]
                                                          for p in reversed(overload['parameters'])) + ')'
                 for form in (call, named):
+                    # A lump is written in a sculpt block.
+                    if builtin['name'] in models['sculpt']['lumps']:
+                        form = 'sculpt(1.0,1.0,s){' + form + '}'
                     model(f"{builtin['name']} overload {number}", 'render{s=tile.draw(1);' +
                           (form if overload['result'] == 'void' else 'x=' + form) + '}', True)
         for name in models['unavailable_builtins']:
@@ -402,6 +405,33 @@ def main():
         for type_name in ('vec3', 'skin'):
             flat_asset(type_name + ' is no type of a draw asset', 'draw{} f(p:' + type_name + '){}', False)
             flat_asset(type_name + ' stays an ordinary name in a draw asset', 'draw{' + type_name + '=1}', True)
+        # Sculpting (M6): what a sculpt block takes, and where lumps and carve belong.
+        sculpt = models['sculpt']
+        assert sculpt['lumps'] == ['ball', 'capsule', 'slab'] and sculpt['block'] == 'sculpt' and sculpt['carve'] == 'carve'
+        assert models['limits']['lumps'] == sculpt['maximum_lumps'] == 64
+        assert models['limits']['sculpt_cells'] == sculpt['maximum_cells_per_axis'] == 128
+        model('a sculpt block with lumps, a carve and a place',
+              'render{s=tile.draw(1);sculpt(1.0,2.0,s){ball({0,4,0},3.0);place(at={2,0,0}){capsule({0,4,0},{4,6,0},1.0)};'
+              'carve{slab({0,6,0},{2,2,2},0.5)}}}', True)
+        model('an empty sculpt block', 'render{s=tile.draw(1);sculpt(1.0,2.0,s){}}', True)
+        model('sculpt takes its three arguments in order', 'render{s=tile.draw(1);sculpt(1.0,s){}}', False)
+        model('sculpt takes a skin', 'render{sculpt(1.0,2.0,3){}}', False)
+        model('carve has no parentheses', 'render{s=tile.draw(1);sculpt(1.0,2.0,s){carve(){}}}', False)
+        for lump in ('ball({0,0,0},1.0)', 'capsule({0,0,0},{1,0,0},1.0)', 'slab({0,0,0},{1,1,1},0.0)'):
+            report = model('a lump outside a sculpt block: ' + lump, 'render{' + lump + '}', False)
+            assert 'sculpt block' in report['diagnostics'][0]['message'], report
+            model('a lump in a helper: ' + lump, 'render{s=tile.draw(1);sculpt(1.0,2.0,s){lump()}} lump(){' + lump + '}', True)
+        report = model('carve outside a sculpt block', 'render{carve{}}', False)
+        assert 'sculpt block' in report['diagnostics'][0]['message'], report
+        model('carve in carve', 'render{s=tile.draw(1);sculpt(1.0,2.0,s){carve{carve{}}}}', False)
+        for inside in ('box({0,0,0},{1,1,1},s)', 'tri({0,0,0},{1,0,0},{0,1,0},s)', 'smooth(30.0){}', 'sculpt(1.0,2.0,s){}'):
+            report = model('no other geometry in a sculpt block: ' + inside,
+                           'render{s=tile.draw(1);sculpt(1.0,2.0,s){' + inside + '}}', False)
+            assert 'sculpt block' in report['diagnostics'][0]['message'], report
+        model('a sculpt block in a shaping block', 'render{s=tile.draw(1);smooth(40.0){sculpt(1.0,2.0,s){ball({0,0,0},2.0)}}}', True)
+        flat_asset('sculpt, carve and the lumps stay helper names in a draw asset',
+                   'draw{sculpt(1);carve(1);ball(1);capsule(1);slab(1)} sculpt(n:i32){} carve(n:i32){} ball(n:i32){} '
+                   'capsule(n:i32){} slab(n:i32){}', True)
         flat_asset('render and place stay helper names in a draw asset',
                    'draw{render(1);place(2)} render(n:i32){pixel(n,n,#fff)} place(n:i32){pixel(n,n,#fff)}', True)
         flat_asset('three numbers are a circle in a draw asset', 'output circle c draw{c={1,2,3}}', True)
@@ -420,10 +450,13 @@ def main():
         flat_asset('lists of vec3 belong to render assets', 'draw{} f(ps:list<vec3>){}', False)
         # Shaping blocks, 3D outputs and parts (M3).
         for block in models['shaping_blocks']['blocks']:
-            arguments = ','.join('seed.initial()' if 'seed' in p['types'] else '2' if p['types'] == ['i32'] else '1.5'
-                                 for p in block['parameters'])
-            model(block['name'] + ' block', 'render{' + block['name'] + '(' + arguments + '){}}', True)
-            flat_asset(block['name'] + ' needs a render asset', 'draw{' + block['name'] + '(' + arguments + '){}}', False)
+            arguments = ','.join('seed.initial()' if 'seed' in p['types'] else 'tile.draw(1)' if p['types'] == ['skin']
+                                 else '2' if p['types'] == ['i32'] else '1.5' for p in block['parameters'])
+            # A block without parameters has no parentheses, and carve belongs in a sculpt block.
+            written = block['name'] + ('(' + arguments + ')' if block['parameters'] else '') + '{}'
+            inside = 'sculpt(1.0,1.0,tile.draw(1)){' + written + '}' if block['name'] == models['sculpt']['carve'] else written
+            model(block['name'] + ' block', 'render{' + inside + '}', True)
+            flat_asset(block['name'] + ' needs a render asset', 'draw{' + written + '}', False)
         for kind in models['outputs']['kinds']:
             value = '{1,2,3}' if kind['name'] == 'point3d' else '{{0,0,0},{1,1,1}}'
             model(kind['name'] + ' output', 'render{o=' + value + '}', True, 'output ' + kind['name'] + ' o')

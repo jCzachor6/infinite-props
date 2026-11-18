@@ -307,6 +307,7 @@ MODELS = {'status': 'preview',
                              'summary': 'conservative',
                              'may_trap': ['part_render_arguments', 'callee']}},
  'shaping_blocks': {'syntax': '<name>(<argument>, ...) { <statements> }',
+                    'without_parameters': '<name> { <statements> }',
                     'keyword': 'contextual_call_followed_by_a_block',
                     'positional_only': True,
                     'blocks': [{'name': 'smooth',
@@ -340,7 +341,19 @@ MODELS = {'status': 'preview',
                                                {'name': 'seed', 'types': ['seed', 'i32']}],
                                 'range': 'finite_amount_positive_frequency',
                                 'meaning': 'moves_vertices_along_their_summed_normals_by_amount_times_noise',
-                                'begin_op': 'displace.begin'}],
+                                'begin_op': 'displace.begin'},
+                               {'name': 'sculpt',
+                                'parameters': [{'name': 'cell', 'types': ['i32', 'f32']},
+                                               {'name': 'blend', 'types': ['i32', 'f32']},
+                                               {'name': 'skin', 'types': ['skin']}],
+                                'range': 'positive_cell_blend_not_negative_repeating_skin',
+                                'meaning': 'joins_its_lumps_into_one_surface_meshed_on_a_grid_of_cell',
+                                'begin_op': 'sculpt.begin'},
+                               {'name': 'carve',
+                                'parameters': [],
+                                'range': 'none',
+                                'meaning': 'cuts_its_lumps_out_of_what_the_sculpt_block_holds',
+                                'begin_op': 'carve.begin'}],
                     'frame': 'the_block_s_own_identity_at_opening',
                     'precision': 'binary64_until_the_block_closes',
                     'close': 'processes_then_passes_to_the_enclosing_scope_like_a_primitive',
@@ -519,7 +532,9 @@ MODELS = {'status': 'preview',
             'tube_segments': {'minimum': 1, 'maximum': 256},
             'refine': {'minimum': 1, 'maximum': 16},
             'outputs': 256,
-            'parts': 256},
+            'parts': 256,
+            'lumps': 64,
+            'sculpt_cells': 128},
  'fuel': {'instruction': 1,
           'vertex': 6,
           'triangle': 2,
@@ -539,8 +554,46 @@ MODELS = {'status': 'preview',
           'refine_vertex': 5,
           'refine_triangle': 2,
           'point3d_output': 8,
-          'box3d_output': 16},
- 'arena_bytes': {'vertex': 48, 'triangle': 16, 'skin_record': 64}}
+          'box3d_output': 16,
+          'sculpt_sample_per_lump': 1,
+          'sculpt_normal_samples': 6},
+ 'arena_bytes': {'vertex': 48,
+                 'triangle': 16,
+                 'skin_record': 64,
+                 'lump': 160,
+                 'sculpt_node': 12,
+                 'sculpt_point': 104,
+                 'sculpt_triangle': 13},
+ 'sculpt': {'block': 'sculpt',
+            'carve': 'carve',
+            'lumps': ['ball', 'capsule', 'slab'],
+            'contents': 'lumps_carve_place_and_control_flow',
+            'other_geometry': 'compile_error_or_trap_through_a_helper',
+            'lump_outside': 'compile_error_in_render_or_trap_through_a_helper',
+            'nesting': 'no_sculpt_in_sculpt_and_no_carve_in_carve',
+            'anchor': 'center',
+            'order': 'lumps_apply_in_program_order',
+            'join': 'smooth_minimum_of_radius_blend',
+            'cut': 'smooth_maximum_with_the_negated_lump',
+            'zero_blend': 'exact_minimum_and_maximum',
+            'inside': 'field_below_zero',
+            'capsule': 'two_balls_and_the_cone_that_touches_both',
+            'slab': 'box_with_edges_rounded_by_round',
+            'grid': 'nodes_at_multiples_of_cell_in_the_block_s_frame',
+            'margin': 'one_blend_and_one_cell_beyond_the_joined_lumps',
+            'mesh': 'surface_nets_one_vertex_per_crossed_cell_at_the_mean_of_its_edge_crossings',
+            'diagonal': 'from_the_cell_of_lowest_index',
+            'closed': True,
+            'normals': 'field_gradient_by_central_differences_a_quarter_cell_wide',
+            'mapping': 'three_planar_projections_by_the_axis_the_triangle_faces_most_x_before_y_before_z',
+            'projection_frames': 'those_of_the_faces_of_a_box',
+            'seams': 'one_vertex_per_projection',
+            'skin': 'repeating_only_fit_and_region_trap',
+            'placement': 'moves_turns_mirrors_and_scales_equally_an_unequal_scale_traps',
+            'empty': 'builds_nothing',
+            'level_of_detail': 'the_cell_may_depend_on_model_lod',
+            'maximum_lumps': 64,
+            'maximum_cells_per_axis': 128}}
 
 
 MATERIAL_MAPS = {
@@ -609,17 +662,26 @@ def read_models(value, rules):
     unavailable = strings(models['unavailable_builtins'], 'models.unavailable_builtins', set(flat), True)
     require(not set(unavailable) & set(extended), 'an unavailable builtin is not extended')
     # A primitive ends with its skin and changes the model; a pure vec3
-    # function does neither.
+    # function does neither. A lump (M6) changes the model without a skin:
+    # its sculpt block has one.
+    lumps = strings(models['sculpt']['lumps'], 'models.sculpt.lumps', set(added), True)
     for builtin in models['builtins']:
+        lump = builtin['name'] in lumps
         for overload in builtin['overloads']:
             skins = [p['type'] == 'skin' for p in overload['parameters']]
             require(overload['effects']['rng'] == 'none' and not overload['effects']['writes_outputs'],
                     'model builtin effects: ' + builtin['name'])
-            require(overload['effects']['writes_canvas'] == any(skins), 'model builtin writes: ' + builtin['name'])
+            require(overload['effects']['writes_canvas'] == (any(skins) or lump), 'model builtin writes: ' + builtin['name'])
             require(('unassigned_handle' in overload['effects']['may_trap']) == any(skins),
                     'model builtin skin check: ' + builtin['name'])
-            if overload['result'] == 'void':
+            if lump:
+                require(overload['result'] == 'void' and not any(skins) and
+                        'numeric_range' in overload['effects']['may_trap'], 'a lump has no skin: ' + builtin['name'])
+            elif overload['result'] == 'void':
                 require(skins and skins[-1], 'a primitive ends with its skin: ' + builtin['name'])
+    blocks = {block['name']: block for block in models['shaping_blocks']['blocks']}
+    require(models['sculpt']['block'] in blocks and models['sculpt']['carve'] in blocks and
+            not blocks[models['sculpt']['carve']]['parameters'], 'models.sculpt blocks')
 
 
 def read_language(value):

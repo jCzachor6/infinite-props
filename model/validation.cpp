@@ -90,7 +90,7 @@ public:
             return true;
         }
         case Op::SmoothBegin: case Op::RefineBegin: case Op::BendBegin: case Op::TwistBegin: case Op::TaperBegin:
-        case Op::DisplaceBegin:
+        case Op::DisplaceBegin: case Op::SculptBegin: case Op::CarveBegin:
             for (std::size_t i = spec->inputCount; i > 0; --i) state.expect(spec->inputs[i - 1], spec->mnemonic);
             state.openScope();
             return true;
