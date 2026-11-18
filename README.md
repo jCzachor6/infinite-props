@@ -163,11 +163,13 @@ street lamp, a railing, a boulder and a table, two seeds each:
 
 A skin can repeat without a seam and look painted: captures that wrap at
 their edges, noise that repeats, blend modes, a gradient map and levels, with
-normal and roughness maps from the same drawing. Four such skins, each shown
-one and a half times across, and a bench that wears them:
+normal and roughness maps from the same drawing. The top row repeats four
+skins drawn without these over the same area; the bottom row shows four drawn
+with them, each one and a half times across. Below them, a bench that wears
+the new ones:
 
 <p align="center">
-    <img src="examples/models/textures-sheet.png" alt="Four textures that repeat without a seam: wooden planks with knots and nails, courses of dressed stone, teal enamel chipped down to primer and rust, and blue woven cloth." width="1024">
+    <img src="examples/models/textures-sheet.png" alt="Two rows of four textures. Top: wood grain, speckled stone, brushed iron and a red weave, each from a small tile whose repeats show. Bottom: wooden planks with knots and nails, courses of dressed stone, teal enamel chipped down to primer and rust, and blue woven cloth, repeating without a seam." width="1024">
 </p>
 <p align="center">
     <img src="examples/models/bench-sheet.png" alt="Eight benches from one source: plank seats on stone blocks or on a painted steel frame, with or without a back and a blue cushion, the paint rusted differently on each." width="1024">
