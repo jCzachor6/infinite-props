@@ -1,5 +1,6 @@
 #include "ipa.hpp"
 
+#include "iprop/Texture.hpp"
 #include "iprop/Code.hpp"
 #include "iprop/Compositor.hpp"
 #include "iprop/Constants.hpp"
@@ -628,6 +629,24 @@ std::vector<u8> assemble(const std::string& source) {
         instruction.opcode = def->opcode;
         instruction.operand = def->operand;
         instruction.line = lineNumber;
+        if (instruction.opcode == Opcode::Texture) {
+            // `texture paint 4`, `texture gradient 0`, `texture noise.fbm 0`:
+            // an operation of the page or the mnemonic of a periodic noise.
+            u32 sub = 256;
+            if (words.size() == 3) {
+                for (std::size_t i = 0; i < kTextureOpNames.size(); ++i)
+                    if (words[1] == kTextureOpNames[i]) sub = static_cast<u32>(i);
+                if (sub == 256) {
+                    const auto* base = findOpcode(words[1]);
+                    if (base != nullptr && periodicNoiseOpcode(base->opcode)) sub = static_cast<u32>(base->opcode);
+                }
+            }
+            if (sub == 256)
+                throw error("texture expects paint, paint.mask, gradient, levels or a periodic noise mnemonic, "
+                            "then an immediate operand");
+            instruction.aux = static_cast<u8>(sub);
+            words.erase(words.begin() + 1);
+        }
         if (instruction.opcode == Opcode::PartDraw && words.size() == 3) {
             u32 kind = 0;
             if (!parseU32Text(words[2], kind) || kind > 7) {
@@ -638,8 +657,9 @@ std::vector<u8> assemble(const std::string& source) {
         }
         if (instruction.opcode == Opcode::LayerBegin && words.size() == 3) {
             u32 mode = 0;
-            if (!parseU32Text(words[2], mode) || mode > kDirectionLayerMode)
-                throw error("layer mode must be 0 (inherited), 1 (legacy), 2 (source_over) or 3 (direction)");
+            if (!parseU32Text(words[2], mode) || !validLayerAux(static_cast<u16>(std::min<u32>(mode, 0xFFFF))))
+                throw error("layer mode must be 0 (inherited), 1 (legacy), 2 (source_over) or 3 (direction), "
+                            "plus 64 (not tiled) or 128 (tiled)");
             instruction.aux = static_cast<u8>(mode);
             words.pop_back();
         }

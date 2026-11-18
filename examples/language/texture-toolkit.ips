@@ -1,0 +1,36 @@
+// A tiling skin: painted planks with wear, a normal map and a roughness map.
+// Everything is drawn in tiled captures and from periodic noise, so the
+// right edge meets the left one and the bottom the top.
+asset planks {
+  size 64x64
+  input color paint = #4f7a6b
+  output normal relief
+  output roughness finish
+
+  draw {
+    root = seed.initial()
+
+    // The height: four boards, with a gap that straddles the edge.
+    layer height(tile = true, alpha = surface.source_over) {
+      rect(0, 0, 64, 64, #808080)
+      for i in 0..4 { rect(float(i) * 16.0 - 1.0, 0, 2, 64, #202020) }
+    }
+    soft = height.blur(1.0)                                   // wraps: no seam
+
+    // Colour from the height, then wear where the paint is thin.
+    base = soft.levels(0.1, 0.6, 1.0).gradient([#1b1612, color.shade(paint, -30), paint])
+    worn = noise.mask({0, 0}, {64, 64}, noise.mode_fbm, {0.11, 0.05}, 0.18, root.fork("wear"),
+                      octaves = 3, softness = 0.2, comparison = noise.above, warp_amount = 0.3, tile = true)
+    grain = noise.mask({0, 0}, {64, 64}, noise.mode_ridge, {0.5, 0.04}, 0.8, root.fork("grain"), tile = true)
+    surface.paint(base, blend = surface.source_over)
+    surface.paint(worn, #8a6a48, blend = surface.source_over, opacity = 0.85)   // bare wood
+    surface.paint(grain, #2a1c10, blend = surface.multiply, opacity = 0.35)     // darker grain
+
+    relief = soft.normal(2.0, 0.5)
+    layer rough(alpha = surface.source_over) {
+      rect(0, 0, 64, 64, #909090)
+      surface.paint(worn, #ffffff, blend = surface.screen, opacity = 0.6)       // bare wood is matt
+    }
+    finish = rough
+  }
+}

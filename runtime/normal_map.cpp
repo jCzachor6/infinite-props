@@ -188,6 +188,17 @@ std::shared_ptr<const SurfaceBuffer> heightDirections(Execution& ex, const Surfa
     return result;
 }
 
+// A tiled height wraps: smoothing reads its radius and the differences one
+// pixel more, so the kernel runs on the tile extended by both.
+std::shared_ptr<const SurfaceBuffer> tiledDirections(Execution& ex, const SurfaceBuffer& source, bool mask,
+                                                     f32 depth, f32 smoothing) {
+    if (!source.tile) return heightDirections(ex, source, mask, depth, smoothing);
+    const auto margin = static_cast<u32>(smoothingRadius(smoothing)) + 1u;
+    const auto wide = extendTiled(ex, source, margin);
+    const auto directions = heightDirections(ex, *wide, mask, depth, smoothing);
+    return cropTiled(ex, *directions, margin, source.raster.width, source.raster.height);
+}
+
 } // namespace
 
 Canvas deriveNormalImage(const Canvas& image, const DerivedNormalRequest& request, WorkBudget& work) {
@@ -248,13 +259,13 @@ bool stepNormalMap(Execution& ex, Instruction ins) {
         // Smoothing and depth are in the receiver's raster: its scale need
         // not match the active target, as for blur.
         const auto mask = ex.popMask(false);
-        ex.push(LayerValue{heightDirections(ex, *mask.buffer, true, depth, smoothing), mask.mapping});
+        ex.push(LayerValue{tiledDirections(ex, *mask.buffer, true, depth, smoothing), mask.mapping});
     } else {
         const auto image = ex.popLayer();
         validateSurfaceView(ex, *image.buffer, image.mapping, false);
         if (image.buffer->encoding == SurfaceBuffer::Encoding::Direction)
             ex.trap("normal needs a height layer, not a direction layer", ErrorReason::RuntimeViolation);
-        ex.push(LayerValue{heightDirections(ex, *image.buffer, false, depth, smoothing), image.mapping});
+        ex.push(LayerValue{tiledDirections(ex, *image.buffer, false, depth, smoothing), image.mapping});
     }
     ++ex.frame().ip;
     return true;

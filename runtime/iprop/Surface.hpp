@@ -22,6 +22,11 @@ struct SurfaceBuffer {
     Canvas raster;
     // A8 uses the same geometry, with one coverage byte instead of RGBA.
     std::vector<u8> coverage;
+    // The raster is one period of an image that repeats in both directions
+    // (texture toolkit v1.2): a capture with tiling, and what blur, normal,
+    // gradient, levels and the mask operations make of one. Operations that
+    // read the neighbours of a pixel wrap at its edges.
+    bool tile = false;
 };
 struct SurfaceMapping {
     D4Transform transform;
@@ -39,6 +44,7 @@ struct RenderTarget {
     std::shared_ptr<SurfaceBuffer> buffer;
     CompositionMode mode = CompositionMode::Legacy;
     std::vector<MaskValue> clips;
+    bool tile = false;
     Canvas& canvas() { return buffer->raster; }
     const Canvas& canvas() const { return buffer->raster; }
     LayerValue view(SurfaceMapping mapping = {}) const { return {buffer, mapping}; }

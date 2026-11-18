@@ -1,0 +1,73 @@
+// Planks for a model: boards that run up the image, with gaps, end joints,
+// nails, grooves and knots. The image repeats in both directions without a
+// seam, and so do its normal and roughness maps. `tint` is the wood.
+asset planks {
+  size 256x256
+  input color tint = #9a6b3f
+  output normal relief
+  output roughness finish
+
+  draw {
+    root = seed.initial()
+    boards = 4
+    bw = 256.0 / float(boards)
+
+    // The height: boards at slightly different levels, grooves along the
+    // grain, dark gaps and end joints, nail heads and knots.
+    layer height(tile = true, alpha = surface.source_over) {
+      for i in 0..boards {
+        b = root.fork("board").fork(i)
+        rect(float(i) * bw, 0, bw, 256, color.shade(#a0a0a0, int(roll(b.fork("level"), -16.0, 16.0))))
+      }
+      for k in 0..170 {
+        g = root.fork("groove").fork(k)
+        x = roll(g.fork("x"), 0.0, 256.0)
+        y = roll(g.fork("y"), 0.0, 256.0)
+        line(x, y, x + roll(g.fork("lean"), -2.0, 2.0), y + roll(g.fork("length"), 30.0, 130.0), 1, #00000034)
+      }
+      for i in 0..boards {
+        b = root.fork("board").fork(i)
+        left = float(i) * bw
+        joint = roll(b.fork("joint"), 0.0, 256.0)
+        rect(left - 1.5, 0, 3, 256, #2c2c2c)                    // the gap; the first one straddles the edge
+        rect(left, joint - 1.0, bw, 2, #343434)                 // an end joint
+        oval(left + bw * 0.25, joint + 8.0, 1.8, 1.8, #585858)  // two nails below it
+        oval(left + bw * 0.75, joint + 8.0, 1.8, 1.8, #585858)
+        kx = left + roll(b.fork("knot x"), 12.0, bw - 12.0)
+        ky = joint + roll(b.fork("knot y"), 60.0, 200.0)
+        oval(kx, ky, 5.0, 8.0, #00000050)
+        oval(kx, ky, 2.5, 4.0, #00000060)
+      }
+    }
+    soft = height.blur(0.9)
+
+    // The colour: a tone for every board, long waves and dark streaks of
+    // grain, the knots, and the height as shade in every hollow.
+    layer colour(tile = true, alpha = surface.source_over) {
+      for i in 0..boards {
+        b = root.fork("board").fork(i)
+        left = float(i) * bw
+        rect(left, 0, bw, 256, color.shade(tint, int(roll(b.fork("tone"), -18.0, 18.0))))
+        kx = left + roll(b.fork("knot x"), 12.0, bw - 12.0)
+        ky = roll(b.fork("joint"), 0.0, 256.0) + roll(b.fork("knot y"), 60.0, 200.0)
+        oval(kx, ky, 7.0, 11.0, color.set_a(color.shade(tint, -40), 150))
+        oval(kx, ky, 4.0, 6.5, color.shade(tint, -75))
+      }
+    }
+    waves = noise.mask({0, 0}, {256, 256}, noise.mode_fbm, {0.06, 0.008}, 0.0, root.fork("waves"),
+                       3, 0.7, noise.above, 0.25, tile = true)
+    streaks = noise.mask({0, 0}, {256, 256}, noise.mode_ridge, {0.24, 0.012}, 0.6, root.fork("streaks"),
+                         3, 0.3, noise.above, 0.12, tile = true)
+    surface.paint(colour.blur(0.6), blend = surface.source_over)
+    surface.paint(waves, color.shade(tint, 45), blend = surface.overlay, opacity = 0.55)
+    surface.paint(streaks, color.shade(tint, -70), blend = surface.multiply, opacity = 0.5)
+    surface.paint(soft.levels(0.14, 0.62, 1.0), blend = surface.multiply, opacity = 0.92)
+
+    relief = soft.normal(3.0, 0.0)
+    layer rough(tile = true, alpha = surface.source_over) {
+      rect(0, 0, 256, 256, #c2c2c2)
+      surface.paint(streaks, #ffffff, blend = surface.screen, opacity = 0.35)
+    }
+    finish = rough
+  }
+}

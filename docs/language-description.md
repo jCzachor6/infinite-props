@@ -27,7 +27,7 @@ The binary format is unversioned, so operations carry no minimum format version.
 | `c_abi_soversion` | Optional additive alias since schema 1: the runtime C library's SOVERSION string from `cmake/CAbi.cmake`, equal to `abi_version` as `major.minor`. Producers emit it; readers validate consistency when present. |
 
 The current values are product `1.1.0`, source language `1.1.0`,
-C header API `0.7` and ABI line/SOVERSION `0.5`. These values are
+C header API `0.8` and ABI line/SOVERSION `0.5`. These values are
 independent: signed source inputs do not introduce a new binary input type.
 The C versions describe the bundled contract without loading the C library;
 query a loaded library with `iprop_library_query` for its actual capabilities.
@@ -40,12 +40,24 @@ schema 4. See [0.8 migration](language/migration-v0.8.md).
 
 ## Migrating schema 7 to 8
 
-Require schema 8 and read the required `source_rules.models`. Everything
-that schema 7 published is unchanged: the top-level `builtins`, the type
-lists of `source_rules.types` and every other rule set describe an asset
-with `draw`, as before. The builtins and types that only an asset with
-`render` has are listed inside `models` and nowhere else, so a reader that
-handles draw assets alone needs the new version number and nothing more.
+Require schema 8 and read the required `source_rules.models`. The builtins
+and types that only an asset with `render` has are listed inside `models`
+and nowhere else, so a reader that handles draw assets alone needs the new
+version number and the two additions below.
+
+Schema 8 also carries the [texture toolkit](language/textures.md) of draw
+assets. In the top-level `builtins`, `surface.paint` gains overloads with a
+last parameter `opacity`, the scalar noises overloads with a last parameter
+`period`, and `noise.mask` overloads with `tile`. Such an overload names the
+opcode `texture` and a `texture_op`: the aux byte of that opcode, an
+operation of the page or the byte of the noise opcode it extends. Every
+overload that schema 7 published is unchanged. `source_rules.texture_toolkit`
+holds the blend constants with their source values, the two layer methods
+`gradient` and `levels` with their receiver-first signatures, the `tile`
+capture option and what it inherits, the operations that wrap on a tiled
+layer, the fuel rate of each texture operation and the fuel budget of a
+model, which a model's skin calls report as
+`remaining_model_generation_fuel`.
 
 Inside `models`, signatures have the shape of the top-level ones with two
 differences: parameter and result types may also be `vec3` and `skin`, and

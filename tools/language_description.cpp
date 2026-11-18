@@ -1,3 +1,4 @@
+#include "iprop/Texture.hpp"
 #include "iprop/math/Distribution.hpp"
 #include "language_description.hpp"
 #include "json.hpp"
@@ -91,7 +92,7 @@ Json receiverMethod(const std::string& name, const ips::BuiltinOverload& signatu
     return Json::object({{"name", name}, {"receiver", ips::typeName(signature.params[0].type)},
         {"parameters", std::move(parameters)}, {"result", ips::typeName(signature.result)},
         {"opcode", opcode->mnemonic},
-        {"effects", operationEffects(opcode->effects)}});
+        {"effects", operationEffects(signature.textureOp ? ips::builtinEffects(ips::surfaceMethodSpecs().at(name), &signature) : opcode->effects)}});
 }
 
 Json descriptionMethods(const ips::BuiltinSpec& spec) {
@@ -102,11 +103,17 @@ Json descriptionMethods(const ips::BuiltinSpec& spec) {
 
 // The receiver-first registry holds every layer/mask method; each published
 // rule set lists its own.
-Json surfaceMethods(std::string_view wanted) {
+Json surfaceMethods(std::string_view wanted, std::string_view second = {}) {
     Json methods = Json::array();
     for (const auto& [name, spec] : ips::surfaceMethodSpecs()) for (const auto& signature : spec.overloads) {
-        if (name != wanted) continue;
+        if (name != wanted && name != second) continue;
         auto method = receiverMethod(name, signature);
+        if (signature.textureOp) {
+            method["texture_op"] = *signature.textureOp;
+            Json order = Json::array();
+            for (std::size_t i = 1; i < signature.params.size(); ++i) order.push_back(signature.params[i].name);
+            method["evaluation_order"] = std::move(order);
+        }
         method["constant_evaluable"] = false;
         methods.push_back(std::move(method));
     }
@@ -415,7 +422,7 @@ Json sourceRules() {
     rules["samplers"] = samplers();
     rules["steppers"] = steppers();
     Json alphaModes = Json::array();
-    for (const auto& spec : kCompositionSpecs) alphaModes.push_back("surface." + std::string(spec.name));
+    for (const auto& spec : kCompositionSpecs) if (validLayerMode(static_cast<u8>(spec.mode))) alphaModes.push_back("surface." + std::string(spec.name));
     rules["surfaces"] = Json::object({
         {"methods", surfaceMethods("blur")},
         {"blur", Json::object({{"sigma_type", "f32"}, {"minimum_sigma", 0}, {"maximum_sigma", static_cast<u32>(kMaxBlurSigma)},
@@ -429,7 +436,7 @@ Json sourceRules() {
             {"scratch_bytes", "8_times_W_min_H_K_channels"}, {"scratch_channels", Json::object({{"layer", 4}, {"mask", 1}})},
             {"scratch_release", "success_and_error"}, {"preflight", "fuel_and_shared_arena_before_filter"}})},
         {"types", Json::array({ips::typeName(ips::ValueType::Layer), ips::typeName(ips::ValueType::Mask)})},
-        {"capture_syntax", "layer <name> [(alpha=surface.<mode>)] { <statements> }"},
+        {"capture_syntax", "layer <name> [(<option>[, <option>])] { <statements> }"},
         {"keyword", "reserved"}, {"capture_target", "empty_current_geometry_and_scale"},
         {"result_binding", "after_scope_exit"}, {"automatic_paint", false},
         {"capture_evaluation", "once_in_current_stream"}, {"helper_transfer", "share_immutable_buffer"},
@@ -447,6 +454,21 @@ Json sourceRules() {
         {"capture_bytes", "128_plus_4_per_pixel"}, {"capture_fuel", "two_plus_ceil_70_percent_target_pixels"},
         {"paint_fuel", "ceil_60_percent_one_plus_source_pixels"}, {"unset_handle", "trap"},
         {"host_inputs", false}, {"asset_constants", false}, {"surface_collections", false}});
+    Json blends = Json::object();
+    for (const auto& spec : kCompositionSpecs) blends["surface." + std::string(spec.name)] = spec.sourceConstant;
+    auto filters = surfaceMethods("gradient", "levels");
+    rules["texture_toolkit"] = Json::object({{"constants", std::move(blends)}, {"methods", std::move(filters)},
+        {"layer_option", "tile = <true|false>"}, {"tile_default", "inherits_the_active_capture"},
+        {"tiled_targets", "captures_only"},
+        {"wrapping_operations", Json::array({"blur", "normal", "mask.expand", "mask.shrink", "mask.offset"})},
+        {"period_units", "positive_integer_lattice_cells"},
+        {"fuel_percent", Json::object({
+            {"paint", textureFuelPercent(static_cast<u8>(TextureOp::PaintLayer))},
+            {"gradient", textureFuelPercent(static_cast<u8>(TextureOp::Gradient))},
+            {"levels", textureFuelPercent(static_cast<u8>(TextureOp::Levels))},
+            {"tiled_noise_mask", textureFuelPercent(static_cast<u8>(Opcode::NoiseMask))}})},
+        {"model_fuel_budget", kDefaultModelFuelBudget},
+        {"extension_page", static_cast<u8>(Opcode::Texture)}});
     Json noiseConstants = Json::object();
     for (std::size_t i = 0; i < detail::kNoiseModeNames.size(); ++i)
         noiseConstants["noise." + std::string(detail::kNoiseModeNames[i])] = static_cast<i32>(i);
@@ -642,6 +664,7 @@ Json builtinEntry(const std::string& name, const ips::BuiltinSpec& spec, const i
             if (!opcode) throw std::logic_error("builtin has an unknown opcode");
             entry["opcode"] = opcode->mnemonic;
         }
+        if (overload.textureOp) entry["texture_op"] = *overload.textureOp;
         if (overload.modelOp) {
             // A sub-operation of the model page, never a 2D opcode.
             const auto* operation = model::findOp(*overload.modelOp);
@@ -822,7 +845,7 @@ Json models() {
         {"size", "pixels_truncated_toward_zero_absent_selects_declared"},
         {"maximum_side", model::kMaxTextureSide}, {"placement_arguments", false},
         {"generation", "standard_2d_generation_of_the_embedded_program"},
-        {"fuel", "embedded_program_budget"}, {"reserved_fuel", model::kSkinDrawFuel},
+        {"fuel", "remaining_model_generation_fuel"}, {"reserved_fuel", model::kSkinDrawFuel},
         {"sharing", "same_program_seed_size_and_inputs_generate_once"},
         {"auxiliary_images", "published_with_the_texture"}, {"render_asset_target", false},
         {"draw_op", mnemonic(model::Op::SkinDraw)}, {"effects", operationEffects(call.effects)}});

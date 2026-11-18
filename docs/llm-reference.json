@@ -26,6 +26,7 @@
       "samplers",
       "part",
       "surfaces",
+      "textures",
       "relief",
       "material-maps",
       "procedural",
@@ -301,6 +302,15 @@
       "examples": [
         "part-export.ips",
         "cheetah-spots.ips"
+      ]
+    },
+    {
+      "id": "textures",
+      "title": "Textures that tile",
+      "chapter": "textures.md",
+      "parts": "chapter",
+      "examples": [
+        "texture-toolkit.ips"
       ]
     }
   ],

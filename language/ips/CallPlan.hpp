@@ -32,6 +32,7 @@ CallSignature builtinCallSignature(const BuiltinSpec& spec, std::size_t arity,
 // versus rect(x,y,size)). Select a bindable name layout before type checking.
 CallSignature builtinCallSignature(const BuiltinSpec& spec, const Call& call,
     std::string_view function);
+const BuiltinOverload& paintOverload(const BoundCallPlan& bound, ValueType source);
 CallSignature surfacePaintCallSignature(const Call& call, ValueType imageType);
 CallSignature helperCallSignature(std::span<const std::string> names);
 CallSignature rampCallSignature();

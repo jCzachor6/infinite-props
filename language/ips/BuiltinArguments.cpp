@@ -14,7 +14,7 @@ std::vector<const Arg*> bindArguments(const Call& call, std::span<const std::str
     return bindArguments(call, parameters, function);
 }
 
-std::vector<const Arg*> bindArguments(const Call& call,
+static std::vector<const Arg*> bindSlots(std::span<const Arg> args, const SourceLocation& location,
     std::span<const ArgumentParameter> parameters, std::string_view function) {
     std::vector<std::string> names;
     std::vector<std::size_t> positionalSlots;
@@ -29,7 +29,7 @@ std::vector<const Arg*> bindArguments(const Call& call,
         throw SourceError{at, std::move(message), {}, DiagnosticCode::TypeError,
                           DiagnosticStage::Typing};
     };
-    for (const auto& arg : call.args) {
+    for (const auto& arg : args) {
         std::size_t index = 0;
         if (arg.name) {
             const auto found = std::find(names.begin(), names.end(), *arg.name);
@@ -49,9 +49,22 @@ std::vector<const Arg*> bindArguments(const Call& call,
     }
     for (std::size_t i = 0; i < parameters.size(); ++i) {
         if (!result[i] && parameters[i].required)
-            fail(call.location, prefix + "is missing argument '" + names[i] + "'");
+            fail(location, prefix + "is missing argument '" + names[i] + "'");
     }
     return result;
+}
+
+std::vector<const Arg*> bindArguments(const Call& call, std::span<const ArgumentParameter> parameters,
+                                      std::string_view function) {
+    return bindSlots(call.args, call.location, parameters, function);
+}
+
+std::vector<const Arg*> textureArguments(const TextureMethod& method) {
+    const auto& overload = surfaceMethodSpecs().at(method.name).overloads.front();
+    std::vector<ArgumentParameter> parameters;
+    for (std::size_t i = 1; i < overload.params.size(); ++i)
+        parameters.push_back({overload.params[i].name});
+    return bindSlots(method.args, method.location, parameters, "." + method.name);
 }
 
 std::vector<std::string> builtinParameterNames(const BuiltinSpec& spec, std::size_t arity,

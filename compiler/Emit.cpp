@@ -165,8 +165,9 @@ void Emitter::emitStmt(const ips::Stmt& stmt) {
         }
         ins(Opcode::End);
     } else if (const auto* capture = std::get_if<ips::LayerStmt>(&stmt)) {
-        ins(Opcode::LayerBegin, capture->directions ? kDirectionLayerMode : static_cast<u8>(capture->alpha),
-            static_cast<u16>(current_->slots.at(capture->name)));
+        const u8 mode = capture->directions ? kDirectionLayerMode : static_cast<u8>(capture->alpha);
+        const u8 tiling = !capture->tile ? u8{0} : *capture->tile ? kLayerTileOn : kLayerTileOff;
+        ins(Opcode::LayerBegin, static_cast<u8>(mode | tiling), static_cast<u16>(current_->slots.at(capture->name)));
         for (const auto& child : capture->body) emitStmt(child);
         ins(Opcode::End);
     } else if (const auto* clip = std::get_if<ips::ClipStmt>(&stmt)) {

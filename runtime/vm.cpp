@@ -47,7 +47,7 @@ using Step = bool (*)(Execution&, Instruction);
 // any state for opcodes it does not own.
 constexpr Step kSteps[] = {stepCore, stepStack, stepControl, stepArithmetic, stepVector, stepSdf,
     stepColor, stepCurves, stepSeeded, stepCanvas, stepOutputs, stepParts, stepCollections,
-    stepSamplers, stepSteppers, stepPointDistributions, stepSurfaces, stepMasks, stepBlur,
+    stepSamplers, stepSteppers, stepPointDistributions, stepTexture, stepSurfaces, stepMasks, stepBlur,
     stepResourceExports, stepVoronoi, stepContours, stepRegions, stepDynamicParts, stepNormalMap};
 // The owning group per opcode, found by the first execution and then reused,
 // so every later instruction costs one indexed call. Every thread computes the
@@ -389,6 +389,11 @@ VM::VM(const LoadedFile& file, const GenerationInputs& inputs)
 VM::VM(const LoadedFile& file, const GenerationInputs& inputs, std::span<const UniformValue> rootValues)
     : impl_(std::make_unique<Impl>(file)) {
     setup(file, inputs, &rootValues);
+}
+
+VM::VM(const LoadedFile& file, const GenerationInputs& inputs, std::span<const UniformValue> rootValues,
+       u64 remainingFuel) : VM(file, inputs, rootValues) {
+    impl_->ex.budget = impl_->ex.fuel = remainingFuel;
 }
 
 void VM::setup(const LoadedFile& file, const GenerationInputs& inputs,

@@ -147,7 +147,7 @@
     },
     "surfaceMethod": {
       "name": "support.function.surface.ips",
-      "match": "(?<=\\.)(blur|normal)\\b(?=\\s*\\()"
+      "match": "(?<=\\.)(blur|normal|gradient|levels)\\b(?=\\s*\\()"
     },
     "pointDistribution": {
       "name": "support.function.distribution.ips",
@@ -160,7 +160,7 @@
     },
     "surfaceMode": {
       "name": "constant.language.surface-mode.ips",
-      "match": "\\bsurface\\.(legacy|source_over|normal)\\b"
+      "match": "\\bsurface\\.(legacy|source_over|normal|multiply|screen|overlay|add|subtract)\\b"
     },
     "maskType": {
       "comment": "Reserved mask type and namespace.",

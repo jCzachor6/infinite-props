@@ -1,0 +1,67 @@
+// Painted steel for a model: an enamel coat with brush marks, chips that
+// show primer and rust, rust stains and scuffs. It repeats in both
+// directions. `paint` is the coat and `worn` how much of it is gone.
+asset enamel {
+  size 256x256
+  input color paint = #4d6f72
+  input f32 worn = 0.5                   // 0 a fresh coat, 1 mostly rust
+  output normal relief
+  output roughness finish
+  output metallic metal
+
+  draw {
+    root = seed.initial()
+    coat = noise.mask({0, 0}, {256, 256}, noise.mode_fbm, {0.02, 0.03}, 0.0, root.fork("coat"),
+                      3, 0.9, noise.above, 0.3, tile = true)
+    brush = noise.mask({0, 0}, {256, 256}, noise.mode_ridge, {0.02, 0.4}, 0.55, root.fork("brush"),
+                       2, 0.35, noise.above, 0.05, tile = true)
+    // Where the coat is gone: islands of rust, larger as `worn` grows.
+    rust = noise.mask({0, 0}, {256, 256}, noise.mode_fbm, {0.024, 0.036}, 0.42 - worn * 0.5, root.fork("rust"),
+                      5, 0.03, noise.above, 0.5, tile = true)
+    primer = mask.subtract(mask.expand(rust, 2), rust)        // the lip of every chip
+    stains = noise.mask({0, 0}, {256, 256}, noise.mode_fbm, {0.11, 0.14}, 0.0, root.fork("stains"),
+                        3, 0.5, noise.above, 0.0, tile = true)
+
+    rect(0, 0, 256, 256, paint)
+    surface.paint(coat, color.shade(paint, 34), blend = surface.overlay, opacity = 0.55)
+    surface.paint(brush, color.shade(paint, -30), blend = surface.multiply, opacity = 0.3)
+    // Rust runs down from every chip: the same mask, blurred and lowered.
+    runs = mask.offset(mask.expand(rust, 1), 0, 9).blur(5.0)
+    surface.paint(runs, #7a4a2c, blend = surface.multiply, opacity = 0.55)
+    surface.paint(primer, #c9b89c, blend = surface.source_over, opacity = 0.9)
+    surface.paint(rust, #8c5334, blend = surface.source_over)
+    clip(rust) {
+      surface.paint(stains, #3f2a1c, blend = surface.multiply, opacity = 0.75)
+      surface.paint(mask.invert(stains), #d08a4e, blend = surface.screen, opacity = 0.25)
+    }
+    layer scuffs(tile = true, alpha = surface.source_over) {
+      for i in 0..46 {
+        k = root.fork("scuff").fork(i)
+        x = roll(k.fork("x"), 0.0, 256.0)
+        y = roll(k.fork("y"), 0.0, 256.0)
+        line(x, y, x + roll(k.fork("dx"), 4.0, 30.0), y - roll(k.fork("dy"), -2.0, 4.0), 1, #e6e6d8)
+      }
+    }
+    surface.paint(scuffs, blend = surface.screen, opacity = 0.3)
+
+    // The coat stands a little above the steel; rust is pitted.
+    layer height(tile = true, alpha = surface.source_over) {
+      rect(0, 0, 256, 256, #b0b0b0)
+      surface.paint(brush, #000000, blend = surface.subtract, opacity = 0.05)
+      surface.paint(rust, #6a6a6a, blend = surface.source_over)
+      clip(rust) { surface.paint(stains, #000000, blend = surface.subtract, opacity = 0.18) }
+    }
+    relief = height.blur(0.8).normal(3.0, 0.0)
+    layer rough(tile = true, alpha = surface.source_over) {
+      rect(0, 0, 256, 256, #5a5a5a)                           // a smooth coat
+      surface.paint(runs, #ffffff, blend = surface.screen, opacity = 0.35)
+      surface.paint(rust, #f0f0f0, blend = surface.source_over)
+    }
+    finish = rough
+    layer bare(tile = true, alpha = surface.source_over) {
+      rect(0, 0, 256, 256, #000000)                           // paint and rust are no metal
+      surface.paint(scuffs, blend = surface.screen, opacity = 0.5)
+    }
+    metal = bare
+  }
+}

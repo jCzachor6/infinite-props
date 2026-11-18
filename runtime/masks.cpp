@@ -1,3 +1,4 @@
+#include "iprop/TileCopies.hpp"
 #include "iprop/VmInternals.hpp"
 #include "iprop/Noise.hpp"
 
@@ -95,7 +96,7 @@ std::shared_ptr<SurfaceBuffer> createMask(Execution& ex, const MaskBounds& bound
 }
 
 MaskValue noiseMask(Execution& ex, Vec2 origin, Vec2 size, i32 kind, Vec2 frequency,
-                    f32 threshold, u32 seed, i32 octaves, f32 softness, i32 comparison, f32 warpAmount) {
+                    f32 threshold, u32 seed, i32 octaves, f32 softness, i32 comparison, f32 warpAmount, bool tile) {
     const auto finite = [](Vec2 p) { return std::isfinite(p.x) && std::isfinite(p.y); };
     const Vec2 end{origin.x + size.x, origin.y + size.y};
     if (!finite(origin) || !finite(size) || size.x <= 0 || size.y <= 0 || !finite(end) ||
@@ -137,6 +138,12 @@ MaskValue noiseMask(Execution& ex, Vec2 origin, Vec2 size, i32 kind, Vec2 freque
     // corners per octave, 25 Worley candidates, eight inner warp octaves.
     const u64 samples = mode == NoiseMode::Cell || mode == NoiseMode::CellEdge ? 25u :
         (mode == NoiseMode::Fbm || mode == NoiseMode::Ridge ? 4u * static_cast<u64>(octaves) : 4u);
+    NoisePeriod period{};
+    if (tile) {
+        period = noisePeriod(ex, {std::max(1.f, std::round(size.x * frequency.x)),
+                                  std::max(1.f, std::round(size.y * frequency.y))});
+        frequency = {static_cast<f32>(period.x) / size.x, static_cast<f32>(period.y) / size.y};
+    }
     auto buffer = createMask(ex, bounds, 1u + samples + (warpAmount == 0.f ? 0u : 32u));
     for (u32 y = 0; y < bounds.height; ++y) { ex.work(); for (u32 x = 0; x < bounds.width; ++x) {
         ex.work();
@@ -144,8 +151,9 @@ MaskValue noiseMask(Execution& ex, Vec2 origin, Vec2 size, i32 kind, Vec2 freque
         const f32 localY = (static_cast<f32>(top + y) + 0.5f) / scale.y;
         if (localX < origin.x || localX >= end.x || localY < origin.y || localY >= end.y) continue;
         Vec2 point{localX * frequency.x, localY * frequency.y};
-        if (warpAmount != 0.f) point = warpNoisePoint(ex, point, warpAmount, seed);
-        const f32 value = sampleNoise(ex, mode, point, octaves, seed);
+        if (warpAmount != 0.f) point = tile ? periodicWarp(ex, point, warpAmount, seed, period) :
+            warpNoisePoint(ex, point, warpAmount, seed);
+        const f32 value = tile ? periodicSample(ex, mode, point, octaves, seed, period) : sampleNoise(ex, mode, point, octaves, seed);
         f32 alpha;
         if (softness == 0.f) alpha = (comparison == kNoiseAbove ? value >= threshold : value <= threshold) ? 1.f : 0.f;
         else {
@@ -155,6 +163,9 @@ MaskValue noiseMask(Execution& ex, Vec2 origin, Vec2 size, i32 kind, Vec2 freque
         }
         buffer->coverage[static_cast<std::size_t>(y) * bounds.width + x] = static_cast<u8>(std::floor(alpha * 255.f + 0.5f));
     } }
+    // Periodic noise over exactly the target is one period of a tiled mask.
+    buffer->tile = tile && bounds.x == 0 && bounds.y == 0 &&
+        bounds.width == ex.canvas().width && bounds.height == ex.canvas().height;
     return {std::move(buffer), {{}, {bounds.x, bounds.y}}};
 }
 
@@ -178,6 +189,10 @@ MaskValue algebra(Execution& ex, Opcode op, const MaskValue& a, const MaskValue*
             static_cast<u8>(255u - av);
         buffer->coverage[static_cast<std::size_t>(y) * bounds.width + x] = coverage;
     } }
+    // Tiled when every operand is, over the same period.
+    buffer->tile = a.buffer->tile && (!b || (b->buffer->tile && bounds.x == ab.x && bounds.y == ab.y &&
+        bounds.width == ab.width && bounds.height == ab.height && maskBounds(*b).width == ab.width &&
+        maskBounds(*b).height == ab.height));
     return {std::move(buffer), {{}, {bounds.x, bounds.y}}};
 }
 
@@ -185,7 +200,16 @@ MaskValue morph(Execution& ex, const MaskValue& mask, i32 radius, bool expand) {
     if (radius < 0 || radius > kMaxMaskRadius)
         ex.trap("mask radius must be in 0..64", ErrorReason::NumericRange);
     auto bounds = maskBounds(mask);
-    if (expand) bounds = boundsFromEdges(ex, static_cast<i64>(bounds.x) - radius,
+    // A tiled mask is one period: it keeps its bounds and reads around its
+    // edges, so nothing grows past them and nothing erodes from them.
+    const bool tiled = mask.buffer->tile;
+    const auto source = bounds;
+    const auto coverageAt = [&](i64 x, i64 y) {
+        if (!tiled) return maskCoverage(mask, x, y);
+        return maskCoverage(mask, static_cast<i64>(source.x) + wrapIndex(x - source.x, source.width),
+            static_cast<i64>(source.y) + wrapIndex(y - source.y, source.height));
+    };
+    if (expand && !tiled) bounds = boundsFromEdges(ex, static_cast<i64>(bounds.x) - radius,
         static_cast<i64>(bounds.y) - radius, static_cast<i64>(bounds.x) + bounds.width + radius,
         static_cast<i64>(bounds.y) + bounds.height + radius);
     // The disk needs no temporary heap allocation outside the arena. A
@@ -200,9 +224,10 @@ MaskValue morph(Execution& ex, const MaskValue& mask, i32 radius, bool expand) {
         halfWidths[static_cast<std::size_t>(radius - dy)] = horizontal;
         samples += static_cast<u64>(2 * horizontal + 1) * (dy ? 2u : 1u);
     }
-    const bool vanishes = !expand && (bounds.width <= static_cast<u32>(2 * radius) ||
+    const bool vanishes = !expand && !tiled && (bounds.width <= static_cast<u32>(2 * radius) ||
         bounds.height <= static_cast<u32>(2 * radius));
     auto buffer = createMask(ex, bounds, samples, expand || vanishes || radius > 1 ? 0 : 255);
+    buffer->tile = tiled;
     if (vanishes) return {std::move(buffer), {{}, {bounds.x, bounds.y}}};
     if (radius > 1) {
         // A disk is the union of horizontal intervals. A monotone deque finds
@@ -212,7 +237,7 @@ MaskValue morph(Execution& ex, const MaskValue& mask, i32 radius, bool expand) {
         std::array<Entry, 2 * kMaxMaskRadius + 1> queue{};
         const ResourceReservation scratch(ex.resources, sizeof(queue) + sizeof(halfWidths));
         // Erosion's radius-wide border is zero even before reading the source.
-        const auto border = expand ? 0u : static_cast<u32>(radius);
+        const auto border = expand || tiled ? 0u : static_cast<u32>(radius);
         for (i32 dy = -radius; dy <= radius; ++dy) {
             const auto half = halfWidths[static_cast<std::size_t>(radius + dy)];
             for (u32 y = border; y < bounds.height - border; ++y) {
@@ -221,7 +246,7 @@ MaskValue morph(Execution& ex, const MaskValue& mask, i32 radius, bool expand) {
                 for (i64 x = static_cast<i64>(border) - half; x < static_cast<i64>(bounds.width - border) + half; ++x) {
                     ex.work();
                     while (head != tail && queue[head % queue.size()].position < x - 2 * half) { ex.work(); ++head; }
-                    const auto value = maskCoverage(mask, static_cast<i64>(bounds.x) + x,
+                    const auto value = coverageAt(static_cast<i64>(bounds.x) + x,
                         static_cast<i64>(bounds.y) + y + dy);
                     while (head != tail && (expand ? value >= queue[(tail - 1) % queue.size()].value :
                             value <= queue[(tail - 1) % queue.size()].value)) { ex.work(); --tail; }
@@ -245,7 +270,7 @@ MaskValue morph(Execution& ex, const MaskValue& mask, i32 radius, bool expand) {
             const auto half = halfWidths[static_cast<std::size_t>(radius + dy)];
             for (i32 dx = -half; dx <= half && result != terminal; ++dx) {
                 ex.work();
-                const auto value = maskCoverage(mask, static_cast<i64>(bounds.x) + x + dx,
+                const auto value = coverageAt(static_cast<i64>(bounds.x) + x + dx,
                     static_cast<i64>(bounds.y) + y + dy);
                 result = expand ? std::max(result, value) : std::min(result, value);
             }
@@ -299,21 +324,95 @@ void weatherPixel(Execution& ex, i32 x, i32 y, Color proposed) {
     old = {mix(old.r, proposed.r), mix(old.g, proposed.g), mix(old.b, proposed.b), mix(old.a, proposed.a)};
 }
 
+// `Plain` is the paint of surface.paint.mask as it always was: one of the two
+// original modes at full opacity. Anything else fades the source alpha and
+// composes through composePaint (texture toolkit v1.2).
+template<bool Plain>
+void paintMaskCopies(Execution& ex, const MaskValue& mask, Color color, u16 blend, u8 opacity) {
+    const auto bounds = maskBounds(mask);
+    tileCopies(ex, bounds.x, bounds.y, static_cast<i64>(bounds.x)+bounds.width-1,
+        static_cast<i64>(bounds.y)+bounds.height-1, [&](i32 dx, i32 dy) {
+        ex.spend(static_cast<u64>(bounds.width) * bounds.height);
+        const auto mode = resolveComposition(static_cast<CompositionMode>(blend), ex.target.mode);
+        const u64 rowSteps = 1u + static_cast<u64>(bounds.width);
+        for (u32 y = 0; y < bounds.height; ++y) {
+            if (ex.prepayRow(rowSteps)) {
+                // No clip: only the row's on-canvas pixels are read and composed.
+                Canvas& target = ex.canvas();
+                const i64 py = static_cast<i64>(bounds.y) + y + dy;
+                if (py < 0 || py >= target.height) continue;
+                const i64 first = std::max<i64>(0, -static_cast<i64>(bounds.x)-dx);
+                const i64 last = std::min<i64>(bounds.width, static_cast<i64>(target.width) - bounds.x-dx);
+                PrepaidSteps polls{*ex.workBudget};
+                for (i64 x = first; x < last; ++x) {
+                    polls.step();
+                    const i64 px = static_cast<i64>(bounds.x) + x + dx;
+                    const auto coverage = maskCoverage(mask, px-dx, py-dy);
+                    if (!coverage) continue;
+                    auto source = color;
+                    source.a = multiplyCoverage(source.a, coverage);
+                    Color& into = target.at(static_cast<u32>(px), static_cast<u32>(py));
+                    if constexpr (Plain) into = composePixel(into, source, mode);
+                    else {
+                        source.a = multiplyCoverage(source.a, opacity);
+                        into = composePaint(into, source, mode);
+                    }
+                }
+                continue;
+            }
+            ex.work(); for (u32 x = 0; x < bounds.width; ++x) {
+            ex.work();
+            const i64 px = static_cast<i64>(bounds.x) + x + dx, py = static_cast<i64>(bounds.y) + y + dy;
+            const auto coverage = maskCoverage(mask, px-dx, py-dy);
+            // Zero mask coverage never touches hidden RGB, even in source-over.
+            if (!coverage || px < 0 || py < 0 || px >= ex.canvas().width || py >= ex.canvas().height) continue;
+            auto source = color;
+            source.a = multiplyCoverage(source.a, coverage);
+            if constexpr (Plain) compositePixel(ex, static_cast<i32>(px), static_cast<i32>(py), source,
+                static_cast<CompositionMode>(blend));
+            else {
+                source.a = multiplyCoverage(source.a, opacity);
+                compositePaintPixel(ex, static_cast<i32>(px), static_cast<i32>(py), source,
+                    static_cast<CompositionMode>(blend));
+            }
+        } }
+    });
+}
+
+void paintMask(Execution& ex, u16 blend, u8 opacity) {
+    if (!validCompositionMode(blend)) ex.trap("unknown surface blend mode", ErrorReason::InvalidInstruction);
+    const auto color = ex.popColor();
+    const auto mask = ex.popMask();
+    if (opacity == 255 && static_cast<CompositionMode>(blend) < CompositionMode::Multiply)
+        paintMaskCopies<true>(ex, mask, color, blend, opacity);
+    else paintMaskCopies<false>(ex, mask, color, blend, opacity);
+}
+
+static void noiseMaskInstruction(Execution& ex, Opcode base, bool tile) {
+    f32 warpAmount = 0.f, softness = 0.f;
+    i32 comparison = kNoiseAbove, octaves = 4;
+    if (base == Opcode::NoiseMaskConfig) {
+        warpAmount = ex.popF32(); comparison = ex.popI32();
+        softness = ex.popF32(); octaves = ex.popI32();
+    }
+    const u32 seed = static_cast<u32>(ex.popI32());
+    const f32 threshold = ex.popF32();
+    const Vec2 frequency = ex.popVec2();
+    const i32 kind = ex.popI32();
+    const Vec2 size = ex.popVec2(), origin = ex.popVec2();
+    ex.push(noiseMask(ex, origin, size, kind, frequency, threshold, seed, octaves, softness, comparison, warpAmount, tile));
+}
+
+void tiledNoiseMaskInstruction(Execution& ex, Opcode base) {
+    const i32 tile = ex.popI32();
+    if (tile != 0 && tile != 1) ex.trap("noise.mask tile must be true or false", ErrorReason::NumericRange);
+    noiseMaskInstruction(ex, base, tile != 0);
+}
+
 bool stepMasks(Execution& ex, Instruction ins) {
     switch (ins.opcode) {
     case Opcode::NoiseMask: case Opcode::NoiseMaskConfig: {
-        f32 warpAmount = 0.f, softness = 0.f;
-        i32 comparison = kNoiseAbove, octaves = 4;
-        if (ins.opcode == Opcode::NoiseMaskConfig) {
-            warpAmount = ex.popF32(); comparison = ex.popI32();
-            softness = ex.popF32(); octaves = ex.popI32();
-        }
-        const u32 seed = static_cast<u32>(ex.popI32());
-        const f32 threshold = ex.popF32();
-        const Vec2 frequency = ex.popVec2();
-        const i32 kind = ex.popI32();
-        const Vec2 size = ex.popVec2(), origin = ex.popVec2();
-        ex.push(noiseMask(ex, origin, size, kind, frequency, threshold, seed, octaves, softness, comparison, warpAmount));
+        noiseMaskInstruction(ex, ins.opcode, false);
         ++ex.frame().ip;
         return true;
     }
@@ -343,6 +442,19 @@ bool stepMasks(Execution& ex, Instruction ins) {
         const auto dy = ex.popI32(), dx = ex.popI32();
         auto mask = ex.popMask();
         const auto bounds = maskBounds(mask);
+        if (mask.buffer->tile) {
+            // One period stays where it is and its coverage moves round it.
+            auto buffer = createMask(ex, bounds, 1);
+            for (u32 y = 0; y < bounds.height; ++y) { ex.work(); for (u32 x = 0; x < bounds.width; ++x) {
+                ex.work();
+                buffer->coverage[static_cast<std::size_t>(y) * bounds.width + x] = maskCoverage(mask,
+                    static_cast<i64>(bounds.x) + wrapIndex(static_cast<i64>(x) - dx, bounds.width),
+                    static_cast<i64>(bounds.y) + wrapIndex(static_cast<i64>(y) - dy, bounds.height));
+            } }
+            buffer->tile = true;
+            ex.push(MaskValue{std::move(buffer), {{}, {bounds.x, bounds.y}}});
+            break;
+        }
         const auto shifted = boundsFromEdges(ex, static_cast<i64>(bounds.x) + dx,
             static_cast<i64>(bounds.y) + dy, static_cast<i64>(bounds.x) + bounds.width + dx,
             static_cast<i64>(bounds.y) + bounds.height + dy);
@@ -351,45 +463,8 @@ bool stepMasks(Execution& ex, Instruction ins) {
         break;
     }
     case Opcode::SurfacePaintMask: {
-        if (!validCompositionMode(ins.operand)) ex.trap("unknown surface blend mode", ErrorReason::InvalidInstruction);
-        const auto color = ex.popColor();
-        const auto mask = ex.popMask();
-        const auto bounds = maskBounds(mask);
-        ex.spend(static_cast<u64>(bounds.width) * bounds.height);
-        const auto mode = resolveComposition(static_cast<CompositionMode>(ins.operand), ex.target.mode);
-        const u64 rowSteps = 1u + static_cast<u64>(bounds.width);
-        for (u32 y = 0; y < bounds.height; ++y) {
-            if (ex.prepayRow(rowSteps)) {
-                // No clip: only the row's on-canvas pixels are read and composed.
-                Canvas& target = ex.canvas();
-                const i64 py = static_cast<i64>(bounds.y) + y;
-                if (py < 0 || py >= target.height) continue;
-                const i64 first = std::max<i64>(0, -static_cast<i64>(bounds.x));
-                const i64 last = std::min<i64>(bounds.width, static_cast<i64>(target.width) - bounds.x);
-                PrepaidSteps polls{*ex.workBudget};
-                for (i64 x = first; x < last; ++x) {
-                    polls.step();
-                    const i64 px = static_cast<i64>(bounds.x) + x;
-                    const auto coverage = maskCoverage(mask, px, py);
-                    if (!coverage) continue;
-                    auto source = color;
-                    source.a = multiplyCoverage(source.a, coverage);
-                    Color& into = target.at(static_cast<u32>(px), static_cast<u32>(py));
-                    into = composePixel(into, source, mode);
-                }
-                continue;
-            }
-            ex.work(); for (u32 x = 0; x < bounds.width; ++x) {
-            ex.work();
-            const i64 px = static_cast<i64>(bounds.x) + x, py = static_cast<i64>(bounds.y) + y;
-            const auto coverage = maskCoverage(mask, px, py);
-            // Zero mask coverage never touches hidden RGB, even in source-over.
-            if (!coverage || !ex.canvas().contains(static_cast<i32>(px), static_cast<i32>(py))) continue;
-            auto source = color;
-            source.a = multiplyCoverage(source.a, coverage);
-            compositePixel(ex, static_cast<i32>(px), static_cast<i32>(py), source,
-                static_cast<CompositionMode>(ins.operand));
-        } }
+        if (validCompositionMode(ins.operand)) priceBlendedPaint(ex, ins.operand);
+        paintMask(ex, ins.operand, 255);
         break;
     }
     default: return false;

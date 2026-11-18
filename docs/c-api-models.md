@@ -44,7 +44,8 @@ its data and may be read on another thread.
 ## What a model declares
 
 `iprop3d_model_query` fills `iprop3d_model_info`: the nominal size and
-`units_per_meter` the source declares, the fuel budget of the model program,
+`units_per_meter` the source declares, the fuel budget of a generation
+(shared by the model program and the textures it generates),
 the input count and the number of embedded skin programs.
 `iprop3d_model_skin_program` names each of them with its declared pixel
 size. The nominal size is a declaration: a generated model may be smaller or
@@ -72,8 +73,8 @@ untouched.
 
 `iprop3d_result_query` fills `iprop3d_result_info`: the bounds of all
 generated positions, the size and scale of the model, the vertex, triangle,
-surface, texture and output counts, and the fuel and work counters. Fuel
-counts the model program alone; work counts the model and its textures.
+surface, texture and output counts, and the fuel and work counters. Both
+count the model program and the textures it generates.
 
 A **surface** (`iprop3d_result_surface`) is the triangles of one host
 material: every triangle that shares a texture and the material numbers.

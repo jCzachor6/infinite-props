@@ -2,6 +2,47 @@
 
 ## Unreleased
 
+### Textures that tile and look painted (2D, additive)
+
+Draw assets gain what a texture for a wall, a floor or a model's skin needs.
+Existing sources compile to identical bytecode and existing programs keep
+their image, outputs, RNG, fuel and work. See
+[textures that tile](docs/language/textures.md) and the
+[contract](spec/texture-toolkit-v1.2.md).
+
+- **Tiled captures.** `layer name(tile = true) { ... }` is one period of an
+  image that repeats: shapes, parts and paints that cross an edge come back
+  at the opposite one, and `blur`, `normal`, `mask.expand`, `mask.shrink` and
+  `mask.offset` wrap, so normal maps and outlines have no seam either. A
+  nested capture inherits the tiling.
+- **Periodic noise.** `period = {px, py}` on `noise.value`, `noise.grad`,
+  `noise.fbm`, `noise.ridge`, `noise.cell`, `noise.cell2`, `noise.cell_id`,
+  `noise.warp` and `noise.warp_vec`, and `tile = true` on `noise.mask`.
+- **Blend and opacity.** `surface.paint` takes `surface.multiply`,
+  `surface.screen`, `surface.overlay`, `surface.add` and `surface.subtract`,
+  and an `opacity` from 0 to 1.
+- **Gradient and levels.** `image.gradient(colors)` colours a layer by its
+  brightness; `image.levels(black, white, gamma)` sets its contrast.
+- **Format.** One opcode, `0x0E`, for a page of texture operations; five
+  blend values in `surface.paint`; two bits in `layer.begin`. A 1.1 runtime
+  rejects a program that uses any of them while loading. The C API and every
+  binding are unchanged.
+- **Fuel.** A paint with one of the new blends or an opacity pays one unit a
+  pixel, where a plain paint keeps its 60%; `gradient` and `levels` pay half
+  a unit a pixel; a tiled noise mask 30% where the plain one pays 20%; a
+  periodic noise the units of its kernel.
+- **Model fuel.** A model has 150,000,000 fuel units for its program and all
+  its textures together, in place of 25,000,000 for each; a draw asset
+  generated alone keeps its 25,000,000.
+- **Tools.** `ipsheet --repeat N` draws a texture N times each way to show a
+  seam; `ipa` and `ipdis` spell the page (`texture gradient 0`).
+- **Language description.** Schema 8 gains `source_rules.texture_toolkit` and
+  the new overloads of `surface.paint` and the noises.
+- **Examples.** Four skins that tile, with normal and roughness maps:
+  planks, dressed stone, worn enamel and cloth in
+  `examples/models/skins/textures`, and a bench that wears them. The model
+  corpus grows to 78 generations.
+
 ### 3D models from `render { }` (preview, additive)
 
 An asset with `render` in place of `draw` builds a 3D model and compiles to
@@ -34,7 +75,8 @@ interfaces may change in any release until the contract is frozen.
   for each vertex and 2 for each triangle, an extrude outline of `n` points
   `ceil(n*n/3)` (`ceil(n*n/2)` with a bevel), a placement 24 and a skin call
   64. The prices follow measurements against plain instructions and the 2D
-  raster kernels; a texture spends the fuel of its own program. See the
+  raster kernels. A model has 150,000,000 units for its program and all its
+  textures together. See the
   [contract](spec/models-v1.2.md#accounting-and-limits).
 - **Determinism.** Vertices, indices and textures are the same on every
   platform, bit for bit. A corpus of 51 generations pins the SHA-256 of

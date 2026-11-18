@@ -222,3 +222,58 @@ less than a primitive's emission does, so it has prices of its own:
 
 `taper` shares the price of `bend` and `twist` though it needs no sine: one
 price for the three is simpler, and it errs on the dear side.
+
+## 1.2 texture toolkit tariff (preview)
+
+The operations of the texture toolkit
+([contract](../../spec/texture-toolkit-v1.2.md)) were measured against the
+1.1 operations beside them, and priced inside their band:
+
+```sh
+cmake --build build-3d --target ipc iprop_operations_benchmark
+python3 benchmarks/operations/textures.py --build build-3d
+python3 benchmarks/operations/textures.py --build build-3d --baseline-build <a build of the commit before>
+```
+
+The first run times each operation as a program with it minus a control
+without it, on 256² and 1024² canvases. The second runs the six frozen
+butterfly and portrait programs alternately on two builds and fails unless
+the pixel hash, the fuel and the work are equal. On the reference Mac (arm64,
+Release), at 1024²:
+
+| Operation | Fuel a pixel | ns per pixel | ns per fuel unit |
+| --- | --- | --- | --- |
+| `surface.paint` of a layer, legacy / source-over (as in 1.1) | 0.6 | 2.6 / 3.1 | 4.3 / 5.2 |
+| the same with multiply, screen, overlay, add or subtract | 1 | 3.6–5.3 | 3.6–5.3 |
+| the same with an opacity | 1 | 4.1 | 4.1 |
+| `surface.paint` of a mask, legacy / source-over (as in 1.1) | 0.6 | 3.6 / 4.1 | 6.1 / 6.8 |
+| the same with a new blend or an opacity | 1 | 6.4–8.5 | 6.4–8.5 |
+| `.gradient`, `.levels` | 0.5 | 2.0 | 4.1 |
+| `noise.mask` (as in 1.1) / with `tile = true` | 1.2 / 1.8 | 10.0 / 13.9 | 8.3 / 7.8 |
+
+The first estimate charged a blended or faded paint the 60% of a plain one.
+The measurement put a blended layer at up to 8.8 ns a unit and a blended or
+faded mask at 10.7–14.1, against 5.2 and 6.8 for the paints of 1.1, so these
+paints pay whole units: by the texture page, and by `surface.paint` and
+`surface.paint.mask` when their operand is one of the five new blends. A
+plain paint keeps its price, as every 1.1 program must.
+
+A call of a scalar noise in a loop, plain and then periodic, in ns: `value`
+117 and 158, `grad` 125 and 158, `fbm` and `ridge` of four octaves 164 and
+239, the cell family 230 either way, `warp_vec` 209 and 330, `warp` 272 and
+412; a periodic call pays the units of its kernel (4, 4 an octave, 25 for
+the cell family, 32 and 48), which is 4–6 ns a unit. The frozen showcase ran
+within 0.9% of the build before the toolkit in each of three runs, faster as
+often as slower.
+
+Peak memory at 1024²: a paint adds none in any mode; `.gradient` and
+`.levels` add their result, one surface of 4 MiB; a noise mask adds 1 MiB,
+tiled or not; a tiled capture holds what a plain one holds; a periodic noise
+call holds no buffer. A blur or a normal of a tiled layer holds the tile
+grown by its reach and the result of that size until it crops them, each
+reserved against the 64 MiB limit like any surface.
+
+Left for optimisation: the paint loops call the blend out of line for every
+pixel, which is most of what a blended mask paint costs over a plain one.
+The numbers are one machine's and no test asserts a timing; the exact prices
+are pinned in `tests/compiler/textures_test.cpp`.

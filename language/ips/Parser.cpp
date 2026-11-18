@@ -201,6 +201,7 @@ Import ParserImpl::parseImport() {
     expect(TokenKind::KeywordFrom, "'from'");
     const Token path = expect(TokenKind::String, "a quoted file path");
     match(TokenKind::Semi);
+    importAliases_.push_back(alias.text);
     return Import{alias.text, path.text, at, {start, pos_}};
 }
 
@@ -719,7 +720,7 @@ Stmt ParserImpl::parseIdentifierStatement() {
     }
     if (!std::holds_alternative<Call>(*expr) && !std::holds_alternative<SamplerPick>(*expr) &&
         !std::holds_alternative<SamplerCapture>(*expr) && !std::holds_alternative<ListMethod>(*expr) &&
-        !std::holds_alternative<SurfaceBlur>(*expr) && !std::holds_alternative<SurfaceNormal>(*expr)) {
+        !std::holds_alternative<TextureMethod>(*expr) && !std::holds_alternative<SurfaceBlur>(*expr) && !std::holds_alternative<SurfaceNormal>(*expr)) {
         throw SourceError{name.location, "expression statement must be a call" + keywordSuggestion(name.text)};
     }
     return Stmt{ExprStmt{std::move(expr), name.location}};
@@ -732,36 +733,39 @@ Stmt ParserImpl::parseLayer() {
         return Stmt{VarDecl{local.text, parseExpr(), local.location, ParamType::Layer}};
     auto alpha = CompositionMode::Inherited;
     bool directions = false;
+    std::optional<bool> tile;
     if (match(TokenKind::LParen)) {
-        const auto option = expectName("'alpha' or 'encoding'");
-        if (option.text == "encoding") {
-            // A direction capture composes source-over; it takes no alpha mode.
-            expect(TokenKind::Assign, "'=' after encoding");
+        do {
+            const auto separator = tokens_[pos_ - 1].location;
+            const auto option = expectName("'alpha', 'encoding' or 'tile'");
+            if (option.text != "alpha" && option.text != "encoding" && option.text != "tile")
+                throw SourceError{option.location, "layer supports only the 'alpha', 'encoding' and 'tile' options"};
+            expect(TokenKind::Assign, "'=' after layer option");
+            if (option.text == "tile") {
+                if (tile) throw SourceError{option.location, "duplicate layer tile option"};
+                if (match(TokenKind::KeywordTrue)) tile = true;
+                else { expect(TokenKind::KeywordFalse, "true or false for layer tile"); tile = false; }
+                continue;
+            }
+            if (directions || alpha != CompositionMode::Inherited)
+                throw SourceError{separator, "a layer takes either 'alpha' or 'encoding', not both"};
             const auto base = expectName("'surface'");
-            expect(TokenKind::Dot, "'.' in surface encoding");
-            const auto encoding = expectName("'normal'");
-            if (base.text != "surface" || encoding.text != "normal")
-                throw SourceError{encoding.location, "layer encoding must be surface.normal"};
-            directions = true;
-            if (kind() == TokenKind::Comma)
-                throw SourceError{tokens_[pos_].location, "a layer takes either 'alpha' or 'encoding', not both"};
-            expect(TokenKind::RParen, "')' after layer encoding");
-        } else {
-            if (option.text != "alpha") throw SourceError{option.location, "layer supports only the 'alpha' and 'encoding' options"};
-            expect(TokenKind::Assign, "'=' after alpha");
-            const auto base = expectName("'surface'");
-            expect(TokenKind::Dot, "'.' in surface alpha mode");
-            const auto mode = expectName("'legacy' or 'source_over'");
-            const auto* spec = compositionSpec(mode.text);
-            if (base.text != "surface" || !spec)
-                throw SourceError{mode.location, "layer alpha must be surface.legacy or surface.source_over"};
-            alpha = spec->mode;
-            if (kind() == TokenKind::Comma)
-                throw SourceError{tokens_[pos_].location, "a layer takes either 'alpha' or 'encoding', not both"};
-            expect(TokenKind::RParen, "')' after layer alpha");
-        }
+            expect(TokenKind::Dot, option.text == "encoding" ? "'.' in surface encoding" : "'.' in surface alpha mode");
+            const auto mode = expectName("surface mode");
+            if (option.text == "encoding") {
+                if (base.text != "surface" || mode.text != "normal")
+                    throw SourceError{mode.location, "layer encoding must be surface.normal"};
+                directions = true;
+            } else {
+                const auto* spec = compositionSpec(mode.text);
+                if (base.text != "surface" || !spec || !validLayerMode(static_cast<u8>(spec->mode)))
+                    throw SourceError{mode.location, "layer alpha must be surface.legacy or surface.source_over"};
+                alpha = spec->mode;
+            }
+        } while (match(TokenKind::Comma));
+        expect(TokenKind::RParen, "')' after layer options");
     }
-    return Stmt{LayerStmt{local.text, alpha, parseBlock(), at, directions}};
+    return Stmt{LayerStmt{local.text, alpha, parseBlock(), at, directions, tile}};
 }
 
 Stmt ParserImpl::parseIf() {

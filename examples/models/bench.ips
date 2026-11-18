@@ -1,0 +1,92 @@
+// A bench, one unit to a centimetre: a seat of planks on two supports, with
+// or without a back and a cushion. The seed picks the supports (stone blocks
+// or a painted steel frame), the proportions and how worn the paint is. Its
+// four skins repeat without a seam, so the planks run the whole seat however
+// long it is. The game reads `seat`, where someone sits, and `colliders`.
+import timber from "skins/textures/planks.ips"
+import slate  from "skins/textures/stone.ips"
+import steel  from "skins/textures/enamel.ips"
+import fabric from "skins/textures/cloth.ips"
+
+asset bench {
+  size 190x100x70
+  scale 100
+
+  input color paint = #4d6f72
+  input color dye = #3f5873
+  input color wood = #9a6b3f
+
+  output point3d seat
+  output list box3d colliders
+
+  render {
+    root = seed.initial()
+    length = roll(root.fork("length"), 130.0, 180.0)
+    depth = roll(root.fork("depth"), 42.0, 52.0)
+    high = roll(root.fork("height"), 40.0, 46.0)
+    stone_legs = choose(root.fork("support"), 0, 1)
+    with_back = choose(root.fork("back"), 0, 1, 1)
+    with_pad = choose(root.fork("pad"), 0, 1)
+    inset = roll(root.fork("inset"), 14.0, 24.0)
+
+    // Two texels to a centimetre for the wood, more for the finer skins.
+    boards = skin.density(timber.draw(root.fork("timber"), tint = wood), 2.0)
+    stone = skin.density(slate.draw(root.fork("stone")), 3.0)
+    metal = skin.density(steel.draw(root.fork("steel"), paint = paint, worn = roll(root.fork("worn"), 0.2, 0.7)), 4.0)
+    cloth = skin.density(fabric.draw(root.fork("cloth"), dye = dye), 5.0)
+
+    // The supports and the bar between them.
+    for side in 0..2 {
+      place(mirror_x = side) {
+        x = length * 0.5 - inset
+        if (stone_legs == 1) {
+          box({x, 0, 0}, {18, high - 3.0, depth - 4.0}, 1.5, stone)
+          box({x, high - 3.0, 0}, {22, 3, depth}, 0.6, metal)
+        } else {
+          frame(x, high, depth, metal)
+        }
+      }
+    }
+    box({0, high * 0.42, 0}, {length - inset * 2.0, 4, 4}, 0.8, metal)
+
+    // The seat: three planks laid along the bench, grain along their length.
+    plank = (depth - 2.0) / 3.0
+    for i in 0..3 {
+      z = (float(i) - 1.0) * (plank + 1.0)
+      place(at = {length * 0.5, high, z}, roll = 90.0) {
+        box({0, 0, 0}, {4.5, length, plank}, 0.7, boards)
+      }
+    }
+    seat = {0, high + 4.5, 0}
+    colliders = {{0, 0, 0}, {length, high + 4.5, depth}}
+
+    if (with_pad == 1) {
+      box({0, high + 4.5, 0}, {length - 16.0, 6.5, depth - 8.0}, 2.6, cloth)
+      seat = {0, high + 11.0, 0}
+    }
+    if (with_back == 1) {
+      lean = roll(root.fork("lean"), 6.0, 14.0)
+      place(at = {0, high + 4.5, 2.0 - depth * 0.5}, pitch = -lean) {
+        for side in 0..2 {
+          place(mirror_x = side) { box({length * 0.5 - inset, 0, 0}, {4, 44, 4}, 0.8, metal) }
+        }
+        for i in 0..2 {
+          place(at = {length * 0.5, 16.0 + float(i) * 15.0, 2.6}, roll = 90.0) {
+            box({0, 0, 0}, {11, length, 3}, 0.6, boards)
+          }
+        }
+        colliders = {{0, 0, 2.0}, {length, 44, 6}}
+      }
+    }
+  }
+
+  // One side of a steel frame: two legs joined under the seat.
+  frame(x: f32, high: f32, depth: f32, metal: skin) {
+    reach = depth * 0.5 - 3.0
+    tube({x, 0, reach}, {x, high * 0.9, reach}, {x, high - 2.0, reach * 0.6}, {x, high - 2.0, 0}, 2.4, 2.4, 8, 10, metal)
+    tube({x, 0, -reach}, {x, high * 0.9, -reach}, {x, high - 2.0, -reach * 0.6}, {x, high - 2.0, 0}, 2.4, 2.4, 8, 10, metal)
+    box({x, high - 2.5, 0}, {5, 2.5, depth - 2.0}, 0.5, metal)
+    cylinder({x, 0, reach}, 3.6, 1.2, 10, metal)
+    cylinder({x, 0, -reach}, 3.6, 1.2, 10, metal)
+  }
+}

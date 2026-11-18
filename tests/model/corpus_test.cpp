@@ -134,6 +134,10 @@ const std::vector<Case>& cases() {
         {"examples/models/railing.ips", 1, {}},
         {"examples/models/railing.ips", 2, {}},
         {"examples/models/railing.ips", 4, {{"rust", "0.9"}}},
+        // Skins of the texture toolkit (M4), under the model's one fuel budget.
+        {"examples/models/bench.ips", 1, {}},
+        {"examples/models/bench.ips", 2, {}},
+        {"examples/models/bench.ips", 5, {{"paint", "#7a3b2e"}, {"dye", "#6b2f3a"}}},
     };
     return list;
 }

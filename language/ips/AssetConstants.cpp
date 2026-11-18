@@ -289,6 +289,8 @@ private:
             inspectCapture(*capture->value, dependencies);
         } else if (const auto* method = std::get_if<ListMethod>(&expression)) {
             inspect(*method->receiver, dependencies);
+        } else if (const auto* filter = std::get_if<TextureMethod>(&expression)) {
+            fail(locationOf(expression), "." + filter->name + " needs a generated layer");
         } else if (std::holds_alternative<SurfaceBlur>(expression)) {
             fail(locationOf(expression), ".blur has generation effects and is not allowed");
         } else if (std::holds_alternative<SurfaceNormal>(expression)) {

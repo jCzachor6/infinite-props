@@ -52,10 +52,21 @@ TEST_CASE("per-function instruction violations") {
                         22, "reserved opcode");
     expectValidateError(fullFile(minimalMeta(), pool, codeSection({drawSpec(ins(0x00, 1, 0))}, {})),
                         22, "aux byte");
-    expectValidateError(fullFile(minimalMeta(), pool, codeSection({drawSpec(ins(0x0E, 0, 0))}, {})),
-                        22, "reserved opcode");
+    expectValidateError(fullFile(minimalMeta(), pool, codeSection({drawSpec(ins(0x0E, 0xFF, 0))}, {})),
+                        22, "unknown texture operation");
     expectValidateError(fullFile(minimalMeta(), pool, codeSection({drawSpec(ins(0x0D, 0, 0))}, {})),
                         22, "reserved opcode");
+
+    // Unreachable instructions still have to use a defined wire encoding.
+    auto afterReturn = [&](u8 aux, u16 immediate, const char* message) {
+        auto body = retIns();
+        auto invalid = ins(0x0E, aux, immediate);
+        body.insert(body.end(), invalid.begin(), invalid.end());
+        expectValidateError(fullFile(minimalMeta(), pool, codeSection({drawSpec(body)}, {})), 26, message);
+    };
+    afterReturn(0xFF, 0, "unknown texture operation");
+    afterReturn(3, 1, "texture operand must be zero");
+    afterReturn(0, 3, "unknown surface blend mode");
 
     // Stack underflow on the first instruction.
     {

@@ -222,8 +222,8 @@ TEST_CASE("1.1 adds two opcodes and leaves eleven values unassigned", "[compat-v
     int unassigned = 0;
     for (int value = 0; value < 256; ++value)
         if (opcodeMnemonic(static_cast<Opcode>(value)) == nullptr) ++unassigned;
-    CHECK(unassigned == 11);
-    for (const int value : {0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x2F, 0x6C, 0x6D, 0x6E, 0x6F}) {
+    CHECK(unassigned == 10);
+    for (const int value : {0x0A, 0x0B, 0x0C, 0x0D, 0x0F, 0x2F, 0x6C, 0x6D, 0x6E, 0x6F}) {
         INFO(value);
         CHECK(opcodeMnemonic(static_cast<Opcode>(value)) == nullptr);
     }

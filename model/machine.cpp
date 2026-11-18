@@ -637,9 +637,10 @@ private:
         GenerationResult result;
         u64 used = 0;
         try {
-            VM vm(program.file, inputs, std::span<const UniformValue>(values));
+            VM vm(program.file, inputs, std::span<const UniformValue>(values), ex.fuel);
             vm.run();
             result = vm.takeResult();
+            ex.spendRaw(vm.fuelBudget() - vm.fuel());
             used = vm.workBudget() - vm.work();
         } catch (const FormatError& error) {
             throw Trap("skin '" + program.name + "': " + error.what(), error.reason, ErrorStage::Execute,

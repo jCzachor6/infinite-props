@@ -131,6 +131,10 @@ def read_builtin(builtin, types=VALUE_TYPES):
         boolean(signature.get('constant_evaluable'), 'constant_evaluable')
         if 'opcode' in signature:
             text(signature.get('opcode'), 'opcode', True)
+        if 'texture_op' in signature or signature.get('opcode') == 'texture':
+            integer(signature.get('texture_op'), 'texture sub-operation', 0, 255)
+            require(signature.get('opcode') == 'texture' or {'opcode': 'texture'} in signature.get('expansion', []),
+                    'texture lowering')
         if 'expansion' in signature:
             steps = signature['expansion']
             require(type(steps) is list and bool(steps), 'overload.expansion')
@@ -458,7 +462,7 @@ MODELS = {'status': 'preview',
                'maximum_side': 2048,
                'placement_arguments': False,
                'generation': 'standard_2d_generation_of_the_embedded_program',
-               'fuel': 'embedded_program_budget',
+               'fuel': 'remaining_model_generation_fuel',
                'reserved_fuel': 64,
                'sharing': 'same_program_seed_size_and_inputs_generate_once',
                'auxiliary_images': 'published_with_the_texture',
@@ -762,6 +766,32 @@ def read_language(value):
             require(method['effects']['rng'] == 'none', 'stepper method RNG')
             receivers.add(method['receiver'])
         require(receivers == STEPPER_TYPES, 'unique stepper signatures')
+    if 'texture_toolkit' in rules:
+        kit = obj(rules['texture_toolkit'], ['constants', 'methods', 'extension_page', 'layer_option', 'period_units',
+                                             'tile_default', 'tiled_targets', 'wrapping_operations', 'fuel_percent',
+                                             'model_fuel_budget'], 'texture toolkit')
+        require(kit['extension_page'] == 14 and kit['layer_option'] == 'tile = <true|false>' and
+                kit['period_units'] == 'positive_integer_lattice_cells' and
+                kit['tile_default'] == 'inherits_the_active_capture' and kit['tiled_targets'] == 'captures_only',
+                'texture page')
+        require(kit['wrapping_operations'] == ['blur', 'normal', 'mask.expand', 'mask.shrink', 'mask.offset'],
+                'wrapping operations')
+        rates = obj(kit['fuel_percent'], ['paint', 'gradient', 'levels', 'tiled_noise_mask'], 'texture fuel rates')
+        for name in ('paint', 'gradient', 'levels', 'tiled_noise_mask'):
+            integer(rates[name], 'texture fuel rate', 1, 100)
+        integer(kit['model_fuel_budget'], 'model fuel budget', 1, 2**63)
+        modes = {'surface.' + key: code for key, code in [('legacy', 0), ('source_over', 1),
+                 ('multiply', 4), ('screen', 5), ('overlay', 6), ('add', 7), ('subtract', 8)]}
+        require(same_value(kit['constants'], modes), 'texture blend modes')
+        require(type(kit['methods']) is list and len(kit['methods']) == 2, 'texture methods')
+        operations = {}
+        for method in kit['methods']:
+            ordered_signature(method, 'texture method')
+            require(method.get('receiver') == 'layer' and method['result'] == 'layer' and
+                    method.get('opcode') == 'texture' and method.get('constant_evaluable') is False, 'texture filter')
+            integer(method.get('texture_op'), 'filter sub-operation', 2, 3)
+            operations[text(method.get('name'), 'filter name')] = method['texture_op']
+        require(operations == {'gradient': 2, 'levels': 3}, 'texture filter operations')
     if 'surfaces' in rules:
         surface = obj(rules['surfaces'], ['types', 'capture_syntax', 'keyword', 'capture_target',
             'result_binding', 'automatic_paint', 'capture_evaluation', 'helper_transfer', 'buffer_format',
@@ -773,7 +803,7 @@ def read_language(value):
         strings(surface['types'], 'surface types', {'layer', 'mask'}, True)
         require(surface['types'] == ['layer', 'mask'] and
             all(t in types['storable'] for t in surface['types']), 'surface type declaration')
-        _strings_and_bools(surface, {'capture_syntax': {'layer <name> [(alpha=surface.<mode>)] { <statements> }'},
+        _strings_and_bools(surface, {'capture_syntax': {'layer <name> [(<option>[, <option>])] { <statements> }'},
             'keyword': {'reserved'}, 'capture_target': {'empty_current_geometry_and_scale'},
             'result_binding': {'after_scope_exit'}, 'capture_evaluation': {'once_in_current_stream'},
             'helper_transfer': {'share_immutable_buffer'}, 'buffer_format': {'RGBA8'},

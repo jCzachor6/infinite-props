@@ -57,6 +57,11 @@ enum class Opcode : u8 {
     Call = 0x08,
     Return = 0x09,
 
+    // The texture page (texture toolkit v1.2), previously reserved: the aux
+    // byte selects the operation (iprop/Texture.hpp). 0x0F beside it is the
+    // model page of `.iprop3d` files and stays reserved here.
+    Texture = 0x0E,
+
     // Dynamic instances (v0.9), allocated in previously reserved gaps.
     PartCreateRegion = 0x18,
     PartCreateMask = 0x19,
@@ -364,6 +369,9 @@ inline constexpr u32 kMaxCanvasSide = 16384;       // canvas width/height cap
 // a program names none. A toolchain default, not a format limit: a file may
 // carry any budget of at least 1, and a binary keeps the one it was built with.
 inline constexpr u64 kDefaultFuelBudget = 25'000'000;
+// The same default for a model (`.iprop3d`), which pays for its program and
+// for every texture it generates from this one budget (texture toolkit v1.2).
+inline constexpr u64 kDefaultModelFuelBudget = 150'000'000;
 
 // rng.int draws at most this many u32 values (spec v0.5 §3.1). Part of the
 // format semantics: the count fixes both the stream state and the fuel use.

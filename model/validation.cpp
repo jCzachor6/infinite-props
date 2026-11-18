@@ -15,7 +15,7 @@ bool admits(Opcode opcode) {
     case Opcode::OutPoint: case Opcode::OutRect: case Opcode::OutCircle:
     case Opcode::OutListPoint: case Opcode::OutListRect: case Opcode::OutListCircle: case Opcode::OutListPart:
     case Opcode::PartGetPoint: case Opcode::PartGetRect: case Opcode::PartGetCircle:
-    case Opcode::SurfaceNormal:
+    case Opcode::Texture: case Opcode::SurfaceNormal:
     case Opcode::LayerBegin: case Opcode::SurfacePaint: case Opcode::MaskFrom: case Opcode::MaskUnion:
     case Opcode::MaskIntersect: case Opcode::MaskSubtract: case Opcode::MaskInvert: case Opcode::MaskExpand:
     case Opcode::MaskShrink: case Opcode::MaskOffset: case Opcode::SurfacePaintMask: case Opcode::ClipBegin:

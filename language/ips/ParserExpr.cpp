@@ -1,6 +1,7 @@
 #include "iprop/math/Distribution.hpp"
 #include "ips/Parser.hpp"
 
+#include <algorithm>
 #include <optional>
 #include <string>
 #include <utility>
@@ -241,11 +242,18 @@ std::unique_ptr<Expr> ParserImpl::parsePostfixAfter(std::unique_ptr<Expr> expr) 
             const SourceLocation at = locationOf(*expr);
             auto args = parseArgs();
             auto* member = std::get_if<Member>(expr.get());
+            const auto onImportAlias = [&](const Member& call) {
+                const auto* object = std::get_if<Identifier>(call.object.get());
+                return object && std::find(importAliases_.begin(), importAliases_.end(), object->name) != importAliases_.end();
+            };
             if (member && member->name == "pick") {
                 if (args.size() > 1 || (!args.empty() && args[0].name && *args[0].name != "n"))
                     throw SourceError{at, ".pick takes no arguments or one i32 count named 'n'"};
                 expr = node(SamplerPick{std::move(member->object),
                     args.empty() ? nullptr : std::move(args[0].value), at});
+            } else if (member && (member->name == "gradient" || member->name == "levels") && !onImportAlias(*member)) {
+                // `mats.gradient()` stays a material named gradient, as in 1.1.
+                expr = node(TextureMethod{std::move(member->object), member->name, std::move(args), at});
             } else if (member && member->name == "blur") {
                 if (args.size() != 1 || (args[0].name && *args[0].name != "sigma"))
                     throw SourceError{at, ".blur takes one f32 sigma, optionally named 'sigma'"};

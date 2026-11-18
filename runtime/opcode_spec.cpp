@@ -10,6 +10,7 @@ constexpr OperationEffects effects(Opcode op) {
     using C = EffectCheck;
     const auto check = [](C value) { return static_cast<u16>(value); };
     switch (op) {
+    case Opcode::Texture: return {R::None,true,false,static_cast<u16>(check(C::NumericRange)|check(C::UnassignedHandle)),true};
     case Opcode::PartCreateRegion:
         return {R::None,false,false,static_cast<u16>(check(C::UnassignedHandle)|check(C::IndexRange)),true};
     case Opcode::PartCreateMask: case Opcode::PartCreateLayer:
@@ -135,6 +136,7 @@ constexpr OpcodeSpec dynamic(Opcode op, const char* name, OperandKind operand,
 
 constexpr OpcodeSpec kSpecs[] = {
     fixed(Opcode::Nop, "nop", StackSignature({})),
+    dynamic(Opcode::Texture, "texture", OperandKind::Immediate, AuxPolicy::TextureOp),
     dynamic(Opcode::Block, "block", OperandKind::None),
     dynamic(Opcode::Loop, "loop", OperandKind::None),
     dynamic(Opcode::If, "if", OperandKind::None),

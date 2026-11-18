@@ -76,8 +76,8 @@ IPROP_API void iprop3d_model_free(iprop3d_model* model);
 
 /* size_* is the nominal size the source declares, in model units: width,
  * height and depth. A generated model need not fill it and may exceed it;
- * the bounds of a result are exact. fuel is the budget of the model program;
- * each skin program runs under its own. container_flags describe the loaded
+ * the bounds of a result are exact. fuel is the budget of a generation: the
+ * model program and every texture it generates spend it. container_flags describe the loaded
  * physical container, as in iprop_program_info_ex. */
 typedef struct {
     uint32_t struct_size;
@@ -168,8 +168,8 @@ IPROP_API void iprop3d_result_free(iprop3d_result* result);
 
 /* bounds_* enclose every generated position, x, y, z in model units; both
  * are zero for a model without triangles. size and units_per_meter repeat
- * the model's. Counts cover all surfaces. fuel_* count the model program
- * only; work_* count the model and all its textures. output_count (API 0.2)
+ * the model's. Counts cover all surfaces. fuel_* and work_* count the model
+ * program and all its textures. output_count (API 0.2)
  * counts the model's own outputs. */
 typedef struct {
     uint32_t struct_size;

@@ -35,6 +35,7 @@ struct BuiltinOverload {
     BuiltinAdaptation adaptation = BuiltinAdaptation::Direct;
     // A sub-operation of the model page in place of an opcode (models v1.2).
     std::optional<u8> modelOp{};
+    std::optional<u8> textureOp{};
 };
 // Argument reads refer to already evaluated values. Code emission and asset
 // constants share this expansion into existing VM operations.

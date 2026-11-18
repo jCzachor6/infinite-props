@@ -199,6 +199,9 @@ private:
 
     std::vector<Token> tokens_;
     std::size_t pos_ = 0;
+    // Imports come before the code that calls them. A call on an alias is a
+    // material or a part, never a method of a value (texture toolkit v1.2).
+    std::vector<std::string> importAliases_;
     std::uint32_t expressionNesting_ = 0;
     std::uint32_t blockNesting_ = 0;
     bool listTypeClosed_ = false;

@@ -20,6 +20,10 @@ function entries(catalogue) {
         ...(extended.get(b.name) || []).map(o => signature(b.name, o) + "  " + RENDER_ONLY)] }));
     models.builtins.forEach(b => result.push({ name: b.name, note: RENDER_ONLY,
         signatures: b.overloads.map(o => signature(b.name, o)) }));
+    for (const method of catalogue.source_rules.texture_toolkit?.methods || []) {
+        result.push({ name: method.name, receiver: method.receiver,
+            signatures: [signature(method.receiver + "." + method.name, method)] });
+    }
     const constants = new Set(catalogue.source_rules.surfaces?.alpha_modes || []);
     function visit(value) {
         if (!value || typeof value !== "object") return;
@@ -63,7 +67,7 @@ function registerAuthoring(vscode, context, compiler) {
                 return items.map(entry => {
                     const item = new vscode.CompletionItem(entry.name, vscode.CompletionItemKind[entry.kind || "Function"]);
                     item.detail = describe(entry);
-                    item.range = document.getWordRangeAtPosition(position, word);
+                    item.range = document.getWordRangeAtPosition(position, entry.receiver ? /[A-Za-z_]\w*/ : word);
                     return item;
                 });
             } catch { return []; }
@@ -73,7 +77,9 @@ function registerAuthoring(vscode, context, compiler) {
             try {
                 const range = document.getWordRangeAtPosition(position, word);
                 if (!range) return;
-                const item = (await catalogue(document)).find(item => item.name === document.getText(range));
+                const name = document.getText(range);
+                const item = (await catalogue(document)).find(item => item.name === name ||
+                    (item.receiver && name.endsWith("." + item.name)));
                 if (!item || token.isCancellationRequested) return;
                 const text = new vscode.MarkdownString();
                 text.appendCodeblock(describe(item) || item.name, "ips");

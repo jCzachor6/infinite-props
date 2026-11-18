@@ -35,6 +35,7 @@ set(IPROP_RUNTIME_SOURCES
     math/color.cpp
     seeded.cpp
     canvas.cpp
+    texture.cpp
     surfaces.cpp
     geometry.cpp
     voronoi.cpp

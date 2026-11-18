@@ -46,13 +46,20 @@ the native suite (`capi_material_maps_*`, the `[material-maps]` tests), by
 `material_maps_v12` and the native/WASM runner, by the binding tests over
 the shared `binding-maps` fixture and by the pixel corpus, which every
 binding replays.
+The [texture toolkit](language/textures.md) is covered by the native suite
+(the `[textures]` tests: every operation that wraps on a tiled capture, the
+blends, the filters, periodic noise, fuel and the assembler), by
+`texture_reference`, an independent oracle in Python for the blend, filter
+and periodic noise arithmetic, by the native/WASM runner on the handbook
+example and the four tiling skins, and by the pixel corpus.
 [Models](language/models.md), a preview, are covered by the native suite
 (`model` and the four `capi3d_*` tests), by the native/WASM runner, which
-compares every vertex, index and texture of five models between the two
+compares every vertex, index, texture and output of seven models between the two
 runtimes, by the three.js adapter tests of the website job and, where Godot
-is built, by `godot_models`. `model_corpus` pins 51 generations of the
-showcase props, the handbook's models, a model of edge cases and a model of
-material maps, glass and windows: the
+is built, by `godot_models`. `model_corpus` pins 78 generations of the
+showcase props, the handbook's models, a model of edge cases, a model of
+material maps, glass and windows, a model of paths, blocks, outputs and parts
+and a bench in tiling skins: the
 SHA-256 of every compiled file, surface array, texture and texture map in
 `tests/fixtures/model-corpus-v1.2.json`. Every native runner must give
 those bytes, and the WASM runner checks the same file. A runner that differs

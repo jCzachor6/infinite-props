@@ -13,8 +13,10 @@ test("hints expose real compiler overloads, namespace constants and handle types
     for (const name of ["noise.mask", "regions.gap", "part.draw", "parts.from_regions", "noise.below", "voronoi.grid", "contour.four", "surface.source_over", "parts2d"])
         assert.ok(hints.some(h => h.name === name), name);
     const models = catalog.source_rules.models;
-    assert.equal(hints.filter(h => h.signatures.length).length, catalog.builtins.length + models.builtins.length);
+    assert.equal(hints.filter(h => h.signatures.length).length, catalog.builtins.length + models.builtins.length + catalog.source_rules.texture_toolkit.methods.length);
     assert.match(hints.find(h => h.name === "noise.mask").signatures.join("\n"), /warp_amount: f32/);
+    assert.match(describe(hints.find(h => h.name === "levels")), /layer\.levels\(black: f32, white: f32, gamma: f32\)/);
+    assert.ok(hints.some(h => h.name === "surface.multiply" && h.kind === "Constant"));
     assert.throws(() => entries({ ...catalog, schema_version: 5 }), /unsupported/);
     assert.throws(() => entries({ ...catalog, schema_version: 7 }), /unsupported/);
 });
@@ -65,6 +67,8 @@ test("completion replaces the full qualified name and hover uses compiler signat
     const hover = await providers.hover.provideHover(document, {}, {});
     assert.match(hover.contents.value, /part.draw\(part: part2d\) -> void/);
     assert.equal(hover.range, range);
+    document.getText = () => "coat.gradient";
+    assert.match((await providers.hover.provideHover(document, {}, {})).contents.value, /layer\.gradient/);
     assert.deepEqual(await providers.completion.provideCompletionItems(document, {}, { isCancellationRequested: true }), []);
 });
 

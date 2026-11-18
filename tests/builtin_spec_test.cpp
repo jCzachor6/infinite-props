@@ -40,8 +40,11 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
             if (overload.opcode) {
                 const auto* opcode = findOpcode(*overload.opcode);
                 REQUIRE(opcode);
-                CHECK(effects == opcode->effects);
-                if (!opcode->stack) {
+                if (!overload.textureOp) CHECK(effects == opcode->effects);
+                if (overload.textureOp) {
+                    CHECK(opcode->opcode == Opcode::Texture);
+                    CHECK(effects.checks & static_cast<u16>(EffectCheck::NumericRange));
+                } else if (!opcode->stack) {
                     REQUIRE((spec.lowering == ips::BuiltinLowering::ListLength || spec.lowering == ips::BuiltinLowering::Polygon ||
                              spec.lowering == ips::BuiltinLowering::SurfacePaint ||
                              std::any_of(overload.params.begin(),overload.params.end(),

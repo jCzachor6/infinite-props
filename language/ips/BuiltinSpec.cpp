@@ -1,3 +1,4 @@
+#include "iprop/Texture.hpp"
 #include "ips/BuiltinSpec.hpp"
 #include "iprop/model/Ops.hpp"
 #include "iprop/Samplers.hpp"
@@ -228,6 +229,26 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
         {"lacunarity", V::F32}, {"gain", V::F32}, seed}, Opcode::NoiseFbmConfig, V::F32});
     fbm.push_back({{{"p", V::Vec2}, {"octaves", V::I32}, {"lacunarity", V::F32},
         {"gain", V::F32}, seed}, Opcode::NoiseFbmConfig, V::F32, BuiltinAdaptation::Coordinates});
+    auto& paint = table.at("surface.paint").overloads;
+    for (auto overload : std::vector<BuiltinOverload>(paint)) {
+        overload.textureOp = static_cast<u8>(overload.opcode == Opcode::SurfacePaint ?
+            TextureOp::PaintLayer : TextureOp::PaintMask);
+        overload.opcode = Opcode::Texture;
+        overload.params.push_back({"opacity", V::F32});
+        paint.push_back(std::move(overload));
+    }
+    for (const char* name : {"noise.value", "noise.grad", "noise.fbm", "noise.ridge", "noise.cell",
+                             "noise.cell2", "noise.cell_id", "noise.warp", "noise.warp_vec", "noise.mask"}) {
+        auto& overloads = table.at(name).overloads;
+        for (auto overload : std::vector<BuiltinOverload>(overloads)) {
+            const auto base = *overload.opcode;
+            const bool mask = base == Opcode::NoiseMask || base == Opcode::NoiseMaskConfig;
+            overload.params.push_back(mask ? BuiltinParameter{"tile", V::I32} : BuiltinParameter{"period", V::Vec2});
+            overload.textureOp = static_cast<u8>(base);
+            overload.opcode = Opcode::Texture;
+            overloads.push_back(std::move(overload));
+        }
+    }
     add("rect", {{"position", V::Vec2}, {"size", V::Vec2}, {"color", V::Color}});
     add("rect", {{"position", V::Vec2}, {"w", V::F32}, {"h", V::F32}, {"color", V::Color}});
     add("rect", {{"x", V::F32}, {"y", V::F32}, {"size", V::Vec2}, {"color", V::Color}});
@@ -274,7 +295,7 @@ std::vector<BuiltinStep> builtinExpansion(const BuiltinOverload& overload) {
         steps.push_back(*overload.opcode);
     } else {
         for (std::size_t i = 0; i < overload.params.size(); ++i) {
-            if (overload.adaptation != BuiltinAdaptation::Direct && overload.params[i].type == ValueType::Vec2) {
+            if (overload.adaptation != BuiltinAdaptation::Direct && overload.params[i].type == ValueType::Vec2 && overload.params[i].name != "period") {
                 component(i, Opcode::Vec2X);
                 component(i, Opcode::Vec2Y);
             } else steps.push_back(i);
@@ -287,6 +308,12 @@ std::vector<BuiltinStep> builtinExpansion(const BuiltinOverload& overload) {
 const std::map<std::string, BuiltinSpec>& surfaceMethodSpecs() {
     using V = ValueType;
     static const std::map<std::string, BuiltinSpec> methods{
+        {"gradient", {V::Layer, BuiltinLowering::Opcode, {
+            {{{"receiver", V::Layer}, {"colors", V::list(V::Color)}}, Opcode::Texture, V::Layer,
+              BuiltinAdaptation::Direct, {}, static_cast<u8>(TextureOp::Gradient)}}}},
+        {"levels", {V::Layer, BuiltinLowering::Opcode, {
+            {{{"receiver", V::Layer}, {"black", V::F32}, {"white", V::F32}, {"gamma", V::F32}}, Opcode::Texture, V::Layer,
+              BuiltinAdaptation::Direct, {}, static_cast<u8>(TextureOp::Levels)}}}},
         {"blur", {BuiltinLowering::Opcode, {
             {{{"receiver", V::Layer}, {"sigma", V::F32}}, Opcode::LayerBlur, V::Layer},
             {{{"receiver", V::Mask}, {"sigma", V::F32}}, Opcode::MaskBlur, V::Mask}}}},
@@ -499,6 +526,8 @@ const BuiltinSpec* findBuiltin(std::string_view name, bool model) {
 bool availableInModel(const BuiltinSpec& spec) {
     if (spec.lowering == BuiltinLowering::Polygon || spec.lowering == BuiltinLowering::SurfacePaint) return false;
     for (const auto& overload : spec.overloads) {
+        // The texture-only variants coexist with older numeric model overloads.
+        if (overload.textureOp) continue;
         if (overload.opcode && !model::admits(*overload.opcode)) return false;
         const auto bound = [](ValueType type) { return type == ValueType::Layer || type == ValueType::Mask || type.isGeometry(); };
         if (bound(overload.result)) return false;
@@ -527,6 +556,13 @@ bool isBuiltinNamespace(std::string_view name, bool model) {
 }
 
 OperationEffects builtinEffects(const BuiltinSpec& spec, const BuiltinOverload* overload) {
+    if (overload && overload->textureOp) {
+        const auto base = static_cast<Opcode>(*overload->textureOp);
+        if (periodicNoiseOpcode(base)) return {RngEffect::SeededComputation, false, false, static_cast<u16>(EffectCheck::NumericRange)};
+        const bool paint = *overload->textureOp <= static_cast<u8>(TextureOp::PaintMask);
+        return {RngEffect::None, paint, false,
+            static_cast<u16>(static_cast<u16>(EffectCheck::UnassignedHandle) | static_cast<u16>(EffectCheck::NumericRange))};
+    }
     if (overload && overload->modelOp) {
         // The vec3 functions are pure; everything else changes the model.
         // A skin argument may be unassigned and a number out of its range.

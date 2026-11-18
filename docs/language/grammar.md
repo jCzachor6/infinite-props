@@ -90,8 +90,8 @@ declaration_constant = literal | "(", declaration_constant, ")"
                      | "-", constant_atom ;
 constant_atom = literal | "(", constant_atom, ")" ;
 surface_mode = "surface.legacy" | "surface.source_over" ;
-layer_capture = "layer", name, [ "(", layer_option, ")" ], block ;
-layer_option  = "alpha", "=", surface_mode | "encoding", "=", "surface.normal" ;
+layer_capture = "layer", name, [ "(", layer_option, { ",", layer_option }, ")" ], block ;
+layer_option  = "alpha", "=", surface_mode | "encoding", "=", "surface.normal" | "tile", "=", ( "true" | "false" ) ;
 identifier    = (letter | "_"), { letter | digit | "_" } ;
 xdigits       = ("x" | "X"), decimal ;
 integer       = decimal | "0", ("x" | "X"), hex, { hex } ;  (* at most 4294967295 or 8 hex digits *)

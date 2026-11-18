@@ -1,3 +1,4 @@
+#include "iprop/TileCopies.hpp"
 #include "iprop/VmInternals.hpp"
 #include "iprop/math/Bezier.hpp"
 
@@ -41,24 +42,19 @@ u64 visitCount(i64 dx, i64 dy) {
     return static_cast<u64>(dx) * static_cast<u64>(dy);
 }
 
+// A copy of a primitive in a tiled capture (texture toolkit v1.2) is the
+// primitive itself with every pixel moved by (tx, ty), a multiple of the
+// canvas: the kernel decides each pixel in place, so the copies fit together
+// exactly. Without a translation every bound below is what it always was.
+void compositeMoved(Execution& ex, i64 x, i64 y, const Color& colour) {
+    if (x < 0 || y < 0 || x >= ex.canvas().width || y >= ex.canvas().height) return;
+    compositePixel(ex, static_cast<i32>(x), static_cast<i32>(y), colour);
+}
+
 // A round-capped stroke sampled at integer raster coordinates, like oval.
 // Charge the full expanded control box even when it lies off canvas.
 void strokeCurve(Execution& ex, std::array<Vec2, 4> points, std::size_t count,
-                  f32 thickness, const Color& colour) {
-    if (!std::isfinite(thickness)) {
-        ex.trap("curve thickness out of range", ErrorReason::NumericRange);
-    }
-    if (thickness <= 0.f) {
-        return;
-    }
-    for (std::size_t i = 0; i < count; ++i) {
-        ex.work();
-        points[i].x *= ex.canvas().scaleX;
-        points[i].y *= ex.canvas().scaleY;
-        if (!std::isfinite(points[i].x) || !std::isfinite(points[i].y)) {
-            ex.trap("coordinate out of range (curve control)", ErrorReason::NumericRange);
-        }
-    }
+                  f32 thickness, const Color& colour, i32 tx = 0, i32 ty = 0) {
     f32 left = points[0].x, right = left, top = points[0].y, bottom = top;
     for (std::size_t i = 1; i < count; ++i) {
         ex.work();
@@ -82,21 +78,23 @@ void strokeCurve(Execution& ex, std::array<Vec2, 4> points, std::size_t count,
     std::array<math::BezierKernel::Box, 16> boxes;
     const std::size_t boxCount = kernel.cover(boxes, radius);
     std::array<std::array<double, 2>, 16> spans;
-    const i32 clipX1 = std::min(x1, static_cast<i32>(ex.canvas().width) - 1);
-    const i32 clipY1 = std::min(y1, static_cast<i32>(ex.canvas().height) - 1);
-    for (i32 y = std::max(y0, 0); y <= clipY1; ++y) {
+    const i32 clipX0 = static_cast<i32>(std::max<i64>(x0, -static_cast<i64>(tx)));
+    const i32 clipY0 = static_cast<i32>(std::max<i64>(y0, -static_cast<i64>(ty)));
+    const i32 clipX1 = static_cast<i32>(std::min<i64>(x1, static_cast<i64>(ex.canvas().width) - 1 - tx));
+    const i32 clipY1 = static_cast<i32>(std::min<i64>(y1, static_cast<i64>(ex.canvas().height) - 1 - ty));
+    for (i32 y = clipY0; y <= clipY1; ++y) {
         ex.work();
         std::size_t spanCount = 0;
         for (std::size_t i = 0; i < boxCount; ++i)
             if (boxes[i].top <= y && y <= boxes[i].bottom) spans[spanCount++] = {boxes[i].left, boxes[i].right};
-        for (i32 x = std::max(x0, 0); x <= clipX1; ++x) {
+        for (i32 x = clipX0; x <= clipX1; ++x) {
             ex.work();
             const Vec2 p{static_cast<f32>(x), static_cast<f32>(y)};
             ex.work(25); // Five candidates with at most five Newton evaluations.
             bool near = boxCount == 0;
             for (std::size_t i = 0; i < spanCount && !near; ++i) near = spans[i][0] <= x && x <= spans[i][1];
             if (near && kernel.within(p, radius)) {
-                compositePixel(ex, x, y, colour);
+                compositePixel(ex, x + tx, y + ty, colour);
             }
         }
     }
@@ -114,7 +112,7 @@ constexpr std::size_t kSortedCrossings = 32;
 // so it is computed once per row and the pixels compare against the sorted
 // values. Work is still one step per row, per pixel visit and per edge of
 // every visit, reserved before the pixel it belongs to.
-void fillPolygon(Execution& ex, std::span<const Vec2> points, const Color& colour) {
+void fillPolygon(Execution& ex, std::span<const Vec2> points, const Color& colour, i32 tx = 0, i32 ty = 0) {
     if (points.empty()) {
         return;
     }
@@ -140,8 +138,9 @@ void fillPolygon(Execution& ex, std::span<const Vec2> points, const Color& colou
 
     const u64 pixelSteps = 1u + static_cast<u64>(n); // the visit and its edges
     const u64 rowSteps = 1u + static_cast<u64>(static_cast<i64>(x1) - x0 + 1) * pixelSteps;
-    const i64 lastColumn = static_cast<i64>(ex.canvas().width) - 1;
-    const i64 lastRow = static_cast<i64>(ex.canvas().height) - 1;
+    const i64 firstColumn = -static_cast<i64>(tx), firstRow = -static_cast<i64>(ty);
+    const i64 lastColumn = static_cast<i64>(ex.canvas().width) - 1 - tx;
+    const i64 lastRow = static_cast<i64>(ex.canvas().height) - 1 - ty;
     for (i64 py = y0; py <= y1; ++py) {
         // Without clips a pixel cannot trap, so an affordable row is reserved
         // whole and only its on-canvas pixels are visited. Otherwise every
@@ -149,9 +148,9 @@ void fillPolygon(Execution& ex, std::span<const Vec2> points, const Color& colou
         const bool prepaid = ex.prepayRow(rowSteps);
         i64 from = x0, to = x1;
         if (prepaid) {
-            from = std::max<i64>(from, 0);
+            from = std::max<i64>(from, firstColumn);
             to = std::min(to, lastColumn);
-            if (py < 0 || py > lastRow || from > to) continue;
+            if (py < firstRow || py > lastRow || from > to) continue;
         } else {
             ex.work();
         }
@@ -195,11 +194,60 @@ void fillPolygon(Execution& ex, std::span<const Vec2> points, const Color& colou
             } else {
                 for (std::size_t i = 0; i < count; ++i) { step(); inside ^= cx < crossings[i]; }
             }
-            if (inside) {
-                compositePixel(ex, static_cast<i32>(px), static_cast<i32>(py), colour);
+            if (inside) compositeMoved(ex, px + tx, py + ty, colour);
+        }
+    }
+}
+
+// (tx, ty) moves the pixels of a copy in a tiled capture, not the line: the
+// samples round as they do in place, so the copies fit together exactly.
+void drawLine(Execution& ex, f32 ax, f32 ay, f32 bx, f32 by, i32 thickness, Color colour, i32 tx = 0, i32 ty = 0) {
+    const f32 dx = bx - ax;
+    const f32 dy = by - ay;
+    const i32 steps = std::max(
+        1, coordToInt(ex, std::ceil(std::max(std::fabs(dx), std::fabs(dy))), "line length"));
+    if (thickness > 0) {
+        ex.spend(visitCount(static_cast<i64>(steps) + 1, thickness));
+        for (i32 i = 0; i <= steps; ++i) {
+            ex.work();
+            const f32 t = static_cast<f32>(i) / static_cast<f32>(steps);
+            const i32 ix = static_cast<i32>(std::round(ax + dx * t));
+            const i32 iy = static_cast<i32>(std::round(ay + dy * t));
+            for (i32 q = 0; q < thickness; ++q) {
+                ex.work();
+                if (tx == 0 && ty == 0) {
+                    compositePixel(ex, ix, iy + q, colour);
+                    continue;
+                }
+                const i64 px = static_cast<i64>(ix) + tx, py = static_cast<i64>(iy) + q + ty;
+                if (px >= 0 && py >= 0 && px < ex.canvas().width && py < ex.canvas().height)
+                    compositePixel(ex, static_cast<i32>(px), static_cast<i32>(py), colour);
             }
         }
     }
+}
+
+// The pixels a primitive given by points can reach, for the copies of a
+// tiled capture: a polygon covers the pixel centres in the half-open box of
+// its points, a stroke the integer coordinates within `pad` of its control
+// box. A plain capture draws once and needs no bounds.
+template<class Draw>
+void drawPointCopies(Execution& ex, std::span<const Vec2> points, bool polygon, double pad, Draw draw) {
+    if (!ex.target.tile || points.empty()) { draw(0, 0); return; }
+    f32 left = points[0].x, right = left, top = points[0].y, bottom = top;
+    for (const auto p : points) {
+        left = std::min(left, p.x); right = std::max(right, p.x);
+        top = std::min(top, p.y); bottom = std::max(bottom, p.y);
+    }
+    const double x0 = std::ceil(static_cast<double>(left) - (polygon ? 0.5 : pad));
+    const double y0 = std::ceil(static_cast<double>(top) - (polygon ? 0.5 : pad));
+    const double x1 = polygon ? std::ceil(static_cast<double>(right) - 0.5) - 1 : std::floor(static_cast<double>(right) + pad);
+    const double y1 = polygon ? std::ceil(static_cast<double>(bottom) - 0.5) - 1 : std::floor(static_cast<double>(bottom) + pad);
+    tileCopies(ex, x0, y0, x1, y1, draw);
+}
+
+void drawPolygon(Execution& ex, std::span<const Vec2> points, Color colour) {
+    drawPointCopies(ex, points, true, 0.0, [&](i32 tx, i32 ty) { fillPolygon(ex, points, colour, tx, ty); });
 }
 
 } // namespace
@@ -230,7 +278,9 @@ bool stepCanvas(Execution& ex, Instruction ins) {
         const Color colour = ex.popColor();
         const i32 y = scaledCoord(ex, static_cast<f32>(ex.popI32()), sY);
         const i32 x = scaledCoord(ex, static_cast<f32>(ex.popI32()), sX);
-        compositePixel(ex, x, y, colour);
+        tileCopies(ex, x, y, x, y, [&](i32 tx, i32 ty) {
+            compositeMoved(ex, static_cast<i64>(x) + tx, static_cast<i64>(y) + ty, colour);
+        });
         ++ex.frame().ip;
         return true;
     }
@@ -241,8 +291,8 @@ bool stepCanvas(Execution& ex, Instruction ins) {
         const f32 w = ex.popF32() * sX;
         const f32 y = ex.popF32() * sY;
         const f32 x = ex.popF32() * sX;
-        const std::array<Vec2, 4> corners{{{x, y}, {x + w, y}, {x + w, y + h}, {x, y + h}}};
-        fillPolygon(ex, corners, colour);
+        std::array<Vec2, 4> corners{{{x, y}, {x + w, y}, {x + w, y + h}, {x, y + h}}};
+        drawPolygon(ex, corners, colour);
         ++ex.frame().ip;
         return true;
     }
@@ -254,22 +304,12 @@ bool stepCanvas(Execution& ex, Instruction ins) {
         const f32 bx = ex.popF32() * sX;
         const f32 ay = ex.popF32() * sY;
         const f32 ax = ex.popF32() * sX;
-        const f32 dx = bx - ax;
-        const f32 dy = by - ay;
-        const i32 steps = std::max(
-            1, coordToInt(ex, std::ceil(std::max(std::fabs(dx), std::fabs(dy))), "line length"));
-        if (thickness > 0) {
-            ex.spend(visitCount(static_cast<i64>(steps) + 1, thickness));
-            for (i32 i = 0; i <= steps; ++i) {
-                ex.work();
-                const f32 t = static_cast<f32>(i) / static_cast<f32>(steps);
-                const i32 ix = static_cast<i32>(std::round(ax + dx * t));
-                const i32 iy = static_cast<i32>(std::round(ay + dy * t));
-                for (i32 q = 0; q < thickness; ++q) {
-                    ex.work();
-                    compositePixel(ex, ix, iy + q, colour);
-                }
-            }
+        if (ex.target.tile && thickness > 0) {
+            tileCopies(ex, std::round(std::min(ax, bx)), std::round(std::min(ay, by)),
+                std::round(std::max(ax, bx)), std::round(std::max(ay, by)) + static_cast<double>(thickness) - 1,
+                [&](i32 tx, i32 ty) { drawLine(ex, ax, ay, bx, by, thickness, colour, tx, ty); });
+        } else {
+            drawLine(ex, ax, ay, bx, by, thickness, colour);
         }
         ++ex.frame().ip;
         return true;
@@ -285,7 +325,17 @@ bool stepCanvas(Execution& ex, Instruction ins) {
             ex.work();
             points[i - 1] = ex.popVec2();
         }
-        strokeCurve(ex, points, count, thickness, colour);
+        if (!std::isfinite(thickness)) ex.trap("curve thickness out of range", ErrorReason::NumericRange);
+        if (thickness <= 0.f) { ++ex.frame().ip; return true; }
+        for (std::size_t i = 0; i < count; ++i) {
+            ex.work();
+            points[i].x *= ex.canvas().scaleX;
+            points[i].y *= ex.canvas().scaleY;
+            if (!std::isfinite(points[i].x) || !std::isfinite(points[i].y))
+                ex.trap("coordinate out of range (curve control)", ErrorReason::NumericRange);
+        }
+        drawPointCopies(ex, std::span<const Vec2>(points).first(count), false, static_cast<double>(thickness) * 0.5,
+            [&](i32 tx, i32 ty) { strokeCurve(ex, points, count, thickness, colour, tx, ty); });
         ++ex.frame().ip;
         return true;
     }
@@ -300,7 +350,7 @@ bool stepCanvas(Execution& ex, Instruction ins) {
             const f32 x = ex.popF32() * sX;
             points[i - 1] = {x, y};
         }
-        fillPolygon(ex, points, colour);
+        drawPolygon(ex, points, colour);
         ++ex.frame().ip;
         return true;
     }
@@ -317,7 +367,7 @@ bool stepCanvas(Execution& ex, Instruction ins) {
             const auto point = std::get<Vec2>(value);
             points.push_back({point.x * sX, point.y * sY});
         }
-        fillPolygon(ex, points, colour);
+        drawPolygon(ex, points, colour);
         ++ex.frame().ip;
         return true;
     }
@@ -326,38 +376,40 @@ bool stepCanvas(Execution& ex, Instruction ins) {
         const Color colour = ex.popColor();
         const f32 ry = ex.popF32() * sY;
         const f32 rx = ex.popF32() * sX;
-        const f32 y = ex.popF32() * sY;
-        const f32 x = ex.popF32() * sX;
-        const i32 y0 = coordToInt(ex, std::floor(y - ry), "oval y");
-        const i32 y1 = coordToInt(ex, std::ceil(y + ry), "oval y");
-        const i32 x0 = coordToInt(ex, std::floor(x - rx), "oval x");
-        const i32 x1 = coordToInt(ex, std::ceil(x + rx), "oval x");
-        ex.spend(visitCount(static_cast<i64>(x1) - x0 + 1, static_cast<i64>(y1) - y0 + 1));
-        const u64 rowSteps = 1u + static_cast<u64>(static_cast<i64>(x1) - x0 + 1);
-        const i64 lastColumn = static_cast<i64>(ex.canvas().width) - 1;
-        const i64 lastRow = static_cast<i64>(ex.canvas().height) - 1;
-        for (i64 py = y0; py <= y1; ++py) {
-            // A prepaid row tests only its on-canvas pixels.
-            const bool prepaid = ex.prepayRow(rowSteps);
-            i64 from = x0, to = x1;
-            if (prepaid) {
-                from = std::max<i64>(from, 0);
-                to = std::min(to, lastColumn);
-                if (py < 0 || py > lastRow) continue;
-            } else {
-                ex.work();
-            }
-            PrepaidSteps polls{*ex.workBudget};
-            const f32 ny = (static_cast<f32>(py) - y) / ry;
-            for (i64 px = from; px <= to; ++px) {
-                if (prepaid) polls.step();
-                else ex.work();
-                const f32 nx = (static_cast<f32>(px) - x) / rx;
-                if (nx * nx + ny * ny <= 1.f) {
-                    compositePixel(ex, static_cast<i32>(px), static_cast<i32>(py), colour);
+        const f32 cy = ex.popF32() * sY, cx = ex.popF32() * sX;
+        const f32 x = cx, y = cy;
+        tileCopies(ex, static_cast<double>(cx) - rx, static_cast<double>(cy) - ry, static_cast<double>(cx) + rx,
+                   static_cast<double>(cy) + ry, [&](i32 tx, i32 ty) {
+            const i32 y0 = coordToInt(ex, std::floor(y - ry), "oval y");
+            const i32 y1 = coordToInt(ex, std::ceil(y + ry), "oval y");
+            const i32 x0 = coordToInt(ex, std::floor(x - rx), "oval x");
+            const i32 x1 = coordToInt(ex, std::ceil(x + rx), "oval x");
+            ex.spend(visitCount(static_cast<i64>(x1) - x0 + 1, static_cast<i64>(y1) - y0 + 1));
+            const u64 rowSteps = 1u + static_cast<u64>(static_cast<i64>(x1) - x0 + 1);
+            const i64 firstColumn = -static_cast<i64>(tx), firstRow = -static_cast<i64>(ty);
+            const i64 lastColumn = static_cast<i64>(ex.canvas().width) - 1 - tx;
+            const i64 lastRow = static_cast<i64>(ex.canvas().height) - 1 - ty;
+            for (i64 py = y0; py <= y1; ++py) {
+                // A prepaid row tests only its on-canvas pixels.
+                const bool prepaid = ex.prepayRow(rowSteps);
+                i64 from = x0, to = x1;
+                if (prepaid) {
+                    from = std::max<i64>(from, firstColumn);
+                    to = std::min(to, lastColumn);
+                    if (py < firstRow || py > lastRow) continue;
+                } else {
+                    ex.work();
+                }
+                PrepaidSteps polls{*ex.workBudget};
+                const f32 ny = (static_cast<f32>(py) - y) / ry;
+                for (i64 px = from; px <= to; ++px) {
+                    if (prepaid) polls.step();
+                    else ex.work();
+                    const f32 nx = (static_cast<f32>(px) - x) / rx;
+                    if (nx * nx + ny * ny <= 1.f) compositeMoved(ex, px + tx, py + ty, colour);
                 }
             }
-        }
+        });
         ++ex.frame().ip;
         return true;
     }

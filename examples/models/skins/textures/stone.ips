@@ -1,0 +1,70 @@
+// Dressed stone for a model: courses of blocks of different lengths with
+// mortar between them, chipped faces, speckles and moss in the joints. It
+// repeats in both directions; `tint` is the stone.
+asset stone {
+  size 256x256
+  input color tint = #8f8a7c
+  output normal relief
+  output roughness finish
+
+  draw {
+    root = seed.initial()
+    courses = 4
+    ch = 256.0 / float(courses)
+
+    // The height: mortar low, each block a little higher or lower than its
+    // neighbours. A course starts anywhere, so its blocks cross the edge.
+    layer height(tile = true, alpha = surface.source_over) {
+      rect(0, 0, 256, 256, #303030)
+      for j in 0..courses {
+        course = root.fork("course").fork(j)
+        x = roll(course.fork("start"), 0.0, 96.0)
+        end = x + 256.0
+        for n in 0..8 {
+          if (x < end - 1.0) {
+            block = course.fork(n)
+            w = min(roll(block.fork("length"), 48.0, 104.0), end - x)
+            if (end - x - w < 30.0) { w = end - x }
+            level = int(roll(block.fork("level"), -30.0, 30.0))
+            rect(x + 2.5, float(j) * ch + 2.5, w - 5.0, ch - 5.0, color.shade(#a8a8a8, level))
+            x = x + w
+          }
+        }
+      }
+    }
+    // Chips and pits knock the faces back, more along the joints.
+    pits = noise.mask({0, 0}, {256, 256}, noise.mode_cell, {0.09, 0.09}, 0.16, root.fork("pits"),
+                      1, 0.08, noise.below, 0.5, tile = true)
+    worn = noise.mask({0, 0}, {256, 256}, noise.mode_fbm, {0.035, 0.035}, 0.1, root.fork("worn"),
+                      4, 0.5, noise.above, 0.4, tile = true)
+    layer carved(tile = true, alpha = surface.source_over) {
+      surface.paint(height.blur(2.2))
+      surface.paint(worn, #000000, blend = surface.subtract, opacity = 0.16)
+      surface.paint(pits, #000000, blend = surface.subtract, opacity = 0.3)
+    }
+    soft = carved.blur(0.7)
+
+    // The colour comes from the height: mortar, shadowed stone, stone, and
+    // light on the high faces; then mottling, specks and moss in the joints.
+    mottle = noise.mask({0, 0}, {256, 256}, noise.mode_fbm, {0.02, 0.03}, 0.0, root.fork("mottle"),
+                        3, 0.8, noise.above, 0.3, tile = true)
+    specks = noise.mask({0, 0}, {256, 256}, noise.mode_cell, {0.11, 0.11}, 0.13, root.fork("specks"),
+                        1, 0.07, noise.below, 0.5, tile = true)
+    joints = mask.from(soft.gradient([#000000ff, #00000000, #00000000, #00000000]))
+    moss = mask.intersect(joints, noise.mask({0, 0}, {256, 256}, noise.mode_fbm, {0.03, 0.03}, 0.05,
+                                             root.fork("moss"), 3, 0.3, noise.above, 0.3, tile = true))
+    surface.paint(soft.gradient([#2b2a27, color.shade(tint, -55), color.shade(tint, -8), tint, color.shade(tint, 24)]),
+                  blend = surface.source_over)
+    surface.paint(mottle, color.mix(tint, #b49a6e, 0.6), blend = surface.overlay, opacity = 0.5)
+    surface.paint(specks, #000000, blend = surface.multiply, opacity = 0.22)
+    surface.paint(mask.offset(specks, 1, 1), #ffffff, blend = surface.screen, opacity = 0.1)
+    surface.paint(moss, #5d6b2e, blend = surface.multiply, opacity = 0.7)
+
+    relief = soft.normal(5.0, 0.0)
+    layer rough(tile = true, alpha = surface.source_over) {
+      rect(0, 0, 256, 256, #e2e2e2)
+      surface.paint(moss, #ffffff, blend = surface.screen, opacity = 0.5)
+    }
+    finish = rough
+  }
+}

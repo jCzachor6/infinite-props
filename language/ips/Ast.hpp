@@ -137,6 +137,12 @@ struct ListMethod {
     std::string name; // distinct or sort; never a global keyword
     SourceLocation location;
 };
+struct TextureMethod {
+    std::unique_ptr<Expr> receiver;
+    std::string name;
+    std::vector<Arg> args;
+    SourceLocation location;
+};
 struct SurfaceBlur {
     std::unique_ptr<Expr> receiver;
     Arg sigma;
@@ -172,10 +178,10 @@ struct PointDistributionLiteral {
 
 struct Expr
     : std::variant<Literal, Identifier, Member, Call, VectorLit, ListLit, Index, Binary,
-                   Unary, RandomRange, SamplerCapture, SamplerPick, ListMethod, SurfaceBlur, SurfaceNormal,
+                   Unary, RandomRange, SamplerCapture, SamplerPick, ListMethod, TextureMethod, SurfaceBlur, SurfaceNormal,
                    SeedFork, PointDistributionLiteral> {
     using std::variant<Literal, Identifier, Member, Call, VectorLit, ListLit, Index,
-                       Binary, Unary, RandomRange, SamplerCapture, SamplerPick, ListMethod, SurfaceBlur, SurfaceNormal,
+                       Binary, Unary, RandomRange, SamplerCapture, SamplerPick, ListMethod, TextureMethod, SurfaceBlur, SurfaceNormal,
                        SeedFork, PointDistributionLiteral>::variant;
     TokenRange sourceRange{};
     TokenRange sourceCoreRange{}; // excludes redundant outer parentheses
@@ -207,6 +213,10 @@ inline std::uint32_t childDepth(const Expr& expr) {
         } else if constexpr (std::is_same_v<T, SamplerCapture>) visit(node.value);
         else if constexpr (std::is_same_v<T, SamplerPick>) { visit(node.receiver); visit(node.count); }
         else if constexpr (std::is_same_v<T, ListMethod>) visit(node.receiver);
+        else if constexpr (std::is_same_v<T, TextureMethod>) {
+            visit(node.receiver);
+            for (const auto& arg : node.args) visit(arg.value);
+        }
         else if constexpr (std::is_same_v<T, SurfaceBlur>) { visit(node.receiver); visit(node.sigma.value); }
         else if constexpr (std::is_same_v<T, SurfaceNormal>) {
             visit(node.receiver); visit(node.depth.value);
@@ -298,6 +308,8 @@ struct LayerStmt {
     SourceLocation location;
     // `(encoding=surface.normal)`: a source-over capture of directions.
     bool directions = false;
+    // `(tile = true)` or `(tile = false)`; unset inherits the active target's.
+    std::optional<bool> tile{};
 };
 struct ClipStmt {
     std::unique_ptr<Expr> mask;

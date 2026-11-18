@@ -44,7 +44,7 @@ def main():
             expected_summary = 'conservative' if builtin['name'] in {'part.create', 'parts.from_regions'} else 'intrinsic'
             assert effects['summary'] == expected_summary, builtin
             if 'opcode' in entry:
-                previous = opcode_effects.setdefault(entry['opcode'], effects)
+                previous = opcode_effects.setdefault((entry['opcode'], entry.get('texture_op')), effects)
                 assert previous == effects, builtin
             if entry['result'] == 'void':
                 assert effects['writes_canvas'] or effects['writes_outputs'] or effects['rng'] != 'none', builtin

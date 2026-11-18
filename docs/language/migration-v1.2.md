@@ -3,8 +3,9 @@
 1.2 adds [models](models.md): an asset with `render { }` in place of
 `draw { }` builds a 3D shape and compiles to an `.iprop3d` file. It also adds
 [material maps](material-maps.md) to draw assets: roughness, metallic, ambient
-occlusion and emission images beside the image. Nothing is renamed or
-removed. Every 1.1 source compiles to the bytes it compiled to before, and
+occlusion and emission images beside the image, and a
+[texture toolkit](textures.md) for textures that repeat without a seam.
+Nothing is renamed or removed. Every 1.1 source compiles to the bytes it compiled to before, and
 every existing `.iprop` keeps its image, outputs, RNG, fuel and work.
 
 Models are a **preview**. Their language, their file format and their host
@@ -56,6 +57,27 @@ The four words are contextual like `normal`: a local, a helper or an input
 called `roughness`, `metallic`, `ao` or `emission` compiles as it did. A 1.1
 compiler rejects a source that declares a map, and a 1.1 runtime rejects a
 program that declares one while loading (`unknown resource export flags`).
+
+Draw assets also gain the [texture toolkit](textures.md):
+
+| New | Meaning |
+| --- | --- |
+| `layer name(tile = true) { ... }` | A capture that wraps at its edges, with `blur`, `normal` and the mask operations |
+| `period = {px, py}` on the scalar noises, `tile = true` on `noise.mask` | Noise that repeats |
+| `surface.multiply`, `.screen`, `.overlay`, `.add`, `.subtract` | Blend modes of `surface.paint` |
+| `opacity = 0.3` in `surface.paint` | A paint faded by a number |
+| `image.gradient(colors)`, `image.levels(black, white, gamma)` | A colour for every brightness; contrast |
+
+`tile`, `period`, `opacity`, `gradient` and `levels` are not reserved: they
+are argument and method names. A call on an import alias is never a layer
+method, so a material named `gradient` or `levels` compiles as it did. A 1.1
+runtime rejects a program that uses the toolkit while loading (`reserved
+opcode`, `unknown surface blend mode` or `unknown layer alpha mode`).
+
+A model now has one fuel budget, 150,000,000 units, for its program and all
+its textures; in 1.2 previews before this each texture had the 25,000,000 of
+its own program. Recompile a preview model to give it the new budget. A draw
+asset generated alone keeps 25,000,000.
 
 ## Compiled programs
 

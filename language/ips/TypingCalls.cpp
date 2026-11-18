@@ -108,6 +108,11 @@ ValueType Typer::typeMemberCall(const Call& call) {
             hint = "; write " + space + "." + member.name + "(...) with the value as its first argument";
         else if (findBuiltin(member.name, modelAsset()))
             hint = "; write " + member.name + "(...) with the value as an argument";
+        if (hint.empty() && receiver == ValueType::Layer) {
+            std::vector<std::string> methods;
+            for (const auto& [name, spec] : surfaceMethodSpecs()) methods.push_back(name);
+            hint = didYouMean(member.name, methods);
+        }
         error(member.location, std::string(typeName(receiver)) + " has no method '" + member.name + "'" + hint);
     }
     return modelAsset() ? typeSkinCall(call) : typePartCall(call);
@@ -144,10 +149,22 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
         if (allKnown && (normalColorValue(axes[0], axes[1], axes[2]).flat || !(axes[2] > 0.f)))
             valueError(call.location, "color.normal needs a finite nonzero direction with z > 0");
     }
-    if (signature.lowering == BuiltinLowering::SurfacePaint &&
-        bound.signature.parameters.back().name == "blend") {
-        if (!surfaceMode(*args.back()->value))
-            error(locationOf(*args.back()->value), "surface.paint blend must be surface.legacy or surface.source_over");
+    if (signature.lowering == BuiltinLowering::SurfacePaint) {
+        const auto& overload = paintOverload(bound, typeOf(*args.front()->value));
+        for (std::size_t i = 0; i < args.size(); ++i) {
+            const auto& param = overload.params[i];
+            if (param.name == "blend" && !surfaceMode(*args[i]->value)) {
+                // Every constant the argument takes, in wire order.
+                std::string modes;
+                for (std::size_t k = 0; k < kCompositionSpecs.size(); ++k)
+                    modes += std::string(k == 0 ? "" : k + 1 == kCompositionSpecs.size() ? " or " : ", ") +
+                        "surface." + std::string(kCompositionSpecs[k].name);
+                error(locationOf(*args[i]->value), "surface.paint blend must be " + modes);
+            }
+            const auto got = typeOf(*args[i]->value, param.type);
+            if (!parameterAccepts(param, got)) failBuiltinArgument(*args[i]->value, i, name.name, param, got);
+        }
+        return overload.result;
     }
     if (signature.lowering == BuiltinLowering::Pick || signature.lowering == BuiltinLowering::Choose) {
         const std::size_t first = signature.lowering == BuiltinLowering::Choose ? 1 : 0;
@@ -185,8 +202,15 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
     }
     const auto* overload = builtinOverload(signature, types);
     if (overload) {
+        if (modelAsset() && overload->textureOp)
+            error(call.location, "the periodic overload of " + name.name + " requires an asset with draw");
         const BuiltinSpec concrete{signature.lowering, {*overload}};
         (void)bind(call, builtinCallSignature(concrete, call.args.size(), call.location, name.name), name.name);
+        if (name.name == "noise.mask" && overload->params.back().name == "tile") {
+            const auto tile = known(*args.back()->value);
+            if (tile && std::get<i32>(*tile) != 0 && std::get<i32>(*tile) != 1)
+                valueError(locationOf(*args.back()->value), "noise.mask tile must be true or false");
+        }
         if (name.name == "mask.expand" || name.name == "mask.shrink") {
             const auto radius = known(*args[1]->value);
             if (radius && (std::get<i32>(*radius) < 0 || std::get<i32>(*radius) > kMaxMaskRadius))

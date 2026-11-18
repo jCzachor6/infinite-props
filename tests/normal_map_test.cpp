@@ -492,7 +492,10 @@ TEST_CASE("normal exports and new aux values survive tools and reject malformed 
         const auto at = file.code.functions[0].fileOffset + i * 4;
         const auto ins = decodeInstruction(file.code.functions[0].code.subspan(i * 4, 4));
         if (ins.opcode == Opcode::LayerBegin) {
-            for (const u8 aux : {u8{4}, u8{0x83}, u8{255}}) { auto bad = bytes; bad.at(at + 1) = aux; CHECK_THROWS_AS(validate(loadFile(bad)), FormatError); }
+            // Modes 0-3, with at most one of the tiling bits 0x40 and 0x80
+            // (texture toolkit v1.2): a tiled direction capture is 0x83.
+            for (const u8 aux : {u8{4}, u8{0x84}, u8{0xC3}, u8{255}}) { auto bad = bytes; bad.at(at + 1) = aux; CHECK_THROWS_AS(validate(loadFile(bad)), FormatError); }
+            for (const u8 aux : {u8{0x43}, u8{0x83}}) { auto good = bytes; good.at(at + 1) = aux; CHECK_NOTHROW(validate(loadFile(good))); }
         }
         if (ins.opcode == Opcode::SurfaceNormal) {
             for (const u8 aux : {u8{2}, u8{255}}) { auto bad = bytes; bad.at(at + 1) = aux; CHECK_THROWS_AS(validate(loadFile(bad)), FormatError); }

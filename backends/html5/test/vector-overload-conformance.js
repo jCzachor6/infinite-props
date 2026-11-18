@@ -14,7 +14,7 @@ function bits(outputs) {
 function run(iprop, tool, directory) {
     const catalogue = JSON.parse(execFileSync(tool("ipc"), ["--describe-language"], {encoding:"utf8"}));
     const signatures = catalogue.builtins.flatMap(b => b.overloads.filter(o => o.expansion));
-    assert.equal(signatures.length, 24, "all requested vector overloads are exported");
+    assert.equal(signatures.length, 34, "all requested vector overloads are exported");
     // The scalar references are explicit, independent of the compiler's expansion table.
     const pairs = [
         ["rect(p,size,tint)", "rect(p.x,p.y,size.x,size.y,tint)"],
@@ -43,6 +43,20 @@ function run(iprop, tool, directory) {
         ["samples=lerp(t=unit(),b=point(),a=point())",
          "a=point() b=point() t=unit() samples={lerp(a.x,b.x,t),lerp(a.y,b.y,t)}"],
     ];
+    // Every periodic overload also accepts explicit scalar coordinates.
+    const periodic = [
+        ["value", ""], ["grad", ""], ["cell", ""], ["cell2", ""], ["cell_id", ""],
+        ["fbm", "4,"], ["fbm", "4,1.5,0.6,"], ["ridge", "4,"],
+        ["warp", "0.5,"], ["warp_vec", "0.5,"]
+    ];
+    for (const [name, extras] of periodic) {
+        pairs.push(["p", "p.x,p.y"].map(point => {
+            const call = `noise.${name}(${point},${extras}seed,period={5,3})`;
+            if (name === "warp_vec") return "samples=" + call;
+            if (name === "cell_id") return `id=${call} samples={id&65535,id>>16}`;
+            return `samples={${call},0}`;
+        }));
+    }
     assert.equal(pairs.length, signatures.length);
     const wrap = body => `asset overloads {size 24x24 input f32 bias=-0.75 input color tint=#12345678
       output list point samples output point following

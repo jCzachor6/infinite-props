@@ -14,6 +14,8 @@ The frozen [1.0](iprop-v1.0.md), [0.9](iprop-v0.9.md), [0.8](iprop-v0.8.md),
 [materials](materials-0.8.md) and [0.7](iprop-v0.7.md) contracts remain for
 historical comparison.
 
+[Texture toolkit](texture-toolkit-v1.2.md) specifies tileable 2D layers, blend arithmetic, transfer functions and periodic noise in the 1.2 preview.
+
 [Material maps](material-maps-v1.2.md) is the draft 1.2 extension of the 2D
 format: roughness, metallic, ambient occlusion and emission images beside the
 image, with C API 0.8.

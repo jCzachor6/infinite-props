@@ -5,6 +5,8 @@
 #include "iprop/Consts.hpp"
 #include "iprop/Instruction.hpp"
 #include "iprop/Meta.hpp"
+#include "iprop/OpcodeSpec.hpp"
+#include "iprop/Texture.hpp"
 #include "iprop/Validator.hpp"
 #include "iprop/model/Model.hpp"
 
@@ -104,6 +106,13 @@ std::string instructionText(const Function& function,
     const char* mnemonic = opcodeMnemonic(ins.opcode);
     if (mnemonic == nullptr) {
         return "reserved." + std::to_string(static_cast<u32>(ins.opcode));
+    }
+    if (ins.opcode == Opcode::Texture) {
+        // Validation admits only these: an operation of the page or a noise.
+        const auto* base = findOpcode(static_cast<Opcode>(ins.aux));
+        const std::string sub = ins.aux < kTextureOpNames.size() ? std::string(kTextureOpNames[ins.aux])
+            : base != nullptr ? std::string(base->mnemonic) : std::to_string(ins.aux);
+        return std::string(mnemonic) + " " + sub + " " + std::to_string(ins.operand);
     }
     switch (operandKind(ins.opcode)) {
     case OperandKind::None:

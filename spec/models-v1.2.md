@@ -201,10 +201,10 @@ model file; in a `.iprop` file `0x0F` stays a reserved opcode.
 
 A model program may use the model page and these 2D instructions: control,
 stack and constants, integer, float, colour, vec2, signed-distance fields,
-curves, seeded primitives and streams, scalar noise (not `noise.mask`),
+curves, seeded primitives and streams, the nonperiodic scalar noise operations,
 `seed.initial`, lists, samplers, steppers and distributions. Canvas
 instructions, layers, masks, clips, blur, `surface.normal`, structured
-outputs, parts, dynamic parts, Voronoi, contours and regions are invalid, in
+outputs, parts, dynamic parts, the texture page, Voronoi, contours and regions are invalid, in
 unreachable code too.
 
 | Aux | Mnemonic | Operand | Stack |
@@ -423,7 +423,7 @@ or larger than 2048 dimension traps with `NumericRange`
 The texture is the result of a standard 2D generation of the embedded file
 with that seed, those dimensions and those inputs: the image and every
 auxiliary image it publishes. It is therefore the bytes a host would get
-from the same `.iprop`. The generation runs under the embedded program's own
+from the same `.iprop`. The generation runs under the model program's remaining
 fuel budget and under the limits of the running model generation
 ([accounting](#accounting-and-limits)). A trap inside it fails the model
 generation with that trap; the message is prefixed by `skin 'NAME': `.

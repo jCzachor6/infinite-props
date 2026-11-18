@@ -282,6 +282,20 @@ ValueType Typer::typeListMethod(const Expr& expr, const ListMethod& method, std:
 // in a function of their own and take no stack on the way down.
 ValueType Typer::infer(const Expr& expr) {
     if (const auto* blur = std::get_if<SurfaceBlur>(&expr)) return typeBlur(expr, *blur);
+    if (const auto* method = std::get_if<TextureMethod>(&expr)) {
+        const auto& overload = surfaceMethodSpecs().at(method->name).overloads.front();
+        if (typeOf(*method->receiver) != ValueType::Layer)
+            error(method->location, "." + method->name + " needs a layer receiver");
+        const auto arguments = textureArguments(*method);
+        for (std::size_t i = 0; i < arguments.size(); ++i) {
+            const auto& arg = *arguments[i];
+            const auto& param = overload.params[i+1];
+            if (!parameterAccepts(param, typeOf(*arg.value, param.type)))
+                error(arg.location, param.name + " must be " + typeName(param.type));
+        }
+        resolutions_[&expr].overload = &overload;
+        return overload.result;
+    }
     if (const auto* normal = std::get_if<SurfaceNormal>(&expr)) return typeNormal(expr, *normal);
     if (const auto* fork = std::get_if<SeedFork>(&expr)) return typeFork(*fork);
     if (const auto* lit = std::get_if<Literal>(&expr)) return typeLiteral(*lit);

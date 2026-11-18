@@ -26,6 +26,8 @@ const corpus = [
       uniforms: [{}, { stretch: 1.75, sides: 5, tint: "#c0392b" }, { stretch: 0.625, sides: 31, rounding: 2.5 }] },
     { name: "crate", source: "backends/capi3d/test/crate.ips", seeds: [0, 5, 77],
       uniforms: [{}, { wide: 6.5, extra: 0 }, { wide: 11.75, stain: "#10a0f080" }] },
+    // Skins of the texture toolkit under the model's one fuel budget.
+    { name: "bench", source: "examples/models/bench.ips", seeds: [1, 2], uniforms: [{}, { paint: "#7a3b2e" }] },
     { name: "chair", source: "examples/models/chair.ips", seeds: [0, 1, 2, 3, 4, 5, 9, 13],
       uniforms: [{}, { finish: 5, fabric: 2 }] },
     { name: "empty", source: "backends/capi3d/test/empty.ips", seeds: [0, 9], uniforms: [{}] },

@@ -83,7 +83,7 @@ std::vector<u8> Assembler::assemble() {
     meta.writeU32(model ? 1u : *asset.sizeY);
     meta.writeF32(!model && asset.originX ? foldOrigin(*asset.originX) : 0.f);
     meta.writeF32(!model && asset.originY ? foldOrigin(*asset.originY) : 0.f);
-    meta.writeU64(kDefaultFuelBudget);
+    meta.writeU64(model ? kDefaultModelFuelBudget : kDefaultFuelBudget);
     meta.writeU16(0);       // emission: no offset/radius/colour
     for (int i = 0; i < 6; ++i) {
         meta.writeU8(0);

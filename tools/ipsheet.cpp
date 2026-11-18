@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <map>
 #include <stdexcept>
 #include <string>
@@ -140,7 +141,8 @@ int modelSheet(const std::vector<u8>& bytes, const std::string& output, u32 seed
 int ipsheetMain(int argc, char* argv[]) {
     std::string input;
     std::string output = "sheet.png";
-    u32 seeds = 4;
+    u32 seeds = 4, repeat = 1;
+    bool explicitSeeds = false;
     u32 columns = 0; // 0 = seed count
     u32 firstSeed = 0;
     std::vector<std::pair<std::string, std::string>> overrides;
@@ -168,6 +170,7 @@ int ipsheetMain(int argc, char* argv[]) {
                       << "Usage: ipsheet <file.iprop> [options]\n"
                       << "  --seed N       first seed (default 0)\n"
                       << "  --seeds N      seed count (default 4)\n"
+                      << "  --repeat N     repeat each texture N by N (default one seed with --repeat)\n"
                       << "  --columns N    grid columns (default: the seed count)\n"
                       << "  --uniform NAME=VALUE  fixed input override (repeatable)\n"
                       << "  --image KIND   color (default), normal or lit: the image, its normal\n"
@@ -193,7 +196,15 @@ int ipsheetMain(int argc, char* argv[]) {
                 return 1;
             }
             overrides.emplace_back(pair.substr(0, equal), pair.substr(equal + 1));
+        } else if (arg == "--repeat") {
+            if (!parseU32(next("--repeat"), repeat) || !repeat) {
+                std::cerr << "ipsheet: --repeat needs a positive integer\n";
+                return 1;
+            }
+            if (!explicitSeeds) seeds = 1;
+            if (imageOnly.empty()) imageOnly = arg;
         } else if (arg == "--seeds") {
+            explicitSeeds = true;
             if (!parseU32(next("--seeds"), seeds) || seeds == 0) {
                 std::cerr << "ipsheet: bad --seeds\n";
                 return 1;
@@ -295,8 +306,23 @@ int ipsheetMain(int argc, char* argv[]) {
     if (columns == 0) {
         columns = seeds;
     }
-    const u32 cellW = loaded.meta.sizeX;
-    const u32 cellH = loaded.meta.sizeY;
+    const u32 rows = 1 + (seeds-1)/columns;
+    const u64 tileWidth = static_cast<u64>(loaded.meta.sizeX)*repeat;
+    const u64 tileHeight = static_cast<u64>(loaded.meta.sizeY)*repeat;
+    // PNG dimensions have 31 usable bits. Guard each multiplication before
+    // narrowing the dimensions or reserving the complete RGBA buffer.
+    constexpr u32 maxSide = std::numeric_limits<i32>::max();
+    if (!tileWidth || !tileHeight || tileWidth > maxSide / columns || tileHeight > maxSide / rows) {
+        std::cerr << "ipsheet: sheet dimensions exceed the PNG format\n";
+        return 1;
+    }
+    const u64 width = tileWidth * columns, height = tileHeight * rows;
+    const u64 pixels = width * height;
+    if (pixels > std::vector<u8>().max_size() / 4 || (repeat > 1 && pixels > 64u * 1024u * 1024u)) {
+        std::cerr << "ipsheet: texture sheet is too large (repeat previews allow 64 megapixels)\n";
+        return 1;
+    }
+    const u32 cellW = static_cast<u32>(tileWidth), cellH = static_cast<u32>(tileHeight);
     GenerationInputs inputs;
     try {
         inputs.uniforms = readOverrides(loaded, overrides);
@@ -305,8 +331,6 @@ int ipsheetMain(int argc, char* argv[]) {
         return 1;
     }
     // Consecutive seeds in row-major order, with fixed declared inputs.
-    const u32 cells = seeds;
-    const u32 rows = (cells + columns - 1) / columns;
     std::vector<u8> rgba(
         static_cast<std::size_t>(columns) * cellW * rows * cellH * 4, 0);
 
@@ -360,6 +384,18 @@ int ipsheetMain(int argc, char* argv[]) {
                     rgba[at + 2] = pixel.b;
                     rgba[at + 3] = pixel.a;
                 }
+            }
+            // Duplicate complete rows of the rendered tile, including alpha and
+            // any selected material map. Only one VM runs per seed.
+            const auto stride = static_cast<std::size_t>(columns) * cellW * 4;
+            const auto rowBytes = static_cast<std::size_t>(canvas.width) * 4;
+            const auto origin = static_cast<std::size_t>(cellY) * cellH * stride +
+                                static_cast<std::size_t>(cellX) * cellW * 4;
+            for (u32 y = 0; repeat > 1 && y < cellH; ++y) {
+                const auto* source = rgba.data() + origin + (y % canvas.height)*stride;
+                auto* row = rgba.data() + origin + y*stride;
+                for (u32 col = y < canvas.height ? 1u : 0u; col < repeat; ++col)
+                    std::copy_n(source, rowBytes, row + col*rowBytes);
             }
         }
     } catch (const Trap& error) {

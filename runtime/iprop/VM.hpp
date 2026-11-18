@@ -87,6 +87,8 @@ public:
     // `inputs.uniforms` must be empty. A mismatch is a caller bug and throws
     // std::logic_error after the host-argument checks.
     VM(const LoadedFile& file, const GenerationInputs& inputs, std::span<const UniformValue> rootValues);
+    // Embedded skin execution spends the remaining fuel of its owning model.
+    VM(const LoadedFile& file, const GenerationInputs& inputs, std::span<const UniformValue> rootValues, u64 remainingFuel);
     ~VM();
 
     VM(VM&&) noexcept;

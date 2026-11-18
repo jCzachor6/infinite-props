@@ -1886,7 +1886,7 @@
           "properties": {
             "capture_syntax": {
               "type": "string",
-              "const": "layer <name> [(alpha=surface.<mode>)] { <statements> }",
+              "const": "layer <name> [(<option>[, <option>])] { <statements> }",
               "description": "Capture syntax."
             },
             "keyword": {
@@ -5872,7 +5872,7 @@
                   "description": "How the texture is made: its pixels are the ones a host gets from the same program."
                 },
                 "fuel": {
-                  "const": "embedded_program_budget",
+                  "const": "remaining_model_generation_fuel",
                   "description": "Whose fuel budget the texture spends."
                 },
                 "reserved_fuel": {
@@ -6751,6 +6751,178 @@
             "arena_bytes"
           ],
           "additionalProperties": true
+        },
+        "texture_toolkit": {
+          "type": "object",
+          "description": "Texture toolkit of the 1.2 preview: blends, opacity, filters, tiled captures and periodic noise.",
+          "properties": {
+            "constants": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "description": "Surface paint mode source constants.",
+              "const": {
+                "surface.legacy": 0,
+                "surface.source_over": 1,
+                "surface.multiply": 4,
+                "surface.screen": 5,
+                "surface.overlay": 6,
+                "surface.add": 7,
+                "surface.subtract": 8
+              }
+            },
+            "methods": {
+              "type": "array",
+              "description": "Layer filters with receiver-first signatures.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "enum": [
+                      "levels",
+                      "gradient"
+                    ],
+                    "description": "Layer filter name."
+                  },
+                  "receiver": {
+                    "const": "layer",
+                    "description": "Required receiver."
+                  },
+                  "parameters": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/parameter"
+                    },
+                    "description": "Ordered filter parameters."
+                  },
+                  "result": {
+                    "const": "layer",
+                    "description": "Result type."
+                  },
+                  "opcode": {
+                    "const": "texture",
+                    "description": "VM page mnemonic."
+                  },
+                  "effects": {
+                    "$ref": "#/$defs/effects",
+                    "description": "Filter execution effects."
+                  },
+                  "constant_evaluable": {
+                    "const": false,
+                    "description": "Requires a generated image."
+                  },
+                  "texture_op": {
+                    "type": "integer",
+                    "enum": [
+                      2,
+                      3
+                    ],
+                    "description": "Filter sub-operation on the texture page."
+                  },
+                  "evaluation_order": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Parameter evaluation order after evaluating the receiver."
+                  }
+                },
+                "required": [
+                  "name",
+                  "receiver",
+                  "parameters",
+                  "result",
+                  "opcode",
+                  "effects",
+                  "constant_evaluable",
+                  "texture_op",
+                  "evaluation_order"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "layer_option": {
+              "const": "tile = <true|false>",
+              "description": "Capture option: true wraps drawing at the edges, false opts a nested capture out."
+            },
+            "extension_page": {
+              "const": 14,
+              "description": "Opcode byte."
+            },
+            "period_units": {
+              "const": "positive_integer_lattice_cells",
+              "description": "Units of both period components."
+            },
+            "tile_default": {
+              "const": "inherits_the_active_capture",
+              "description": "A capture without the option is tiled when the capture it opens in is."
+            },
+            "tiled_targets": {
+              "const": "captures_only",
+              "description": "The root canvas and a part's canvas never wrap."
+            },
+            "wrapping_operations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "const": [
+                "blur",
+                "normal",
+                "mask.expand",
+                "mask.shrink",
+                "mask.offset"
+              ],
+              "description": "Operations that read around a pixel and wrap on a tiled layer or mask."
+            },
+            "fuel_percent": {
+              "type": "object",
+              "description": "Fuel rate of each texture operation, in percent of its kernel units.",
+              "properties": {
+                "paint": {
+                  "type": "integer",
+                  "description": "A paint with a blend mode of the toolkit or an opacity; a plain paint keeps 60."
+                },
+                "gradient": {
+                  "type": "integer",
+                  "description": "The gradient map."
+                },
+                "levels": {
+                  "type": "integer",
+                  "description": "Levels."
+                },
+                "tiled_noise_mask": {
+                  "type": "integer",
+                  "description": "noise.mask with tile = true."
+                }
+              },
+              "required": [
+                "paint",
+                "gradient",
+                "levels",
+                "tiled_noise_mask"
+              ],
+              "additionalProperties": false
+            },
+            "model_fuel_budget": {
+              "type": "integer",
+              "description": "Default fuel of a model generation, shared by its program and its textures."
+            }
+          },
+          "required": [
+            "constants",
+            "methods",
+            "layer_option",
+            "tile_default",
+            "tiled_targets",
+            "wrapping_operations",
+            "fuel_percent",
+            "model_fuel_budget",
+            "extension_page",
+            "period_units"
+          ]
         }
       },
       "required": [
@@ -6764,7 +6936,8 @@
         "asset_constants",
         "material_maps",
         "named_seeds",
-        "models"
+        "models",
+        "texture_toolkit"
       ],
       "additionalProperties": true,
       "description": "Source, binary storage and expression type mappings. Accepted source value categories and conversions."
@@ -7231,6 +7404,12 @@
             },
             "additionalProperties": false
           }
+        },
+        "texture_op": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "description": "Auxiliary operation byte on texture page 0x0E."
         }
       },
       "required": [

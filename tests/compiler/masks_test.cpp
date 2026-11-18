@@ -296,7 +296,7 @@ TEST_CASE("mask source types diagnostics and format gates reject invalid uses", 
         {"m=mask.expand(region,65)","mask radius must be in 0..64"},
         {"m=mask.shrink(region,-1)","mask radius must be in 0..64"},
         {"m=mask.offset(region,1.5,0)","must be i32"},
-        {"surface.paint(region)","expects 2 or 3 arguments"},
+        {"surface.paint(region)","expects 2 or 3 or 4 arguments"},
         {"surface.paint(region,#fff,blend=1)","blend must be surface.legacy"},
         {"m=region+region","arithmetic requires numeric"}, {"m=region==region","comparison"}})
         rejectDiagnostic("asset t{size 1x1 draw{layer image{}region=mask.from(image)"+body+"}}",message);

@@ -3,8 +3,8 @@
   "regenerate": "IPROP_MODEL_CORPUS_REGENERATE=1 build/tests/iprop_model_tests [corpus]",
   "cases": [
     {"case": "examples/models/chair.ips seed 1", "pins": [
-      "program sha256:0b20825436feb8c32000bf04728ad929d7e601e64f0544a855efb635015868e3",
-      "vertices 1728 triangles 792 fuel 13735/25000000 work 2169954/100000000",
+      "program sha256:16c8812076f38fbac51e381ae840287242a17bfc44596ac5ee02dbfef390d3c3",
+      "vertices 1728 triangles 792 fuel 747769/150000000 work 2169954/100000000",
       "size 1114636288,1120927744,1114636288 units 1120403456 bounds 3249421871,0,3251649267 1101938223,1119241053,1101464124",
       "texture 0 wood f4f306a11b8a52bc 128x128 of 64x64 repeats sha256:4455cdb6a2fa5bb637375cebc35dc0032a2ed77fead842d2fa289516d8212f42",
       "texture 0 image 0 kind 1 relief sha256:86d7c3ae313778b69c417bee6ce807ea331d853ae3b50af0dfbe938744cb5320",
@@ -32,8 +32,8 @@
       "surface 2 indices sha256:e5b680af6b94457276bac3bb8fe31539bd8f960bee5d32633dfa1c4c2ae3d4fc"
     ]},
     {"case": "examples/models/chair.ips seed 5", "pins": [
-      "program sha256:0b20825436feb8c32000bf04728ad929d7e601e64f0544a855efb635015868e3",
-      "vertices 1260 triangles 836 fuel 11213/25000000 work 2171884/100000000",
+      "program sha256:16c8812076f38fbac51e381ae840287242a17bfc44596ac5ee02dbfef390d3c3",
+      "vertices 1260 triangles 836 fuel 745763/150000000 work 2171884/100000000",
       "size 1114636288,1120927744,1114636288 units 1120403456 bounds 3250980492,0,3251950518 1103496844,1118855786,1101710982",
       "texture 0 wood 8af88e8993a73d5a 128x128 of 64x64 repeats sha256:f12018b0cad50539a7ecf6a0b5d70be0827d58299b10e9548ec76531a2cacf03",
       "texture 0 image 0 kind 1 relief sha256:5e89425b58db27485b5409a009af8485f4c86834e0941a27fddc237f50fef642",
@@ -61,8 +61,8 @@
       "surface 2 indices sha256:e5b680af6b94457276bac3bb8fe31539bd8f960bee5d32633dfa1c4c2ae3d4fc"
     ]},
     {"case": "examples/models/chair.ips seed 13", "pins": [
-      "program sha256:0b20825436feb8c32000bf04728ad929d7e601e64f0544a855efb635015868e3",
-      "vertices 1620 triangles 1288 fuel 14289/25000000 work 2179010/100000000",
+      "program sha256:16c8812076f38fbac51e381ae840287242a17bfc44596ac5ee02dbfef390d3c3",
+      "vertices 1620 triangles 1288 fuel 749871/150000000 work 2179010/100000000",
       "size 1114636288,1120927744,1114636288 units 1120403456 bounds 3249584718,0,3250834928 1102101070,1119944460,1101425715",
       "texture 0 wood cbcb1ab0f816f6ce 128x128 of 64x64 repeats sha256:68d2326fd6567cf8c66c27ce51ce91415f3832c8e8ec0cd743c663c9f8970c73",
       "texture 0 image 0 kind 1 relief sha256:ea1f2c315ec444387d26224a83b6d7165b19f2ff3a57aa911097b37ff07dfae4",
@@ -84,8 +84,8 @@
       "surface 1 indices sha256:e5b680af6b94457276bac3bb8fe31539bd8f960bee5d32633dfa1c4c2ae3d4fc"
     ]},
     {"case": "examples/models/chair.ips seed 42", "pins": [
-      "program sha256:0b20825436feb8c32000bf04728ad929d7e601e64f0544a855efb635015868e3",
-      "vertices 1812 triangles 1376 fuel 15683/25000000 work 2183594/100000000",
+      "program sha256:16c8812076f38fbac51e381ae840287242a17bfc44596ac5ee02dbfef390d3c3",
+      "vertices 1812 triangles 1376 fuel 752039/150000000 work 2183594/100000000",
       "size 1114636288,1120927744,1114636288 units 1120403456 bounds 3248530909,0,3250547145 1101047261,1119478718,1101268385",
       "texture 0 wood 4863701e0e32ad87 128x128 of 64x64 repeats sha256:01f6f846599708c9c16447552db07c183aa8aa50c760067522e672a146001162",
       "texture 0 image 0 kind 1 relief sha256:4007ce72896fa68b43ab5f1d8790ffd3be04d52b08b360ceea8ec45b96da2d1a",
@@ -113,8 +113,8 @@
       "surface 2 indices sha256:e5b680af6b94457276bac3bb8fe31539bd8f960bee5d32633dfa1c4c2ae3d4fc"
     ]},
     {"case": "examples/models/chair.ips seed 7 finish=5 fabric=2", "pins": [
-      "program sha256:0b20825436feb8c32000bf04728ad929d7e601e64f0544a855efb635015868e3",
-      "vertices 1536 triangles 704 fuel 12225/25000000 work 2187047/100000000",
+      "program sha256:16c8812076f38fbac51e381ae840287242a17bfc44596ac5ee02dbfef390d3c3",
+      "vertices 1536 triangles 704 fuel 749871/150000000 work 2187047/100000000",
       "size 1114636288,1120927744,1114636288 units 1120403456 bounds 3248990854,0,3250478318 1101507206,1118827853,1101705744",
       "texture 0 wood 149d08e03efe2ae1 128x128 of 64x64 repeats sha256:1e777076fac05ba7386f7034141b79efd28d04de41830e3f7f088f52aac381b8",
       "texture 0 image 0 kind 1 relief sha256:deb7fd86c6ca743f1f75523478a801cd414c2842980a2cbe058076b3692e1043",
@@ -136,8 +136,8 @@
       "surface 1 indices sha256:e5b680af6b94457276bac3bb8fe31539bd8f960bee5d32633dfa1c4c2ae3d4fc"
     ]},
     {"case": "examples/models/crate.ips seed 1", "pins": [
-      "program sha256:b1999d3ceba027821c10215d2f7deb382d69903323266617565d30b737a976f9",
-      "vertices 864 triangles 396 fuel 7021/25000000 work 975113/100000000",
+      "program sha256:18cf644a607a92008c7cfa87f3d5613df35c24d1e888a1df454fa55bf58001b7",
+      "vertices 864 triangles 396 fuel 315500/150000000 work 975113/100000000",
       "size 1118306304,1116209152,1116209152 units 1120403456 bounds 3254983335,0,3252948639 1107499687,1109543537,1105464991",
       "texture 0 wood ee4b41d611c30918 128x128 of 64x64 repeats sha256:b18ac783b850aa85c4f5a359785007b2a0d65758396dede3f3061d69833f9951",
       "texture 0 image 0 kind 1 relief sha256:86d7c3ae313778b69c417bee6ce807ea331d853ae3b50af0dfbe938744cb5320",
@@ -157,8 +157,8 @@
       "surface 1 indices sha256:576b279bdc02f23c7b4b8a0ebd2b79b50efb19cdf4d900e66d49816561a3cfdf"
     ]},
     {"case": "examples/models/crate.ips seed 4", "pins": [
-      "program sha256:b1999d3ceba027821c10215d2f7deb382d69903323266617565d30b737a976f9",
-      "vertices 1912 triangles 916 fuel 15181/25000000 work 1175614/100000000",
+      "program sha256:18cf644a607a92008c7cfa87f3d5613df35c24d1e888a1df454fa55bf58001b7",
+      "vertices 1912 triangles 916 fuel 404745/150000000 work 1175614/100000000",
       "size 1118306304,1116209152,1116209152 units 1120403456 bounds 3256090043,0,3250446458 1108606395,1111312124,1102962810",
       "texture 0 wood 3c4aa5d61393bdb3 128x128 of 64x64 repeats sha256:1a1d5bd84a86661539ad0dacba7b9e4aa81302c24b25774b2f5e195ed28b1a96",
       "texture 0 image 0 kind 1 relief sha256:37bb32b0a00f9cb748531a1bc433fee528c77e160561bcb445fc1d38b93e27fa",
@@ -186,8 +186,8 @@
       "surface 2 indices sha256:37248009bbc89e8d872840216acd16570e2156ec5a9369d543c362ca4afe8dee"
     ]},
     {"case": "examples/models/crate.ips seed 8", "pins": [
-      "program sha256:b1999d3ceba027821c10215d2f7deb382d69903323266617565d30b737a976f9",
-      "vertices 2680 triangles 1268 fuel 21019/25000000 work 1170805/100000000",
+      "program sha256:18cf644a607a92008c7cfa87f3d5613df35c24d1e888a1df454fa55bf58001b7",
+      "vertices 2680 triangles 1268 fuel 405772/150000000 work 1170805/100000000",
       "size 1118306304,1116209152,1116209152 units 1120403456 bounds 3254959988,3192704205,3250336806 1107476340,1112560303,1102853158",
       "texture 0 wood 3f94a50aa8f3442c 128x128 of 64x64 repeats sha256:68fc47269b4047da0ec3c50445d686c15cf32098354ab1eb3a73541b1b1c3498",
       "texture 0 image 0 kind 1 relief sha256:685f206037f735bf47d644de0e7d38627d850b1caadd1df56525dde018266e00",
@@ -215,8 +215,8 @@
       "surface 2 indices sha256:6a8575ac45f08f4eb09f71f27a99bd98e9b8f2eb0e6aefbf64917e9956928840"
     ]},
     {"case": "examples/models/crate.ips seed 11", "pins": [
-      "program sha256:b1999d3ceba027821c10215d2f7deb382d69903323266617565d30b737a976f9",
-      "vertices 2208 triangles 1012 fuel 17433/25000000 work 1181999/100000000",
+      "program sha256:18cf644a607a92008c7cfa87f3d5613df35c24d1e888a1df454fa55bf58001b7",
+      "vertices 2208 triangles 1012 fuel 411106/150000000 work 1181999/100000000",
       "size 1118306304,1116209152,1116209152 units 1120403456 bounds 3254733722,3192704205,3249406562 1107250074,1113377198,1101922914",
       "texture 0 wood fe18d841f5816b8a 128x128 of 64x64 repeats sha256:680d9aa958b9f4a08a6e962631e77b50dcd0129a748c12d1fda9351bd9ce1d8a",
       "texture 0 image 0 kind 1 relief sha256:6e54c68b2e421804c1ad4ed14dd612d67e756c4a1634e04fcaa8a59c59aeaadc",
@@ -244,8 +244,8 @@
       "surface 2 indices sha256:576b279bdc02f23c7b4b8a0ebd2b79b50efb19cdf4d900e66d49816561a3cfdf"
     ]},
     {"case": "examples/models/crate.ips seed 13", "pins": [
-      "program sha256:b1999d3ceba027821c10215d2f7deb382d69903323266617565d30b737a976f9",
-      "vertices 1720 triangles 828 fuel 13708/25000000 work 1171567/100000000",
+      "program sha256:18cf644a607a92008c7cfa87f3d5613df35c24d1e888a1df454fa55bf58001b7",
+      "vertices 1720 triangles 828 fuel 397835/150000000 work 1171567/100000000",
       "size 1118306304,1116209152,1116209152 units 1120403456 bounds 3255913205,0,3252988021 1108429557,1114786612,1105504373",
       "texture 0 wood 1b6fb30d38cd70f5 128x128 of 64x64 repeats sha256:ee18a057d94ce5f4aaba8686050b9ef0c79059b40bcd1ba6903060b12421943b",
       "texture 0 image 0 kind 1 relief sha256:ea1f2c315ec444387d26224a83b6d7165b19f2ff3a57aa911097b37ff07dfae4",
@@ -273,8 +273,8 @@
       "surface 2 indices sha256:37248009bbc89e8d872840216acd16570e2156ec5a9369d543c362ca4afe8dee"
     ]},
     {"case": "examples/models/crate.ips seed 7 finish=3", "pins": [
-      "program sha256:b1999d3ceba027821c10215d2f7deb382d69903323266617565d30b737a976f9",
-      "vertices 96 triangles 44 fuel 1166/25000000 work 979093/100000000",
+      "program sha256:18cf644a607a92008c7cfa87f3d5613df35c24d1e888a1df454fa55bf58001b7",
+      "vertices 96 triangles 44 fuel 311065/150000000 work 979093/100000000",
       "size 1118306304,1116209152,1116209152 units 1120403456 bounds 3251085138,0,3252688432 1103601490,1108927787,1105204784",
       "texture 0 wood 6e122c1ab456ce6f 128x128 of 64x64 repeats sha256:4b55c4fe16afdb985fa879bc9f512d0770890e7c7526b29ed1fa00f745387967",
       "texture 0 image 0 kind 1 relief sha256:deb7fd86c6ca743f1f75523478a801cd414c2842980a2cbe058076b3692e1043",
@@ -288,8 +288,8 @@
       "surface 0 indices sha256:e5b680af6b94457276bac3bb8fe31539bd8f960bee5d32633dfa1c4c2ae3d4fc"
     ]},
     {"case": "examples/models/barrel.ips seed 1", "pins": [
-      "program sha256:d1219ecd079fb5551dea306b73658c3a1e1b4dbcbf7288c268312b9cbaa78b67",
-      "vertices 1537 triangles 1624 fuel 14413/25000000 work 1013131/100000000",
+      "program sha256:62721d754b16d2361d44bdd3c4387b50b09600fda8cd2fc67cc115aac8b87c89",
+      "vertices 1537 triangles 1624 fuel 358888/150000000 work 1013131/100000000",
       "size 1115684864,1120403456,1115684864 units 1120403456 bounds 3251707696,0,3251707696 1104224048,1116769994,1104224048",
       "texture 0 wood 8d0bd841732026e6 128x128 of 64x64 repeats sha256:7b1f46a65b63d43964531a4064b44d9771c47351f6f87c3d6a0db4920c45e029",
       "texture 0 image 0 kind 1 relief sha256:1ceac8e43eaff57249c8cdf0e98bce3bbaa4d5ee06094eff8ffb900005a46579",
@@ -309,8 +309,8 @@
       "surface 1 indices sha256:fdcd66ff80535282de467870e1a330d29051f6ed18f1d87cc9ac373a8f5d7e06"
     ]},
     {"case": "examples/models/barrel.ips seed 4", "pins": [
-      "program sha256:d1219ecd079fb5551dea306b73658c3a1e1b4dbcbf7288c268312b9cbaa78b67",
-      "vertices 1015 triangles 1120 fuel 9519/25000000 work 993566/100000000",
+      "program sha256:62721d754b16d2361d44bdd3c4387b50b09600fda8cd2fc67cc115aac8b87c89",
+      "vertices 1015 triangles 1120 fuel 344704/150000000 work 993566/100000000",
       "size 1115684864,1120403456,1115684864 units 1120403456 bounds 3254231734,0,3254231734 1106748086,1117787972,1106748086",
       "texture 0 wood 2f4fb29ae0bfaad3 128x128 of 64x64 repeats sha256:39b1034149e4d26d3d3cf96ec29971e75ed1f19ce29999dbcaa6a74bd31812f7",
       "texture 0 image 0 kind 1 relief sha256:9f961e22ba7cc44cfe277f969f775f9c141740d59b261558334841aacaeea29c",
@@ -330,8 +330,8 @@
       "surface 1 indices sha256:16d3e460ba72219268f850d9b9e5cb0f1f8abe46ad5a5c86068a5d6cb86bb20e"
     ]},
     {"case": "examples/models/barrel.ips seed 9", "pins": [
-      "program sha256:d1219ecd079fb5551dea306b73658c3a1e1b4dbcbf7288c268312b9cbaa78b67",
-      "vertices 841 triangles 952 fuel 7928/25000000 work 1013681/100000000",
+      "program sha256:62721d754b16d2361d44bdd3c4387b50b09600fda8cd2fc67cc115aac8b87c89",
+      "vertices 841 triangles 952 fuel 356494/150000000 work 1013681/100000000",
       "size 1115684864,1120403456,1115684864 units 1120403456 bounds 3250362141,0,3250362141 1102878493,1119853663,1102878493",
       "texture 0 wood c6626e65bd9260bc 128x128 of 64x64 repeats sha256:27a9ddd385308aa7ebe5a69bfd98c53a675073680c4c72bc6035e298edf83c50",
       "texture 0 image 0 kind 1 relief sha256:ca3855f854a9a5e976859cebfb652d7b2f8cb37812a9c9a7ddc19051772f07ef",
@@ -351,8 +351,8 @@
       "surface 1 indices sha256:6b8058dfc54d0f5acb3e7df900a38a0ab71bc698df787d8b6b42051f31e21d06"
     ]},
     {"case": "examples/models/barrel.ips seed 14", "pins": [
-      "program sha256:d1219ecd079fb5551dea306b73658c3a1e1b4dbcbf7288c268312b9cbaa78b67",
-      "vertices 1155 triangles 1248 fuel 10773/25000000 work 1000611/100000000",
+      "program sha256:62721d754b16d2361d44bdd3c4387b50b09600fda8cd2fc67cc115aac8b87c89",
+      "vertices 1155 triangles 1248 fuel 344414/150000000 work 1000611/100000000",
       "size 1115684864,1120403456,1115684864 units 1120403456 bounds 3253975086,0,3253975086 1106491438,1118702625,1107737749",
       "texture 0 wood 41959a2bf6aa2985 128x128 of 64x64 repeats sha256:101f923d184a2fa0f34eb6a1f0c4086e53ee5f159f26ce64cfb3c6cf23b04a7d",
       "texture 0 image 0 kind 1 relief sha256:321d21433d644f52c69715d16161d823f8de9ad8b44d01b2108805bbb287db7d",
@@ -372,8 +372,8 @@
       "surface 1 indices sha256:d96409de1197ff199c497d370a6fbd51d07dc05d756bfd619df7d3111cda021d"
     ]},
     {"case": "examples/models/sword.ips seed 1", "pins": [
-      "program sha256:efbba164464a5819125aa9b51de6361967398821d6415a15792096ff3c0d410a",
-      "vertices 440 triangles 364 fuel 4341/25000000 work 473030/100000000",
+      "program sha256:a10b28e420780e24badbd733dc64e7ebee266c4b07deb1bc9ec73e5a19b320f9",
+      "vertices 440 triangles 364 fuel 183059/150000000 work 473030/100000000",
       "size 1107296256,1122762752,1092616192 units 1120403456 bounds 3231479906,0,3231479906 1083996258,1118476153,1083996258",
       "texture 0 edge 119f660570832750 16x256 of 16x256 clamps sha256:2ecb5da541c0ec247fe1125f5ed5f5e00c6ec16fe1aeae348179e1114e047131",
       "texture 0 image 0 kind 1 relief sha256:23f06a6957e0b57095336ca5103e6b7e7781e1fe8544dcce024cb00ebe42b106",
@@ -401,8 +401,8 @@
       "surface 2 indices sha256:f2f747642c693bf28414f0cdc517af4cfd635e3a6d354b7965c9b4266730d80c"
     ]},
     {"case": "examples/models/sword.ips seed 2", "pins": [
-      "program sha256:efbba164464a5819125aa9b51de6361967398821d6415a15792096ff3c0d410a",
-      "vertices 691 triangles 560 fuel 6267/25000000 work 496533/100000000",
+      "program sha256:a10b28e420780e24badbd733dc64e7ebee266c4b07deb1bc9ec73e5a19b320f9",
+      "vertices 691 triangles 560 fuel 200376/150000000 work 496533/100000000",
       "size 1107296256,1122762752,1092616192 units 1120403456 bounds 3241982173,0,3224352504 1094498525,1119221472,1076868856",
       "texture 0 edge 042e7444514594f4 16x256 of 16x256 clamps sha256:2374fa0c6eabcdcf4b729f21a3b0b58f63b98efd5f76312e03f066e060d76d2a",
       "texture 0 image 0 kind 1 relief sha256:7845033354036cd6e593af96865a148c67ecf3a9d5683feaf73f2eba8da1573f",
@@ -430,8 +430,8 @@
       "surface 2 indices sha256:f2f747642c693bf28414f0cdc517af4cfd635e3a6d354b7965c9b4266730d80c"
     ]},
     {"case": "examples/models/sword.ips seed 7", "pins": [
-      "program sha256:efbba164464a5819125aa9b51de6361967398821d6415a15792096ff3c0d410a",
-      "vertices 462 triangles 396 fuel 4531/25000000 work 471545/100000000",
+      "program sha256:a10b28e420780e24badbd733dc64e7ebee266c4b07deb1bc9ec73e5a19b320f9",
+      "vertices 462 triangles 396 fuel 184739/150000000 work 471545/100000000",
       "size 1107296256,1122762752,1092616192 units 1120403456 bounds 3229718686,0,3229718686 1082235038,1120193599,1082235038",
       "texture 0 edge ded08b444b3bd991 16x256 of 16x256 clamps sha256:1296648c9d445d0392381e1b0e04988218dc9408eceeb2fa0522a195113ec91a",
       "texture 0 image 0 kind 1 relief sha256:191aa2fc28ef2980b1521fbbf0d19e941fc57b48813b316737d31bac9e30d531",
@@ -459,8 +459,8 @@
       "surface 2 indices sha256:293df4164b94f1a34d35e50a122fafa84fd3560ba26e7f4444c8bf771a23640b"
     ]},
     {"case": "examples/models/sword.ips seed 12", "pins": [
-      "program sha256:efbba164464a5819125aa9b51de6361967398821d6415a15792096ff3c0d410a",
-      "vertices 440 triangles 364 fuel 4301/25000000 work 471001/100000000",
+      "program sha256:a10b28e420780e24badbd733dc64e7ebee266c4b07deb1bc9ec73e5a19b320f9",
+      "vertices 440 triangles 364 fuel 182644/150000000 work 471001/100000000",
       "size 1107296256,1122762752,1092616192 units 1120403456 bounds 3227311549,0,3227311549 1079827901,1117393426,1079827901",
       "texture 0 edge cecef1478d44185f 16x256 of 16x256 clamps sha256:04ea8b50a7d287b68f2c6b0a83146f29bef370b9e0ba0719e9ece11096b44048",
       "texture 0 image 0 kind 1 relief sha256:48d728fb7e362f62fcac57ce8222b9dbd0cb21e82ab8c462f3ef50b9acca7f34",
@@ -488,8 +488,8 @@
       "surface 2 indices sha256:f2f747642c693bf28414f0cdc517af4cfd635e3a6d354b7965c9b4266730d80c"
     ]},
     {"case": "examples/models/sword.ips seed 13", "pins": [
-      "program sha256:efbba164464a5819125aa9b51de6361967398821d6415a15792096ff3c0d410a",
-      "vertices 561 triangles 588 fuel 5571/25000000 work 460381/100000000",
+      "program sha256:a10b28e420780e24badbd733dc64e7ebee266c4b07deb1bc9ec73e5a19b320f9",
+      "vertices 561 triangles 588 fuel 178040/150000000 work 460381/100000000",
       "size 1107296256,1122762752,1092616192 units 1120403456 bounds 3239584898,0,3223355102 1092101250,1119800946,1075871454",
       "texture 0 edge 9aa1a5506ed83ff6 16x256 of 16x256 clamps sha256:8d43b719f183ede9c5199fb18424633092ed785d45e1b7385ba63106fba5e20c",
       "texture 0 image 0 kind 1 relief sha256:191aa2fc28ef2980b1521fbbf0d19e941fc57b48813b316737d31bac9e30d531",
@@ -517,8 +517,8 @@
       "surface 2 indices sha256:293df4164b94f1a34d35e50a122fafa84fd3560ba26e7f4444c8bf771a23640b"
     ]},
     {"case": "examples/models/sword.ips seed 5 metalwork=2 wrap=3", "pins": [
-      "program sha256:efbba164464a5819125aa9b51de6361967398821d6415a15792096ff3c0d410a",
-      "vertices 464 triangles 428 fuel 4587/25000000 work 476570/100000000",
+      "program sha256:a10b28e420780e24badbd733dc64e7ebee266c4b07deb1bc9ec73e5a19b320f9",
+      "vertices 464 triangles 428 fuel 183111/150000000 work 476570/100000000",
       "size 1107296256,1122762752,1092616192 units 1120403456 bounds 3241656812,0,3218910220 1094173164,1119199762,1071426572",
       "texture 0 edge 7632dfc44ed288cb 16x256 of 16x256 clamps sha256:85428d31fe60d8fc6844f879f9d3fe666173d89fe9e829855422c92620783ae7",
       "texture 0 image 0 kind 1 relief sha256:c6fe82a2f4cd4af060529747cb34f0b6c39ce083819dfc48315512de67b770ce",
@@ -546,8 +546,8 @@
       "surface 2 indices sha256:f2f747642c693bf28414f0cdc517af4cfd635e3a6d354b7965c9b4266730d80c"
     ]},
     {"case": "examples/language/stool.ips seed 1", "pins": [
-      "program sha256:e6dc3b6502c00a85b1cca97df9f49c0e200f278761654d36068878719a663947",
-      "vertices 505 triangles 568 fuel 4949/25000000 work 60358/100000000",
+      "program sha256:4f78551c211f40386d7ca3dfde8b64554bd5d2de377804fc7ad76f86338b778e",
+      "vertices 505 triangles 568 fuel 24696/150000000 work 60358/100000000",
       "size 1110441984,1112539136,1110441984 units 1120403456 bounds 3246529484,0,3246529484 1099045836,1112176172,1099045836",
       "texture 0 wood d1c57fb70ede00e8 32x32 of 32x32 repeats sha256:8edebdf3d6fba4c8d061fd6d74bf070ece38b55f34ab683c9b0dbdda66c93f57",
       "texture 0 image 0 kind 1 relief sha256:e20d9ee40dbd5d1ab15709f1df0a4ffefab356f377291a9e07816342a5e7f1aa",
@@ -567,8 +567,8 @@
       "surface 1 indices sha256:79beef65751b17e97fcaeb03cc41c8d5ee47d7a35fe53ce81dfcfc96ff8d9a12"
     ]},
     {"case": "examples/language/stool.ips seed 7", "pins": [
-      "program sha256:e6dc3b6502c00a85b1cca97df9f49c0e200f278761654d36068878719a663947",
-      "vertices 312 triangles 236 fuel 2967/25000000 work 43784/100000000",
+      "program sha256:4f78551c211f40386d7ca3dfde8b64554bd5d2de377804fc7ad76f86338b778e",
+      "vertices 312 triangles 236 fuel 17185/150000000 work 43784/100000000",
       "size 1110441984,1112539136,1110441984 units 1120403456 bounds 3246035313,0,3246035313 1098551665,1109968293,1098551665",
       "texture 0 wood 44c8c828eeecfa30 32x32 of 32x32 repeats sha256:db7566bc722aad1f8a988f8173e8bba4354a17c31fa72374699b5dbf278e11e8",
       "texture 0 image 0 kind 1 relief sha256:e20d9ee40dbd5d1ab15709f1df0a4ffefab356f377291a9e07816342a5e7f1aa",
@@ -580,8 +580,8 @@
       "surface 0 indices sha256:b372989460f0f394a87dfb4fbd45e7881aa92af628b09cd3178cbf1ece75c074"
     ]},
     {"case": "examples/language/model-primitives.ips seed 1", "pins": [
-      "program sha256:931d86024c277d51378810caea6cafb5013e4dc6ab231b926891950c1e77a839",
-      "vertices 839 triangles 751 fuel 6975/25000000 work 7417/100000000",
+      "program sha256:ef37b8cb0f7927d8959f98b73c1e981746502fd8e0601e27ec8778719b22c10b",
+      "vertices 839 triangles 751 fuel 7544/150000000 work 7417/100000000",
       "size 1126957056,1098907648,1094713344 units 1120403456 bounds 3265527808,0,3232759808 1118044160,1094713344,1085276160",
       "texture 0 grid e39bfc89411ff132 16x16 of 16x16 repeats sha256:e2d7ed961cb03336968ebedb6ac1c27474eec6f2ade0de78639a4c1d298e1a75",
       "surface 0 texture 0 roughness 1061997773 metallic 0 emission 0 alpha 0 cutoff 1056964608 one-sided crisp vertices 805 indices 2157",
@@ -598,8 +598,8 @@
       "surface 1 indices sha256:e4ec98844637e34aac51e8843e9759a7a28a3cde93d359e8207187fb52d3c0f5"
     ]},
     {"case": "examples/language/model-place.ips seed 1", "pins": [
-      "program sha256:d3ed05a1dd6a10cfc279e9b0fc987b93326931aaa69570c0ee68e7a4052d7874",
-      "vertices 456 triangles 312 fuel 4358/25000000 work 5789/100000000",
+      "program sha256:332b58269f66dd61217ccdfe8c440bed218b3293743e654588c70166733b097f",
+      "vertices 456 triangles 312 fuel 4927/150000000 work 5789/100000000",
       "size 1122500608,1103101952,1103101952 units 1120403456 bounds 3259236352,3198092472,3239218104 1112555461,1098907648,1091734456",
       "texture 0 grid e39bfc89411ff132 16x16 of 16x16 repeats sha256:e2d7ed961cb03336968ebedb6ac1c27474eec6f2ade0de78639a4c1d298e1a75",
       "surface 0 texture 0 roughness 1061997773 metallic 0 emission 0 alpha 0 cutoff 1056964608 one-sided crisp vertices 456 indices 936",
@@ -610,8 +610,8 @@
       "surface 0 indices sha256:7b3eff9e0d6b9655f18dc1433ecb938a6c84ac2984a57cd64bd0aca54370d7de"
     ]},
     {"case": "examples/language/model-skins.ips seed 3", "pins": [
-      "program sha256:3c00c6a6684eadc9e99a3d1da7db7f20975eb88b475001128ce7017dc122cfae",
-      "vertices 196 triangles 98 fuel 1838/25000000 work 49070/100000000",
+      "program sha256:374d7f9bfa55ba340b2692e29f5385985fd666d39c1d004e3c9378fb25b00225",
+      "vertices 196 triangles 98 fuel 10490/150000000 work 49070/100000000",
       "size 1125122048,1094713344,1082130432 units 1120403456 bounds 3265003520,0,3212836864 1116209152,1094713344,1065353216",
       "texture 0 grid a2301192215134d4 16x16 of 16x16 repeats sha256:e2d7ed961cb03336968ebedb6ac1c27474eec6f2ade0de78639a4c1d298e1a75",
       "texture 1 grid a929f7561de41b18 64x64 of 16x16 repeats sha256:ffc29176877c39ff13c755de04e8d9f9729bbf62fd82b592d7f5e33d2b4281c2",
@@ -654,8 +654,8 @@
       "surface 5 indices sha256:fe78c65211dd0b56a97024fb61111e686ef1fe054aa132ba58e2891ac496f1ee"
     ]},
     {"case": "examples/language/model-vectors.ips seed 1", "pins": [
-      "program sha256:db2df16e53c444896d61f869ed8fcb74dea89237bfd3251a5789fb1f8091bb21",
-      "vertices 50 triangles 38 fuel 581/25000000 work 3514/100000000",
+      "program sha256:12b3bd2f99a0de1f2c8dddf400a55bb2f45b018e4c3bb34745948a31e613e000",
+      "vertices 50 triangles 38 fuel 1150/150000000 work 3514/100000000",
       "size 1103101952,1098907648,1098907648 units 1120403456 bounds 3240099840,0,3233808384 1092616192,1093140480,1086324736",
       "texture 0 grid e39bfc89411ff132 16x16 of 16x16 repeats sha256:e2d7ed961cb03336968ebedb6ac1c27474eec6f2ade0de78639a4c1d298e1a75",
       "surface 0 texture 0 roughness 1061997773 metallic 0 emission 0 alpha 0 cutoff 1056964608 one-sided crisp vertices 50 indices 114",
@@ -666,8 +666,8 @@
       "surface 0 indices sha256:f6f5e9924597d4dc4dba1ee9fe1f575f8c0745e430baab6863a244f3bc42e513"
     ]},
     {"case": "examples/language/model-vectors.ips seed 2", "pins": [
-      "program sha256:db2df16e53c444896d61f869ed8fcb74dea89237bfd3251a5789fb1f8091bb21",
-      "vertices 50 triangles 38 fuel 581/25000000 work 3514/100000000",
+      "program sha256:12b3bd2f99a0de1f2c8dddf400a55bb2f45b018e4c3bb34745948a31e613e000",
+      "vertices 50 triangles 38 fuel 1150/150000000 work 3514/100000000",
       "size 1103101952,1098907648,1098907648 units 1120403456 bounds 3240677558,0,3233808384 1092616192,1093140480,1086324736",
       "texture 0 grid e39bfc89411ff132 16x16 of 16x16 repeats sha256:e2d7ed961cb03336968ebedb6ac1c27474eec6f2ade0de78639a4c1d298e1a75",
       "surface 0 texture 0 roughness 1061997773 metallic 0 emission 0 alpha 0 cutoff 1056964608 one-sided crisp vertices 50 indices 114",
@@ -678,8 +678,8 @@
       "surface 0 indices sha256:f6f5e9924597d4dc4dba1ee9fe1f575f8c0745e430baab6863a244f3bc42e513"
     ]},
     {"case": "backends/html5/test/fixtures/model-primitives.ips seed 0", "pins": [
-      "program sha256:48abfc04c59b75d45f7290c33e0bc7e60bc845646a6e528f57e62144d3b0df41",
-      "vertices 1221 triangles 914 fuel 10410/25000000 work 84022/100000000",
+      "program sha256:dde39ec222f0f5f1c33c7bc2e997426794f438e46cbfaeaf20f12417f9d5c5dd",
+      "vertices 1221 triangles 914 fuel 36543/150000000 work 84022/100000000",
       "size 1123024896,1103101952,1115684864 units 1115684864 bounds 3260977306,3234125082,3250435043 1113857998,1091567616,1102053376",
       "texture 0 panel 50ba50ab6f423f81 24x16 of 24x16 repeats sha256:6a03514e515972df3bb07e1859be131f2c82dff5b9f7b0c17ccaa47533d4e338",
       "texture 0 image 0 kind 1 relief sha256:4380202da8d20f7a1e5cbebcb3442b6bdcd0aa946c99bc5c0d4123ac44890625",
@@ -717,8 +717,8 @@
       "surface 4 indices sha256:eb7ddca52d149ab05896e11c79ccf8f357d54a1e0f1f0204b3efbc6585b47dd0"
     ]},
     {"case": "backends/html5/test/fixtures/model-primitives.ips seed 7 stretch=1.75 sides=5 tint=#c0392b", "pins": [
-      "program sha256:48abfc04c59b75d45f7290c33e0bc7e60bc845646a6e528f57e62144d3b0df41",
-      "vertices 953 triangles 634 fuel 8242/25000000 work 82646/100000000",
+      "program sha256:dde39ec222f0f5f1c33c7bc2e997426794f438e46cbfaeaf20f12417f9d5c5dd",
+      "vertices 953 triangles 634 fuel 34375/150000000 work 82646/100000000",
       "size 1123024896,1103101952,1115684864 units 1115684864 bounds 3261464039,3236381761,3250732272 1114111387,1096286208,1102053376",
       "texture 0 panel 04726ca34d3b207a 24x16 of 24x16 repeats sha256:3d1c143ba8940189bfb5bf1d9d8e6e1d63439220e49499bfa1484c9081c031b9",
       "texture 0 image 0 kind 1 relief sha256:4380202da8d20f7a1e5cbebcb3442b6bdcd0aa946c99bc5c0d4123ac44890625",
@@ -756,8 +756,8 @@
       "surface 4 indices sha256:eb7ddca52d149ab05896e11c79ccf8f357d54a1e0f1f0204b3efbc6585b47dd0"
     ]},
     {"case": "backends/html5/test/fixtures/model-primitives.ips seed 2 stretch=0.625 sides=31 rounding=2.5", "pins": [
-      "program sha256:48abfc04c59b75d45f7290c33e0bc7e60bc845646a6e528f57e62144d3b0df41",
-      "vertices 1988 triangles 1674 fuel 16532/25000000 work 134396/100000000",
+      "program sha256:dde39ec222f0f5f1c33c7bc2e997426794f438e46cbfaeaf20f12417f9d5c5dd",
+      "vertices 1988 triangles 1674 fuel 70328/150000000 work 134396/100000000",
       "size 1123024896,1103101952,1115684864 units 1115684864 bounds 3260954445,3235724068,3249960333 1113881077,1093773943,1102053376",
       "texture 0 panel 23ecf00dbf2eaf82 24x16 of 24x16 repeats sha256:14e84cb119ebd3436492a132e4361067a79131ac47fe51443a9241fde5a4cacb",
       "texture 0 image 0 kind 1 relief sha256:bfdf7555f8cec7ad71430863df4c81384398571e71a97548ea63888be59a05d7",
@@ -795,8 +795,8 @@
       "surface 4 indices sha256:eb7ddca52d149ab05896e11c79ccf8f357d54a1e0f1f0204b3efbc6585b47dd0"
     ]},
     {"case": "backends/capi3d/test/crate.ips seed 5", "pins": [
-      "program sha256:01cd3e2d285b2537beb1f912ccd9e5cba75a1133074eb6847b9b5bd72f412e8c",
-      "vertices 127 triangles 59 fuel 1136/25000000 work 24148/100000000",
+      "program sha256:f5ecbcb518d802e0d6d900db98a73e8cb5d9f9e8510578a38c9ac69c0ab6db89",
+      "vertices 127 triangles 59 fuel 9281/150000000 work 24148/100000000",
       "size 1094713344,1092616192,1090519040 units 1112014848 bounds 3229614080,0,3229614080 1082130432,1092616192,1082130432",
       "texture 0 tile 5299fe29e2bd4519 32x16 of 16x8 repeats sha256:e03a7fe4cc86b43c5acb300b9e8d7cbb945d1ac8f27c56c2d7d43e3e159bab02",
       "texture 0 image 0 kind 1 relief sha256:53e9469937248d5c19c754855ad9f4e4504a38b4c0723707c23d26a0d8bfa9ae",
@@ -828,8 +828,8 @@
       "surface 3 indices sha256:ad5dc1478de06a4c2728ea528bd9361a4b945e92a414bf4d180cedaaeaa5f4cc"
     ]},
     {"case": "backends/capi3d/test/crate.ips seed 77 wide=11.75 stain=#10a0f080", "pins": [
-      "program sha256:01cd3e2d285b2537beb1f912ccd9e5cba75a1133074eb6847b9b5bd72f412e8c",
-      "vertices 127 triangles 59 fuel 1136/25000000 work 24148/100000000",
+      "program sha256:f5ecbcb518d802e0d6d900db98a73e8cb5d9f9e8510578a38c9ac69c0ab6db89",
+      "vertices 127 triangles 59 fuel 9281/150000000 work 24148/100000000",
       "size 1094713344,1092616192,1090519040 units 1112014848 bounds 3233546240,0,3229614080 1086062592,1092616192,1082130432",
       "texture 0 tile d4489b0818ed5974 32x16 of 16x8 repeats sha256:504ad4b904bdf0bccfe48fd4208344c03963a3e106bc790c6a1d6749320f767f",
       "texture 0 image 0 kind 1 relief sha256:53e9469937248d5c19c754855ad9f4e4504a38b4c0723707c23d26a0d8bfa9ae",
@@ -861,8 +861,8 @@
       "surface 3 indices sha256:ad5dc1478de06a4c2728ea528bd9361a4b945e92a414bf4d180cedaaeaa5f4cc"
     ]},
     {"case": "tests/model/corpus/edges.ips seed 1", "pins": [
-      "program sha256:7cc89535701dd2ba83aa57c96362c9baaee2d57375cc741fcf3b4a7f8a70d4ba",
-      "vertices 623 triangles 409 fuel 5466/25000000 work 11357/100000000",
+      "program sha256:51b40e10f3e63ac80b52217f7dea2f38984dfb77c623157b68ba231928161122",
+      "vertices 623 triangles 409 fuel 6699/150000000 work 11357/100000000",
       "size 1119092736,1114636288,1114636288 units 1120403456 bounds 3256971959,3219756352,3242368416 1107637043,1103086185,1097814184",
       "texture 0 grid a4fe6b0ccd9b5352 24x24 of 16x16 repeats sha256:f7d0bab458ddd6e6e528cdde1c09e9d28f4c169b5d6571d98c822c9d96452b2a",
       "surface 0 texture 0 roughness 1061997773 metallic 0 emission 0 alpha 0 cutoff 1056964608 one-sided filtered vertices 596 indices 1158",
@@ -885,8 +885,8 @@
       "surface 2 indices sha256:ad5dc1478de06a4c2728ea528bd9361a4b945e92a414bf4d180cedaaeaa5f4cc"
     ]},
     {"case": "tests/model/corpus/edges.ips seed 2", "pins": [
-      "program sha256:7cc89535701dd2ba83aa57c96362c9baaee2d57375cc741fcf3b4a7f8a70d4ba",
-      "vertices 523 triangles 407 fuel 4867/25000000 work 11156/100000000",
+      "program sha256:51b40e10f3e63ac80b52217f7dea2f38984dfb77c623157b68ba231928161122",
+      "vertices 523 triangles 407 fuel 6100/150000000 work 11156/100000000",
       "size 1119092736,1114636288,1114636288 units 1120403456 bounds 3255724174,3224435270,3238040187 1107637043,1100216170,1097026216",
       "texture 0 grid bf24410918a8356c 24x24 of 16x16 repeats sha256:f7d0bab458ddd6e6e528cdde1c09e9d28f4c169b5d6571d98c822c9d96452b2a",
       "surface 0 texture 0 roughness 1061997773 metallic 0 emission 0 alpha 0 cutoff 1056964608 one-sided filtered vertices 512 indices 1200",
@@ -909,8 +909,8 @@
       "surface 2 indices sha256:ad5dc1478de06a4c2728ea528bd9361a4b945e92a414bf4d180cedaaeaa5f4cc"
     ]},
     {"case": "tests/model/corpus/edges.ips seed 3", "pins": [
-      "program sha256:7cc89535701dd2ba83aa57c96362c9baaee2d57375cc741fcf3b4a7f8a70d4ba",
-      "vertices 1501 triangles 1727 fuel 13374/25000000 work 17071/100000000",
+      "program sha256:51b40e10f3e63ac80b52217f7dea2f38984dfb77c623157b68ba231928161122",
+      "vertices 1501 triangles 1727 fuel 14607/150000000 work 17071/100000000",
       "size 1119092736,1114636288,1114636288 units 1120403456 bounds 3257235632,3228815700,3247395297 1107637043,1100109264,1102710870",
       "texture 0 grid c727536dcc77f954 24x24 of 16x16 repeats sha256:f7d0bab458ddd6e6e528cdde1c09e9d28f4c169b5d6571d98c822c9d96452b2a",
       "surface 0 texture 0 roughness 1061997773 metallic 0 emission 0 alpha 0 cutoff 1056964608 one-sided filtered vertices 1436 indices 4998",
@@ -933,8 +933,8 @@
       "surface 2 indices sha256:ad5dc1478de06a4c2728ea528bd9361a4b945e92a414bf4d180cedaaeaa5f4cc"
     ]},
     {"case": "tests/model/corpus/edges.ips seed 4", "pins": [
-      "program sha256:7cc89535701dd2ba83aa57c96362c9baaee2d57375cc741fcf3b4a7f8a70d4ba",
-      "vertices 473 triangles 277 fuel 4302/25000000 work 10661/100000000",
+      "program sha256:51b40e10f3e63ac80b52217f7dea2f38984dfb77c623157b68ba231928161122",
+      "vertices 473 triangles 277 fuel 5535/150000000 work 10661/100000000",
       "size 1119092736,1114636288,1114636288 units 1120403456 bounds 3257983085,3227698889,3245741551 1107637043,1100109264,1100291376",
       "texture 0 grid 6e397696912b3856 24x24 of 16x16 repeats sha256:f7d0bab458ddd6e6e528cdde1c09e9d28f4c169b5d6571d98c822c9d96452b2a",
       "surface 0 texture 0 roughness 1061997773 metallic 0 emission 0 alpha 0 cutoff 1056964608 one-sided filtered vertices 458 indices 798",
@@ -957,8 +957,8 @@
       "surface 2 indices sha256:ad5dc1478de06a4c2728ea528bd9361a4b945e92a414bf4d180cedaaeaa5f4cc"
     ]},
     {"case": "tests/model/corpus/edges.ips seed 5", "pins": [
-      "program sha256:7cc89535701dd2ba83aa57c96362c9baaee2d57375cc741fcf3b4a7f8a70d4ba",
-      "vertices 771 triangles 635 fuel 6805/25000000 work 12330/100000000",
+      "program sha256:51b40e10f3e63ac80b52217f7dea2f38984dfb77c623157b68ba231928161122",
+      "vertices 771 triangles 635 fuel 8038/150000000 work 12330/100000000",
       "size 1119092736,1114636288,1114636288 units 1120403456 bounds 3258520065,3223299553,3238767291 1107637043,1100109264,1092511334",
       "texture 0 grid 06d1e30cbeb682bc 24x24 of 16x16 repeats sha256:f7d0bab458ddd6e6e528cdde1c09e9d28f4c169b5d6571d98c822c9d96452b2a",
       "surface 0 texture 0 roughness 1061997773 metallic 0 emission 0 alpha 0 cutoff 1056964608 one-sided filtered vertices 740 indices 1824",
@@ -981,8 +981,8 @@
       "surface 2 indices sha256:ad5dc1478de06a4c2728ea528bd9361a4b945e92a414bf4d180cedaaeaa5f4cc"
     ]},
     {"case": "tests/model/corpus/edges.ips seed 6", "pins": [
-      "program sha256:7cc89535701dd2ba83aa57c96362c9baaee2d57375cc741fcf3b4a7f8a70d4ba",
-      "vertices 659 triangles 475 fuel 5817/25000000 work 11630/100000000",
+      "program sha256:51b40e10f3e63ac80b52217f7dea2f38984dfb77c623157b68ba231928161122",
+      "vertices 659 triangles 475 fuel 7050/150000000 work 11630/100000000",
       "size 1119092736,1114636288,1114636288 units 1120403456 bounds 3261232142,3227760708,3243561422 1107637043,1104799410,1101776477",
       "texture 0 grid cebec4e8e24ec488 24x24 of 16x16 repeats sha256:f7d0bab458ddd6e6e528cdde1c09e9d28f4c169b5d6571d98c822c9d96452b2a",
       "surface 0 texture 0 roughness 1061997773 metallic 0 emission 0 alpha 0 cutoff 1056964608 one-sided filtered vertices 632 indices 1356",
@@ -1005,8 +1005,8 @@
       "surface 2 indices sha256:ad5dc1478de06a4c2728ea528bd9361a4b945e92a414bf4d180cedaaeaa5f4cc"
     ]},
     {"case": "tests/model/corpus/edges.ips seed 7", "pins": [
-      "program sha256:7cc89535701dd2ba83aa57c96362c9baaee2d57375cc741fcf3b4a7f8a70d4ba",
-      "vertices 739 triangles 727 fuel 6801/25000000 work 12546/100000000",
+      "program sha256:51b40e10f3e63ac80b52217f7dea2f38984dfb77c623157b68ba231928161122",
+      "vertices 739 triangles 727 fuel 8034/150000000 work 12546/100000000",
       "size 1119092736,1114636288,1114636288 units 1120403456 bounds 3254254647,3201191060,3241067749 1107637043,1100109264,1097039400",
       "texture 0 grid fb213ba61193b9ec 24x24 of 16x16 repeats sha256:f7d0bab458ddd6e6e528cdde1c09e9d28f4c169b5d6571d98c822c9d96452b2a",
       "surface 0 texture 0 roughness 1061997773 metallic 0 emission 0 alpha 0 cutoff 1056964608 one-sided filtered vertices 720 indices 2136",
@@ -1029,8 +1029,8 @@
       "surface 2 indices sha256:ad5dc1478de06a4c2728ea528bd9361a4b945e92a414bf4d180cedaaeaa5f4cc"
     ]},
     {"case": "tests/model/corpus/edges.ips seed 8", "pins": [
-      "program sha256:7cc89535701dd2ba83aa57c96362c9baaee2d57375cc741fcf3b4a7f8a70d4ba",
-      "vertices 1873 triangles 2567 fuel 17285/25000000 work 20334/100000000",
+      "program sha256:51b40e10f3e63ac80b52217f7dea2f38984dfb77c623157b68ba231928161122",
+      "vertices 1873 triangles 2567 fuel 18518/150000000 work 20334/100000000",
       "size 1119092736,1114636288,1114636288 units 1120403456 bounds 3255494472,3230705317,3241478360 1107637043,1100109264,1099104900",
       "texture 0 grid 135b8a248a153cee 24x24 of 16x16 repeats sha256:f7d0bab458ddd6e6e528cdde1c09e9d28f4c169b5d6571d98c822c9d96452b2a",
       "surface 0 texture 0 roughness 1061997773 metallic 0 emission 0 alpha 0 cutoff 1056964608 one-sided filtered vertices 1808 indices 7518",
@@ -1053,8 +1053,8 @@
       "surface 2 indices sha256:ad5dc1478de06a4c2728ea528bd9361a4b945e92a414bf4d180cedaaeaa5f4cc"
     ]},
     {"case": "tests/model/corpus/materials.ips seed 1", "pins": [
-      "program sha256:a853fbdd4981b76522ed296e007e49c3c0f28575552b7c0a9d4e66af49cb7c33",
-      "vertices 474 triangles 336 fuel 4000/25000000 work 150311/100000000",
+      "program sha256:f5fbc2fade99112cbec635764279a58cfe891e7dee804f0acad9f62d500e2242",
+      "vertices 474 triangles 336 fuel 41088/150000000 work 150311/100000000",
       "size 1114636288,1109393408,1109393408 units 1120403456 bounds 3250621522,0,3242511565 1101144780,1099536794,1095917926",
       "texture 0 plate 91625d94934c209a 32x32 of 32x32 repeats sha256:e0ea07d3d41a85608b9ec2a1c3abca04cb25450aa59bbcb66489b3f5db8208cd",
       "texture 0 image 0 kind 1 relief sha256:c341d91fd113f7bb60a8bf6c50c6a5bf2bda519627c7b5a7becb40b0ef1d4a12",
@@ -1095,8 +1095,8 @@
       "surface 4 indices sha256:fe78c65211dd0b56a97024fb61111e686ef1fe054aa132ba58e2891ac496f1ee"
     ]},
     {"case": "tests/model/corpus/materials.ips seed 2", "pins": [
-      "program sha256:a853fbdd4981b76522ed296e007e49c3c0f28575552b7c0a9d4e66af49cb7c33",
-      "vertices 422 triangles 276 fuel 3569/25000000 work 150028/100000000",
+      "program sha256:f5fbc2fade99112cbec635764279a58cfe891e7dee804f0acad9f62d500e2242",
+      "vertices 422 triangles 276 fuel 40657/150000000 work 150028/100000000",
       "size 1114636288,1109393408,1109393408 units 1120403456 bounds 3249464380,0,3242511565 1101703526,1099536794,1095998879",
       "texture 0 plate d5478856b724ca57 32x32 of 32x32 repeats sha256:bfa2f413a7d4446de549cbdedd83d537c244c8f49387f20964d11bcbe2bceaf1",
       "texture 0 image 0 kind 1 relief sha256:c341d91fd113f7bb60a8bf6c50c6a5bf2bda519627c7b5a7becb40b0ef1d4a12",
@@ -1137,8 +1137,8 @@
       "surface 4 indices sha256:fe78c65211dd0b56a97024fb61111e686ef1fe054aa132ba58e2891ac496f1ee"
     ]},
     {"case": "tests/model/corpus/materials.ips seed 3", "pins": [
-      "program sha256:a853fbdd4981b76522ed296e007e49c3c0f28575552b7c0a9d4e66af49cb7c33",
-      "vertices 1072 triangles 1026 fuel 8967/25000000 work 153576/100000000",
+      "program sha256:f5fbc2fade99112cbec635764279a58cfe891e7dee804f0acad9f62d500e2242",
+      "vertices 1072 triangles 1026 fuel 46055/150000000 work 153576/100000000",
       "size 1114636288,1109393408,1109393408 units 1120403456 bounds 3250584880,0,3242511565 1101273674,1099536794,1096153433",
       "texture 0 plate ad309c20e4dcdeeb 32x32 of 32x32 repeats sha256:c43c840aaebe93ee90d7f65ffcea8c18be803de279481124a0f7de0147e18b45",
       "texture 0 image 0 kind 1 relief sha256:c341d91fd113f7bb60a8bf6c50c6a5bf2bda519627c7b5a7becb40b0ef1d4a12",
@@ -1179,8 +1179,8 @@
       "surface 4 indices sha256:fe78c65211dd0b56a97024fb61111e686ef1fe054aa132ba58e2891ac496f1ee"
     ]},
     {"case": "tests/model/corpus/materials.ips seed 4", "pins": [
-      "program sha256:a853fbdd4981b76522ed296e007e49c3c0f28575552b7c0a9d4e66af49cb7c33",
-      "vertices 422 triangles 276 fuel 3569/25000000 work 150028/100000000",
+      "program sha256:f5fbc2fade99112cbec635764279a58cfe891e7dee804f0acad9f62d500e2242",
+      "vertices 422 triangles 276 fuel 40657/150000000 work 150028/100000000",
       "size 1114636288,1109393408,1109393408 units 1120403456 bounds 3250004571,0,3242511565 1101204495,1099536794,1095392068",
       "texture 0 plate 33739dafbcefeb9f 32x32 of 32x32 repeats sha256:805de010fe565d71eab0c37c99b2af6fa44287caaf7d3f17114512c8cc9d840f",
       "texture 0 image 0 kind 1 relief sha256:c341d91fd113f7bb60a8bf6c50c6a5bf2bda519627c7b5a7becb40b0ef1d4a12",
@@ -1221,8 +1221,8 @@
       "surface 4 indices sha256:fe78c65211dd0b56a97024fb61111e686ef1fe054aa132ba58e2891ac496f1ee"
     ]},
     {"case": "tests/model/corpus/materials.ips seed 5", "pins": [
-      "program sha256:a853fbdd4981b76522ed296e007e49c3c0f28575552b7c0a9d4e66af49cb7c33",
-      "vertices 604 triangles 486 fuel 5080/25000000 work 151021/100000000",
+      "program sha256:f5fbc2fade99112cbec635764279a58cfe891e7dee804f0acad9f62d500e2242",
+      "vertices 604 triangles 486 fuel 42168/150000000 work 151021/100000000",
       "size 1114636288,1109393408,1109393408 units 1120403456 bounds 3250599482,0,3242511565 1101136763,1099536794,1096072212",
       "texture 0 plate a85e53ebc9dbe5bc 32x32 of 32x32 repeats sha256:e8fd7f2ac682a888d201f94715931d7038799f44748559c0458121f074ee6f35",
       "texture 0 image 0 kind 1 relief sha256:c341d91fd113f7bb60a8bf6c50c6a5bf2bda519627c7b5a7becb40b0ef1d4a12",
@@ -1263,8 +1263,8 @@
       "surface 4 indices sha256:fe78c65211dd0b56a97024fb61111e686ef1fe054aa132ba58e2891ac496f1ee"
     ]},
     {"case": "tests/model/corpus/materials.ips seed 6", "pins": [
-      "program sha256:a853fbdd4981b76522ed296e007e49c3c0f28575552b7c0a9d4e66af49cb7c33",
-      "vertices 474 triangles 336 fuel 4000/25000000 work 150311/100000000",
+      "program sha256:f5fbc2fade99112cbec635764279a58cfe891e7dee804f0acad9f62d500e2242",
+      "vertices 474 triangles 336 fuel 41088/150000000 work 150311/100000000",
       "size 1114636288,1109393408,1109393408 units 1120403456 bounds 3249109328,0,3242511565 1101265740,1099536794,1095917763",
       "texture 0 plate cd60667b67b8b160 32x32 of 32x32 repeats sha256:9bfba976fb76ce3926fff8d036cbd644c746a40551f13282d2f8f969b30452fa",
       "texture 0 image 0 kind 1 relief sha256:c341d91fd113f7bb60a8bf6c50c6a5bf2bda519627c7b5a7becb40b0ef1d4a12",
@@ -1305,8 +1305,8 @@
       "surface 4 indices sha256:fe78c65211dd0b56a97024fb61111e686ef1fe054aa132ba58e2891ac496f1ee"
     ]},
     {"case": "examples/models/lantern.ips seed 1", "pins": [
-      "program sha256:d87daa1e9f629923cd69fa209e3af2d8ee852e305eb98a7f61196c57199548ef",
-      "vertices 1039 triangles 792 fuel 9091/25000000 work 172257/100000000",
+      "program sha256:a677ddf2252d5f901aae845f74f69dd9e6010853f78441ddb9d0ecd64365035c",
+      "vertices 1039 triangles 792 fuel 54331/150000000 work 172257/100000000",
       "size 1106247680,1112014848,1106247680 units 1120403456 bounds 3240922229,0,3240922229 1093438581,1109136132,1093438581",
       "texture 0 iron 7d137ef31cbed6d8 32x32 of 32x32 repeats sha256:246e12f0a1d13ec2d6ac5c33dca1868d7f68989ff702a1d392676e4c528e6103",
       "texture 0 image 0 kind 1 relief sha256:0e976379e1e97433728dde653db11509a37df07cba6cec546c1fd31025035b0b",
@@ -1348,8 +1348,8 @@
       "surface 4 indices sha256:e4ec98844637e34aac51e8843e9759a7a28a3cde93d359e8207187fb52d3c0f5"
     ]},
     {"case": "examples/models/lantern.ips seed 4", "pins": [
-      "program sha256:d87daa1e9f629923cd69fa209e3af2d8ee852e305eb98a7f61196c57199548ef",
-      "vertices 931 triangles 640 fuel 8139/25000000 work 172149/100000000",
+      "program sha256:a677ddf2252d5f901aae845f74f69dd9e6010853f78441ddb9d0ecd64365035c",
+      "vertices 931 triangles 640 fuel 53849/150000000 work 172149/100000000",
       "size 1106247680,1112014848,1106247680 units 1120403456 bounds 3238052222,0,3238052222 1090568574,1109774036,1090568574",
       "texture 0 iron 9721fbdabc06249b 32x32 of 32x32 repeats sha256:44b3167e85d51b0d5b085c0daca86991b7e74b78ede66b9ac22f2d60d35d8f36",
       "texture 0 image 0 kind 1 relief sha256:41cc604accf4a24d434ee27d260b0557b61aebe5014071744bfe67c5bae84924",
@@ -1391,8 +1391,8 @@
       "surface 4 indices sha256:e4ec98844637e34aac51e8843e9759a7a28a3cde93d359e8207187fb52d3c0f5"
     ]},
     {"case": "examples/models/lantern.ips seed 6", "pins": [
-      "program sha256:d87daa1e9f629923cd69fa209e3af2d8ee852e305eb98a7f61196c57199548ef",
-      "vertices 891 triangles 608 fuel 7798/25000000 work 171975/100000000",
+      "program sha256:a677ddf2252d5f901aae845f74f69dd9e6010853f78441ddb9d0ecd64365035c",
+      "vertices 891 triangles 608 fuel 53578/150000000 work 171975/100000000",
       "size 1106247680,1112014848,1106247680 units 1120403456 bounds 3237989213,0,3237989213 1090505565,1109526138,1090505565",
       "texture 0 iron e7cd3320f09308e6 32x32 of 32x32 repeats sha256:73a5b36d68b1724be9ea86875eb214357cff9d2d2b39bc96d1b30e1d66fd5ccc",
       "texture 0 image 0 kind 1 relief sha256:13157a25ec98e84dffa310e98289a5945aa5c011c04df85f1174ec351aa2366d",
@@ -1434,8 +1434,8 @@
       "surface 4 indices sha256:e4ec98844637e34aac51e8843e9759a7a28a3cde93d359e8207187fb52d3c0f5"
     ]},
     {"case": "examples/models/lantern.ips seed 3 rust=0.9", "pins": [
-      "program sha256:d87daa1e9f629923cd69fa209e3af2d8ee852e305eb98a7f61196c57199548ef",
-      "vertices 1351 triangles 948 fuel 11538/25000000 work 174793/100000000",
+      "program sha256:a677ddf2252d5f901aae845f74f69dd9e6010853f78441ddb9d0ecd64365035c",
+      "vertices 1351 triangles 948 fuel 57671/150000000 work 174793/100000000",
       "size 1106247680,1112014848,1106247680 units 1120403456 bounds 3242378123,0,3242378123 1094894475,1109644951,1094894475",
       "texture 0 iron b896fd528f367da9 32x32 of 32x32 repeats sha256:26b89f896e7971e5cc642b2aec62e6219659d766bcf2e8e64fa8de93ecf97c6f",
       "texture 0 image 0 kind 1 relief sha256:9bc4ecf213724b7a5f5910b374d58272b8f0d08a7c8bc06b716638071cc19130",
@@ -1477,8 +1477,8 @@
       "surface 4 indices sha256:e4ec98844637e34aac51e8843e9759a7a28a3cde93d359e8207187fb52d3c0f5"
     ]},
     {"case": "tests/model/corpus/shapes.ips seed 1", "pins": [
-      "program sha256:589bb22f8587ed3757860c21b7f8729a618fa248004babeff86808ba9873a597",
-      "vertices 2482 triangles 3768 fuel 92880/25000000 work 56847/100000000",
+      "program sha256:e2b9a118dddc4398c2da309d994ebc767cb8863b33cc66c6f09a864bb6e66042",
+      "vertices 2482 triangles 3768 fuel 95820/150000000 work 56847/100000000",
       "size 1123024896,1117782016,1117782016 units 1120403456 bounds 3255610586,3225157893,3258531931 1115577366,1109634463,1105629518",
       "texture 0 grid a4fe6b0ccd9b5352 24x24 of 16x16 repeats sha256:f7d0bab458ddd6e6e528cdde1c09e9d28f4c169b5d6571d98c822c9d96452b2a",
       "texture 1 peg.grid 497037094930ef0f 16x16 of 16x16 clamps sha256:e2d7ed961cb03336968ebedb6ac1c27474eec6f2ade0de78639a4c1d298e1a75",
@@ -1513,8 +1513,8 @@
       "output 2 boxes box3d list values 3 sha256:ca9aa5ae2cfcdd364c534f02ee7184ec6cf48a6732f43a79d3650e58e664c698"
     ]},
     {"case": "tests/model/corpus/shapes.ips seed 2", "pins": [
-      "program sha256:589bb22f8587ed3757860c21b7f8729a618fa248004babeff86808ba9873a597",
-      "vertices 1660 triangles 2006 fuel 53886/25000000 work 43607/100000000",
+      "program sha256:e2b9a118dddc4398c2da309d994ebc767cb8863b33cc66c6f09a864bb6e66042",
+      "vertices 1660 triangles 2006 fuel 56826/150000000 work 43607/100000000",
       "size 1123024896,1117782016,1117782016 units 1120403456 bounds 3257197339,3210582742,3258622380 1109981095,1108746210,1106340768",
       "texture 0 grid bf24410918a8356c 24x24 of 16x16 repeats sha256:f7d0bab458ddd6e6e528cdde1c09e9d28f4c169b5d6571d98c822c9d96452b2a",
       "texture 1 peg.grid 5d5fdf67064df7d5 16x16 of 16x16 clamps sha256:e2d7ed961cb03336968ebedb6ac1c27474eec6f2ade0de78639a4c1d298e1a75",
@@ -1549,8 +1549,8 @@
       "output 2 boxes box3d list values 3 sha256:ca9aa5ae2cfcdd364c534f02ee7184ec6cf48a6732f43a79d3650e58e664c698"
     ]},
     {"case": "tests/model/corpus/shapes.ips seed 3", "pins": [
-      "program sha256:589bb22f8587ed3757860c21b7f8729a618fa248004babeff86808ba9873a597",
-      "vertices 5024 triangles 8084 fuel 177577/25000000 work 97446/100000000",
+      "program sha256:e2b9a118dddc4398c2da309d994ebc767cb8863b33cc66c6f09a864bb6e66042",
+      "vertices 5024 triangles 8084 fuel 180517/150000000 work 97446/100000000",
       "size 1123024896,1117782016,1117782016 units 1120403456 bounds 3257425681,3222411913,3258532092 1113796626,1109212482,1107629087",
       "texture 0 grid c727536dcc77f954 24x24 of 16x16 repeats sha256:f7d0bab458ddd6e6e528cdde1c09e9d28f4c169b5d6571d98c822c9d96452b2a",
       "texture 1 peg.grid 17a9424a2c14963e 16x16 of 16x16 clamps sha256:e2d7ed961cb03336968ebedb6ac1c27474eec6f2ade0de78639a4c1d298e1a75",
@@ -1585,8 +1585,8 @@
       "output 2 boxes box3d list values 3 sha256:ca9aa5ae2cfcdd364c534f02ee7184ec6cf48a6732f43a79d3650e58e664c698"
     ]},
     {"case": "tests/model/corpus/shapes.ips seed 4", "pins": [
-      "program sha256:589bb22f8587ed3757860c21b7f8729a618fa248004babeff86808ba9873a597",
-      "vertices 1900 triangles 2492 fuel 64946/25000000 work 47473/100000000",
+      "program sha256:e2b9a118dddc4398c2da309d994ebc767cb8863b33cc66c6f09a864bb6e66042",
+      "vertices 1900 triangles 2492 fuel 67886/150000000 work 47473/100000000",
       "size 1123024896,1117782016,1117782016 units 1120403456 bounds 3255796518,3209720048,3258575255 1113882237,1106705344,1106264774",
       "texture 0 grid 6e397696912b3856 24x24 of 16x16 repeats sha256:f7d0bab458ddd6e6e528cdde1c09e9d28f4c169b5d6571d98c822c9d96452b2a",
       "texture 1 peg.grid a6421fd32f686df0 16x16 of 16x16 clamps sha256:e2d7ed961cb03336968ebedb6ac1c27474eec6f2ade0de78639a4c1d298e1a75",
@@ -1621,8 +1621,8 @@
       "output 2 boxes box3d list values 3 sha256:ca9aa5ae2cfcdd364c534f02ee7184ec6cf48a6732f43a79d3650e58e664c698"
     ]},
     {"case": "tests/model/corpus/shapes.ips seed 5", "pins": [
-      "program sha256:589bb22f8587ed3757860c21b7f8729a618fa248004babeff86808ba9873a597",
-      "vertices 2994 triangles 4652 fuel 106779/25000000 work 62804/100000000",
+      "program sha256:e2b9a118dddc4398c2da309d994ebc767cb8863b33cc66c6f09a864bb6e66042",
+      "vertices 2994 triangles 4652 fuel 109719/150000000 work 62804/100000000",
       "size 1123024896,1117782016,1117782016 units 1120403456 bounds 3255853535,3206357631,3260028010 1110260824,1108614905,1107282958",
       "texture 0 grid 06d1e30cbeb682bc 24x24 of 16x16 repeats sha256:f7d0bab458ddd6e6e528cdde1c09e9d28f4c169b5d6571d98c822c9d96452b2a",
       "texture 1 peg.grid 6e53e7b6577b4024 16x16 of 16x16 clamps sha256:e2d7ed961cb03336968ebedb6ac1c27474eec6f2ade0de78639a4c1d298e1a75",
@@ -1657,8 +1657,8 @@
       "output 2 boxes box3d list values 3 sha256:ca9aa5ae2cfcdd364c534f02ee7184ec6cf48a6732f43a79d3650e58e664c698"
     ]},
     {"case": "tests/model/corpus/shapes.ips seed 6", "pins": [
-      "program sha256:589bb22f8587ed3757860c21b7f8729a618fa248004babeff86808ba9873a597",
-      "vertices 2868 triangles 4252 fuel 104670/25000000 work 63331/100000000",
+      "program sha256:e2b9a118dddc4398c2da309d994ebc767cb8863b33cc66c6f09a864bb6e66042",
+      "vertices 2868 triangles 4252 fuel 107610/150000000 work 63331/100000000",
       "size 1123024896,1117782016,1117782016 units 1120403456 bounds 3255292278,3230298917,3258622767 1115159214,1109915776,1105652742",
       "texture 0 grid cebec4e8e24ec488 24x24 of 16x16 repeats sha256:f7d0bab458ddd6e6e528cdde1c09e9d28f4c169b5d6571d98c822c9d96452b2a",
       "texture 1 peg.grid db5ab3a79990a06d 16x16 of 16x16 clamps sha256:e2d7ed961cb03336968ebedb6ac1c27474eec6f2ade0de78639a4c1d298e1a75",
@@ -1693,8 +1693,8 @@
       "output 2 boxes box3d list values 3 sha256:ca9aa5ae2cfcdd364c534f02ee7184ec6cf48a6732f43a79d3650e58e664c698"
     ]},
     {"case": "tests/model/corpus/shapes.ips seed 7", "pins": [
-      "program sha256:589bb22f8587ed3757860c21b7f8729a618fa248004babeff86808ba9873a597",
-      "vertices 2382 triangles 3488 fuel 81499/25000000 work 54492/100000000",
+      "program sha256:e2b9a118dddc4398c2da309d994ebc767cb8863b33cc66c6f09a864bb6e66042",
+      "vertices 2382 triangles 3488 fuel 84439/150000000 work 54492/100000000",
       "size 1123024896,1117782016,1117782016 units 1120403456 bounds 3257044209,3196220425,3258550890 1114109174,1106561975,1107200264",
       "texture 0 grid fb213ba61193b9ec 24x24 of 16x16 repeats sha256:f7d0bab458ddd6e6e528cdde1c09e9d28f4c169b5d6571d98c822c9d96452b2a",
       "texture 1 peg.grid 7a710a3f35b61c90 16x16 of 16x16 clamps sha256:e2d7ed961cb03336968ebedb6ac1c27474eec6f2ade0de78639a4c1d298e1a75",
@@ -1729,8 +1729,8 @@
       "output 2 boxes box3d list values 3 sha256:ca9aa5ae2cfcdd364c534f02ee7184ec6cf48a6732f43a79d3650e58e664c698"
     ]},
     {"case": "tests/model/corpus/shapes.ips seed 8", "pins": [
-      "program sha256:589bb22f8587ed3757860c21b7f8729a618fa248004babeff86808ba9873a597",
-      "vertices 3106 triangles 4808 fuel 120072/25000000 work 66251/100000000",
+      "program sha256:e2b9a118dddc4398c2da309d994ebc767cb8863b33cc66c6f09a864bb6e66042",
+      "vertices 3106 triangles 4808 fuel 123012/150000000 work 66251/100000000",
       "size 1123024896,1117782016,1117782016 units 1120403456 bounds 3256386482,3196639003,3262028650 1111515991,1108009375,1107222222",
       "texture 0 grid 135b8a248a153cee 24x24 of 16x16 repeats sha256:f7d0bab458ddd6e6e528cdde1c09e9d28f4c169b5d6571d98c822c9d96452b2a",
       "texture 1 peg.grid f7bbe3d500be9faa 16x16 of 16x16 clamps sha256:e2d7ed961cb03336968ebedb6ac1c27474eec6f2ade0de78639a4c1d298e1a75",
@@ -1765,8 +1765,8 @@
       "output 2 boxes box3d list values 3 sha256:ca9aa5ae2cfcdd364c534f02ee7184ec6cf48a6732f43a79d3650e58e664c698"
     ]},
     {"case": "examples/language/model-paths.ips seed 1", "pins": [
-      "program sha256:f9e16ea4dcb37c9d5e02d8120b2231c4b4a21396b78e1f481be1d17fc9067255",
-      "vertices 273 triangles 336 fuel 2595/25000000 work 4817/100000000",
+      "program sha256:cd04efb86dd78c362c92a71f005fe98fe3debd6c342ab44b1b70cf4444587168",
+      "vertices 273 triangles 336 fuel 3164/150000000 work 4817/100000000",
       "size 1117782016,1114636288,1109393408 units 1120403456 bounds 3254779904,0,3221225472 1108738048,1112280881,1073741824",
       "texture 0 grid e39bfc89411ff132 16x16 of 16x16 repeats sha256:e2d7ed961cb03336968ebedb6ac1c27474eec6f2ade0de78639a4c1d298e1a75",
       "surface 0 texture 0 roughness 1061997773 metallic 0 emission 0 alpha 0 cutoff 1056964608 one-sided filtered vertices 273 indices 1008",
@@ -1777,8 +1777,8 @@
       "surface 0 indices sha256:fd011403fe5a4666ebeb3c6e50473113829ebc3e85b464010fe0a80b22e26323"
     ]},
     {"case": "examples/language/model-shaping.ips seed 1", "pins": [
-      "program sha256:712468411fb6e0582991adec39fbb3e19045e28e6cb9bc1c261062804728d275",
-      "vertices 1142 triangles 1696 fuel 32934/25000000 work 19113/100000000",
+      "program sha256:5483559e82c666ae9dfbd9b1fe144920fcac490df190151b61d713dffd1dfa9c",
+      "vertices 1142 triangles 1696 fuel 33503/150000000 work 19113/100000000",
       "size 1125515264,1114636288,1109393408 units 1120403456 bounds 3262644224,3211095523,3243769495 1115150834,1109393408,1095769542",
       "texture 0 grid e39bfc89411ff132 16x16 of 16x16 repeats sha256:e2d7ed961cb03336968ebedb6ac1c27474eec6f2ade0de78639a4c1d298e1a75",
       "surface 0 texture 0 roughness 1061997773 metallic 0 emission 0 alpha 0 cutoff 1056964608 one-sided filtered vertices 1142 indices 5088",
@@ -1789,8 +1789,8 @@
       "surface 0 indices sha256:783f6c680b965916c857125cee1b4d1831d1c84beb94655ffc43f59af54e70a6"
     ]},
     {"case": "examples/language/model-shaping.ips seed 2", "pins": [
-      "program sha256:712468411fb6e0582991adec39fbb3e19045e28e6cb9bc1c261062804728d275",
-      "vertices 1142 triangles 1696 fuel 32934/25000000 work 19113/100000000",
+      "program sha256:5483559e82c666ae9dfbd9b1fe144920fcac490df190151b61d713dffd1dfa9c",
+      "vertices 1142 triangles 1696 fuel 33503/150000000 work 19113/100000000",
       "size 1125515264,1114636288,1109393408 units 1120403456 bounds 3262644224,3216430110,3243455121 1115016484,1109393408,1096330906",
       "texture 0 grid e39bfc89411ff132 16x16 of 16x16 repeats sha256:e2d7ed961cb03336968ebedb6ac1c27474eec6f2ade0de78639a4c1d298e1a75",
       "surface 0 texture 0 roughness 1061997773 metallic 0 emission 0 alpha 0 cutoff 1056964608 one-sided filtered vertices 1142 indices 5088",
@@ -1801,8 +1801,8 @@
       "surface 0 indices sha256:783f6c680b965916c857125cee1b4d1831d1c84beb94655ffc43f59af54e70a6"
     ]},
     {"case": "examples/language/model-outputs.ips seed 3", "pins": [
-      "program sha256:aaaa5b976a1e80300cb547bb39d60e8f2e718f8648ff737d218a957ac14341e8",
-      "vertices 48 triangles 24 fuel 552/25000000 work 3588/100000000",
+      "program sha256:876ab70a410ddf7a14932ca078255617b36829b11d50f443acf106c1da4ef325",
+      "vertices 48 triangles 24 fuel 1121/150000000 work 3588/100000000",
       "size 1114636288,1114636288,1101004800 units 1120403456 bounds 3221225472,0,3221225472 1101323163,1112014848,1073741824",
       "texture 0 grid e39bfc89411ff132 16x16 of 16x16 repeats sha256:e2d7ed961cb03336968ebedb6ac1c27474eec6f2ade0de78639a4c1d298e1a75",
       "surface 0 texture 0 roughness 1061997773 metallic 0 emission 0 alpha 0 cutoff 1056964608 one-sided filtered vertices 48 indices 72",
@@ -1815,8 +1815,8 @@
       "output 1 colliders box3d list values 2 sha256:d4f73c8c813ed68f4448bc80d5298e1dcb760ca3284bbbd3a39c5816308b9852"
     ]},
     {"case": "examples/language/model-parts.ips seed 1", "pins": [
-      "program sha256:52fce4d9873f9af2fdb64f469e8350147fdd440d93076c2ee147a9a89b6e7e75",
-      "vertices 448 triangles 364 fuel 5846/25000000 work 209898/100000000",
+      "program sha256:74f5e79b4c2eee57abc2860dc810790b46b4a405db5e64d9b3ccbe462b025c87",
+      "vertices 448 triangles 364 fuel 77134/150000000 work 209898/100000000",
       "size 1119092736,1114636288,1114636288 units 1120403456 bounds 3256877056,0,3251109888 1109393408,1112533515,1103626240",
       "texture 0 leg.wood 435eb4bbc7708d63 32x32 of 32x32 repeats sha256:c690f9eb3915108b627d5564cb48df8ab60c7b19fc38643e1dca4fe047c38d24",
       "texture 0 image 0 kind 1 relief sha256:e20d9ee40dbd5d1ab15709f1df0a4ffefab356f377291a9e07816342a5e7f1aa",
@@ -1861,8 +1861,8 @@
       "output 0 tops point3d list values 4 sha256:34fb1e0dcba9bd95d8d7e3d1749fa051a2b4ac351a253a9f3ed2db37e0a6c8a9"
     ]},
     {"case": "examples/language/model-parts.ips seed 9", "pins": [
-      "program sha256:52fce4d9873f9af2fdb64f469e8350147fdd440d93076c2ee147a9a89b6e7e75",
-      "vertices 448 triangles 364 fuel 5846/25000000 work 209568/100000000",
+      "program sha256:74f5e79b4c2eee57abc2860dc810790b46b4a405db5e64d9b3ccbe462b025c87",
+      "vertices 448 triangles 364 fuel 77068/150000000 work 209568/100000000",
       "size 1119092736,1114636288,1114636288 units 1120403456 bounds 3256877056,0,3251109888 1109393408,1111977526,1103626240",
       "texture 0 leg.wood 92185fc6066cda5b 32x32 of 32x32 repeats sha256:2bb900eebc378d8ffebcd0d51dc33934f5398b143dce24873217dc27b9efc201",
       "texture 0 image 0 kind 1 relief sha256:e20d9ee40dbd5d1ab15709f1df0a4ffefab356f377291a9e07816342a5e7f1aa",
@@ -1907,8 +1907,8 @@
       "output 0 tops point3d list values 4 sha256:24be1604e565d5e4ca3771a44f6cf40d5706808257f0db69eaee97a392e1e0e1"
     ]},
     {"case": "examples/models/streetlamp.ips seed 1", "pins": [
-      "program sha256:f454990966ad4b70fe882767c95e8742f7a22681e284dc6e1e14a78ab8674188",
-      "vertices 2167 triangles 2568 fuel 25895/25000000 work 176364/100000000",
+      "program sha256:0aaaf4e2c615ff82ec0b2678d376dcdaef7d1f6125835c34d88e939823168de4",
+      "vertices 2167 triangles 2568 fuel 70117/150000000 work 176364/100000000",
       "size 1124859904,1138163712,1114636288 units 1120403456 bounds 3265450258,0,3244294144 1117966610,1136903105,1096810496",
       "texture 0 iron 0c79ee75e379fbd7 32x32 of 32x32 repeats sha256:c110c865a973883a4ebab035fb79ac1be004a1114f7f280009040bbf8f9fd3cd",
       "texture 0 image 0 kind 1 relief sha256:0e976379e1e97433728dde653db11509a37df07cba6cec546c1fd31025035b0b",
@@ -1939,8 +1939,8 @@
       "output 1 colliders box3d list values 2 sha256:f508b1b738eed979053d7026acd864aec970a2c67eb1b5cfd9090a671702ef0c"
     ]},
     {"case": "examples/models/streetlamp.ips seed 2", "pins": [
-      "program sha256:f454990966ad4b70fe882767c95e8742f7a22681e284dc6e1e14a78ab8674188",
-      "vertices 1398 triangles 1620 fuel 17036/25000000 work 170820/100000000",
+      "program sha256:0aaaf4e2c615ff82ec0b2678d376dcdaef7d1f6125835c34d88e939823168de4",
+      "vertices 1398 triangles 1620 fuel 60988/150000000 work 170820/100000000",
       "size 1124859904,1138163712,1114636288 units 1120403456 bounds 3244294144,0,3244294144 1119339024,1136710235,1096810496",
       "texture 0 iron 2c54341298a7906c 32x32 of 32x32 repeats sha256:507cf2cad5d70ec00e3985e2c6924076ac1b7e62b7d7dd65b756270fadd86b04",
       "texture 0 image 0 kind 1 relief sha256:0be0194a697a930b94b58e23afd1a36d15177ee9443188bda5d818a4832d6d5c",
@@ -1971,8 +1971,8 @@
       "output 1 colliders box3d list values 2 sha256:b4078a7028fcf0f3f52c9f290270ffebd23cc2c4d6543a6fc7820ab1294335c6"
     ]},
     {"case": "examples/models/streetlamp.ips seed 5 paint=#5a2a2a rust=0.8", "pins": [
-      "program sha256:f454990966ad4b70fe882767c95e8742f7a22681e284dc6e1e14a78ab8674188",
-      "vertices 1398 triangles 1620 fuel 17039/25000000 work 172290/100000000",
+      "program sha256:0aaaf4e2c615ff82ec0b2678d376dcdaef7d1f6125835c34d88e939823168de4",
+      "vertices 1398 triangles 1620 fuel 62026/150000000 work 172290/100000000",
       "size 1124859904,1138163712,1114636288 units 1120403456 bounds 3244294144,0,3244294144 1118287006,1136270299,1096810496",
       "texture 0 iron 99509fc1726c32b3 32x32 of 32x32 repeats sha256:7b78c72d27caa63cae4301b5b3c12342e42221be5233da4cbc04b836e43a456a",
       "texture 0 image 0 kind 1 relief sha256:3d938d862b685ce976acb9a36e2accaeb89b13cd14f8a6e8a7df3e00d4cfda35",
@@ -2003,8 +2003,8 @@
       "output 1 colliders box3d list values 2 sha256:19f55dc8d04b1f75507603983b4d2e5a4c19d156615c572358dd892e335f76b2"
     ]},
     {"case": "examples/models/boulder.ips seed 1", "pins": [
-      "program sha256:c9b6ed1646ffc9c9b5c9f639d922270422b8f6daa71e333ae2714c0dd22fd04a",
-      "vertices 726 triangles 1200 fuel 67053/25000000 work 1122556/100000000",
+      "program sha256:7741992841b1d45727e3fac8d3ddbf8815a5e6398199ae54fd1a8c9993e05651",
+      "vertices 726 triangles 1200 fuel 309076/150000000 work 1122556/100000000",
       "size 1123024896,1117782016,1120403456 units 1120403456 bounds 3260480733,3245333034,3260109179 1113123525,1112281420,1111584078",
       "texture 0 rock ae1aee165960eaeb 64x64 of 64x64 clamps sha256:c0dcba4695d97a67aefe7ba12ecde1dee6dd8f432a874dc590a50ed695bab9df",
       "texture 0 image 0 kind 1 relief sha256:b468062f7c3709891d246289b79a7b58fdcff6b08102393aacfa71291a3a5b79",
@@ -2019,8 +2019,8 @@
       "output 1 collider box3d single values 1 sha256:fd7f0bb83111194be9d8173ac1110b94683bd56044270d0ac18ae0b8debc6674"
     ]},
     {"case": "examples/models/boulder.ips seed 6 rough=0.9", "pins": [
-      "program sha256:c9b6ed1646ffc9c9b5c9f639d922270422b8f6daa71e333ae2714c0dd22fd04a",
-      "vertices 726 triangles 1200 fuel 67053/25000000 work 1122559/100000000",
+      "program sha256:7741992841b1d45727e3fac8d3ddbf8815a5e6398199ae54fd1a8c9993e05651",
+      "vertices 726 triangles 1200 fuel 309079/150000000 work 1122559/100000000",
       "size 1123024896,1117782016,1120403456 units 1120403456 bounds 3261861499,3243337808,3260931591 1115276732,1112064255,1116271977",
       "texture 0 rock be0c2f8d76ff1e60 64x64 of 64x64 clamps sha256:c241bf07963e55d4a31fc1adb8b38474e7f1e6a0077f9dd262b040191c102a53",
       "texture 0 image 0 kind 1 relief sha256:e8212753e3411e12609ec3c15cc33f66103939187740775f19281829b22b0479",
@@ -2035,8 +2035,8 @@
       "output 1 collider box3d single values 1 sha256:aab805f54650b66646698763611da78ecf45051bb2effc7e217cf28f8fdf008e"
     ]},
     {"case": "examples/models/table.ips seed 1", "pins": [
-      "program sha256:f194eaf896ee13a05af11fd8d28f9b3f8591ec0519942e78aee76fe737ed3794",
-      "vertices 928 triangles 812 fuel 22062/25000000 work 1004434/100000000",
+      "program sha256:30ccac78b00b96492e2b00e60af565212d8afdc1cac5acae840f18fe1170875c",
+      "vertices 928 triangles 812 fuel 341141/150000000 work 1004434/100000000",
       "size 1126170624,1117782016,1119092736 units 1120403456 bounds 3263446575,0,3256795851 1115962927,1117233338,1109312203",
       "texture 0 leg.wood 6b811bcd0f2be222 64x64 of 64x64 repeats sha256:ee6876deacdb4cf4e3334c445faf0ddf21ae0a6678c9dbe13f2423d827ab54c2",
       "texture 0 image 0 kind 1 relief sha256:52403b1057c2a31b4466df6cac2fdedb912369b94a9e3fd2c09eda6e66e1ba90",
@@ -2082,8 +2082,8 @@
       "output 1 colliders box3d list values 5 sha256:dc86373eecb939780b482f4055000ff5bacd94d13a56851c500d7b6503755f0d"
     ]},
     {"case": "examples/models/table.ips seed 3 stain=#5c3a1e", "pins": [
-      "program sha256:f194eaf896ee13a05af11fd8d28f9b3f8591ec0519942e78aee76fe737ed3794",
-      "vertices 928 triangles 812 fuel 22062/25000000 work 1003459/100000000",
+      "program sha256:30ccac78b00b96492e2b00e60af565212d8afdc1cac5acae840f18fe1170875c",
+      "vertices 928 triangles 812 fuel 340946/150000000 work 1003459/100000000",
       "size 1126170624,1117782016,1119092736 units 1120403456 bounds 3264404389,0,3257266866 1116920741,1117200988,1109783218",
       "texture 0 leg.wood 08d3944d90fc206d 64x64 of 64x64 repeats sha256:a837e5ddc89fcd3fd5a31a92fb112b8dfbcaaed5384c48f448e8d96891f68da2",
       "texture 0 image 0 kind 1 relief sha256:32a5acc2b19266763c5bd2ab8a74021c6389f73773c3b0e81bc15bf81b2e64ff",
@@ -2129,8 +2129,8 @@
       "output 1 colliders box3d list values 5 sha256:75755eb82c44b4d9a297186494b5fc9a874f5ba903e5413ad9c94e5c4f025817"
     ]},
     {"case": "examples/models/railing.ips seed 1", "pins": [
-      "program sha256:f4230b33018e314f1d3b98976265214ef3d82561a73ad718634fcb47255c8684",
-      "vertices 2811 triangles 2324 fuel 28243/25000000 work 152453/100000000",
+      "program sha256:dc2fda653bb308056ee7a11c8af50c218bf3731020c558144ef3a9fd19fcbeb3",
+      "vertices 2811 triangles 2324 fuel 65885/150000000 work 152453/100000000",
       "size 1132593152,1121714176,1126170624 units 1120403456 bounds 3271570227,0,3263037440 1124086579,1120460446,1111729929",
       "texture 0 iron eb13d269b73ae302 32x32 of 32x32 repeats sha256:04c6c9af0e9bb164bf090de89de8ec5c2d82f648737b19dcb6e65f069ddeb257",
       "texture 0 image 0 kind 1 relief sha256:0e976379e1e97433728dde653db11509a37df07cba6cec546c1fd31025035b0b",
@@ -2145,8 +2145,8 @@
       "output 0 colliders box3d list values 8 sha256:4d33915755e1c14121db8d6cf0fe39ee5eb078857fdfadda58a944dfd180cf58"
     ]},
     {"case": "examples/models/railing.ips seed 2", "pins": [
-      "program sha256:f4230b33018e314f1d3b98976265214ef3d82561a73ad718634fcb47255c8684",
-      "vertices 3056 triangles 3140 fuel 42183/25000000 work 161201/100000000",
+      "program sha256:dc2fda653bb308056ee7a11c8af50c218bf3731020c558144ef3a9fd19fcbeb3",
+      "vertices 3056 triangles 3140 fuel 79555/150000000 work 161201/100000000",
       "size 1132593152,1121714176,1126170624 units 1120403456 bounds 3270927974,0,3263037440 1112932352,1120391247,1116890726",
       "texture 0 iron e1bd4aafd26d13d9 32x32 of 32x32 repeats sha256:5bcc21720f1cd79d63de0a21a16f6a79fb3b04b016e6833a44ac64ebe5b802bb",
       "texture 0 image 0 kind 1 relief sha256:0be0194a697a930b94b58e23afd1a36d15177ee9443188bda5d818a4832d6d5c",
@@ -2161,8 +2161,8 @@
       "output 0 colliders box3d list values 2 sha256:d51bec823f975e6d14ab3bd2a60ffa51ace23a6ed0f55c1202ade00e5c14b6de"
     ]},
     {"case": "examples/models/railing.ips seed 4 rust=0.9", "pins": [
-      "program sha256:f4230b33018e314f1d3b98976265214ef3d82561a73ad718634fcb47255c8684",
-      "vertices 2946 triangles 3088 fuel 41589/25000000 work 162156/100000000",
+      "program sha256:dc2fda653bb308056ee7a11c8af50c218bf3731020c558144ef3a9fd19fcbeb3",
+      "vertices 2946 triangles 3088 fuel 79717/150000000 work 162156/100000000",
       "size 1132593152,1121714176,1126170624 units 1120403456 bounds 3270927974,0,3227516928 1123444326,1120909555,1080033280",
       "texture 0 iron 44d97e68ba1ab15c 32x32 of 32x32 repeats sha256:bdeb7d38202d180b47b0970a5ee020a8154b0bf94c73b6fcd85314fcb935c61c",
       "texture 0 image 0 kind 1 relief sha256:41cc604accf4a24d434ee27d260b0557b61aebe5014071744bfe67c5bae84924",
@@ -2175,6 +2175,120 @@
       "surface 0 uvs sha256:9135d7b4c894ec2546f9085b2957d77ac5627849e2b1b772448dd8cee09832ac",
       "surface 0 indices sha256:0160c9615e3f3dee54358d6ba64bf6cbdc0623c28153186838c1bb735160faec",
       "output 0 colliders box3d list values 1 sha256:d39dcc12e675230259965426ce0a8c4654903881d8bb1d42b3f02bb7bfb29641"
+    ]},
+    {"case": "examples/models/bench.ips seed 1", "pins": [
+      "program sha256:753a8426f544b03cf9aa4b05235f7e73a79caf03b14f97c1706fa86706cd279e",
+      "vertices 1700 triangles 1348 fuel 26553747/150000000 work 90811383/100000000",
+      "size 1128136704,1120403456,1116471296 units 1120403456 bounds 3264336425,0,3255240357 1116852777,1119034894,1103728536",
+      "texture 0 timber 21510e3eb86e8852 256x256 of 256x256 repeats sha256:93e0ef258e3e35d52318dfa87b5085e0e5ef6be3a0c987d98bb8fd9494b939dd",
+      "texture 0 image 0 kind 1 relief sha256:40d2f2e2cc0530394808bd3b4ce1e466770563cf8a442a60aef0e956d2314835",
+      "texture 0 image 1 kind 2 finish sha256:4000d809566cac7e02e61c1397482bf5fd589bb64de6d7132e9486ad38cef18e",
+      "texture 1 slate 20efa8add64d40a1 256x256 of 256x256 clamps sha256:21f3809f6b7f085734a55d35e732bf3cd6307a3733e8e4041297c2141f6346d1",
+      "texture 1 image 0 kind 1 relief sha256:cf0692cc07af4da8a263619b6a8dc0712e842d0a7e5a6559c850b790b960eac9",
+      "texture 1 image 1 kind 2 finish sha256:59ff482b60ee7cc84095847811d3a4b736bc61961f88a495422430e4f8d7574a",
+      "texture 2 steel 20ca37bf261a69fa 256x256 of 256x256 repeats sha256:d813fb1d269330f4e5aa66c4a0be65768c3755af223dc320148d468cfecbcaad",
+      "texture 2 image 0 kind 1 relief sha256:ba84509a30d638f58df7735773bf0c7c0803c0b623acb3f19f61586248ada3e5",
+      "texture 2 image 1 kind 2 finish sha256:2e562e10f646d1534d23dd5f311c930ea08a5a329b4dcf1c8823373da7272c46",
+      "texture 2 image 2 kind 3 metal sha256:43f8f53708d621e73de25f0c99e28725ab34aaa5fe12a188cfa86509ac7a2e18",
+      "texture 3 fabric 4b2f99b602af55cd 256x256 of 256x256 repeats sha256:22ffa42d5807e850d43d27a2da38a6b08920acb95e64465bdb7c2087abd3afa4",
+      "texture 3 image 0 kind 1 relief sha256:e5ffae831430356489eac9968627ad9fc6c22771a2efec8254f58e9cdcd081a6",
+      "texture 3 image 1 kind 2 finish sha256:7a0309e35ddfa22832a47dd558f2ed7818ab52e06a0c9c65e1f0c35e12af9f86",
+      "surface 0 texture 2 roughness 1065353216 metallic 1065353216 emission 0 alpha 0 cutoff 1056964608 one-sided filtered vertices 1124 indices 3252",
+      "surface 0 positions sha256:bc9cd6821135fbd10e5351e82ec38faeff9d5edf63b6f712ffb7b45fd8da0f7a",
+      "surface 0 normals sha256:0cbe99d9fa4dcbaebdc4a3bfe10209c80b7b8fa551d692f458acbe1346345add",
+      "surface 0 tangents sha256:9d789935877ee4c06380d9835194ae87746e2386f294b1ed4c15adcc416c527e",
+      "surface 0 uvs sha256:5b7bb5e44b3dc1786bc20db463dcbf84365d62175aca1d41aaf2558b15e1b1f5",
+      "surface 0 indices sha256:72d0c086d2fc321be975426d4d9e22799beec8a528ba4ac48bdb0b5821d3565a",
+      "surface 1 texture 0 roughness 1065353216 metallic 0 emission 0 alpha 0 cutoff 1056964608 one-sided filtered vertices 480 indices 660",
+      "surface 1 positions sha256:859286d8539a1ce2a588764d3c7dabc93e68ace7e1115bf07036bde0794dc059",
+      "surface 1 normals sha256:593a50484f807ac7ee6097e88daeef1033ffd4516f03b5a11b1e7beb53591f05",
+      "surface 1 tangents sha256:4ab790e479b30fc83cc788767c0467d0bd72e4545e19da7de907b99fb67a3955",
+      "surface 1 uvs sha256:eec8c6b2702fb7d9f430e99a0fdcab8fcc599abe9b33eeb5fe2235e64a803cce",
+      "surface 1 indices sha256:c1edd7ae114922ca7104681ddfb9784117d27d890f1517bad6724cb210557c55",
+      "surface 2 texture 3 roughness 1065353216 metallic 0 emission 0 alpha 0 cutoff 1056964608 one-sided filtered vertices 96 indices 132",
+      "surface 2 positions sha256:9cff135cc710e330ac5e4437f1241538cfd0dcd7818532c739ed92e6e8089bdf",
+      "surface 2 normals sha256:be40a95a0b382f4dbce6826a1dbe4f9ac2ee1eb9710f4deb2833af3df17b1cbe",
+      "surface 2 tangents sha256:1d6193f4026862a14d74c58575687a382ffd4995973e1212fa29d38b9b8ad7dc",
+      "surface 2 uvs sha256:097b689b691e34ffb49652e80e2c688f2fd061cddfb4fee18e7bfc5c618bfa45",
+      "surface 2 indices sha256:e5b680af6b94457276bac3bb8fe31539bd8f960bee5d32633dfa1c4c2ae3d4fc",
+      "output 0 seat point3d single values 1 sha256:47ac1262c21323378b48ddd1a941366ce1652a283aba31b6ed68abb8171d7185",
+      "output 1 colliders box3d list values 2 sha256:097d9029d7bebe26bd34e5359893e4d60519b50207ab198dc7fd88644693ecad"
+    ]},
+    {"case": "examples/models/bench.ips seed 2", "pins": [
+      "program sha256:753a8426f544b03cf9aa4b05235f7e73a79caf03b14f97c1706fa86706cd279e",
+      "vertices 1220 triangles 1128 fuel 26557078/150000000 work 90901261/100000000",
+      "size 1128136704,1120403456,1116471296 units 1120403456 bounds 3263981944,0,3251374090 1116498296,1110403381,1103890442",
+      "texture 0 timber 138a43d94473b251 256x256 of 256x256 repeats sha256:866438b841e5a123687a565550144a5eab7b22f726e66c7844cbb1e5349cdeb8",
+      "texture 0 image 0 kind 1 relief sha256:d731fcdcbce0a0cdfc43def06f7e0a1a6cba656c9fa1350604965a9af41e9f2b",
+      "texture 0 image 1 kind 2 finish sha256:d76f3dbebdac68a5667ea756016d965fd9b7d671d8ff5ef3592786b7dc52c016",
+      "texture 1 slate b3c573668f854380 256x256 of 256x256 clamps sha256:30491c372b1152796abec09f23e08841a8105cf60f37e106fccd59c8e44db183",
+      "texture 1 image 0 kind 1 relief sha256:b323eef920e257dc824fcc6ef0bfb0cc9b55d0f8d804b104908bf7a5824ce934",
+      "texture 1 image 1 kind 2 finish sha256:01a144b5869c65f1872484283086238f201ff41c9f9cc8a67d838ce8ecab517c",
+      "texture 2 steel a2089c93038d44ed 256x256 of 256x256 repeats sha256:8c14b66cab18981e8518cb25e64ef66cc611795baa1f56ec1dac539b68545bb5",
+      "texture 2 image 0 kind 1 relief sha256:c66e69fe3241afca24debb31991aa93c327267238c9fc7f32bffd7d85aa39f99",
+      "texture 2 image 1 kind 2 finish sha256:c454a4a83c44856bff34d056b73b0bd084e1747b5903861b1702ac29127b1f2e",
+      "texture 2 image 2 kind 3 metal sha256:58a7d5ccef3b157fdd04446e60370d57e356bdffc8db9fa65e9438719bf7d951",
+      "texture 3 fabric 745bf44351fa6917 256x256 of 256x256 clamps sha256:e2b49b2e268f88c7f1792ad5bd34dae2d01ccf4f919a9e60554ce74c8ae3cf1e",
+      "texture 3 image 0 kind 1 relief sha256:e5ffae831430356489eac9968627ad9fc6c22771a2efec8254f58e9cdcd081a6",
+      "texture 3 image 1 kind 2 finish sha256:7a0309e35ddfa22832a47dd558f2ed7818ab52e06a0c9c65e1f0c35e12af9f86",
+      "surface 0 texture 2 roughness 1065353216 metallic 1065353216 emission 0 alpha 0 cutoff 1056964608 one-sided filtered vertices 932 indices 2988",
+      "surface 0 positions sha256:8758e5b976cf182f9e282d05cbf80ebf1cf654d63d61e08566aa214e0cebf1d0",
+      "surface 0 normals sha256:42c0cb13d9e419aa1845639d395b36b4fd7975601e605695f9ec9287481afb4e",
+      "surface 0 tangents sha256:432a8e15a8c1976d5d1a784c718d38e4a05ac00aecbede206457a95cc06adeb3",
+      "surface 0 uvs sha256:eb46e0d73adaae7630fe72fc3201268c705e95b6ebfb838526d4a10198a3ff7e",
+      "surface 0 indices sha256:3b47b73f92dd8374ce1525e7726bed9b2c10c93d59b290c879eacbe008b0d9db",
+      "surface 1 texture 0 roughness 1065353216 metallic 0 emission 0 alpha 0 cutoff 1056964608 one-sided filtered vertices 288 indices 396",
+      "surface 1 positions sha256:16a18c7a31cb405cd2c47c127dd5ed9e97235258199729692e421b71be8f60f5",
+      "surface 1 normals sha256:67a39d47766febbb248fb56856c9ab7f5ca0b25483be3b2ebdf078376a6d8072",
+      "surface 1 tangents sha256:99dc3e9035419701dc4dd1f887ea2bb847eed734bd5a853dfdb8bb3b5844e204",
+      "surface 1 uvs sha256:6798b5e9f7a5f76191a9aea5154494698ea64b876555807733a7c064ec64041e",
+      "surface 1 indices sha256:bb9487dc01119f26d70d3593e84dc2b24fe1397f982aa3c7eff0bc738c6229c2",
+      "output 0 seat point3d single values 1 sha256:284609cf8f44a4ee75134f82dbc6aee75b76bdce7a9b1358f756a35002934a89",
+      "output 1 colliders box3d list values 1 sha256:5109c3d66b337f4fcfc602af594230b538a8c30f6c21da7532dcc42addc1b1ff"
+    ]},
+    {"case": "examples/models/bench.ips seed 5 paint=#7a3b2e dye=#6b2f3a", "pins": [
+      "program sha256:753a8426f544b03cf9aa4b05235f7e73a79caf03b14f97c1706fa86706cd279e",
+      "vertices 1248 triangles 572 fuel 26551048/150000000 work 90853087/100000000",
+      "size 1128136704,1120403456,1116471296 units 1120403456 bounds 3265215021,0,3255152367 1117731373,1118922643,1103722536",
+      "texture 0 timber 9e95d231fd8b1b93 256x256 of 256x256 repeats sha256:2f4f4e4bc6f380a62ccd679b9b5ad8f9f5af4a2095cb4a7fcde96412a38408a9",
+      "texture 0 image 0 kind 1 relief sha256:2ce0a9f1be288c6afb99d76c0ae44ebe594adbd33824afb9eaffe296b9403501",
+      "texture 0 image 1 kind 2 finish sha256:e46adc6871d30ca192c0114a4241232910c5af1c13abfb4adaf63b1865e55b67",
+      "texture 1 slate 61a8015954f95d4c 256x256 of 256x256 repeats sha256:c4afb265585995864036c94a63d21504a7a9f424273ad71e4090c83b5ab3f87e",
+      "texture 1 image 0 kind 1 relief sha256:a78083a3224ae4bc151303b63c3b3e66aa59f02c04647fd0bc622974faf98182",
+      "texture 1 image 1 kind 2 finish sha256:7a007fa6fcb15dc2cc191dcabef5f899ac402f23adcf62149cb200f5188cd6bc",
+      "texture 2 steel 30a115f7997f8ccd 256x256 of 256x256 repeats sha256:3428b821ebe1a7777e00a749c25d1cfd0924035efa4bde738a32207f9557ed79",
+      "texture 2 image 0 kind 1 relief sha256:b45f0460f32ec9d53770a28eef85e65e4d9578245aad4a10b375163ae228565f",
+      "texture 2 image 1 kind 2 finish sha256:43cd279749b35c0c649917f754796cd7044b215bfd203db3032c39ce3ad6d209",
+      "texture 2 image 2 kind 3 metal sha256:bca140d1d8d3baaa0cb45b116b282394e6824c316dd53398a405e4c494e98e97",
+      "texture 3 fabric e2cf921ef430752a 256x256 of 256x256 repeats sha256:d9afdb97dbb1ca585fd26d3bd2a5254b76ce62f21628d38ea6e10882900432d0",
+      "texture 3 image 0 kind 1 relief sha256:e5ffae831430356489eac9968627ad9fc6c22771a2efec8254f58e9cdcd081a6",
+      "texture 3 image 1 kind 2 finish sha256:7a0309e35ddfa22832a47dd558f2ed7818ab52e06a0c9c65e1f0c35e12af9f86",
+      "surface 0 texture 1 roughness 1065353216 metallic 0 emission 0 alpha 0 cutoff 1056964608 one-sided filtered vertices 192 indices 264",
+      "surface 0 positions sha256:0ff3f3ba6410398dc14f8c5af25e870d420c9066c3099f8987b2cd23bf33ac38",
+      "surface 0 normals sha256:85f1b70497ce83277664c32dec933843f467ae10e11394a8170f4dd7a046908c",
+      "surface 0 tangents sha256:e3d9f464d6d6129997d8097d93ac1218253b0b4c26e5a893bac8e3acf8d61525",
+      "surface 0 uvs sha256:5c96652a0c8fa641fbb2529a1151591110255ed78bbe2888b1d9fea9fabc1dca",
+      "surface 0 indices sha256:8f6c367711c98d9ec3e70a6722806875b87b8d995ba8de1381804bc0ef820a70",
+      "surface 1 texture 2 roughness 1065353216 metallic 1065353216 emission 0 alpha 0 cutoff 1056964608 one-sided filtered vertices 480 indices 660",
+      "surface 1 positions sha256:4d3e3617d90de8d0f7d8012cab92de9ad03cd69a7ad5de4bd34bea5e774dbef7",
+      "surface 1 normals sha256:a25a7528636ef06e75d30669fef8a1906cebb21b9050fb5d190dd2ae77daefb0",
+      "surface 1 tangents sha256:67a30d63b1c8ca9aeaf9a0efbb12b42625500f452327d9462dce0cec3ed33959",
+      "surface 1 uvs sha256:a9851bf846cc7cb8228228b1de202d03c1cb9c1c40b9f806583d3eec561fec6c",
+      "surface 1 indices sha256:1cc277ffdc4d451217949302825e0f88ff5d3c18c9df77a4bf3f50f5ce329b90",
+      "surface 2 texture 0 roughness 1065353216 metallic 0 emission 0 alpha 0 cutoff 1056964608 one-sided filtered vertices 480 indices 660",
+      "surface 2 positions sha256:051c7dff5ec1b68034d87ed775842fdf5b718c87ee7d2165ba3ad76b83c708ff",
+      "surface 2 normals sha256:31979c7cbf7182eb1843d0a41ed44a66509a8a108ad1faaed92f207631e829de",
+      "surface 2 tangents sha256:d2940019140e38f08aedab3aa4a4ad5b7e9e56d4ef6e2fa09406a2c3188b6355",
+      "surface 2 uvs sha256:37ad2e97d5805c3650fd0941db0e1fa69b7d008bef93f9c52fb3d11c427d1537",
+      "surface 2 indices sha256:c1edd7ae114922ca7104681ddfb9784117d27d890f1517bad6724cb210557c55",
+      "surface 3 texture 3 roughness 1065353216 metallic 0 emission 0 alpha 0 cutoff 1056964608 one-sided filtered vertices 96 indices 132",
+      "surface 3 positions sha256:2027074a3999db1721f7f7e49aad73b60f2fe5fb3ab9232acceade93223778e5",
+      "surface 3 normals sha256:be40a95a0b382f4dbce6826a1dbe4f9ac2ee1eb9710f4deb2833af3df17b1cbe",
+      "surface 3 tangents sha256:1d6193f4026862a14d74c58575687a382ffd4995973e1212fa29d38b9b8ad7dc",
+      "surface 3 uvs sha256:70ddc0962bc6bf1455962b538bbea1037e0063a6475ca984338beaaa78002857",
+      "surface 3 indices sha256:e5b680af6b94457276bac3bb8fe31539bd8f960bee5d32633dfa1c4c2ae3d4fc",
+      "output 0 seat point3d single values 1 sha256:b361b74995bea74ff2412cb14842aaf9178aaf66fedcba41bc2d66b8c7ec98c7",
+      "output 1 colliders box3d list values 2 sha256:ecf0f9e678d417ed558582018f4beeabe84d1a77df11d9b75943f2699d56965c"
     ]}
   ]
 }

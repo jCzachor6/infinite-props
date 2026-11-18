@@ -177,9 +177,10 @@ constant, an input or an element of a collection, and it takes no operator.
 A skin that was never assigned traps when a solid or a modifier receives it.
 
 <!-- llm: skip -->
-A texture is generated under the fuel budget of its own asset, so a skin
-that renders alone renders in a model. The host's work limit, deadline and
-cancellation cover the model and its textures together. The inputs evaluate
+The model program and its textures spend one fuel budget, 150,000,000
+units unless the file says otherwise, so a large skin has room that a draw
+asset generated alone (25,000,000) has not. The host's work limit, deadline
+and cancellation cover the model and its textures together. The inputs evaluate
 first, in the imported asset's declaration order, then the seed, then the
 size.
 
@@ -642,9 +643,11 @@ whose arms are tubes along a curve and whose `bulbs` tell the game where to
 put its lights, a [railing](../../examples/models/railing.ips) whose rails
 are swept along a straight, cornered or curved path and whose bars may be
 twisted, a [boulder](../../examples/models/boulder.ips) refined, tapered and
-displaced twice, and a [table](../../examples/models/table.ips) on four
+displaced twice, a [table](../../examples/models/table.ips) on four
 [turned legs](../../examples/models/parts/turned-leg.ips) that are parts of
-their own. Their skins are in
+their own, and a [bench](../../examples/models/bench.ips) whose skins
+[repeat without a seam](textures.md): planks, dressed stone, worn enamel and
+cloth in [skins/textures](../../examples/models/skins/textures/planks.ips). Their skins are in
 [examples/models/skins](../../examples/models/skins/oak.ips): oak, woven
 cloth, metal, leather, the blade, and for the lantern wrought iron with
 roughness and metallic maps, glass, wax and a flame with an emission map,
@@ -670,14 +673,14 @@ and for the boulder a stone with lichen.
 A model program pays one fuel unit for each instruction. A primitive adds 6
 for each vertex and 2 for each triangle it adds, an `extrude` and a `sweep`
 also a price that grows with the square of their outline's points, a `place`
-block 24 and a skin call 64; a texture spends the fuel of its own asset. A
+block 24 and a skin call 64. A newly generated texture spends the remaining model fuel. A
 `sweep` adds 24 for each point of its path. A shaping block or a part call
 adds 24, and at its end 3 for every vertex and 1 for every triangle it hands
 on, plus what its work costs: 8 a vertex for `smooth`, 3 for `bend`,
 `twist` and `taper`, 18 a vertex and 4 a triangle for `displace`, and 5 for
 every vertex and 2 for every triangle `refine` adds. Writing an output costs
 8 for a point and 16 for a box. A box costs
-about 170 units, the chair of the examples 8,000 to 18,000 of its 25,000,000. A
+about 170 units. The default model budget is 150,000,000. A
 generation that passes a limit, runs out of fuel or meets a wrong argument
 traps and publishes nothing, as a draw asset does.
 

@@ -28,6 +28,7 @@ const sources = [
     ["round", "backends/html5/test/fixtures/round.ips"],
     ["ramp-large", "backends/html5/test/fixtures/ramp-large.ips"],
     ["bezier", "backends/html5/test/fixtures/bezier.ips"],
+    ["texture-toolkit", "examples/language/texture-toolkit.ips"],
     ["noise-v2", "backends/html5/test/fixtures/noise-v2.ips"],
     ["curves", "backends/html5/test/fixtures/curves.ips"],
     ["curve-toolkit", "backends/html5/test/fixtures/curve-toolkit.ips"],
@@ -351,6 +352,11 @@ function run(iprop, toolsDir, geometryProbes = {}) {
     try {
         for (const entry of GOLDEN) {
             compare(path.join(__dirname, "assets", entry.file), entry.seed, entry);
+        }
+        for (const skin of ["planks", "stone", "enamel", "cloth"]) {
+            const file = path.join(temporary, skin + "-skin.iprop");
+            execFileSync(tool("ipc"), [path.join(repo, "examples/models/skins/textures", skin + ".ips"), "-o", file]);
+            compare(file, 42);
         }
         for (const [name, source] of sources) {
             const file = path.join(temporary, name + ".iprop");

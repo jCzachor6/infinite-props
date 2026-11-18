@@ -63,6 +63,10 @@ std::unique_ptr<Expr> cloneExpr(const Expr& expr) {
                           expr);
             } else if constexpr (std::is_same_v<T, ListMethod>) {
                 return mk(Expr{ListMethod{cloneExpr(*node.receiver), node.name, node.location}}, expr);
+            } else if constexpr (std::is_same_v<T, TextureMethod>) {
+                std::vector<Arg> args;
+                for (const auto& arg : node.args) args.push_back({arg.name, cloneExpr(*arg.value), arg.location});
+                return mk(Expr{TextureMethod{cloneExpr(*node.receiver), node.name, std::move(args), node.location}}, expr);
             } else if constexpr (std::is_same_v<T, SurfaceBlur>) {
                 return mk(Expr{SurfaceBlur{cloneExpr(*node.receiver),
                                            Arg{node.sigma.name, cloneExpr(*node.sigma.value), node.sigma.location},
@@ -122,6 +126,9 @@ void forEachChild(Expr& expr, Visit&& visit) {
                 visit(node.receiver); if (node.count) visit(node.count);
             } else if constexpr (std::is_same_v<T, ListMethod>) {
                 visit(node.receiver);
+            } else if constexpr (std::is_same_v<T, TextureMethod>) {
+                visit(node.receiver);
+                for (auto& arg : node.args) visit(arg.value);
             } else if constexpr (std::is_same_v<T, SurfaceBlur>) {
                 visit(node.receiver); visit(node.sigma.value);
             } else if constexpr (std::is_same_v<T, SurfaceNormal>) {

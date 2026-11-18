@@ -53,12 +53,35 @@ CallSignature builtinCallSignature(const BuiltinSpec& spec, const Call& call,
     }
     return builtinCallSignature(spec, call.args.size(), call.location, function);
 }
+const BuiltinOverload& paintOverload(const BoundCallPlan& bound, ValueType source) {
+    for (const auto& candidate : builtinSpecs().at("surface.paint").overloads) {
+        if (candidate.params.front().type != source || candidate.params.size() != bound.arguments.size()) continue;
+        if (std::equal(candidate.params.begin(), candidate.params.end(), bound.signature.parameters.begin(),
+            [](const auto& a, const auto& b) { return a.name == b.name; })) return candidate;
+    }
+    throw std::logic_error("bound surface.paint has no matching overload");
+}
 CallSignature surfacePaintCallSignature(const Call& call, ValueType imageType) {
     auto spec = builtinSpecs().at("surface.paint");
     std::erase_if(spec.overloads, [imageType](const auto& overload) {
         return overload.params.front().type != imageType;
     });
-    return builtinCallSignature(spec, call.args.size(), call.location, "surface.paint");
+    // A bare mode constant selects blend. A number in the same positional
+    // slot selects opacity; named arguments keep their explicit meaning.
+    for (const auto& overload : spec.overloads) {
+        if (overload.params.size() != call.args.size()) continue;
+        const BuiltinSpec concrete{spec.lowering, {overload}};
+        auto signature = builtinCallSignature(concrete, call.args.size(), call.location, "surface.paint");
+        try {
+            const auto args = bindArguments(call, signature.parameters, "surface.paint");
+            bool matches = true;
+            for (std::size_t i = 0; i < args.size(); ++i) {
+                if (!args[i]->name && overload.params[i].name == "blend" && !surfaceMode(*args[i]->value)) matches = false;
+            }
+            if (matches) return signature;
+        } catch (const SourceError&) { /* different name layout */ }
+    }
+    return builtinCallSignature(spec, call, "surface.paint");
 }
 CallSignature partCallSignature(std::span<const PartInput> inputs) {
     std::vector<std::string> names;

@@ -1,3 +1,4 @@
+#include "iprop/Texture.hpp"
 #include "iprop/Validator.hpp"
 #include "iprop/Compression.hpp"
 #include "iprop/Compositor.hpp"
@@ -84,7 +85,7 @@ public:
                 fail(i, std::string(spec->mnemonic) + " operand must be zero");
             if (spec->aux == AuxPolicy::PartTransform && !D4Transform::fromKind(ins.aux))
                 fail(i, "unknown part transform kind");
-            if (spec->aux == AuxPolicy::LayerMode && !validLayerMode(ins.aux))
+            if (spec->aux == AuxPolicy::LayerMode && !validLayerAux(ins.aux))
                 fail(i, "unknown layer alpha mode");
             if (spec->aux == AuxPolicy::SurfaceKind && ins.aux > 1)
                 fail(i, "unknown surface.normal receiver kind");
@@ -300,6 +301,32 @@ private:
             })) >= kMaxSurfaceScopes) fail(at, "surface scope depth exceeds 32");
             labels_.push_back({ins.opcode, stack_, reachable_});
             return;
+        case Opcode::Texture: {
+            const auto sub = static_cast<TextureOp>(ins.aux);
+            if (sub == TextureOp::PaintLayer || sub == TextureOp::PaintMask) {
+                if (!validCompositionMode(op)) fail(at, "unknown surface blend mode");
+                expect(at, ValueType::F32, "paint opacity");
+                if (sub == TextureOp::PaintMask) expect(at, ValueType::Color, "paint color");
+                expect(at, sub == TextureOp::PaintMask ? ValueType::Mask : ValueType::Layer, "paint source");
+                return;
+            }
+            if (op != 0) fail(at, "texture operand must be zero");
+            if (sub == TextureOp::Gradient) {
+                expect(at, ValueType::list(ValueType::Color), "gradient colors");
+            } else if (sub == TextureOp::Levels) {
+                for (const auto* what : {"gamma", "white", "black"}) expect(at, ValueType::F32, what);
+            } else {
+                const auto noise = static_cast<Opcode>(ins.aux);
+                if (!periodicNoiseOpcode(noise)) fail(at, "unknown texture operation");
+                expect(at, noise == Opcode::NoiseMask || noise == Opcode::NoiseMaskConfig ?
+                    ValueType::I32 : ValueType::Vec2, "noise tile or period");
+                applyStack(at, *findOpcode(noise));
+                return;
+            }
+            expect(at, ValueType::Layer, "texture receiver");
+            push(at, ValueType::Layer);
+            return;
+        }
         case Opcode::SurfacePaint:
             if (!validCompositionMode(op)) fail(at, "unknown surface blend mode");
             expect(at, ValueType::Layer, "surface.paint image");

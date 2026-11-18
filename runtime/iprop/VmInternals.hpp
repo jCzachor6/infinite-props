@@ -301,11 +301,34 @@ struct Execution {
     u64 scaledCost(u64 cost);
 };
 
+// A kernel that reads the neighbours of a pixel runs on a tiled raster
+// extended by its reach with wrapped pixels on every side, and the middle of
+// its result is the result for the tile (texture toolkit v1.2). Both steps
+// reserve one fuel unit a pixel they write, at the instruction's rate, and
+// their buffers in the generation arena.
+std::shared_ptr<const SurfaceBuffer> extendTiled(Execution& ex, const SurfaceBuffer& source, u32 margin);
+std::shared_ptr<const SurfaceBuffer> cropTiled(Execution& ex, const SurfaceBuffer& wide, u32 margin, u32 width, u32 height);
+// The index of a possibly negative coordinate in a period of `extent`.
+constexpr u32 wrapIndex(i64 value, u32 extent) {
+    const i64 wrapped = value % static_cast<i64>(extent);
+    return static_cast<u32>(wrapped < 0 ? wrapped + static_cast<i64>(extent) : wrapped);
+}
+
 // Primitives, part blits and paint use the same rounded RGBA8 kernel.
+void compositePaintPixel(Execution& ex, i32 x, i32 y, Color src, CompositionMode mode);
+// surface.paint and surface.paint.mask pay 60 percent of their units, as they
+// always did. With a blend of the texture toolkit in the operand the rest of
+// the instruction pays whole units, like a paint of the texture page: the
+// dispatch unit is one unit at either rate.
+inline void priceBlendedPaint(Execution& ex, u16 operand) {
+    if (static_cast<CompositionMode>(operand) >= CompositionMode::Multiply) ex.fuelRate = 100;
+}
+u8 popOpacity(Execution& ex);
+void paintMask(Execution& ex, u16 blend, u8 opacity);
 void compositePixel(Execution& ex, i32 x, i32 y, const Color& src,
     CompositionMode mode = CompositionMode::Inherited);
 void paintSurface(Execution& ex, const LayerValue& image,
-    CompositionMode mode = CompositionMode::Inherited);
+    CompositionMode mode = CompositionMode::Inherited, u8 opacity = 255);
 u8 clipCoverage(Execution& ex, i32 x, i32 y);
 // After a successful run: publishes the root's normal output, or the derived
 // normal image a host asked for when the program published none. Result
@@ -345,6 +368,7 @@ bool stepCollections(Execution& ex, Instruction ins);
 bool stepSamplers(Execution& ex, Instruction ins);
 bool stepSteppers(Execution& ex, Instruction ins);
 bool stepPointDistributions(Execution& ex, Instruction ins);
+bool stepTexture(Execution& ex, Instruction ins);
 bool stepSurfaces(Execution& ex, Instruction ins);
 bool stepMasks(Execution& ex, Instruction ins);
 bool stepVoronoi(Execution& ex, Instruction ins);

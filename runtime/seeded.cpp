@@ -339,6 +339,156 @@ void advanceAndPushUnit(Execution& ex) {
 
 } // namespace
 
+// Use coordinates in one period for the periodic kernels. This also keeps
+// the Worley displacement local when a query crosses a negative cell index.
+NoisePeriod noisePeriod(Execution& ex, Vec2 period) {
+    const auto component = [&](f32 n) {
+        if (!std::isfinite(n) || n < 1 || n >= 2147483648.f || std::floor(n) != n)
+            ex.trap("noise period must contain positive i32 integers", ErrorReason::NumericRange);
+        return static_cast<i32>(n);
+    };
+    return {component(period.x), component(period.y)};
+}
+
+namespace {
+struct PeriodicCell { i32 x, y; f32 fx, fy; };
+
+PeriodicCell periodicCell(Execution& ex, Vec2 p, NoisePeriod period) {
+    const auto split = [&](f32 v, i32 size, f32& fraction) {
+        if (!std::isfinite(v)) ex.trap("noise coordinate out of range", ErrorReason::NumericRange);
+        const double base = std::floor(static_cast<double>(v));
+        fraction = static_cast<f32>(v - base);
+        const i32 index = static_cast<i32>(std::fmod(base, static_cast<double>(size)));
+        return index < 0 ? index + size : index;
+    };
+    PeriodicCell c{};
+    c.x = split(p.x, period.x, c.fx);
+    c.y = split(p.y, period.y, c.fy);
+    return c;
+}
+
+i32 wrapNeighbor(i32 base, i32 delta, i32 period) {
+    const auto wrapped = (static_cast<i64>(base) + delta) % period;
+    return static_cast<i32>(wrapped < 0 ? wrapped + period : wrapped);
+}
+
+f32 periodicLattice(Execution& ex, Vec2 p, u32 seed, NoisePeriod period, bool gradient) {
+    ex.work(4);
+    const auto c = periodicCell(ex, p, period);
+    const f32 u = gradient ? math::quinticPolynomial(c.fx) : smoothStep(c.fx);
+    const f32 v = gradient ? math::quinticPolynomial(c.fy) : smoothStep(c.fy);
+    const auto corner = [&](i32 dx, i32 dy) {
+        const i32 x = wrapNeighbor(c.x, dx, period.x), y = wrapNeighbor(c.y, dy, period.y);
+        return gradient ? gradCorner(seed, x, y, c.fx, c.fy, static_cast<f32>(dx), static_cast<f32>(dy)) :
+            latticeValue(seed, x, y);
+    };
+    const f32 top = corner(0,0)*(1-u) + corner(1,0)*u;
+    const f32 bottom = corner(0,1)*(1-u) + corner(1,1)*u;
+    return top*(1-v) + bottom*v;
+}
+
+CellSample periodicWorley(Execution& ex, Vec2 p, u32 seed, NoisePeriod period) {
+    const auto c = periodicCell(ex, p, period);
+    CellSample sample;
+    for (i32 dy = -2; dy <= 2; ++dy) for (i32 dx = -2; dx <= 2; ++dx) {
+        ex.work();
+        const u32 hash = cellHash(seed, wrapNeighbor(c.x, dx, period.x), wrapNeighbor(c.y, dy, period.y));
+        const f32 x = (static_cast<f32>(dx)-c.fx) + hashUnit(hash);
+        const f32 y = (static_cast<f32>(dy)-c.fy) + hashUnit(hash32(hash ^ 0x9e3779b9u));
+        const f32 d = std::sqrt(x*x + y*y);
+        if (d < sample.first) {
+            sample.second = sample.first;
+            sample.first = d;
+            sample.winner = hash;
+        } else if (d < sample.second) sample.second = d;
+    }
+    return sample;
+}
+
+Vec2 fundamentalPoint(Execution& ex, Vec2 p, NoisePeriod period) {
+    const auto c = periodicCell(ex, p, period);
+    return {static_cast<f32>(c.x) + c.fx, static_cast<f32>(c.y) + c.fy};
+}
+
+f32 periodicFractal(Execution& ex, Vec2 p, i32 octaves, u32 seed, NoisePeriod base,
+                    bool ridge, f32 lacunarity = 2.f, f32 gain = 0.5f) {
+    if (!(lacunarity > 0 && lacunarity <= 8 && gain >= 0 && gain <= 1))
+        ex.trap("fbm lacunarity or gain out of range", ErrorReason::NumericRange);
+    p = fundamentalPoint(ex, p, base);
+    f32 amplitude = 1, frequency = 1, sum = 0, total = 0;
+    for (i32 k = 0; k < std::clamp(octaves, 1, 8); ++k) {
+        const auto period = noisePeriod(ex, {std::max(1.f, std::round(static_cast<f32>(base.x)*frequency)),
+                                             std::max(1.f, std::round(static_cast<f32>(base.y)*frequency))});
+        const Vec2 point{p.x*(static_cast<f32>(period.x)/static_cast<f32>(base.x)),
+                         p.y*(static_cast<f32>(period.y)/static_cast<f32>(base.y))};
+        f32 value = periodicLattice(ex, point, seed + static_cast<u32>(k)*0x9e3779b9u, period, true);
+        if (ridge) { value = 1.f-std::fabs(value); value *= value; }
+        sum += amplitude*value;
+        total += amplitude;
+        amplitude *= gain;
+        frequency *= lacunarity;
+        if (amplitude == 0) break;
+    }
+    return sum/total;
+}
+} // namespace
+
+Vec2 periodicWarp(Execution& ex, Vec2 point, f32 amount, u32 seed, NoisePeriod period) {
+    if (!std::isfinite(amount)) ex.trap("warp amount out of range", ErrorReason::NumericRange);
+    const auto p = fundamentalPoint(ex, point, period);
+    if (amount == 0) return point;
+    const f32 dx = periodicFractal(ex, p, 4, seed, period, false);
+    const f32 dy = periodicFractal(ex, {p.x+3.7f,p.y+9.1f}, 4, seed, period, false);
+    const Vec2 warped{point.x + amount*dx, point.y + amount*dy};
+    if (!std::isfinite(warped.x) || !std::isfinite(warped.y))
+        ex.trap("warped coordinate out of range", ErrorReason::NumericRange);
+    return warped;
+}
+
+f32 periodicSample(Execution& ex, NoiseMode mode, Vec2 p, i32 octaves, u32 seed, NoisePeriod period) {
+    if (mode == NoiseMode::Value || mode == NoiseMode::Grad)
+        return periodicLattice(ex, p, seed, period, mode == NoiseMode::Grad);
+    if (mode == NoiseMode::Cell || mode == NoiseMode::CellEdge) {
+        const auto c = periodicWorley(ex, p, seed, period);
+        return mode == NoiseMode::Cell ? c.first : c.second-c.first;
+    }
+    return periodicFractal(ex, p, octaves, seed, period, mode == NoiseMode::Ridge);
+}
+
+void periodicNoiseInstruction(Execution& ex, Opcode op) {
+    const auto period = noisePeriod(ex, ex.popVec2());
+    const u32 seed = static_cast<u32>(ex.popI32());
+    f32 gain = 0.5f, lacunarity = 2.f;
+    if (op == Opcode::NoiseFbmConfig) { gain = ex.popF32(); lacunarity = ex.popF32(); }
+    const bool fractal = op == Opcode::NoiseFbm || op == Opcode::NoiseFbmConfig || op == Opcode::NoiseRidge;
+    const auto octaves = fractal ? std::clamp(ex.popI32(), 1, 8) : 1;
+    const bool warp = op == Opcode::Warp || op == Opcode::NoiseWarpVec;
+    const f32 amount = warp ? ex.popF32() : 0.f;
+    const f32 y = ex.popF32(), x = ex.popF32();
+    const Vec2 p{x,y};
+    // Kernel units, the dispatch unit among them: four lattice corners a
+    // sample, 25 feature candidates, eight inner octaves of a warp.
+    if (fractal) {
+        ex.spend(static_cast<u64>(octaves)*4 - 1);
+        ex.push(periodicFractal(ex,p,octaves,seed,period,op == Opcode::NoiseRidge,lacunarity,gain));
+    } else if (warp) {
+        ex.spend(op == Opcode::Warp ? 47 : 31);
+        if (op == Opcode::NoiseWarpVec) ex.push(periodicWarp(ex,p,amount,seed,period));
+        else {
+            const auto warped = periodicWarp(ex,fundamentalPoint(ex,p,period),amount,seed,period);
+            ex.push(periodicFractal(ex,warped,4,seed,period,false));
+        }
+    } else if (op == Opcode::Noise || op == Opcode::NoiseGrad) {
+        ex.spend(3);
+        ex.push(periodicLattice(ex,p,seed,period,op == Opcode::NoiseGrad));
+    } else {
+        ex.spend(24);
+        const auto c = periodicWorley(ex,p,seed,period);
+        if (op == Opcode::NoiseCellId) ex.push(std::bit_cast<i32>(c.winner));
+        else ex.push(op == Opcode::NoiseCell2 ? c.second : c.first);
+    }
+}
+
 f32 sampleNoise(Execution& ex, NoiseMode kind, Vec2 point, i32 octaves, u32 seed) {
     const auto [x, y] = point;
     switch (kind) {

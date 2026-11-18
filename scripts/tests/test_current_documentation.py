@@ -36,8 +36,8 @@ class CurrentDocumentationTest(unittest.TestCase):
         self.assertLessEqual(expected, set(self.components))
         # Implementation stages land on develop before the product-version
         # bump: list their authored wire contracts here until the release
-        # integration links them from the frozen index. None are pending.
-        development = "\n".join((ROOT / file).read_text(encoding="utf-8") for file in ())
+        # integration links them from the frozen index. The texture page is part of the 1.2 preview.
+        development = "\n".join((ROOT / file).read_text(encoding="utf-8") for file in ("spec/texture-toolkit-v1.2.md",))
         tables = "\n".join(re.findall(r"^\|.*Mnemonic.*\n(?:^\|.*\n)+", self.contract + "\n" + development, re.M))
         documented = set(re.findall(r"\| (0x[0-9A-Fa-f]+) \| `?([a-z][a-z0-9_.]*)(?=[ `|])", tables))
         self.assertEqual(documented, {(number, names[name]) for name, number in numbers.items()})

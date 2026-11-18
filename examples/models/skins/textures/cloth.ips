@@ -1,0 +1,51 @@
+// Woven cloth for a model: a plain weave of threads that pass over and
+// under each other, with slubs and a faded nap. It repeats in both
+// directions. `dye` is the cloth.
+asset cloth {
+  size 256x256
+  input color dye = #3f5873
+  output normal relief
+  output roughness finish
+
+  draw {
+    root = seed.initial()
+    cell = 8.0
+    cells = 32
+
+    // The height: each crossing lifts one thread over the other.
+    layer height(tile = true, alpha = surface.source_over) {
+      rect(0, 0, 256, 256, #404040)
+      for j in 0..cells {
+        for i in 0..cells {
+          x = float(i) * cell
+          y = float(j) * cell
+          if ((i + j) % 2 == 0) {
+            rect(x - 1.0, y + 1.0, cell + 2.0, cell - 2.0, #9a9a9a)       // a weft thread on top
+            rect(x, y + 2.5, cell, cell - 5.0, #d0d0d0)
+          } else {
+            rect(x + 1.0, y - 1.0, cell - 2.0, cell + 2.0, #8a8a8a)       // a warp thread on top
+            rect(x + 2.5, y, cell - 5.0, cell, #c0c0c0)
+          }
+        }
+      }
+    }
+    soft = height.blur(1.1)
+
+    // The colour: the dye, lighter on the threads' backs, with uneven yarn.
+    yarn = noise.mask({0, 0}, {256, 256}, noise.mode_ridge, {0.012, 0.3}, 0.6, root.fork("yarn"),
+                      2, 0.4, noise.above, 0.05, tile = true)
+    weft = noise.mask({0, 0}, {256, 256}, noise.mode_ridge, {0.3, 0.012}, 0.6, root.fork("weft"),
+                      2, 0.4, noise.above, 0.05, tile = true)
+    nap = noise.mask({0, 0}, {256, 256}, noise.mode_fbm, {0.016, 0.016}, 0.0, root.fork("nap"),
+                     3, 0.9, noise.above, 0.3, tile = true)
+    surface.paint(soft.gradient([color.shade(dye, -70), color.shade(dye, -22), dye, color.shade(dye, 26)]),
+                  blend = surface.source_over)
+    surface.paint(yarn, color.shade(dye, 50), blend = surface.overlay, opacity = 0.4)
+    surface.paint(weft, color.shade(dye, -50), blend = surface.overlay, opacity = 0.4)
+    surface.paint(nap, #d9cdb8, blend = surface.screen, opacity = 0.16)
+
+    relief = soft.normal(2.5, 0.0)
+    layer rough(tile = true, alpha = surface.source_over) { rect(0, 0, 256, 256, #f2f2f2) }
+    finish = rough
+  }
+}

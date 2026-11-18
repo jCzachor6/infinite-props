@@ -1,6 +1,6 @@
 #pragma once
 
-#include "iprop/Types.hpp"
+#include "iprop/Constants.hpp"
 #include <array>
 #include <string_view>
 
@@ -13,6 +13,12 @@ enum class NoiseMode : i32 { Value = 0, Grad = 1, Fbm = 2, Cell = 3, CellEdge = 
 inline constexpr std::array<std::string_view, 6> kNoiseModeNames{
     "mode_value", "mode_grad", "mode_fbm", "mode_cell", "mode_cell_edge", "mode_ridge"};
 inline constexpr i32 kNoiseAbove = 0, kNoiseBelow = 1;
+struct NoisePeriod { i32 x, y; };
+NoisePeriod noisePeriod(Execution& ex, Vec2 period);
+f32 periodicSample(Execution& ex, NoiseMode mode, Vec2 p, i32 octaves, u32 seed, NoisePeriod period);
+Vec2 periodicWarp(Execution& ex, Vec2 p, f32 amount, u32 seed, NoisePeriod period);
+void periodicNoiseInstruction(Execution& ex, Opcode base);
+void tiledNoiseMaskInstruction(Execution& ex, Opcode base);
 f32 sampleNoise(Execution& ex, NoiseMode kind, Vec2 point, i32 octaves, u32 seed);
 Vec2 warpNoisePoint(Execution& ex, Vec2 point, f32 amount, u32 seed);
 

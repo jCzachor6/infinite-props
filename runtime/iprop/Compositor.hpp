@@ -9,7 +9,7 @@ namespace iprop {
 
 // Wire mode 0 inherits the destination. A render target always holds an
 // effective mode; an immutable image deliberately has no default blend.
-enum class CompositionMode : u8 { Inherited = 0, Legacy = 1, SourceOver = 2 };
+enum class CompositionMode : u8 { Inherited = 0, Legacy = 1, SourceOver = 2, Multiply = 4, Screen, Overlay, Add, Subtract };
 struct CompositionSpec {
     CompositionMode mode;
     std::string_view name;
@@ -18,6 +18,11 @@ struct CompositionSpec {
 inline constexpr std::array kCompositionSpecs{
     CompositionSpec{CompositionMode::Legacy, "legacy", 0},
     CompositionSpec{CompositionMode::SourceOver, "source_over", 1},
+    CompositionSpec{CompositionMode::Multiply, "multiply", 4},
+    CompositionSpec{CompositionMode::Screen, "screen", 5},
+    CompositionSpec{CompositionMode::Overlay, "overlay", 6},
+    CompositionSpec{CompositionMode::Add, "add", 7},
+    CompositionSpec{CompositionMode::Subtract, "subtract", 8},
 };
 constexpr const CompositionSpec* compositionSpec(std::string_view name) {
     for (const auto& spec : kCompositionSpecs) if (spec.name == name) return &spec;
@@ -36,7 +41,16 @@ constexpr bool validCompositionMode(u16 mode) {
 // into a buffer whose RGB bytes are unit vectors (spec normal maps v1.1).
 inline constexpr u8 kDirectionLayerMode = 3;
 constexpr bool validLayerMode(u16 mode) {
-    return validCompositionMode(mode) || mode == kDirectionLayerMode;
+    return mode <= kDirectionLayerMode;
+}
+// The aux byte of layer.begin: that mode in the low bits and, from the
+// texture toolkit (v1.2), the capture's tiling in the two high ones. With
+// neither bit a capture inherits the tiling of the active target. A 1.1
+// runtime rejects either bit as an unknown layer mode.
+inline constexpr u8 kLayerModeMask = 0x3F, kLayerTileOff = 0x40, kLayerTileOn = 0x80;
+constexpr bool validLayerAux(u16 aux) {
+    return aux <= 0xFF && validLayerMode(aux & kLayerModeMask) &&
+        (aux & (kLayerTileOff | kLayerTileOn)) != (kLayerTileOff | kLayerTileOn);
 }
 constexpr CompositionMode resolveComposition(CompositionMode requested, CompositionMode active) {
     return requested == CompositionMode::Inherited ? active : requested;
@@ -68,6 +82,31 @@ inline Color composePixel(Color dst, Color src, CompositionMode mode) {
     return {static_cast<u8>((static_cast<u32>(src.r) * a + static_cast<u32>(dst.r) * b) / 255u),
         static_cast<u8>((static_cast<u32>(src.g) * a + static_cast<u32>(dst.g) * b) / 255u),
         static_cast<u8>((static_cast<u32>(src.b) * a + static_cast<u32>(dst.b) * b) / 255u), dst.a};
+}
+
+// Separable W3C blending in straight, stored channel space. Only the
+// overlap uses B(Cb,Cs); a transparent backdrop retains the source colour.
+inline Color composePaint(Color dst, Color src, CompositionMode mode) {
+    if (mode < CompositionMode::Multiply) return composePixel(dst, src, mode);
+    const u32 overlap = dst.a * src.a;
+    const u32 sourceOnly = (255u - dst.a) * src.a;
+    const u32 destOnly = dst.a * (255u - src.a);
+    const u32 total = overlap + sourceOnly + destOnly;
+    if (total == 0) return {};
+    const auto channel = [&](u32 d, u32 s) -> u8 {
+        u32 blended;
+        switch (mode) {
+        case CompositionMode::Multiply: blended = (d * s + 127) / 255; break;
+        case CompositionMode::Screen: blended = 255 - ((255-d)*(255-s)+127)/255; break;
+        case CompositionMode::Overlay: blended = d < 128 ? (2*d*s+127)/255 :
+            255 - (2*(255-d)*(255-s)+127)/255; break;
+        case CompositionMode::Add: blended = d+s > 255 ? 255 : d+s; break;
+        default: blended = d > s ? d-s : 0; break;
+        }
+        return static_cast<u8>((blended*overlap + s*sourceOnly + d*destOnly + total/2)/total);
+    };
+    return {channel(dst.r,src.r), channel(dst.g,src.g), channel(dst.b,src.b),
+            static_cast<u8>((total+127)/255)};
 }
 
 } // namespace iprop

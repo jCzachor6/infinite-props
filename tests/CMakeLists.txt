@@ -61,6 +61,7 @@ add_executable(iprop_tests
     compiler/point_distributions_test.cpp
     compiler/density_test.cpp
     compiler/surfaces_test.cpp
+    compiler/textures_test.cpp
     compiler/source_over_test.cpp
     compiler/masks_test.cpp
     compiler/noise_masks_test.cpp
@@ -312,6 +313,8 @@ if(Python3_Interpreter_FOUND)
     endif()
     add_test(NAME mask_rational_reference COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_mask_reference.py")
+    add_test(NAME texture_reference COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/scripts/check_texture_reference.py" "$<TARGET_FILE_DIR:ipc>")
     add_test(NAME source_over_rational_reference COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_source_over_reference.py")
     add_test(NAME retired_format_rejection COMMAND ${Python3_EXECUTABLE}

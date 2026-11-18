@@ -1,0 +1,17 @@
+// What wraps in a tiled capture: shapes, a nested capture, a blur and masks.
+asset wrap {
+  size 48x48
+  draw {
+    layer dots(tile = true, alpha = surface.source_over) {
+      oval(0, 0, 10, 10, #d8a657)               // one disc on all four corners
+      line(40, 20, 56, 28, 3, #7daea3)          // leaves on the right, returns on the left
+      layer glow(alpha = surface.source_over) { oval(24, 46, 6, 6, #ea6962) }   // inherits the tiling
+      surface.paint(glow.blur(2.0))             // so its blur wraps too
+    }
+    // An outline that crosses the seam with its shape.
+    rim = mask.subtract(mask.expand(mask.from(dots), 2), mask.from(dots))
+    rect(0, 0, 48, 48, #282828)
+    surface.paint(dots, blend = surface.source_over)
+    surface.paint(rim, #ffffff, blend = surface.screen, opacity = 0.5)
+  }
+}

@@ -161,6 +161,18 @@ street lamp, a railing, a boulder and a table, two seeds each:
     <img src="examples/models/shapes-sheet.png" alt="Two street lamps with arms curved along a path and glowing glass bowls, two iron railings swept along a curved bay and a corner with twisted bars, two boulders pushed in and out by noise, and two tables standing on turned legs that are models of their own." width="1024">
 </p>
 
+A skin can repeat without a seam and look painted: captures that wrap at
+their edges, noise that repeats, blend modes, a gradient map and levels, with
+normal and roughness maps from the same drawing. Four such skins, each shown
+one and a half times across, and a bench that wears them:
+
+<p align="center">
+    <img src="examples/models/textures-sheet.png" alt="Four textures that repeat without a seam: wooden planks with knots and nails, courses of dressed stone, teal enamel chipped down to primer and rust, and blue woven cloth." width="1024">
+</p>
+<p align="center">
+    <img src="examples/models/bench-sheet.png" alt="Eight benches from one source: plank seats on stone blocks or on a painted steel frame, with or without a back and a blue cushion, the paint rusted differently on each." width="1024">
+</p>
+
 Models run in the browser and in Godot today. They are a preview: the language and the
 `.iprop3d` format may still change. Start with the
 [models chapter](docs/language/models.md).

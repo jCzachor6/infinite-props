@@ -1,0 +1,8 @@
+// Tiling is decided when the source is written: true or false.
+asset texture_tile {
+  size 4x4
+  draw {
+    layer image(tile = 1) { rect(0, 0, 4, 4, #ffffff) }
+    surface.paint(image)
+  }
+}

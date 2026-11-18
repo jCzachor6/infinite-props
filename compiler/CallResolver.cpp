@@ -50,6 +50,8 @@ ResolvedCall CallResolver::resolve(const ips::Call& call) const {
             return {call.location, std::move(result)};
         }
         BuiltinCall result{&spec, ips::builtinOverload(spec, types), {}};
+        if (spec.lowering == ips::BuiltinLowering::SurfacePaint)
+            result.overload = &ips::paintOverload(bound, types.front());
         if (ips::variadicPolygon(spec, args.size())) {
             for (const auto i : bound.signature.evaluationOrder)
                 result.arguments.push_back(argument(*args[i]->value, i + 1 == args.size() ? T::Color : T::F32));

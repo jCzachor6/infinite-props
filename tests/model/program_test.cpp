@@ -778,3 +778,21 @@ asset thing {
                            {"sheet.ips", kSheet}}),
                ContainsSubstring("'sheet.frontX' reads a constant of an import, which only an asset with render { } can do"));
 }
+
+TEST_CASE("uncached skins consume the remaining model fuel, including the last unit") {
+    auto model = load(with(thing("a = wood.draw(1) b = wood.draw(2) "
+        "box({0,0,0},{1,1,1},a) box({2,0,0},{1,1,1},b)")));
+    REQUIRE(model.file.meta.fuel == 150'000'000);
+    for (auto& skin : model.skins) {
+        REQUIRE(skin.file.meta.fuel == 25'000'000);
+        skin.file.meta.fuel = 1;
+    }
+    const auto reference = model::generateModel(model, {});
+    REQUIRE(reference.textures.size() == 2);
+    model.file.meta.fuel = reference.fuelUsed;
+    CHECK(model::generateModel(model, {}).fuelUsed == reference.fuelUsed);
+    --model.file.meta.fuel;
+    CHECK_THROWS_WITH(model::generateModel(model, {}), ContainsSubstring("fuel exhausted"));
+    model.file.meta.fuel = 500;
+    CHECK_THROWS_WITH(model::generateModel(model, {}), ContainsSubstring("skin 'wood': fuel exhausted"));
+}

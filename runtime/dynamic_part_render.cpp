@@ -1,3 +1,4 @@
+#include "iprop/TileCopies.hpp"
 #include "iprop/DynamicParts.hpp"
 #include "iprop/Regions.hpp"
 #include "iprop/VmInternals.hpp"
@@ -69,24 +70,30 @@ void drawPart(Execution& ex,const Part2dValue& part){
     const auto mask=originalMask(ex,p);const auto mapping=partSurfaceMapping(ex,p,*mask.buffer,mask.mapping);
     const auto& raster=mask.buffer->raster;
     const RasterPoint extent{static_cast<i32>(raster.width),static_cast<i32>(raster.height)};
-    ex.spend(static_cast<u64>(raster.width)*raster.height*(p.texture?2:1));
-    for(u32 y=0;y<raster.height;++y){ ex.work(); for(u32 x=0;x<raster.width;++x){
-        ex.work();
-        const auto at=static_cast<std::size_t>(y)*raster.width+x;
-        const auto coverage=mask.buffer->format==SurfaceBuffer::Format::A8?mask.buffer->coverage[at]:raster.pixels[at].a;
-        if(!coverage)continue;
-        const auto destination=mapping.transform.mapPixel({static_cast<i32>(x),static_cast<i32>(y)},extent);
-        const i64 dx=static_cast<i64>(mapping.origin.x)+destination.x,dy=static_cast<i64>(mapping.origin.y)+destination.y;
-        if(dx<0||dy<0||dx>=ex.canvas().width||dy>=ex.canvas().height)continue;
-        Color color;
-        if(p.fill)color=*p.fill;
-        else{
-            const auto original=mask.mapping.transform.mapPixel({static_cast<i32>(x),static_cast<i32>(y)},extent);
-            color=sampleTexture(*p.texture,static_cast<i64>(mask.mapping.origin.x)+original.x,
-                static_cast<i64>(mask.mapping.origin.y)+original.y);
-        }
-        color.a=multiplyCoverage(color.a,coverage);
-        compositePixel(ex,static_cast<i32>(dx),static_cast<i32>(dy),color);
-    } }
+    const auto draw = [&](i32 tx, i32 ty) {
+        ex.spend(static_cast<u64>(raster.width)*raster.height*(p.texture?2:1));
+        for(u32 y=0;y<raster.height;++y){ ex.work(); for(u32 x=0;x<raster.width;++x){
+            ex.work();
+            const auto at=static_cast<std::size_t>(y)*raster.width+x;
+            const auto coverage=mask.buffer->format==SurfaceBuffer::Format::A8?mask.buffer->coverage[at]:raster.pixels[at].a;
+            if(!coverage)continue;
+            const auto destination=mapping.transform.mapPixel({static_cast<i32>(x),static_cast<i32>(y)},extent);
+            const i64 dx=static_cast<i64>(mapping.origin.x)+destination.x+tx,dy=static_cast<i64>(mapping.origin.y)+destination.y+ty;
+            if(dx<0||dy<0||dx>=ex.canvas().width||dy>=ex.canvas().height)continue;
+            Color color;
+            if(p.fill)color=*p.fill;
+            else{
+                const auto original=mask.mapping.transform.mapPixel({static_cast<i32>(x),static_cast<i32>(y)},extent);
+                color=sampleTexture(*p.texture,static_cast<i64>(mask.mapping.origin.x)+original.x,
+                    static_cast<i64>(mask.mapping.origin.y)+original.y);
+            }
+            color.a=multiplyCoverage(color.a,coverage);
+            compositePixel(ex,static_cast<i32>(dx),static_cast<i32>(dy),color);
+        } }
+    };
+    if (!ex.target.tile) { draw(0, 0); return; }
+    const auto bounds = surfaceBounds(*mask.buffer, mapping);
+    tileCopies(ex, bounds.x, bounds.y, static_cast<i64>(bounds.x)+bounds.width-1,
+        static_cast<i64>(bounds.y)+bounds.height-1, draw);
 }
 } // namespace iprop::detail

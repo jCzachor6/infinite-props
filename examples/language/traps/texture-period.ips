@@ -1,0 +1,8 @@
+// A period counts whole noise cells: at least one on each axis.
+asset texture_period {
+  size 4x4
+  draw {
+    v = noise.grad(0.5, 0.5, seed.initial().fork("n"), period = {0, 4})
+    rect(0, 0, 4, 4, color.shade(#808080, int(v * 20.0)))
+  }
+}

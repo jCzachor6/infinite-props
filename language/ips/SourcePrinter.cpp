@@ -310,6 +310,14 @@ class SourcePrinter {
                 expression(*node.receiver); out_ << ".pick(";
                 if (node.count) expression(*node.count);
                 out_ << ')';
+            } else if constexpr (std::is_same_v<T, TextureMethod>) {
+                expression(*node.receiver); out_ << '.' << node.name << '(';
+                for (std::size_t i = 0; i < node.args.size(); ++i) {
+                    if (i) out_ << ", ";
+                    if (node.args[i].name) out_ << *node.args[i].name << " = ";
+                    expression(*node.args[i].value);
+                }
+                out_ << ')';
             } else if constexpr (std::is_same_v<T, SurfaceBlur>) {
                 expression(*node.receiver); out_ << ".blur(";
                 if (node.sigma.name) out_ << "sigma = ";
@@ -406,8 +414,16 @@ class SourcePrinter {
                 }
             } else if constexpr (std::is_same_v<T, LayerStmt>) {
                 out_ << "layer " << node.name;
-                if (node.directions) out_ << "(encoding = surface.normal)";
-                else if (const auto* mode = compositionSpec(node.alpha)) out_ << "(alpha = surface." << mode->name << ')';
+                if (node.directions || node.alpha != CompositionMode::Inherited || node.tile) {
+                    out_ << '(';
+                    if (node.directions) out_ << "encoding = surface.normal";
+                    else if (const auto* mode = compositionSpec(node.alpha)) out_ << "alpha = surface." << mode->name;
+                    if (node.tile) {
+                        if (node.directions || node.alpha != CompositionMode::Inherited) out_ << ", ";
+                        out_ << "tile = " << (*node.tile ? "true" : "false");
+                    }
+                    out_ << ')';
+                }
                 block(node.body, level);
             } else if constexpr (std::is_same_v<T, ClipStmt>) {
                 out_ << "clip("; expression(*node.mask); out_ << ')';

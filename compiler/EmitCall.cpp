@@ -41,6 +41,10 @@ void Emitter::emitArg(const PlannedArgument& arg) {
 }
 
 void Emitter::emitOverload(const ips::BuiltinOverload& overload) {
+    if (overload.textureOp) {
+        ins(Opcode::Texture, *overload.textureOp);
+        return;
+    }
     if (overload.modelOp) {
         ins(model::kModelPage, *overload.modelOp);
         return;
@@ -88,7 +92,8 @@ ips::ValueType Emitter::emitBuiltin(const BuiltinCall& call) {
                         ins(Opcode::LocalGet, 0, saved->index());
                     }
                 }
-            } else ins(std::get<Opcode>(step));
+            } else if (std::get<Opcode>(step) == Opcode::Texture) emitOverload(*call.overload);
+            else ins(std::get<Opcode>(step));
         }
         return call.overload->result;
     }
@@ -102,7 +107,7 @@ ips::ValueType Emitter::emitBuiltin(const BuiltinCall& call) {
             if (params[i].name == "blend") mode = ips::surfaceMode(*call.arguments[i].expression)->mode;
             else emitArg(call.arguments[i]);
         }
-        ins(*call.overload->opcode, 0, static_cast<u16>(mode));
+        ins(*call.overload->opcode, call.overload->textureOp.value_or(0), static_cast<u16>(mode));
         return VT::Void;
     }
     // An overload with an instruction (or an identity conversion) lowers

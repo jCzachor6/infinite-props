@@ -145,6 +145,17 @@ std::shared_ptr<const SurfaceBuffer> filter(Execution& ex, const SurfaceBuffer& 
     return result;
 }
 
+// A tiled raster blurs around its edges: the kernel runs on the tile
+// extended by its radius and the middle is the result.
+template<std::size_t Channels>
+std::shared_ptr<const SurfaceBuffer> blurred(Execution& ex, const SurfaceBuffer& source, f32 sigma) {
+    if (!source.tile) return filter<Channels>(ex, source, sigma);
+    const auto margin = static_cast<u32>(std::ceil(3.0 * static_cast<double>(sigma)));
+    const auto wide = extendTiled(ex, source, margin);
+    const auto filtered = filter<Channels>(ex, *wide, sigma);
+    return cropTiled(ex, *filtered, margin, source.raster.width, source.raster.height);
+}
+
 } // namespace
 
 bool stepBlur(Execution& ex, Instruction ins) {
@@ -156,11 +167,11 @@ bool stepBlur(Execution& ex, Instruction ins) {
         // Sigma is in input raster pixels: the active target's scale is irrelevant.
         auto image = ex.popLayer();
         validateSurfaceView(ex, *image.buffer, image.mapping, false);
-        if (sigma != 0) image.buffer = filter<4>(ex, *image.buffer, sigma);
+        if (sigma != 0) image.buffer = blurred<4>(ex, *image.buffer, sigma);
         ex.push(std::move(image));
     } else {
         auto mask = ex.popMask(false);
-        if (sigma != 0) mask.buffer = filter<1>(ex, *mask.buffer, sigma);
+        if (sigma != 0) mask.buffer = blurred<1>(ex, *mask.buffer, sigma);
         ex.push(std::move(mask));
     }
     ++ex.frame().ip;

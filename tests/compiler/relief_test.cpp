@@ -282,7 +282,7 @@ TEST_CASE("normal outputs captures and methods have located diagnostics", "[reli
     rejectSource("asset t{size 1x1 draw{layer n(encoding=normal){}}}", "'.' in surface encoding");
     rejectSource("asset t{size 1x1 draw{layer n(alpha=surface.source_over,encoding=surface.normal){}}}", "either 'alpha' or 'encoding'");
     rejectSource("asset t{size 1x1 draw{layer n(encoding=surface.normal,alpha=surface.legacy){}}}", "either 'alpha' or 'encoding'");
-    rejectSource("asset t{size 1x1 draw{layer n(mode=surface.normal){}}}", "layer supports only the 'alpha' and 'encoding' options");
+    rejectSource("asset t{size 1x1 draw{layer n(mode=surface.normal){}}}", "layer supports only the 'alpha', 'encoding' and 'tile' options");
     rejectSource("asset t{size 1x1 draw{layer n{}x=n.normal()}}", ".normal takes an f32 depth");
     rejectSource("asset t{size 1x1 draw{layer n{}x=n.normal(1,2,3)}}", ".normal takes an f32 depth");
     rejectSource("asset t{size 1x1 draw{layer n{}x=n.normal(sigma=1)}}", ".normal takes an f32 depth");

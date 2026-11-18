@@ -1,0 +1,8 @@
+// An opacity is a fraction: 0 paints nothing, 1 the whole layer.
+asset texture_opacity {
+  size 4x4
+  draw {
+    layer image { rect(0, 0, 4, 4, #ffffff) }
+    surface.paint(image, blend = surface.multiply, opacity = 30.0)
+  }
+}
