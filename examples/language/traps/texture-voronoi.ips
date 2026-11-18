@@ -1,0 +1,9 @@
+// A diagram that repeats has at most 28 cells; a finer pattern is a job for
+// noise.cell with a period.
+asset texture_voronoi {
+  size 32x32
+  draw {
+    cells = voronoi({0, 0}, {32, 32}, 40, seed.initial().fork("stones"), tile = true)
+    rect(0, 0, 32, 32, color.shade(#808080, diagram.count(cells)))
+  }
+}

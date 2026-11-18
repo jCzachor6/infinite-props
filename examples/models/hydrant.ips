@@ -1,0 +1,74 @@
+// A fire hydrant on its patch of pavement, one unit to a centimetre. The seed
+// picks its proportions, its cap, how many outlets it has and how worn the
+// paint is; `paint` is its colour. model.lod() takes detail away for a
+// hydrant seen from afar: fewer sides, then no bolts, then no outlets. Every
+// level is the same hydrant with the same two textures. The pavement is a
+// Voronoi diagram that repeats, so it could go on in every direction. The
+// game reads `top` and `collider`.
+import steel from "skins/textures/enamel.ips"
+import stone from "skins/textures/paving.ips"
+
+asset hydrant {
+  size 70x100x70
+  scale 100
+
+  input color paint = #b3352b
+
+  output point3d top
+  output box3d collider
+
+  render {
+    root = seed.initial()
+    // Every roll comes before the level is read, so no level changes one.
+    radius = roll(root.fork("radius"), 9.0, 11.5)
+    tall = roll(root.fork("height"), 52.0, 64.0)
+    dome = choose(root.fork("cap"), 0, 1)
+    outlets = choose(root.fork("outlets"), 2, 2, 3)
+    worn = roll(root.fork("worn"), 0.15, 0.7)
+    turn = roll(root.fork("turn"), 0.0, 360.0)
+
+    level = model.lod()
+    sides = max(24 >> level, 6)          // 24, 12, then 6 sides
+
+    metal = skin.density(steel.draw(root.fork("steel"), paint = paint, worn = worn), 4.0)
+    ground = skin.density(stone.draw(root.fork("paving")), 3.0)
+
+    // The pavement it stands on.
+    box({0, -6, 0}, {70, 6, 70}, ground)
+
+    place(yaw = turn) {
+      // Foot flange, barrel, shoulder and bonnet in one turned profile.
+      body = [{radius + 4.0, 0}, {radius + 4.0, 3}, {radius, 4}, {radius, tall * 0.62},
+              {radius + 2.0, tall * 0.66}, {radius + 2.0, tall * 0.72},
+              {radius * 0.9, tall * 0.78}, {radius * 0.8, tall}]
+      lathe({0, 0, 0}, body, sides, metal)
+      cap = 7.0
+      if (dome == 1) {
+        cap = radius * 0.6
+        sphere({0, tall - radius * 0.2, 0}, radius * 0.8, sides, max(sides / 2, 3), metal)
+      } else {
+        cone({0, tall, 0}, radius * 0.8, radius * 0.35, 7.0, sides, metal)
+      }
+
+      // Small parts go first: the nut and the bolts, then the outlets.
+      if (level < 2) {
+        cylinder({0, tall + cap, 0}, 2.2, 3.5, 5, metal)
+        for i in 0..outlets {
+          place(yaw = 120.0 * float(i)) {
+            place(at = {0, tall * 0.5, radius - 1.5}, pitch = 90.0) {
+              cylinder({0, 0, 0}, 4.2, 6.0, max(sides / 2, 6), metal)
+              cylinder({0, 6, 0}, 5.2, 2.5, max(sides / 2, 6), metal)
+            }
+          }
+        }
+      }
+      if (level == 0) {
+        for i in 0..8 {
+          place(yaw = 45.0 * float(i) + 22.5) { cylinder({radius + 2.6, 3, 0}, 0.9, 1.6, 6, metal) }
+        }
+      }
+    }
+    top = {0, tall + 10.0, 0}
+    collider = {{0, 0, 0}, {radius * 2.0 + 8.0, tall + 10.0, radius * 2.0 + 8.0}}
+  }
+}

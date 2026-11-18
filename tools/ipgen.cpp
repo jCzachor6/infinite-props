@@ -2,6 +2,7 @@
 
 #include "json.hpp"
 #include "model_tools.hpp"
+#include "texture_cache.hpp"
 #include "png.hpp"
 
 #include "iprop/VM.hpp"
@@ -27,6 +28,8 @@ struct Options {
     bool floatBits = false;
     bool omitPartOutputs = false;
     u32 seed = 0;
+    u32 lod = 0; // a model's level of detail
+    std::string textureCache; // a directory of stored textures
     u32 sizeX = 0; // 0 = use the meta size
     u32 sizeY = 0;
     u64 workLimit = kDefaultWorkLimit;
@@ -87,6 +90,10 @@ void printUsage(std::FILE* out) {
                  "                      ending in .png writes the preview image instead\n"
                  "  --preview PATH      also write a preview image as a PNG\n"
                  "  --preview-size WxH  preview size in pixels (default 512x512)\n"
+                 "  --lod N             level of detail the model reads with model.lod(),\n"
+                 "                      0 (full, the default) to 7\n"
+                 "  --texture-cache DIR keep generated textures in DIR and reuse those\n"
+                 "                      stored there: same result, less time\n"
                  "  --view YAW,PITCH    where the preview camera stands, in degrees\n"
                  "                      (default 35,20)\n"
                  "  --background COLOR  preview background, #RRGGBB or #RRGGBBAA\n"
@@ -277,13 +284,28 @@ int generateModelFile(const Options& options, const std::vector<u8>& bytes) {
 
     model::ModelInputs inputs;
     inputs.seed = options.seed;
+    inputs.lod = options.lod;
     if (const auto problem = readUniforms(loaded.file, options, inputs.uniforms); !problem.empty()) return fail(problem);
 
     model::ModelResult result;
     try {
         inputs.limits.workLimit = options.workLimit;
         inputs.limits.deadline = ExecutionLimits::deadlineAfter(options.timeoutMs * 1'000'000);
-        result = model::generateModel(loaded, inputs);
+        if (options.textureCache.empty()) {
+            result = model::generateModel(loaded, inputs);
+        } else {
+            tools::TextureCache cache(options.textureCache);
+            inputs.knownTextures = cache.known();
+            result = model::generateModel(loaded, inputs);
+            try {
+                cache.complete(result);
+            } catch (const std::runtime_error& error) {
+                // A stored texture is unreadable: generate everything.
+                std::cerr << "ipgen: " << error.what() << "; generating without the cache\n";
+                inputs.knownTextures = {};
+                result = model::generateModel(loaded, inputs);
+            }
+        }
     } catch (const FormatError& error) {
         return fail("generation failed at byte offset " + std::to_string(error.offset) + ": " + error.what());
     }
@@ -466,6 +488,13 @@ int ipgenMain(int argc, char* argv[]) {
             if (!parseSize(next("--preview-size"), options.view.width, options.view.height) ||
                 options.view.width > 4096 || options.view.height > 4096)
                 invalid = "bad --preview-size value (at most 4096x4096)";
+            if (options.modelOnly.empty()) options.modelOnly = arg;
+        } else if (arg == "--lod") {
+            if (!parseU32(next("--lod"), options.lod) || options.lod > model::kMaxLod) invalid = "bad --lod value (0 to 7)";
+            if (options.modelOnly.empty()) options.modelOnly = arg;
+        } else if (arg == "--texture-cache") {
+            options.textureCache = next("--texture-cache");
+            if (options.textureCache.empty()) invalid = "bad --texture-cache value";
             if (options.modelOnly.empty()) options.modelOnly = arg;
         } else if (arg == "--view") {
             if (!tools::parseView(next("--view"), options.view)) invalid = "bad --view value (expected YAW,PITCH in degrees)";

@@ -196,6 +196,29 @@ test("material maps bind as three.js maps and a blended surface is transparent",
     assert.equal(released, 2 * 6 + 1); // two samplings of a texture with five maps, one plain colour map
 });
 
+test("levels of detail become one THREE.LOD that shares its textures", { skip: !available && "three.js is not installed" }, async () => {
+    const { THREE, adapter } = await load();
+    const textures = new Map();
+    // The coarser level arrives without pixels: the cache holds its textures.
+    const near = result(), far = result();
+    far.surfaces.length = 2;
+    for (const texture of far.textures) { texture.reused = true; texture.data = new Uint8Array(0); texture.images = []; texture.normal = null; }
+    const lod = adapter.toLOD([near, far], THREE, [0, 25], { textures });
+    assert.ok(lod.isLOD);
+    assert.deepEqual(lod.levels.map(level => level.distance), [0, 25]);
+    assert.equal(lod.levels[0].object.children.length, 4);
+    assert.equal(lod.levels[1].object.children.length, 2);
+    assert.equal(lod.levels[1].object.children[0].material.map, lod.levels[0].object.children[0].material.map);
+    assert.equal(lod.userData.ipropTextures, undefined, "a shared cache stays the caller's");
+    adapter.disposeObject3D(lod);
+    assert.ok(textures.size > 0);
+    const own = adapter.toLOD([result()], THREE, [0]);
+    assert.ok(own.userData.ipropTextures.size > 0);
+    assert.throws(() => adapter.toLOD([near, far], THREE, [0]), /one distance for each result/);
+    assert.throws(() => adapter.toLOD([near, far], THREE, [5, 25]), /start at 0 and rise/);
+    assert.throws(() => adapter.toLOD([near, far], THREE, [0, 0]), /start at 0 and rise/);
+});
+
 test("the transfer list of a result names each buffer once", () => {
     const { transferables } = require("../js/api3d.js")(null);
     const source = result();

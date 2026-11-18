@@ -1,0 +1,33 @@
+// model.lod() is the level of detail the game asks for: 0 is the whole
+// model, and each level above it may build less.
+import grid from "skins/grid.ips"
+
+asset bollard {
+  size 12x30x12
+  output point3d top
+
+  render {
+    root = seed.initial()
+    tile = skin.crisp(grid.draw(root.fork("tile")))
+
+    // Every roll comes before the level is read, so each level is the same
+    // bollard: the same height, the same textures, the same outputs.
+    height = roll(root.fork("height"), 20.0, 26.0)
+    rings = choose(root.fork("rings"), 1, 2, 3)
+
+    level = model.lod()
+    sides = max(16 >> level, 4)          // 16, 8, then 4 sides
+    cylinder({0, 0, 0}, 4.0, height, sides, tile)
+
+    // Small parts are the first to go.
+    if (level < 2) {
+      for i in 0..rings {
+        band({0, height * float(i + 1) / float(rings + 1), 0}, 4.6, 4.6, 1.5, sides, tile)
+      }
+    }
+    if (level == 0) {
+      sphere({0, height, 0}, 3.0, 16, 8, tile)
+    }
+    top = {0, height, 0}
+  }
+}

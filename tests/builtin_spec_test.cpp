@@ -79,7 +79,7 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
                 }
             }
             std::string args;
-            std::string named;
+            std::string named, forward;
             std::set<std::string> names;
             int position = 0;
             for (const auto& param : overload.params) {
@@ -109,7 +109,19 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
                     type == T::F32 ? (overload.result == T::Distribution ? std::to_string(position) + ".0" : "1.0") : "1";
                 args += value;
                 named = param.name + "=" + value + (named.empty() ? "" : "," + named);
+                forward += (forward.empty() ? "" : ",") + param.name + "=" + value;
             }
+            // An overload with the parameter types of an earlier one is reached
+            // by its names alone: without them the call is the earlier one,
+            // as voronoi's relax comes before its tile.
+            bool shadowed = false;
+            for (const auto& earlier : spec.overloads) {
+                if (&earlier == &overload) break;
+                shadowed = shadowed || (earlier.params.size() == overload.params.size() &&
+                    std::equal(earlier.params.begin(), earlier.params.end(), overload.params.begin(),
+                               [](const auto& a, const auto& b) { return a.type == b.type; }));
+            }
+            if (shadowed) args = forward;
             const bool layer = std::any_of(overload.params.begin(),overload.params.end(),[](const auto& param){return param.type.isResource();});
             const bool mask = std::any_of(overload.params.begin(),overload.params.end(),[](const auto& param){return param.type==T::Mask;});
             const bool diagram=std::any_of(overload.params.begin(),overload.params.end(),[](const auto& param){return param.type==T::Diagram2d;});

@@ -1,4 +1,4 @@
-# Models in C (API 0.2, a preview)
+# Models in C (API 0.3, a preview)
 
 [`iprop3d.h`](../backends/capi3d/iprop3d.h) generates 3D models from compiled
 `.iprop3d` files: for one seed and its inputs, the triangles of a prop and
@@ -7,9 +7,11 @@ the [model contract](../spec/models-v1.2.md) for every number a model
 produces. The [library README](../backends/capi3d/README.md) shows a whole
 generation and how to build against the library.
 
-This is a **preview**. API 0.2 is independent of the 2D C API version and
-may change in any release until the model contract is frozen; 0.2 adds the
-[outputs](#outputs) of a result to 0.1. No ABI is
+This is a **preview**. API 0.3 is independent of the 2D C API version and
+may change in any release until the model contract is frozen; 0.2 added the
+[outputs](#outputs) of a result, and 0.3 adds the level of detail, textures
+the host holds and generation from several threads
+([many props](#many-props)). No ABI is
 promised: the library is static (`iprop3dc`, CMake target `iprop::capi3d`),
 it is not part of the installed SDK, and a client is built together with it.
 [`iprop.h`](../backends/capi/iprop.h), the 2D C API 0.8 and ABI 0.5 do not depend on it.
@@ -69,6 +71,33 @@ Success publishes exactly one new result and does not free a pointer the
 caller left in the output. Failure publishes nothing and leaves the output
 untouched.
 
+## Many props
+
+A scene of hundreds of props needs three things of a generation (API 0.3).
+
+**A level of detail.** `options.lod` is the level the model reads with
+`model.lod()`: 0, the default, is the whole model and `IPROP3D_MAX_LOD` (7)
+the coarsest. A model that does not read it is the same at every level.
+
+**Textures made once.** A texture view carries `fuel`, `work` and
+`image_kinds` beside its `key`: the `iprop3d_known_texture` record of that
+texture. Hand the records of the textures you hold to a later generation in
+`options.known_textures` and it does not generate them again. It charges
+each its recorded fuel and work, so the geometry, the outputs, the counters
+and the failures are those of a generation without the list, and reports the
+texture with `reused` 1, its sizes and no pixels: the pixels are yours, under
+the same key. Levels of one prop share their textures this way, and so do
+props that wear the same skin with the same seed and inputs. Keep a texture
+you name until you have used the result. To keep textures beyond the
+process, store `iprop3d_texture_stamp()` beside each: another value later
+means a runtime whose textures or prices may differ, and the texture is one
+you do not hold.
+
+**Several threads.** One loaded model may be generated from several threads
+at once: a generation changes nothing in the model, and each call publishes
+a result of its own. Give each thread its own parameter set
+(`iprop_parameters_clone`).
+
 ## What a result holds
 
 `iprop3d_result_query` fills `iprop3d_result_info`: the bounds of all
@@ -109,7 +138,10 @@ pixels across results and models: equal keys mean equal images, so a host
 may keep one GPU texture for each key. `repeats` is 1 when a surface samples
 the texture beyond 0–1 and needs repeat wrapping. `asset_width` and
 `asset_height` are the size the program declares, `width` and `height` the
-size generated.
+size generated. `fuel` and `work` are what generating it cost, `image_kinds`
+has bit `k` set for an auxiliary image of kind `k`, and `reused` is 1 for a
+texture the options named known ([many props](#many-props)): it has its
+sizes, no pixels and no auxiliary images.
 
 `iprop3d_result_texture_image` and `_find` return the images a texture
 publishes beside its picture, with the descriptor and the rules of

@@ -107,6 +107,8 @@ IPROP3D_INIT_END
 
 IPROP3D_INIT_BEGIN(iprop3d_generate_options)
     ZERO(iprop3d_generate_options, flags); ZERO(iprop3d_generate_options, seed);
+    ZERO(iprop3d_generate_options, lod); ZERO(iprop3d_generate_options, known_textures);
+    ZERO(iprop3d_generate_options, known_texture_count);
 IPROP3D_INIT_END
 
 IPROP3D_INIT_BEGIN(iprop3d_result_info)
@@ -148,6 +150,8 @@ IPROP3D_INIT_BEGIN(iprop3d_texture_view)
     ZERO(iprop3d_texture_view, pixel_format); ZERO(iprop3d_texture_view, alpha_mode);
     ZERO(iprop3d_texture_view, origin); ZERO(iprop3d_texture_view, image_count);
     ZERO(iprop3d_texture_view, pixels);
+    ZERO(iprop3d_texture_view, fuel); ZERO(iprop3d_texture_view, work);
+    ZERO(iprop3d_texture_view, image_kinds); ZERO(iprop3d_texture_view, reused);
 IPROP3D_INIT_END
 
 #undef IPROP3D_INIT_BEGIN
@@ -282,12 +286,21 @@ iprop_status_ex iprop3d_generate(const iprop3d_model* model, const iprop3d_gener
     // These owners survive the guarded callable and every diagnostic catch.
     std::unique_ptr<iprop3d_result> result;
     ErrorContext context{iprop::ErrorStage::Arguments, model != nullptr ? &model->data->file : nullptr};
+    // The known textures (API 0.3), when the options are large enough to
+    // name them; the array is input storage like the options themselves.
+    const iprop3d_known_texture* known = nullptr;
+    uint32_t knownCount = 0;
+    if (uint32_t size = 0; options != nullptr && descriptorSize(options, size)) {
+        known = readField<const iprop3d_known_texture*>(options, size, offsetof(iprop3d_generate_options, known_textures));
+        knownCount = readField<uint32_t>(options, size, offsetof(iprop3d_generate_options, known_texture_count));
+    }
     const std::array spans{ProtectedSpan{model, model != nullptr ? sizeof(*model) : 0},
         ProtectedSpan{options, queryCapacity(options)},
         ProtectedSpan{parameters, parameters != nullptr ? sizeof(*parameters) : 0},
         ProtectedSpan{parameters != nullptr ? parameters->values.data() : nullptr,
                       parameters != nullptr ? parameters->values.size() * sizeof(iprop::UniformValue) : 0},
-        ProtectedSpan{limits, queryCapacity(limits)}};
+        ProtectedSpan{limits, queryCapacity(limits)},
+        ProtectedSpan{known, known != nullptr ? std::size_t{knownCount} * sizeof(iprop3d_known_texture) : 0}};
     return checkedBoundary(error, out_result, sizeof(iprop3d_result*), context, [&] {
         if (model == nullptr) return CallOutcome::argument("model is null");
         if (out_result == nullptr) return CallOutcome::argument("out_result is null");
@@ -304,6 +317,17 @@ iprop_status_ex iprop3d_generate(const iprop3d_model* model, const iprop3d_gener
         if (const auto control = readExecutionRequest(limits, execution); !control.succeeded) return control;
         iprop::model::ModelInputs inputs;
         inputs.seed = readField<uint32_t>(options, size, offsetof(iprop3d_generate_options, seed));
+        inputs.lod = readField<uint32_t>(options, size, offsetof(iprop3d_generate_options, lod));
+        if (inputs.lod > IPROP3D_MAX_LOD) return CallOutcome::argument("lod is outside 0..7");
+        if (knownCount != 0 && known == nullptr) return CallOutcome::argument("known textures are null");
+        std::vector<iprop::model::KnownTexture> held;
+        held.reserve(knownCount);
+        for (uint32_t i = 0; i < knownCount; ++i) {
+            if (known[i].reserved != 0 || (known[i].image_kinds & ~uint32_t{0x3E}) != 0)
+                return CallOutcome::argument("a known texture has unsupported fields");
+            held.push_back({known[i].key, known[i].fuel, known[i].work, known[i].image_kinds});
+        }
+        inputs.knownTextures = held;
         inputs.limits = execution.limits;
         result = std::make_unique<iprop3d_result>();
         context.stage = iprop::ErrorStage::Execute;
@@ -317,6 +341,8 @@ iprop_status_ex iprop3d_generate(const iprop3d_model* model, const iprop3d_gener
 }
 
 void iprop3d_result_free(iprop3d_result* result) { delete result; }
+
+uint64_t iprop3d_texture_stamp(void) { return iprop::model::textureStamp(); }
 
 // ---- results ----------------------------------------------------------------
 
@@ -420,10 +446,15 @@ iprop_status_ex iprop3d_result_texture(const iprop3d_result* result, uint32_t te
         view.image_count = static_cast<uint32_t>(texture.images.size());
         view.pixels = texture.color.pixels.empty() ? nullptr
             : reinterpret_cast<const uint8_t*>(texture.color.pixels.data());
+        view.fuel = texture.fuel;
+        view.work = texture.work;
+        view.image_kinds = texture.kinds;
+        view.reused = texture.reused ? 1 : 0;
 #define WRITE(field) writeField(out, capacity, offsetof(iprop3d_texture_view, field), view.field)
         WRITE(texture_index); WRITE(repeats); WRITE(key); WRITE(asset_width); WRITE(asset_height);
         WRITE(width); WRITE(height); WRITE(byte_count); WRITE(row_stride);
         WRITE(pixel_format); WRITE(alpha_mode); WRITE(origin); WRITE(image_count); WRITE(pixels);
+        WRITE(fuel); WRITE(work); WRITE(image_kinds); WRITE(reused);
 #undef WRITE
         writeName(out, capacity, texture.name);
         return CallOutcome{};

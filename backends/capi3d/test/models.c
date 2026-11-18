@@ -7,8 +7,13 @@
 /* API 0.1 layouts on LP64, including every public field offset. */
 #define LAYOUT(type, size) typedef char layout_##type[(sizeof(type) == (size)) ? 1 : -1]
 #define OFFSET(type, field, offset) typedef char offset_##type##_##field[(offsetof(type, field) == (offset)) ? 1 : -1]
-LAYOUT(iprop3d_generate_options, 12);
+LAYOUT(iprop3d_generate_options, 32);
 OFFSET(iprop3d_generate_options, flags, 4); OFFSET(iprop3d_generate_options, seed, 8);
+OFFSET(iprop3d_generate_options, lod, 12); OFFSET(iprop3d_generate_options, known_textures, 16);
+OFFSET(iprop3d_generate_options, known_texture_count, 24);
+LAYOUT(iprop3d_known_texture, 32);
+OFFSET(iprop3d_known_texture, fuel, 8); OFFSET(iprop3d_known_texture, work, 16);
+OFFSET(iprop3d_known_texture, image_kinds, 24); OFFSET(iprop3d_known_texture, reserved, 28);
 LAYOUT(iprop3d_library_info, 40);
 OFFSET(iprop3d_library_info, api_major, 4); OFFSET(iprop3d_library_info, api_minor, 8);
 OFFSET(iprop3d_library_info, max_vertices, 12); OFFSET(iprop3d_library_info, max_triangles, 16);
@@ -47,7 +52,7 @@ OFFSET(iprop3d_surface_view, vertex_count, 44); OFFSET(iprop3d_surface_view, ind
 OFFSET(iprop3d_surface_view, positions, 56); OFFSET(iprop3d_surface_view, normals, 64);
 OFFSET(iprop3d_surface_view, tangents, 72); OFFSET(iprop3d_surface_view, uvs, 80);
 OFFSET(iprop3d_surface_view, indices, 88);
-LAYOUT(iprop3d_texture_view, 96);
+LAYOUT(iprop3d_texture_view, 120);
 OFFSET(iprop3d_texture_view, flags, 4); OFFSET(iprop3d_texture_view, texture_index, 8);
 OFFSET(iprop3d_texture_view, repeats, 12); OFFSET(iprop3d_texture_view, key, 16);
 OFFSET(iprop3d_texture_view, name, 24); OFFSET(iprop3d_texture_view, asset_width, 40);
@@ -56,6 +61,8 @@ OFFSET(iprop3d_texture_view, height, 52); OFFSET(iprop3d_texture_view, byte_coun
 OFFSET(iprop3d_texture_view, row_stride, 64); OFFSET(iprop3d_texture_view, pixel_format, 72);
 OFFSET(iprop3d_texture_view, alpha_mode, 76); OFFSET(iprop3d_texture_view, origin, 80);
 OFFSET(iprop3d_texture_view, image_count, 84); OFFSET(iprop3d_texture_view, pixels, 88);
+OFFSET(iprop3d_texture_view, fuel, 96); OFFSET(iprop3d_texture_view, work, 104);
+OFFSET(iprop3d_texture_view, image_kinds, 112); OFFSET(iprop3d_texture_view, reused, 116);
 #endif
 
 static iprop_utf8_view text(const char* value) {
@@ -142,14 +149,14 @@ int main(int argc, char** argv) {
     uint64_t fixed_key, seeded_key, crate_fuel;
     uint32_t count = 99, index = 99;
     CHECK(argc == 2);
-    CHECK(IPROP3D_API_VERSION_MAJOR == 0 && IPROP3D_API_VERSION_MINOR == 2);
+    CHECK(IPROP3D_API_VERSION_MAJOR == 0 && IPROP3D_API_VERSION_MINOR == 3);
     CHECK(sizeof(iprop3d_alpha_mode) == 4 && IPROP3D_ALPHA_OPAQUE == 0 && IPROP3D_ALPHA_CUTOUT == 1 && IPROP3D_ALPHA_BLEND == 2);
 
     /* The library. */
     CHECK(iprop3d_library_info_init(&library, sizeof(library)) == IPROP_EX_OK);
     CHECK(library.struct_size == sizeof(library) && library.api_minor == 0 && library.max_texels == 0);
     CHECK(iprop3d_library_query(&library, NULL) == IPROP_EX_OK);
-    CHECK(library.api_major == 0 && library.api_minor == 2);
+    CHECK(library.api_major == 0 && library.api_minor == 3);
     CHECK(library.max_vertices == 65536 && library.max_triangles == 131072);
     CHECK(library.max_textures == 32 && library.max_texture_side == 2048 && library.max_texels == 4194304);
 
@@ -329,6 +336,55 @@ int main(int argc, char** argv) {
     CHECK(other_info.bounds_min[0] == 0.0f && other_info.bounds_max[1] == 0.0f && other_info.size[2] == 3.0f);
     CHECK(iprop3d_result_surface(nothing, 0, &surface, NULL) == IPROP_EX_E_ARGUMENT);
     CHECK(iprop3d_result_texture(nothing, 0, &other_texture, NULL) == IPROP_EX_E_ARGUMENT);
+
+    /* Level of detail and textures the host holds (API 0.3). A level beyond
+     * 7 is an argument error; a model that does not read the level is the
+     * same at every one. Named known, the crate's textures are charged and
+     * not generated again: the same counters, no pixels. */
+    {
+        iprop3d_result* levelled = NULL;
+        iprop3d_result* reusing = NULL;
+        iprop3d_result_info fresh, again;
+        iprop3d_known_texture held[2];
+        iprop3d_texture_view made, kept;
+        uint32_t i;
+        CHECK(iprop3d_texture_stamp() != 0 && iprop3d_texture_stamp() == iprop3d_texture_stamp());
+        options.seed = 5;
+        options.lod = IPROP3D_MAX_LOD + 1;
+        CHECK(iprop3d_generate(crate, &options, NULL, NULL, &levelled, NULL) == IPROP_EX_E_ARGUMENT && levelled == NULL);
+        options.lod = 3;
+        CHECK(iprop3d_generate(crate, &options, NULL, NULL, &levelled, NULL) == IPROP_EX_OK);
+        CHECK(info_of(levelled, &fresh) == 0 && fresh.texture_count == 2);
+        for (i = 0; i < 2; ++i) {
+            CHECK(texture_of(levelled, i, &made) == 0);
+            CHECK(made.reused == 0 && made.fuel > 0 && made.work > 0 && made.pixels != NULL);
+            held[i].key = made.key; held[i].fuel = made.fuel; held[i].work = made.work;
+            held[i].image_kinds = made.image_kinds; held[i].reserved = 0;
+        }
+        options.known_textures = held;
+        options.known_texture_count = 2;
+        CHECK(iprop3d_generate(crate, &options, NULL, NULL, &reusing, NULL) == IPROP_EX_OK);
+        CHECK(info_of(reusing, &again) == 0);
+        CHECK(again.fuel_used == fresh.fuel_used && again.work_used == fresh.work_used);
+        CHECK(again.vertex_count == fresh.vertex_count && again.texture_count == 2);
+        for (i = 0; i < 2; ++i) {
+            CHECK(texture_of(levelled, i, &made) == 0 && texture_of(reusing, i, &kept) == 0);
+            CHECK(kept.reused == 1 && kept.pixels == NULL && kept.byte_count == 0 && kept.image_count == 0);
+            CHECK(kept.key == made.key && kept.width == made.width && kept.height == made.height);
+            CHECK(kept.fuel == made.fuel && kept.work == made.work && kept.image_kinds == made.image_kinds);
+            CHECK(kept.repeats == made.repeats);
+        }
+        iprop3d_result_free(reusing); reusing = NULL;
+        /* A record with unknown fields, or a count without an array. */
+        held[1].reserved = 1;
+        CHECK(iprop3d_generate(crate, &options, NULL, NULL, &reusing, NULL) == IPROP_EX_E_ARGUMENT && reusing == NULL);
+        held[1].reserved = 0;
+        options.known_textures = NULL;
+        CHECK(iprop3d_generate(crate, &options, NULL, NULL, &reusing, NULL) == IPROP_EX_E_ARGUMENT && reusing == NULL);
+        options.known_texture_count = 0;
+        options.lod = 0;
+        iprop3d_result_free(levelled);
+    }
 
     /* 3D outputs (API 0.2): the crate declares none; the post a point
      * turned with its block, a list, a box and one never written. */

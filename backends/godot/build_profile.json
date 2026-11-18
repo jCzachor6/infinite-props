@@ -2,6 +2,7 @@
   "enabled_classes": [
     "ArrayMesh", "CanvasTexture", "FileAccess", "Image", "ImageTexture", "MeshInstance3D", "Resource", "Sprite2D",
     "StandardMaterial3D", "Texture2D", "OS",
-    "Marker3D", "StaticBody3D", "CollisionShape3D", "BoxShape3D"
+    "Marker3D", "StaticBody3D", "CollisionShape3D", "BoxShape3D",
+    "WorkerThreadPool"
   ]
 }

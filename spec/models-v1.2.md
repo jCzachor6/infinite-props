@@ -257,6 +257,7 @@ unreachable code too.
 | 0x79 | `skin.crisp` | 0 | `[skin] -> [skin]` |
 | 0x7A | `skin.blend` | 0 | `[skin] -> [skin]` |
 | 0x7B | `skin.region` | 0 | `[skin f32 f32 f32 f32] -> [skin]` |
+| 0x90 | `model.lod` | 0 | `[] -> [i32]` |
 | 0x91 | `out.point3d` | slot | `[vec3] -> []` |
 | 0x92 | `out.box3d` | slot | `[vec3 vec3] -> []` |
 | 0x93 | `out.list.point3d` | slot | `[vec3] -> []` |
@@ -1174,6 +1175,66 @@ passing it out of a block charges nothing. Textures are bounded by their own
 limits.
 
 A failed generation publishes nothing.
+
+## Levels of detail
+
+A generation takes a level of detail from the host, an integer from 0 to 7;
+0 is the default. `model.lod` pushes it. The level is an input like the seed:
+it changes nothing but what the program makes of it. A program that makes
+every draw before it reads the level, or from named seeds, builds the same
+prop at every level, with the same outputs and the same textures.
+
+## Textures a host holds
+
+A host may hand a generation the records of textures it already holds. A
+record is a texture's key, the fuel and the work generating it cost, and the
+kinds of its auxiliary images as bits (bit `k` for kind `k`). When `skin.draw`
+asks for a texture whose key a record names, the first such record counts
+and the texture is not generated:
+
+- the model is charged the record's fuel and then its work, as it is charged
+  for a generated texture, and fails with the same reason when either runs
+  out, the message naming the skin;
+- the texture counts toward the 32 textures and the texels of the
+  generation, and its maps start a skin's numbers at one;
+- the result reports it as reused, with its size, key, cost and kinds and
+  without pixels.
+
+A result reports the cost and the kinds of every texture, so each is the
+record of a later generation. With true records the geometry, the outputs,
+the counters and the failures of a generation are those of a generation
+without records. A record that does not match its texture gives a model
+with wrong numbers or counters, and nothing else: the runtime reads no
+pixels of the host's.
+
+### Stored textures
+
+A texture kept beyond a process is stored as one IPTX file, named by its key
+as sixteen lowercase hexadecimal digits and `.iptx`. All integers are little
+endian.
+
+| Offset | Size | Field |
+| --- | --- | --- |
+| 0 | 4 | `IPTX` |
+| 4 | 4 | file version, 1 |
+| 8 | 8 | stamp |
+| 16 | 8 | key |
+| 24 | 4 + 4 | width, height |
+| 32 | 4 + 4 | the program's declared width and height |
+| 40 | 8 + 8 | fuel, work |
+| 56 | 4 | kinds of the auxiliary images |
+| 60 | 4 | number of auxiliary images |
+| 64 | | name: u32 byte count and UTF-8 |
+| | | the colour image: two f32 scales, then width*height RGBA8 pixels, rows from the top |
+| | | each auxiliary image: u32 kind, u32 source, name, then an image as above |
+| | 8 | FNV-1a 64 of every byte before it |
+
+The stamp is the FNV-1a 64 of `IPTX`, the product version string and a u32
+texture revision, which changes whenever the pixels, the fuel or the work of
+a 2D program may. A file with another stamp or another file version is a
+texture the host does not hold. The first 64 bytes carry the record, so a
+directory is indexed without reading pixels; a file is verified when it is
+read whole.
 
 ## Result
 

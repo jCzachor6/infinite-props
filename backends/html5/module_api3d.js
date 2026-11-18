@@ -34,11 +34,23 @@ Module["onRuntimeInitialized"] = function () {
         if (!(fileBytes instanceof Uint8Array)) throw new TypeError("a model is loaded from a Uint8Array or an ArrayBuffer");
         return unwrap(load(fileBytes));
     };
-    // modelGenerate(handle, seed, uniforms?, execution?) -> one generation.
-    Module["modelGenerate"] = function (handle, seed, uniforms, options) {
+    // modelGenerate(handle, seed, uniforms?, execution?, lod?, known?) -> one
+    // generation. `lod` is the level of detail, 0 to 7; `known` an array of
+    // { key, fuel, work, kinds } records of textures the page already holds.
+    Module["modelGenerate"] = function (handle, seed, uniforms, options, lod, known) {
         if (uniforms != null && (typeof uniforms !== "object" || Array.isArray(uniforms)))
             throw new TypeError("uniforms must be an object of input names and values");
-        return unwrap(generate(handle >>> 0, seed >>> 0, uniforms == null ? undefined : uniforms, execution(options)));
+        if (lod == null) lod = 0;
+        if (!Number.isInteger(lod) || lod < 0 || lod > 7) throw new TypeError("lod must be an integer from 0 to 7");
+        if (known != null) {
+            if (!Array.isArray(known)) throw new TypeError("known textures must be an array of records");
+            for (var record of known)
+                if (record == null || typeof record !== "object" || typeof record.key !== "string" ||
+                    !Number.isSafeInteger(record.fuel) || !Number.isSafeInteger(record.work) || !Number.isInteger(record.kinds))
+                    throw new TypeError("a known texture is { key, fuel, work, kinds }");
+        }
+        return unwrap(generate(handle >>> 0, seed >>> 0, uniforms == null ? undefined : uniforms, execution(options),
+            lod, known == null ? undefined : known));
     };
     Module["modelFree"] = Module["_modelFree"];
     Module["modelCount"] = Module["_modelCount"];

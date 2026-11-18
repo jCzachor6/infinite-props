@@ -358,7 +358,7 @@ def main():
             'tube', 'sweep',
             'vec3.len', 'vec3.dot', 'vec3.cross', 'vec3.normalize', 'skin.density', 'skin.fit', 'skin.shift',
             'skin.roughness', 'skin.metallic', 'skin.emission', 'skin.cutout', 'skin.two_sided', 'skin.crisp',
-            'skin.blend', 'skin.region'}
+            'skin.blend', 'skin.region', 'model.lod'}
         assert [b['name'] for b in models['extended_builtins']] == ['lerp', 'list.len']
         assert {'rect', 'pixel', 'poly', 'surface.paint', 'mask.from', 'noise.mask', 'part.draw', 'voronoi'} <= \
             set(models['unavailable_builtins']) < flat

@@ -7,7 +7,7 @@ produces are specified in [Infinite Props models](../../spec/models-v1.2.md);
 [models in C](../../docs/c-api-models.md) states the contract of this
 interface and [models](../../docs/language/models.md) how one is written.
 
-**Preview.** API 0.2 follows the models contract, which is a preview until it
+**Preview.** API 0.3 follows the models contract, which is a preview until it
 is frozen. Until then a release may change any declaration in `iprop3d.h`
 and no ABI is promised: the library is static only (`iprop3dc`), is not
 installed with the SDK, and a client is built together with it. `iprop.h`

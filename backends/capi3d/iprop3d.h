@@ -33,7 +33,7 @@ extern "C" {
 
 /* The version of this header, independent of IPROP_API_VERSION_*. */
 #define IPROP3D_API_VERSION_MAJOR 0
-#define IPROP3D_API_VERSION_MINOR 2
+#define IPROP3D_API_VERSION_MINOR 3
 
 /* Opaque handles. */
 typedef struct iprop3d_model iprop3d_model;   /* a loaded, validated .iprop3d */
@@ -132,11 +132,35 @@ IPROP_API iprop_status_ex iprop3d_model_parameters_create(const iprop3d_model* m
 
 /* ---- Generation ------------------------------------------------------------ */
 
-/* A four-byte prefix suffices; absent fields are zero. flags must be zero. */
+/* A texture the host already holds (API 0.3): its key, what generating it
+ * cost and the kinds of its auxiliary images, as iprop3d_texture_view
+ * reported them. reserved must be zero. */
+typedef struct {
+    uint64_t key;
+    uint64_t fuel, work;
+    uint32_t image_kinds;
+    uint32_t reserved;
+} iprop3d_known_texture;
+
+#define IPROP3D_MAX_LOD UINT32_C(7)
+
+/* A four-byte prefix suffices; absent fields are zero. flags must be zero.
+ * lod (API 0.3) is the level of detail model.lod() returns: 0 is the whole
+ * model, IPROP3D_MAX_LOD the coarsest.
+ * known_textures (API 0.3) names known_texture_count textures the host
+ * holds. The generation does not make them again: it charges each its
+ * recorded fuel and work, so the geometry, the outputs, the counters and
+ * the failures are those of a generation without the list, and reports such
+ * a texture with reused = 1 and no pixels. The first record of a key
+ * counts. The array is read during the call only; the host keeps the
+ * textures it names until it has used the result. */
 typedef struct {
     uint32_t struct_size;
     uint32_t flags;
     uint32_t seed;
+    uint32_t lod;
+    const iprop3d_known_texture* known_textures;
+    uint32_t known_texture_count;
 } iprop3d_generate_options;
 
 IPROP_API iprop_status_ex iprop3d_generate_options_init(iprop3d_generate_options* out, uint32_t capacity);
@@ -156,7 +180,10 @@ IPROP_API iprop_status_ex iprop3d_generate_options_init(iprop3d_generate_options
  * not free a previous pointer in out_result; failure leaves out_result
  * untouched and publishes nothing. The result survives iprop3d_model_free,
  * later parameter changes and later generations. Error storage cannot
- * overlap out_result, options, limits, the model or parameter storage. */
+ * overlap out_result, options, limits, the model or parameter storage.
+ * One loaded model may be generated from several threads at once (API
+ * 0.3): a generation changes nothing in the model, and each call publishes
+ * a result of its own. */
 IPROP_API iprop_status_ex iprop3d_generate(const iprop3d_model* model,
                                            const iprop3d_generate_options* options,
                                            const iprop_parameters* parameters,
@@ -248,7 +275,13 @@ IPROP_API iprop_status_ex iprop3d_result_surface(const iprop3d_result* result, u
  * image is what iprop_generate_ex gives for the same program, seed, size
  * and inputs. image_count is the number of auxiliary images: the normal map
  * and the material maps the program declares, in kind order. Pixels and the
- * name are borrowed from the result until iprop3d_result_free. */
+ * name are borrowed from the result until iprop3d_result_free.
+ * fuel and work (API 0.3) are what generating the texture cost, and
+ * image_kinds has bit k set for an auxiliary image of iprop_aux_image_kind
+ * k: together with key they make the iprop3d_known_texture of a later
+ * generation. reused is 1 for a texture the options named known: its
+ * sizes, key, cost and image_kinds are set, byte_count and image_count are
+ * 0 and pixels is NULL, because the host holds the images. */
 typedef struct {
     uint32_t struct_size;
     uint32_t flags;
@@ -265,7 +298,16 @@ typedef struct {
     iprop_image_origin origin;
     uint32_t image_count;
     const uint8_t* pixels;
+    uint64_t fuel, work;
+    uint32_t image_kinds;
+    uint32_t reused;
 } iprop3d_texture_view;
+
+/* What a stored texture was made by (API 0.3): it changes with the product
+ * version and whenever the pixels, fuel or work of a 2D program may. A host
+ * that keeps textures beyond the process stores this value beside each and
+ * treats another value as a texture it does not hold. */
+IPROP_API uint64_t iprop3d_texture_stamp(void);
 
 IPROP_API iprop_status_ex iprop3d_texture_view_init(iprop3d_texture_view* out, uint32_t capacity);
 IPROP_API iprop_status_ex iprop3d_result_texture(const iprop3d_result* result, uint32_t texture_index,

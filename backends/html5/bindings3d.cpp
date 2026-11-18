@@ -181,6 +181,10 @@ val textures(const iprop3d_result* result, u32 count, Checked& check) {
         entry.set("rowStride", static_cast<double>(view.row_stride)); entry.set("pixelFormat", view.pixel_format);
         entry.set("alphaMode", view.alpha_mode); entry.set("storageOrigin", view.origin);
         entry.set("data", copied(view.pixels, static_cast<std::size_t>(view.byte_count)));
+        // What it cost and what it carries (API 0.3): the record of a known
+        // texture. A reused one has no pixels; the page holds them.
+        entry.set("fuel", static_cast<double>(view.fuel)); entry.set("work", static_cast<double>(view.work));
+        entry.set("kinds", view.image_kinds); entry.set("reused", view.reused != 0);
         auto images = val::array();
         for (u32 i = 0; i < view.image_count; ++i) {
             iprop_aux_image_view_ex image{}; iprop_aux_image_view_ex_init(&image, sizeof(image));
@@ -265,6 +269,10 @@ val modelLibrary() {
     object.set("maxVertices", info.max_vertices); object.set("maxTriangles", info.max_triangles);
     object.set("maxTextures", info.max_textures); object.set("maxTextureSide", info.max_texture_side);
     object.set("maxTexels", static_cast<double>(info.max_texels));
+    object.set("maxLod", IPROP3D_MAX_LOD);
+    char stamp[17];
+    std::snprintf(stamp, sizeof(stamp), "%016llx", static_cast<unsigned long long>(iprop3d_texture_stamp()));
+    object.set("textureStamp", std::string(stamp));
     return object;
 }
 
@@ -292,7 +300,37 @@ bool modelFree(u32 handle) { return g_models.erase(handle) != 0; }
 
 u32 modelCount() { return static_cast<u32>(g_models.size()); }
 
-val modelGenerate(u32 handle, u32 seed, val uniforms, val execution) {
+// `known` is an array of { key, fuel, work, kinds }: textures the page holds.
+std::vector<iprop3d_known_texture> readKnown(val known) {
+    std::vector<iprop3d_known_texture> records;
+    if (known.isUndefined() || known.isNull()) return records;
+    const u32 count = known["length"].as<u32>();
+    records.reserve(count);
+    for (u32 i = 0; i < count; ++i) {
+        const val entry = known[i];
+        const std::string key = entry["key"].as<std::string>();
+        iprop3d_known_texture record{};
+        if (key.size() != 16) throw std::invalid_argument("a known texture's key must be sixteen hex digits");
+        for (const char c : key) {
+            std::uint8_t digit = 0;
+            if (!hexDigit(c, digit)) throw std::invalid_argument("a known texture's key must be sixteen hex digits");
+            record.key = (record.key << 4) | digit;
+        }
+        const auto counter = [&](const char* name) {
+            const double value = entry[name].as<double>();
+            if (!(value >= 0) || value > 9007199254740991.0 || std::floor(value) != value)
+                throw std::invalid_argument(std::string("a known texture's ") + name + " must be a nonnegative integer");
+            return static_cast<std::uint64_t>(value);
+        };
+        record.fuel = counter("fuel");
+        record.work = counter("work");
+        record.image_kinds = static_cast<u32>(counter("kinds"));
+        records.push_back(record);
+    }
+    return records;
+}
+
+val modelGenerate(u32 handle, u32 seed, val uniforms, val execution, u32 lod, val known) {
     try {
         const auto found = g_models.find(handle);
         if (found == g_models.end()) throw std::invalid_argument("the model is not loaded: it was freed");
@@ -304,6 +342,10 @@ val modelGenerate(u32 handle, u32 seed, val uniforms, val execution) {
         readUniforms(model, parameters.get(), uniforms, check);
         iprop3d_generate_options options{}; iprop3d_generate_options_init(&options, sizeof(options));
         options.seed = seed;
+        options.lod = lod;
+        const auto records = readKnown(known);
+        options.known_textures = records.empty() ? nullptr : records.data();
+        options.known_texture_count = static_cast<u32>(records.size());
         iprop_execution_limits_ex limits{}; iprop_execution_limits_ex_init(&limits, sizeof(limits));
         if (!execution.isUndefined() && !execution.isNull()) {
             const auto number = [&](const char* name) {

@@ -1,0 +1,64 @@
+// Paving for a model: cobblestones cut from a Voronoi diagram that repeats,
+// each a little higher or lower than its neighbours, with sand and moss in
+// the joints. It repeats in both directions; `tint` is the stone.
+asset paving {
+  size 256x256
+  input color tint = #7f7b72
+  output normal relief
+  output roughness finish
+
+  draw {
+    root = seed.initial()
+
+    // Twenty-six stones on a torus: one that leaves the tile on a side comes
+    // back on the other, so no joint runs along an edge.
+    cells = voronoi({0, 0}, {256, 256}, 26, root.fork("stones"), voronoi.grid, 0.9, 1, tile = true)
+    stones = regions.gap(regions(cells), 8.0, 0.35, root.fork("joints"))
+
+    // The height: sand low, every stone at its own level.
+    layer height(tile = true, alpha = surface.source_over) {
+      rect(0, 0, 256, 256, #2a2a2a)
+      for i in 0..regions.count(stones) {
+        level = int(roll(root.fork("level").fork(i), -26.0, 26.0))
+        surface.paint(regions.mask(stones, i), color.shade(#a8a8a8, level))
+      }
+    }
+    // Rounded edges, then pits and wear knock the faces back.
+    pits = noise.mask({0, 0}, {256, 256}, noise.mode_cell, {0.1, 0.1}, 0.15, root.fork("pits"),
+                      1, 0.08, noise.below, 0.5, tile = true)
+    worn = noise.mask({0, 0}, {256, 256}, noise.mode_fbm, {0.04, 0.04}, 0.1, root.fork("worn"),
+                      4, 0.5, noise.above, 0.4, tile = true)
+    layer carved(tile = true, alpha = surface.source_over) {
+      surface.paint(height.blur(1.7))
+      surface.paint(worn, #000000, blend = surface.subtract, opacity = 0.14)
+      surface.paint(pits, #000000, blend = surface.subtract, opacity = 0.28)
+    }
+    soft = carved.blur(0.5)
+
+    // The colour comes from the height: sand, shadowed stone, stone and
+    // light on the high faces. Each stone then takes a tone of its own.
+    surface.paint(soft.gradient([#4a4234, color.shade(tint, -60), color.shade(tint, -10), tint, color.shade(tint, 22)]),
+                  blend = surface.source_over)
+    layer tones(tile = true, alpha = surface.source_over) {
+      for i in 0..regions.count(stones) {
+        warm = roll(root.fork("tone").fork(i), 0.0, 1.0)
+        surface.paint(regions.mask(stones, i), color.mix(#6f7f8f, #b08a5c, warm))
+      }
+    }
+    surface.paint(tones, blend = surface.overlay, opacity = 0.35)
+    mottle = noise.mask({0, 0}, {256, 256}, noise.mode_fbm, {0.03, 0.03}, 0.0, root.fork("mottle"),
+                        3, 0.8, noise.above, 0.3, tile = true)
+    surface.paint(mottle, #000000, blend = surface.multiply, opacity = 0.12)
+    joints = mask.from(soft.gradient([#000000ff, #00000000, #00000000, #00000000]))
+    moss = mask.intersect(joints, noise.mask({0, 0}, {256, 256}, noise.mode_fbm, {0.025, 0.025}, 0.08,
+                                             root.fork("moss"), 3, 0.3, noise.above, 0.3, tile = true))
+    surface.paint(moss, #56682c, blend = surface.multiply, opacity = 0.75)
+
+    relief = soft.normal(6.0, 0.0)
+    layer rough(tile = true, alpha = surface.source_over) {
+      rect(0, 0, 256, 256, #d8d8d8)
+      surface.paint(joints, #ffffff, blend = surface.screen, opacity = 0.6)
+    }
+    finish = rough
+  }
+}

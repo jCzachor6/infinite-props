@@ -86,6 +86,8 @@ constexpr OpSpec kSpecs[] = {
     fixed(Op::SkinBlend, "skin.blend", {kSkin}, kSkin),
     fixed(Op::SkinRegion, "skin.region", {kSkin, T::F32, T::F32, T::F32, T::F32}, kSkin),
 
+    fixed(Op::ModelLod, "model.lod", {}, T::I32),
+
     indexed(Op::OutPoint3d, "out.point3d", {T::Vec3}),
     indexed(Op::OutBox3d, "out.box3d", {T::Vec3, T::Vec3}),
     indexed(Op::OutListPoint3d, "out.list.point3d", {T::Vec3}),

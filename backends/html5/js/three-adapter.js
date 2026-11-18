@@ -171,7 +171,27 @@ export function outputsToObject3D(result, THREE, options = {}) {
     return group;
 }
 
-// Releases the GPU resources of an object made by toObject3D or
+// Levels of detail of one prop as a THREE.LOD (M5): `results` are generations
+// of one model with one seed at rising `lod`, nearest first, and
+// `distances[i]` is the distance in metres from which level i shows; the
+// first is 0. Pass a shared `textures` cache in the options: the levels
+// wear the same textures.
+//   const lod = toLOD([near, mid, far], THREE, [0, 12, 40], { textures });
+export function toLOD(results, THREE, distances, options = {}) {
+    if (!Array.isArray(results) || !results.length || !Array.isArray(distances) || distances.length !== results.length)
+        throw new Error("toLOD takes one distance for each result");
+    for (let i = 0; i < distances.length; ++i)
+        if (!(distances[i] >= 0) || (i && !(distances[i] > distances[i - 1])) || (!i && distances[i] !== 0))
+            throw new Error("distances start at 0 and rise");
+    const cache = options.textures || new Map();
+    const lod = new THREE.LOD();
+    for (let i = 0; i < results.length; ++i)
+        lod.addLevel(toObject3D(results[i], THREE, Object.assign({}, options, { textures: cache })), distances[i]);
+    if (!options.textures) lod.userData.ipropTextures = cache;
+    return lod;
+}
+
+// Releases the GPU resources of an object made by toObject3D, toLOD or
 // outputsToObject3D. Textures in a shared cache stay; clear them with
 // disposeTextures when the scene goes.
 export function disposeObject3D(object) {

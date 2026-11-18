@@ -49,7 +49,12 @@ ResolvedCall CallResolver::resolve(const ips::Call& call) const {
             }
             return {call.location, std::move(result)};
         }
-        BuiltinCall result{&spec, ips::builtinOverload(spec, types), {}};
+        // The names the call was bound to when it was typed, not its written
+        // spelling: two overloads may differ in a name alone.
+        std::vector<std::string_view> named;
+        for (const auto& parameter : bound.signature.parameters) named.push_back(parameter.name);
+        if (named.size() != types.size()) named.clear();
+        BuiltinCall result{&spec, ips::builtinOverload(spec, types, named), {}};
         if (spec.lowering == ips::BuiltinLowering::SurfacePaint)
             result.overload = &ips::paintOverload(bound, types.front());
         if (ips::variadicPolygon(spec, args.size())) {

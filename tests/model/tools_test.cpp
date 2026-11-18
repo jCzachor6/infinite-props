@@ -317,6 +317,61 @@ TEST_CASE("ipgen keeps the options of images and of models apart") {
     CHECK(run(ipgenMain, {"ipgen", model, "-o", files.path("a.png"), "--preview", files.path("b.png")}).code == 1);
 }
 
+TEST_CASE("the tools take a level of detail and keep textures in a directory") {
+    const Workspace files;
+    const auto model = files.write("crate.iprop3d", compile("crate.ips"));
+    const auto cache = files.path("textures");
+    const auto dump = [&](std::vector<std::string> extra) {
+        std::vector<std::string> arguments{"ipgen", model, "--seed", "4", "--dump", "-o", files.path("unused.glb")};
+        arguments.insert(arguments.end(), extra.begin(), extra.end());
+        const auto result = run(ipgenMain, arguments);
+        INFO(result.err);
+        REQUIRE(result.code == 0);
+        return result.out;
+    };
+    const auto plain = dump({});
+    // The crate does not read the level: every level is the same model.
+    CHECK(dump({"--lod", "3"}) == plain);
+    CHECK(run(ipgenMain, {"ipgen", model, "--lod", "8", "-o", files.path("x.glb")}).code == 1);
+    CHECK(run(ipgenMain, {"ipgen", files.write("tile.iprop", compile("tile.ips")), "--lod", "1", "-o", files.path("x.png")}).code == 1);
+
+    // The first run stores the texture, the second reads it; both give what
+    // a run without the directory gives.
+    CHECK(dump({"--texture-cache", cache}) == plain);
+    std::vector<std::filesystem::path> stored;
+    for (const auto& entry : std::filesystem::directory_iterator(cache)) stored.push_back(entry.path());
+    REQUIRE(stored.size() == 1);
+    CHECK(stored[0].extension() == ".iptx");
+    CHECK(stored[0].filename().string().size() == 21);
+    const auto written = std::filesystem::last_write_time(stored[0]);
+    CHECK(dump({"--texture-cache", cache}) == plain);
+    const bool untouched = std::filesystem::last_write_time(stored[0]) == written;
+    CHECK(untouched);
+    // A damaged body is found when the texture is read: generated again.
+    {
+        std::fstream file(stored[0], std::ios::binary | std::ios::in | std::ios::out);
+        file.seekp(200);
+        file.put('\x55');
+    }
+    const auto healed = run(ipgenMain, {"ipgen", model, "--seed", "4", "--dump", "-o", files.path("unused.glb"), "--texture-cache", cache});
+    CHECK(healed.code == 0);
+    CHECK(healed.out == plain);
+    CHECK_THAT(healed.err, ContainsSubstring("generating without the cache"));
+
+    // A sheet of levels: a column a seed, a row a level, one texture a seed.
+    const auto sheet = run(ipsheetMain, {"ipsheet", model, "--seed", "1", "--seeds", "3", "--lods", "2", "--cell", "96",
+                                         "-o", files.path("levels.png")});
+    INFO(sheet.err);
+    REQUIRE(sheet.code == 0);
+    CHECK_THAT(sheet.out, ContainsSubstring("textures: 3 generated, 3 reused"));
+    const auto png = tools::readPng(files.path("levels.png"));
+    CHECK(png.width == 3 * 96);
+    CHECK(png.height == 2 * 96);
+    CHECK(run(ipsheetMain, {"ipsheet", model, "--lod", "2", "--cell", "48", "-o", files.path("far.png")}).code == 0);
+    CHECK(run(ipsheetMain, {"ipsheet", model, "--lod", "1", "--lods", "2", "-o", files.path("x.png")}).code == 1);
+    CHECK(run(ipsheetMain, {"ipsheet", model, "--lods", "9", "-o", files.path("x.png")}).code == 1);
+}
+
 TEST_CASE("ipsheet fills a sheet with previews of a model") {
     const Workspace files;
     const auto model = files.write("crate.iprop3d", compile("crate.ips"));

@@ -122,8 +122,9 @@ struct SlotValues {
 // The model page of one generation: scopes, skins and the growing mesh.
 class Machine final : public detail::Extension {
 public:
-    Machine(const LoadedModel& model, const ExecutionLimits& limits)
-        : model_(model), limits_(limits), slots_(model.outputs.size()) {
+    Machine(const LoadedModel& model, const ModelInputs& inputs)
+        : model_(model), limits_(inputs.limits), lod_(inputs.lod), known_(inputs.knownTextures),
+          slots_(model.outputs.size()) {
         scopes_.push_back(Scope{});
     }
 
@@ -170,6 +171,8 @@ public:
 private:
     const LoadedModel& model_;
     ExecutionLimits limits_;
+    u32 lod_ = 0;
+    std::span<const KnownTexture> known_;
     std::vector<Scope> scopes_;
     std::vector<Block> blocks_;
     std::vector<Texture> textures_;
@@ -615,39 +618,20 @@ private:
         SkinRecord record;
         record.texture = static_cast<u32>(texture);
         // A map's number starts at 1, so the map shows as painted.
-        for (const AuxImage& image : textures_[texture].image.images) {
-            if (image.kind == AuxImageKind::Roughness) record.roughness = kSkinMapFactor;
-            if (image.kind == AuxImageKind::Metallic) record.metallic = kSkinMapFactor;
-            if (image.kind == AuxImageKind::Emission) record.emission = kSkinMapFactor;
-        }
+        const auto has = [&](AuxImageKind kind) { return (textures_[texture].image.kinds >> static_cast<u32>(kind)) & 1u; };
+        if (has(AuxImageKind::Roughness)) record.roughness = kSkinMapFactor;
+        if (has(AuxImageKind::Metallic)) record.metallic = kSkinMapFactor;
+        if (has(AuxImageKind::Emission)) record.emission = kSkinMapFactor;
         pushRecord(ex, record);
     }
 
     // A standard 2D generation of an embedded program, under what is left
     // of this generation's work and under its deadline and cancellation.
+    // A texture the host holds already (M5) is not generated: it is charged
+    // what it cost, in the order a generation charges, and keeps its size.
     Texture generate(Execution& ex, u16 index, u32 seed, u32 width, u32 height, std::vector<UniformValue> values) {
         const SkinProgram& program = model_.skins[index];
         if (ex.workBudget->remaining() == 0) ex.work(1); // traps where the 2D VM would
-        GenerationInputs inputs;
-        inputs.seed = seed;
-        inputs.sizeX = width;
-        inputs.sizeY = height;
-        inputs.limits = limits_;
-        inputs.limits.workLimit = ex.workBudget->remaining();
-        GenerationResult result;
-        u64 used = 0;
-        try {
-            VM vm(program.file, inputs, std::span<const UniformValue>(values), ex.fuel);
-            vm.run();
-            result = vm.takeResult();
-            ex.spendRaw(vm.fuelBudget() - vm.fuel());
-            used = vm.workBudget() - vm.work();
-        } catch (const FormatError& error) {
-            throw Trap("skin '" + program.name + "': " + error.what(), error.reason, ErrorStage::Execute,
-                       ex.activeInstruction);
-        }
-        ex.work(used);
-
         Texture texture;
         texture.program = program.identity;
         texture.seed = seed;
@@ -657,8 +641,49 @@ private:
         texture.image.name = program.name;
         texture.image.assetWidth = program.file.meta.sizeX;
         texture.image.assetHeight = program.file.meta.sizeY;
-        texture.image.color = std::move(result.image);
-        texture.image.images = std::move(result.images);
+
+        const KnownTexture* known = nullptr;
+        for (const KnownTexture& record : known_)
+            if (record.key == texture.image.key) { known = &record; break; }
+        GenerationResult result;
+        u64 fuel = 0, work = 0;
+        try {
+            if (known) {
+                fuel = known->fuel;
+                work = known->work;
+                ex.spendRaw(fuel);
+            } else {
+                GenerationInputs inputs;
+                inputs.seed = seed;
+                inputs.sizeX = width;
+                inputs.sizeY = height;
+                inputs.limits = limits_;
+                inputs.limits.workLimit = ex.workBudget->remaining();
+                VM vm(program.file, inputs, std::span<const UniformValue>(values), ex.fuel);
+                vm.run();
+                result = vm.takeResult();
+                fuel = vm.fuelBudget() - vm.fuel();
+                ex.spendRaw(fuel);
+                work = vm.workBudget() - vm.work();
+            }
+            ex.work(work);
+        } catch (const FormatError& error) {
+            throw Trap("skin '" + program.name + "': " + error.what(), error.reason, ErrorStage::Execute,
+                       ex.activeInstruction);
+        }
+
+        texture.image.fuel = fuel;
+        texture.image.work = work;
+        if (known) {
+            texture.image.reused = true;
+            texture.image.kinds = known->kinds;
+            texture.image.color.width = width;
+            texture.image.color.height = height;
+        } else {
+            texture.image.color = std::move(result.image);
+            texture.image.images = std::move(result.images);
+            for (const AuxImage& image : texture.image.images) texture.image.kinds |= 1u << static_cast<u32>(image.kind);
+        }
         texture.inputs = std::move(values);
         return texture;
     }
@@ -798,6 +823,7 @@ private:
         }
 
         case Op::SkinDraw: skinDraw(ex, ins.operand); break;
+        case Op::ModelLod: ex.push(static_cast<i32>(lod_)); break;
         case Op::SkinDensity: case Op::SkinRoughness: case Op::SkinMetallic: case Op::SkinEmission: case Op::SkinCutout: {
             const f32 value = ex.popF32();
             SkinRecord record = skins_[popSkin(ex) - 1];
@@ -966,7 +992,9 @@ ModelResult generateWith(const LoadedModel& model, const ModelInputs& inputs,
     vmInputs.seed = inputs.seed;
     vmInputs.uniforms = inputs.uniforms;
     vmInputs.limits = inputs.limits;
-    Machine machine(model, inputs.limits);
+    if (inputs.lod > kMaxLod)
+        throw FormatError("model lod must be in 0..7", ErrorReason::NumericRange, ErrorStage::Arguments);
+    Machine machine(model, inputs);
     std::optional<VM> vm;
     if (rootValues) vm.emplace(model.file, vmInputs, *rootValues);
     else vm.emplace(model.file, vmInputs);

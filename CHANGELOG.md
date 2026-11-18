@@ -2,6 +2,46 @@
 
 ## Unreleased
 
+### Many props in a scene (models preview, and 2D additive)
+
+Levels of detail, textures generated once, generation off the main thread
+and a diagram that repeats. Existing sources compile to identical bytecode,
+existing programs keep their image, outputs, RNG, fuel and work, and the 78
+model generations of the earlier corpus keep every pin. See
+[levels of detail](docs/language/models.md#levels-of-detail),
+[stones that repeat](docs/language/textures.md#stones-that-repeat) and the
+contracts ([models](spec/models-v1.2.md#levels-of-detail),
+[textures](spec/texture-toolkit-v1.2.md#tiled-diagrams)).
+
+- **Levels of detail.** `model.lod()` in a render asset is the level the
+  game asks for, 0 (the whole model) to 7. A model that makes its rolls
+  before it reads the level is the same prop at every level.
+- **Textures made once.** A generation takes the records of textures the
+  host already holds and does not generate them again; it charges each what
+  it cost, so results, counters and failures do not depend on what the host
+  holds. One texture is one `IPTX` file, stamped with the runtime that made
+  it.
+- **Threads.** One loaded model may be generated from several threads.
+- **A diagram that repeats.** Every form of `voronoi` takes `tile = true`:
+  cells cross the edges of the rectangle, for 1 to 28 cells. Written without
+  its name, a number after explicit sites is still `relax`.
+- **Hosts.** Model C API 0.3 (`lod` and `known_textures` in the options;
+  `fuel`, `work`, `image_kinds` and `reused` in a texture view;
+  `iprop3d_texture_stamp`). In the browser, `generate({ lod, textures })`,
+  `createTextureCache()`, `createPool()` over workers and `toLOD()` in the
+  three.js adapter. In Godot, `generate(seed, limits, lod)`,
+  `generate_async()` with the signal `generated`, textures reused while a
+  mesh wears them, `lod_levels`, `lod_distances` and `threaded` on the node,
+  and `bake.gd`, which saves a scene of the levels.
+- **Format.** One operation of the model page, `0x90 model.lod`, and the
+  voronoi opcodes as operations of the texture page. An earlier runtime
+  rejects each while loading.
+- **Tools.** `ipgen --lod N` and `--texture-cache DIR`; `ipsheet --lod N`,
+  `--lods N` (a row for each level, with its triangle count) and
+  `--texture-cache DIR`. A sheet generates each texture once.
+- **Examples.** A fire hydrant with three levels on paving cut from a
+  diagram that repeats. The model corpus grows to 80 generations.
+
 ### Textures that tile and look painted (2D, additive)
 
 Draw assets gain what a texture for a wall, a floor or a model's skin needs.

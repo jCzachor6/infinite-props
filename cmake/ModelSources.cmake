@@ -6,6 +6,7 @@ set(IPROP_MODEL_SOURCES
     blocks.cpp
     loader.cpp
     validation.cpp
-    machine.cpp)
+    machine.cpp
+    textures.cpp)
 list(TRANSFORM IPROP_MODEL_SOURCES
     PREPEND "${CMAKE_CURRENT_LIST_DIR}/../model/")

@@ -317,10 +317,17 @@ private:
                 for (const auto* what : {"gamma", "white", "black"}) expect(at, ValueType::F32, what);
             } else {
                 const auto noise = static_cast<Opcode>(ins.aux);
-                if (!periodicNoiseOpcode(noise)) fail(at, "unknown texture operation");
-                expect(at, noise == Opcode::NoiseMask || noise == Opcode::NoiseMaskConfig ?
+                if (!texturePageOpcode(noise)) fail(at, "unknown texture operation");
+                expect(at, noise == Opcode::NoiseMask || noise == Opcode::NoiseMaskConfig || tiledVoronoiOpcode(noise) ?
                     ValueType::I32 : ValueType::Vec2, "noise tile or period");
-                applyStack(at, *findOpcode(noise));
+                if (noise == Opcode::VoronoiSites || noise == Opcode::VoronoiSitesRelax) {
+                    // As the opcode itself: its list has no fixed signature.
+                    if (noise == Opcode::VoronoiSitesRelax) expect(at, ValueType::I32, "voronoi relax");
+                    expect(at, ValueType::list(ValueType::Vec2), "voronoi sites");
+                    expect(at, ValueType::Vec2, "voronoi size");
+                    expect(at, ValueType::Vec2, "voronoi origin");
+                    push(at, ValueType::Diagram2d);
+                } else applyStack(at, *findOpcode(noise));
                 return;
             }
             expect(at, ValueType::Layer, "texture receiver");

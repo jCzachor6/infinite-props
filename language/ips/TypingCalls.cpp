@@ -200,16 +200,18 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
         const auto expected = contextual ? std::optional<ValueType>(contextual->params[i].type) : std::nullopt;
         types.push_back(typeOf(*args[i]->value, expected));
     }
-    const auto* overload = builtinOverload(signature, types);
+    std::vector<std::string_view> named;
+    for (const auto* arg : args) named.push_back(arg->name ? std::string_view(*arg->name) : std::string_view());
+    const auto* overload = builtinOverload(signature, types, named);
     if (overload) {
         if (modelAsset() && overload->textureOp)
             error(call.location, "the periodic overload of " + name.name + " requires an asset with draw");
         const BuiltinSpec concrete{signature.lowering, {*overload}};
         (void)bind(call, builtinCallSignature(concrete, call.args.size(), call.location, name.name), name.name);
-        if (name.name == "noise.mask" && overload->params.back().name == "tile") {
+        if (overload->textureOp && overload->params.back().name == "tile") {
             const auto tile = known(*args.back()->value);
             if (tile && std::get<i32>(*tile) != 0 && std::get<i32>(*tile) != 1)
-                valueError(locationOf(*args.back()->value), "noise.mask tile must be true or false");
+                valueError(locationOf(*args.back()->value), name.name + " tile must be true or false");
         }
         if (name.name == "mask.expand" || name.name == "mask.shrink") {
             const auto radius = known(*args[1]->value);

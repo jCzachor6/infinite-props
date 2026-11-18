@@ -64,7 +64,8 @@ iprop_warnings(iprop_png)
 
 # What the tools do with a generated model (models v1.2): glb, preview, dump.
 add_library(iprop_model_tools STATIC
-    model_tools.cpp)
+    model_tools.cpp
+    texture_cache.cpp)
 
 target_link_libraries(iprop_model_tools PUBLIC iprop::model iprop_png)
 target_include_directories(iprop_model_tools PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

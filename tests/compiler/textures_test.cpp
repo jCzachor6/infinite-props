@@ -462,5 +462,110 @@ TEST_CASE("a texture program survives the assembler and the old page is still cl
     CHECK(disassemble(again) == text);
     CHECK(same(generate(again).result.image.pixels, generate(bytes).result.image.pixels));
     CHECK_THROWS_WITH(assemble(replaced(text, "texture gradient 0", "texture polish 0")),
-                      ContainsSubstring("texture expects paint, paint.mask, gradient, levels or a periodic noise mnemonic"));
+                      ContainsSubstring("texture expects paint, paint.mask, gradient, levels, a periodic noise or a voronoi mnemonic"));
+}
+
+// ---- tiled diagrams (M5) ----------------------------------------------------
+
+namespace {
+// Every cell of a diagram added once, as grey 127, over black in a tiled
+// capture: a pixel is 127 where exactly one cell covers it, through an edge
+// too, about 0 in a hole and about 254 under two.
+std::string cells(const std::string& diagram, const std::string& regions = "regions(d)") {
+    return "asset t{size 64x48 output point total draw{root = seed.initial() d = " + diagram + " rs = " + regions +
+        " layer img(tile = true){rect(0, 0, 64, 48, #000000) "
+        "for i in 0..regions.count(rs) { surface.paint(regions.mask(rs, i), #7f7f7f, blend = surface.add) }} "
+        "surface.paint(img) area = 0.0 for i in 0..regions.count(rs) { area = area + regions.area(rs, i) } "
+        "total = {area, float(regions.count(rs))}}}";
+}
+struct Coverage { u32 lowest = 255, highest = 0; f32 area = 0, count = 0; };
+Coverage coverage(const std::string& source) {
+    const auto run = generate(source);
+    Coverage result;
+    for (const auto& pixel : run.result.image.pixels) {
+        result.lowest = std::min<u32>(result.lowest, pixel.r);
+        result.highest = std::max<u32>(result.highest, pixel.r);
+    }
+    const auto& total = run.result.outputs.at(0).points.at(0);
+    result.area = total.x;
+    result.count = total.y;
+    return result;
+}
+} // namespace
+
+TEST_CASE("the cells of a tiled diagram cover their rectangle once, through its edges", "[textures][voronoi]") {
+    for (const char* diagram : {
+             "voronoi({0, 0}, {64, 48}, 20, root.fork(\"a\"), tile = true)",
+             "voronoi({0, 0}, {64, 48}, 28, root.fork(\"b\"), voronoi.grid, 0.8, 2, tile = true)",
+             "voronoi({0, 0}, {64, 48}, 1, root.fork(\"c\"), tile = true)",
+             "voronoi({0, 0}, {64, 48}, 12, root.fork(\"d\"), voronoi.random, 1.0, 1, 2.0, {1, 1}, tile = true)",
+             "voronoi({0, 0}, {64, 48}, [{5, 6}, {40, 9}, {22, 30}, {58, 41}, {9, 44}], 1, tile = true)"}) {
+        INFO(diagram);
+        const auto tiled = coverage(cells(diagram));
+        CHECK(tiled.lowest >= 124);
+        CHECK(tiled.highest <= 130);
+        CHECK(std::abs(tiled.area - 64.f * 48.f) < 0.05f);
+        // The same diagram without the flag stops at the edges: it covers
+        // its rectangle too, with other cells.
+        const auto plain = coverage(cells(replaced(diagram, ", tile = true", "")));
+        CHECK(plain.lowest >= 124);
+        CHECK(plain.highest <= 130);
+        CHECK(std::abs(plain.area - 64.f * 48.f) < 0.05f);
+        CHECK(plain.count == tiled.count);
+    }
+    // A gap of the regions is the same on both sides of an edge: no cell is
+    // cut there, so every pixel is in a cell or in the gap between two.
+    const std::string gaps = cells("voronoi({0, 0}, {64, 48}, 16, root.fork(\"e\"), tile = true)",
+                                   "regions.gap(regions(d), 1.5, 0.0, 5)");
+    const auto gapped = generate(gaps);
+    std::size_t solid = 0;
+    for (const auto& pixel : gapped.result.image.pixels) solid += pixel.r >= 124;
+    CHECK(solid > gapped.result.image.pixels.size() / 2);
+    CHECK(solid < gapped.result.image.pixels.size());
+    const auto shrunk = coverage(gaps);
+    CHECK(shrunk.lowest == 0);     // the gap itself
+    CHECK(shrunk.highest <= 130);  // and no cell over another, at an edge either
+    CHECK(shrunk.area < 64.f * 48.f);
+}
+
+TEST_CASE("a tiled diagram counts neighbours through its edges and has its own limits", "[textures][voronoi]") {
+    // Three sites in a row: the outer two meet through the left and right edges.
+    const auto neighbours = [](const std::string& flag) {
+        const auto run = generate("asset t{size 64x64 output point n draw{"
+            "d = voronoi({0, 0}, {64, 64}, [{8, 32}, {32, 30}, {56, 34}]" + flag + ") "
+            "n = {float(list.len(diagram.neighbors(d, 0))), float(list.len(diagram.neighbors(d, 1)))}}}");
+        const auto& point = run.result.outputs.at(0).points.at(0);
+        return Vec2{point.x, point.y};
+    };
+    CHECK(neighbours("").x == 1);
+    CHECK(neighbours("").y == 2);
+    CHECK(neighbours(", tile = true").x == 2);
+    CHECK(neighbours(", tile = true").y == 2);
+    // The flag off is the plain diagram, by the page.
+    const std::string plain = "asset t{size 32x32 draw{d = voronoi({0, 0}, {32, 32}, 9, 3FLAG) rs = regions(d) "
+        "for i in 0..regions.count(rs) { surface.paint(regions.mask(rs, i), color.shade(#808080, i * 9 - 40)) }}}";
+    const auto without = generate(replaced(plain, "FLAG", "")), off = generate(replaced(plain, "FLAG", ", tile = false"));
+    CHECK(same(without.result.image.pixels, off.result.image.pixels));
+    CHECK(off.fuel == without.fuel + 1); // the flag
+    // Nine times the sites: the diagram costs several times the plain one.
+    CHECK(generate(replaced(plain, "FLAG", ", tile = true")).fuel > 2 * without.fuel);
+
+    const auto count = [](int cells) {
+        return trap("asset t{size 8x8 draw{d = voronoi({0, 0}, {8, 8}, " + std::to_string(cells) + ", 3, tile = true)}}");
+    };
+    CHECK(count(28) == "no trap");
+    CHECK(count(29) == "voronoi count must be in 1..28 with tile");
+    CHECK(trap("asset t{size 8x8 draw{d = voronoi({0, 0}, {8, 8}, 29, 3, tile = false)}}") == "no trap");
+    // A site on the right edge is the one on the left edge.
+    CHECK(trap("asset t{size 8x8 draw{d = voronoi({0, 0}, {8, 8}, [{0, 3}, {8, 3}], tile = true)}}") ==
+          "voronoi sites must be distinct");
+    rejectSource("asset t{size 8x8 draw{d = voronoi({0, 0}, {8, 8}, 4, 3, tile = 2)}}", "voronoi tile must be true or false");
+
+    const auto bytes = compileChecked("asset page{size 16x16 draw{"
+        "a = voronoi({0, 0}, {16, 16}, 6, 3, voronoi.grid, 0.5, 1, tile = true) "
+        "b = voronoi({0, 0}, {16, 16}, [{2, 3}, {9, 12}], tile = true)}}", false);
+    const auto text = disassemble(bytes);
+    CHECK_THAT(text, ContainsSubstring("texture voronoi.config 0"));
+    CHECK_THAT(text, ContainsSubstring("texture voronoi.sites 0"));
+    CHECK(disassemble(assemble(text)) == text);
 }

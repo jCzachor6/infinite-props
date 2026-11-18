@@ -87,7 +87,7 @@ set_target_properties(iprop_godot PROPERTIES
 set(IPROP_GODOT_PROJECT ${CMAKE_BINARY_DIR}/godot-project)
 file(MAKE_DIRECTORY ${IPROP_GODOT_PROJECT}/assets)
 foreach(file project.godot demo.tscn demo.gd conformance.gd pixel-corpus.gd part-outputs.gd normal-maps.gd
-             material-maps.gd models.gd model-demo.tscn model-demo.gd)
+             material-maps.gd models.gd model-demo.tscn model-demo.gd scale.gd bake.gd)
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/project/${file}
                    ${IPROP_GODOT_PROJECT}/${file} COPYONLY)
 endforeach()
@@ -177,6 +177,15 @@ if(IPROP_BUILD_TESTS)
         # the line the script prints at its end, not the exit code.
         set_tests_properties(godot_models PROPERTIES TIMEOUT 180
             PASS_REGULAR_EXPRESSION "godot models: PASS"
+            FAIL_REGULAR_EXPRESSION "FAIL ;SCRIPT ERROR")
+        # Many props (M5): levels of detail, kept textures, generation on a
+        # thread, the node's levels and a scene baked without the editor.
+        add_test(NAME godot_scale COMMAND ${IPROP_GODOT_BINARY}
+            --headless --log-file ${CMAKE_BINARY_DIR}/godot-scale.log
+            --path ${IPROP_GODOT_PROJECT} --script res://scale.gd
+            -- ${CMAKE_SOURCE_DIR} $<TARGET_FILE_DIR:ipc> ${CMAKE_BINARY_DIR}/godot-scale)
+        set_tests_properties(godot_scale PROPERTIES TIMEOUT 180
+            PASS_REGULAR_EXPRESSION "godot scale: PASS"
             FAIL_REGULAR_EXPRESSION "FAIL ;SCRIPT ERROR")
     else()
         if(IPROP_GODOT STREQUAL "ON")

@@ -34,6 +34,7 @@ bin/
 *.png
 !examples/models/textures-sheet.png
 !examples/models/bench-sheet.png
+!examples/models/hydrant-sheet.png
 !tests/golden/*.png
 !examples/portrait-sheet.png
 !examples/models/chair-sheet.png

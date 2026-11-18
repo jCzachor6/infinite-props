@@ -13,6 +13,7 @@ opacity, a gradient map and levels.
 | --- | --- |
 | `layer name(tile = true) { ... }` | a capture whose shapes, blurs and outlines wrap at its edges |
 | `noise.mask(..., tile = true)`, `noise.fbm(x, y, 4, seed, period = {8, 8})` | noise that meets itself at the edges |
+| `voronoi(origin, size, 20, seed, tile = true)` | stones, tiles and plates that cross the edges |
 | `surface.paint(image, blend = surface.multiply, opacity = 0.3)` | a layer mixed in instead of laid over |
 | `height.gradient([dark, mid, light])` | a colour for every brightness |
 | `height.levels(black, white, gamma)` | more or less contrast, or the inverse |
@@ -53,9 +54,26 @@ The scalar noises take a last argument `period = {px, py}`, whole cells of
 the noise on each axis: `noise.value`, `noise.grad`, `noise.fbm`,
 `noise.ridge`, `noise.cell`, `noise.cell2`, `noise.cell_id`, `noise.warp` and
 `noise.warp_vec`. Sample `x * px / width`, so that the canvas spans one
-period. `noise.fault` and `voronoi` do not repeat.
+period. `noise.fault` does not repeat.
 
 <!-- example: ../../examples/language/traps/texture-period.ips -->
+
+## Stones that repeat
+
+Every form of `voronoi` takes `tile = true`: the diagram is then that of a
+pattern that repeats with its rectangle. A cell near an edge reaches across
+it instead of being cut there, so `regions`, `regions.gap` and
+`regions.bevel` give stones with joints all round, and
+`diagram.neighbors` counts a neighbour through an edge. Paint the cells in a
+tiled capture and the part that reaches out comes back on the other side.
+
+Write `tile` by its name: without the name a number after the sites is
+`relax`. A diagram that repeats has 1 to 28 cells; for a finer pattern use
+`noise.cell` with a period. A site on the right or the bottom edge is the
+one on the left or the top.
+
+<!-- example: ../../examples/language/texture-voronoi.ips -->
+<!-- example: ../../examples/language/traps/texture-voronoi.ips -->
 
 ## Blend and opacity
 

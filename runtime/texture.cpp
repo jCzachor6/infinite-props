@@ -1,6 +1,7 @@
 #include "iprop/VmInternals.hpp"
 #include "iprop/Texture.hpp"
 #include "iprop/Noise.hpp"
+#include "iprop/Voronoi.hpp"
 #include "iprop/math/Scalar.hpp"
 
 #include <algorithm>
@@ -103,8 +104,9 @@ bool stepTexture(Execution& ex, Instruction ins) {
     case TextureOp::Gradient: gradient(ex); break;
     case TextureOp::Levels: levels(ex); break;
     default: {
-        if (!periodicNoiseOpcode(base)) ex.trap("unknown texture operation", ErrorReason::InvalidInstruction);
-        if (base == Opcode::NoiseMask || base == Opcode::NoiseMaskConfig) tiledNoiseMaskInstruction(ex, base);
+        if (!texturePageOpcode(base)) ex.trap("unknown texture operation", ErrorReason::InvalidInstruction);
+        if (tiledVoronoiOpcode(base)) tiledVoronoiInstruction(ex, base);
+        else if (base == Opcode::NoiseMask || base == Opcode::NoiseMaskConfig) tiledNoiseMaskInstruction(ex, base);
         else periodicNoiseInstruction(ex, base);
         break;
     }

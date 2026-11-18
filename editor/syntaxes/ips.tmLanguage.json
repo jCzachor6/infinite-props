@@ -130,8 +130,8 @@
     },
     "builtins": {
       "name": "support.function.builtin.ips",
-      "match": "(?<![.\\w])((?:cell|color|diagram|dist|list|mask|noise|part|parts|regions|skin|stream|surface|vec2|vec3)\\.[A-Za-z_][A-Za-z_0-9]*|seed\\.initial|abs|atan2|band|beta|box|ceil|chance|choose|clamp|cone|contour|cos|curve|cylinder|dither|exp|extrude|float|floor|gain|gaussian|hash|index|int|lathe|lerp|line|max|min|oval|pick|pixel|poly|pow|quad|quintic|ramp|range|rect|regions|remap|rgb|rgba|roll|round|sin|smooth|smoothstep|sphere|sqrt|sweep|tri|triangular|tube|unit|voronoi|weather)\\b(?=\\s*\\()",
-      "comment": "Builtins of both kinds of asset; the primitives and the skin and vec3 namespaces belong to assets with render."
+      "match": "(?<![.\\w])((?:cell|color|diagram|dist|list|mask|noise|part|parts|regions|skin|stream|surface|vec2|vec3)\\.[A-Za-z_][A-Za-z_0-9]*|seed\\.initial|model\\.lod|abs|atan2|band|beta|box|ceil|chance|choose|clamp|cone|contour|cos|curve|cylinder|dither|exp|extrude|float|floor|gain|gaussian|hash|index|int|lathe|lerp|line|max|min|oval|pick|pixel|poly|pow|quad|quintic|ramp|range|rect|regions|remap|rgb|rgba|roll|round|sin|smooth|smoothstep|sphere|sqrt|sweep|tri|triangular|tube|unit|voronoi|weather)\\b(?=\\s*\\()",
+      "comment": "Builtins of both kinds of asset; the primitives, model.lod and the skin and vec3 namespaces belong to assets with render."
     },
     "samplerCapture": {
       "name": "support.function.sampler.ips",

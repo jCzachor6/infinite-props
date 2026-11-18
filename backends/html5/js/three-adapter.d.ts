@@ -25,6 +25,12 @@ export interface ModelTexture {
     data: Uint8Array;
     images: ModelImage[];
     normal: ModelImage | null;
+    /** What generating it cost, and the kinds of its images as bits. */
+    fuel: number;
+    work: number;
+    kinds: number;
+    /** The page already held it: `data` is the cache's, or empty before the cache completed the result. */
+    reused: boolean;
 }
 
 /** The triangles of one material. `texture` indexes the result's textures. */
@@ -72,6 +78,8 @@ export interface ModelResult {
     textures: ModelTexture[];
     surfaces: ModelSurface[];
     outputs: ModelOutput[];
+    /** The level of detail it was generated at, 0 to 7. */
+    lod: number;
 }
 
 /** The colour and normal textures of one cache entry; three.js Texture objects. */
@@ -106,7 +114,15 @@ export function toObject3D<Three extends { Group: new () => unknown }>(
 export function outputsToObject3D<Three extends { Group: new () => unknown }>(
     result: ModelResult, THREE: Three, options?: { color?: number; meters?: boolean }): InstanceType<Three["Group"]>;
 
-/** Releases the geometry and materials of an object made by toObject3D or outputsToObject3D, and its textures when it owns them. */
+/**
+ * Levels of detail of one prop as a `THREE.LOD`: generations of one model and
+ * seed at rising `lod`, nearest first, with the distance in metres from which
+ * each shows (the first is 0). The levels share the textures of the cache.
+ */
+export function toLOD<Three extends { LOD: new () => unknown }>(
+    results: ModelResult[], THREE: Three, distances: number[], options?: AdapterOptions): InstanceType<Three["LOD"]>;
+
+/** Releases the geometry and materials of an object made by toObject3D, toLOD or outputsToObject3D, and its textures when it owns them. */
 export function disposeObject3D(object: unknown): void;
 
 /** Disposes and clears a texture cache. */

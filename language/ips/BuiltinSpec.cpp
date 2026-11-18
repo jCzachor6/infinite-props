@@ -237,12 +237,14 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
         overload.params.push_back({"opacity", V::F32});
         paint.push_back(std::move(overload));
     }
+    // Every overload again with a period (scalar noise) or a tile flag (a
+    // noise mask, a voronoi diagram), as an operation of the texture page.
     for (const char* name : {"noise.value", "noise.grad", "noise.fbm", "noise.ridge", "noise.cell",
-                             "noise.cell2", "noise.cell_id", "noise.warp", "noise.warp_vec", "noise.mask"}) {
+                             "noise.cell2", "noise.cell_id", "noise.warp", "noise.warp_vec", "noise.mask", "voronoi"}) {
         auto& overloads = table.at(name).overloads;
         for (auto overload : std::vector<BuiltinOverload>(overloads)) {
             const auto base = *overload.opcode;
-            const bool mask = base == Opcode::NoiseMask || base == Opcode::NoiseMaskConfig;
+            const bool mask = base == Opcode::NoiseMask || base == Opcode::NoiseMaskConfig || tiledVoronoiOpcode(base);
             overload.params.push_back(mask ? BuiltinParameter{"tile", V::I32} : BuiltinParameter{"period", V::Vec2});
             overload.textureOp = static_cast<u8>(base);
             overload.opcode = Opcode::Texture;
@@ -410,6 +412,11 @@ const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::size_t arit
 
 const BuiltinOverload* builtinOverload(const BuiltinSpec& spec,
                                        std::span<const ValueType> arguments) {
+    return builtinOverload(spec, arguments, {});
+}
+
+const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::span<const ValueType> arguments,
+                                       std::span<const std::string_view> named) {
     const BuiltinOverload* best = nullptr;
     std::size_t bestWidenings = arguments.size() + 1;
     for (const auto& candidate : spec.overloads) {
@@ -417,6 +424,7 @@ const BuiltinOverload* builtinOverload(const BuiltinSpec& spec,
         std::size_t widenings = 0;
         bool fits = true;
         for (std::size_t i = 0; i < arguments.size(); ++i) {
+            if (i < named.size() && !named[i].empty() && candidate.params[i].name != named[i]) { fits = false; break; }
             if (!parameterAccepts(candidate.params[i], arguments[i])) { fits = false; break; }
             if (candidate.params[i].type != arguments[i]) ++widenings;
         }
@@ -507,6 +515,8 @@ const std::map<std::string, BuiltinSpec>& modelBuiltinSpecs() {
         result.emplace("skin.blend", spec({op({skin}, M::SkinBlend, V::Skin)}));
         result.emplace("skin.region", spec({op({skin, {"x", V::F32}, {"y", V::F32}, {"w", V::F32}, {"h", V::F32}},
                                                M::SkinRegion, V::Skin)}));
+        // The level of detail the host asked for (M5).
+        result.emplace("model.lod", spec({op({}, M::ModelLod, V::I32)}));
         return result;
     }();
     return table;
@@ -558,6 +568,9 @@ bool isBuiltinNamespace(std::string_view name, bool model) {
 OperationEffects builtinEffects(const BuiltinSpec& spec, const BuiltinOverload* overload) {
     if (overload && overload->textureOp) {
         const auto base = static_cast<Opcode>(*overload->textureOp);
+        // A tiled diagram has the effects of its opcode; a periodic noise
+        // computes from its seed and checks its period.
+        if (tiledVoronoiOpcode(base)) return findOpcode(base)->effects;
         if (periodicNoiseOpcode(base)) return {RngEffect::SeededComputation, false, false, static_cast<u16>(EffectCheck::NumericRange)};
         const bool paint = *overload->textureOp <= static_cast<u8>(TextureOp::PaintMask);
         return {RngEffect::None, paint, false,
@@ -568,7 +581,7 @@ OperationEffects builtinEffects(const BuiltinSpec& spec, const BuiltinOverload* 
         // A skin argument may be unassigned and a number out of its range.
         OperationEffects effects;
         const auto op = static_cast<model::Op>(*overload->modelOp);
-        effects.writesCanvas = op >= model::Op::PlaceBegin;
+        effects.writesCanvas = op >= model::Op::PlaceBegin && op != model::Op::ModelLod;
         const auto check = [&](EffectCheck value) { effects.checks = static_cast<u16>(effects.checks | static_cast<u16>(value)); };
         bool skin = false, number = false;
         for (const auto& parameter : overload->params) {

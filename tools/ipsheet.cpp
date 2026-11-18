@@ -1,5 +1,6 @@
 #include "ipsheet.hpp"
 #include "model_tools.hpp"
+#include "texture_cache.hpp"
 #include "png.hpp"
 
 #include "iprop/VM.hpp"
@@ -89,9 +90,12 @@ void drawSeed(std::vector<u8>& rgba, u32 sheetWidth, u32 left, u32 top, u32 seed
     }
 }
 
-// A sheet of previews: one model per seed, each in a square cell.
+// A sheet of previews: one model per seed, each in a square cell. With
+// `levels` each seed is a column and each level of detail a row, marked with
+// its triangle count. Textures are generated once for the whole sheet.
 int modelSheet(const std::vector<u8>& bytes, const std::string& output, u32 seeds, u32 columns, u32 firstSeed,
-               const Overrides& overrides, const tools::PreviewOptions& view) {
+               const Overrides& overrides, const tools::PreviewOptions& view, u32 lod, u32 levels,
+               const std::string& textureCache) {
     model::LoadedModel loaded;
     try {
         loaded = model::loadModel(bytes);
@@ -107,15 +111,29 @@ int modelSheet(const std::vector<u8>& bytes, const std::string& output, u32 seed
         std::cerr << "ipsheet: " << error.what() << "\n";
         return 1;
     }
-    if (columns == 0) columns = seeds;
-    const u32 rows = (seeds + columns - 1) / columns;
+    if (columns == 0 || levels) columns = seeds;
+    const u32 cells = levels ? seeds * levels : seeds;
+    const u32 rows = (cells + columns - 1) / columns;
     const u32 cellW = view.width, cellH = view.height;
     std::vector<u8> rgba(static_cast<std::size_t>(columns) * cellW * rows * cellH * 4, 0);
-    for (u32 s = 0; s < seeds; ++s) {
-        inputs.seed = firstSeed + s;
+    tools::TextureCache cache(textureCache);
+    for (u32 s = 0; s < cells; ++s) {
+        inputs.seed = firstSeed + s % seeds;
+        inputs.lod = levels ? s / seeds : lod;
         tools::Image cell;
+        u32 triangles = 0;
         try {
-            cell = tools::renderPreview(model::generateModel(loaded, inputs), view);
+            inputs.knownTextures = cache.known();
+            auto result = model::generateModel(loaded, inputs);
+            try {
+                cache.complete(result);
+            } catch (const std::runtime_error& error) {
+                std::cerr << "ipsheet: " << error.what() << "; generating without the cache\n";
+                inputs.knownTextures = {};
+                result = model::generateModel(loaded, inputs);
+            }
+            triangles = result.triangleCount;
+            cell = tools::renderPreview(result, view);
         } catch (const FormatError& error) {
             std::cerr << "ipsheet: generation of seed " << inputs.seed << " failed at byte offset " << error.offset
                       << ": " << error.what() << "\n";
@@ -126,13 +144,19 @@ int modelSheet(const std::vector<u8>& bytes, const std::string& output, u32 seed
             std::copy_n(cell.rgba.begin() + static_cast<std::ptrdiff_t>(static_cast<std::size_t>(y) * cellW * 4), cellW * 4,
                         rgba.begin() + static_cast<std::ptrdiff_t>(
                             ((static_cast<std::size_t>(cellY) * cellH + y) * columns * cellW + static_cast<std::size_t>(cellX) * cellW) * 4));
-        if (cellW >= 96 && cellH >= 32) drawSeed(rgba, columns * cellW, cellX * cellW + 6, cellY * cellH + 6, inputs.seed, 2);
+        if (cellW >= 96 && cellH >= 32) {
+            drawSeed(rgba, columns * cellW, cellX * cellW + 6, cellY * cellH + 6, inputs.seed, 2);
+            // A sheet of levels shows what each level costs: its triangles.
+            if (levels) drawSeed(rgba, columns * cellW, cellX * cellW + 6, (cellY + 1) * cellH - 20, triangles, 2);
+        }
     }
     if (!tools::writePng(output, {columns * cellW, rows * cellH, std::move(rgba)})) {
         std::cerr << "ipsheet: cannot write '" << output << "'\n";
         return 1;
     }
     std::cout << "wrote " << output << " (" << seeds << " seeds, " << columns * cellW << "×" << rows * cellH << ")\n";
+    if (levels || !textureCache.empty())
+        std::cout << "textures: " << cache.generated() << " generated, " << cache.reused() << " reused\n";
     return 0;
 }
 
@@ -145,6 +169,8 @@ int ipsheetMain(int argc, char* argv[]) {
     bool explicitSeeds = false;
     u32 columns = 0; // 0 = seed count
     u32 firstSeed = 0;
+    u32 lod = 0, levels = 0;
+    std::string textureCache;
     std::vector<std::pair<std::string, std::string>> overrides;
     // What each cell shows: the image, its normal image, or the image lit
     // from the upper left through the normal image (a review preview).
@@ -180,6 +206,10 @@ int ipsheetMain(int argc, char* argv[]) {
                       << "  -o PATH        output PNG (default: sheet.png)\n"
                       << "A model (<file.iprop3d>) fills each cell with a preview and its seed:\n"
                       << "  --cell N       cell size in pixels (default 256)\n"
+                      << "  --lod N        level of detail of every cell, 0 (default) to 7\n"
+                      << "  --lods N       a row for each of the levels 0 to N-1, with its\n"
+                      << "                 triangle count, and a column for each seed\n"
+                      << "  --texture-cache DIR  keep textures in DIR and reuse those stored there\n"
                       << "  --view YAW,PITCH  where the camera stands, in degrees (default 35,20)\n"
                       << "  --background COLOR  cell background, #RRGGBB or #RRGGBBAA\n";
             return 0;
@@ -221,6 +251,16 @@ int ipsheetMain(int argc, char* argv[]) {
                 return 1;
             }
             view.width = view.height = cell;
+            if (modelOnly.empty()) modelOnly = arg;
+        } else if (arg == "--lod" || arg == "--lods") {
+            u32& target = arg == "--lod" ? lod : levels;
+            if (!parseU32(next(arg.c_str()), target) || (arg == "--lod" ? lod > model::kMaxLod : levels < 1 || levels > model::kMaxLod + 1)) {
+                std::cerr << "ipsheet: bad " << arg << (arg == "--lod" ? " (expected 0..7)\n" : " (expected 1..8)\n");
+                return 1;
+            }
+            if (modelOnly.empty()) modelOnly = arg;
+        } else if (arg == "--texture-cache") {
+            textureCache = next("--texture-cache");
             if (modelOnly.empty()) modelOnly = arg;
         } else if (arg == "--view") {
             if (!tools::parseView(next("--view"), view)) {
@@ -287,7 +327,11 @@ int ipsheetMain(int argc, char* argv[]) {
             std::cerr << "ipsheet: " << imageOnly << " does not apply to a model\n";
             return 1;
         }
-        return modelSheet(bytes, output, seeds, columns, firstSeed, overrides, view);
+        if (lod && levels) {
+            std::cerr << "ipsheet: --lod and --lods exclude each other\n";
+            return 1;
+        }
+        return modelSheet(bytes, output, seeds, columns, firstSeed, overrides, view, lod, levels, textureCache);
     }
     if (!modelOnly.empty()) {
         std::cerr << "ipsheet: " << modelOnly << " needs a model (.iprop3d)\n";

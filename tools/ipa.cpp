@@ -631,18 +631,19 @@ std::vector<u8> assemble(const std::string& source) {
         instruction.line = lineNumber;
         if (instruction.opcode == Opcode::Texture) {
             // `texture paint 4`, `texture gradient 0`, `texture noise.fbm 0`:
-            // an operation of the page or the mnemonic of a periodic noise.
+            // an operation of the page or the mnemonic of a periodic noise or a
+            // tiled voronoi.
             u32 sub = 256;
             if (words.size() == 3) {
                 for (std::size_t i = 0; i < kTextureOpNames.size(); ++i)
                     if (words[1] == kTextureOpNames[i]) sub = static_cast<u32>(i);
                 if (sub == 256) {
                     const auto* base = findOpcode(words[1]);
-                    if (base != nullptr && periodicNoiseOpcode(base->opcode)) sub = static_cast<u32>(base->opcode);
+                    if (base != nullptr && texturePageOpcode(base->opcode)) sub = static_cast<u32>(base->opcode);
                 }
             }
             if (sub == 256)
-                throw error("texture expects paint, paint.mask, gradient, levels or a periodic noise mnemonic, "
+                throw error("texture expects paint, paint.mask, gradient, levels, a periodic noise or a voronoi mnemonic, "
                             "then an immediate operand");
             instruction.aux = static_cast<u8>(sub);
             words.erase(words.begin() + 1);

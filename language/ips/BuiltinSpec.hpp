@@ -74,6 +74,11 @@ const std::map<std::string, BuiltinSpec>& listMethodSpecs();
 const std::map<std::string, BuiltinSpec>& surfaceMethodSpecs();
 const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::size_t arity);
 const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::span<const ValueType> arguments);
+// The same among the overloads that name a parameter as the call does:
+// `named[i]` is the name argument i was written with, or empty. Two
+// overloads may differ in a name alone, as voronoi's relax and tile do.
+const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::span<const ValueType> arguments,
+                                       std::span<const std::string_view> named);
 // A polygon call without a fixed overload of its arity: poly(color, x0, y0, ...)
 // is variadic, while poly(points, color) lowers through its overload.
 bool variadicPolygon(const BuiltinSpec& spec, std::size_t arity);

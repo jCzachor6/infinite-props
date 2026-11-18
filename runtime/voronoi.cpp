@@ -1,4 +1,5 @@
 #include "iprop/Voronoi.hpp"
+#include "iprop/Texture.hpp"
 #include "iprop/VmInternals.hpp"
 
 #include <array>
@@ -347,6 +348,90 @@ Point rowPoint(const Rectangle& rect,const VoronoiOptions& o,u32 index,u32 count
     const double s=lo+(hi-lo)*phase;
     return {u.x*s+v.x*t,u.y*s+v.y*t};
 }
+// The cells of the first `count` sites of a diagram as a diagram of their
+// own: the regions keep their shape, and a neighbour is counted by its
+// site's index among the `count`. An edge two of the cells share stays one.
+std::shared_ptr<const GeometryData> middle(Execution& ex,const GeometryData& full,Workspace& ws,u32 count) {
+    GeometryBuilder builder(ex,GeometryOrigin::Diagram);
+    ex.spend(1+full.points.size()+full.edges.size());
+    ResourceVector<u32,4> points(full.points.size(),kNoGeometryIndex,ResourceAllocator<u32,4>(ex.resources));
+    ResourceVector<u32,4> edges(full.edges.size(),kNoGeometryIndex,ResourceAllocator<u32,4>(ex.resources));
+    u32 edgeCount=0;
+    for (u32 cell=0;cell<count;++cell) {
+        ex.work();
+        builder.site(full.sites[cell]);
+        const auto& ring=full.rings[full.regions[cell].outer];
+        if (ring.count > ws.uses.size()) invalid(ex,"voronoi cell has too many edges");
+        ex.spend(ring.count);
+        for (u32 k=0;k<ring.count;++k) {
+            ex.work();
+            const auto use=full.uses[ring.begin+k];
+            const auto& edge=full.edges[use.edge];
+            for (const auto point : {edge.first,edge.second})
+                if (points[point] == kNoGeometryIndex) points[point]=builder.point(full.points[point]);
+            const auto a=points[edge.first],b=points[edge.second];
+            if (edges[use.edge] == kNoGeometryIndex) {
+                // The other side is a cell of the middle or a copy of one.
+                const auto other=edge.provenance.source == static_cast<i32>(cell) ? edge.provenance.neighbor : edge.provenance.source;
+                const auto wrapped=other < 0 ? -1 : other%static_cast<i32>(count);
+                edges[use.edge]=builder.edge(std::min(a,b),std::max(a,b),
+                    {edgeCount++,static_cast<i32>(cell),wrapped == static_cast<i32>(cell) ? -1 : wrapped,EdgeOrigin::Diagram});
+            }
+            // The copy keeps the direction; its canonical order may differ.
+            ws.uses[k]={edges[use.edge],use.reversed != (a > b)};
+        }
+        // Neighbours by site, sorted and each once, without the cell itself.
+        u32 neighbors=0;
+        const auto all=full.regionNeighbors(cell);
+        ex.spend(static_cast<u64>(count)*all.size());
+        for (u32 j=0;j<count;++j) {
+            ex.work();
+            if (j == cell) continue;
+            for (const auto neighbor : all) {
+                ex.work();
+                if (static_cast<u32>(neighbor)%count == j) { ws.neighbors[neighbors++]=static_cast<i32>(j); break; }
+            }
+        }
+        builder.region(builder.ring(std::span(ws.uses.data(),ring.count)),static_cast<i32>(cell),{},
+                       std::span(ws.neighbors.data(),neighbors));
+    }
+    return std::move(builder).finish();
+}
+// The diagram of a torus (texture toolkit v1.2): the builder runs on the
+// sites and their eight copies around them, in a rectangle three times as
+// wide and as high, and the cells of the sites themselves are kept. They are
+// the cells of the pattern that repeats with the rectangle; a relaxation
+// moves each site to the centre of such a cell.
+std::shared_ptr<const GeometryData> periodic(Execution& ex,Vec2 origin,Vec2 size,const Rectangle& rect,Workspace& ws,u32 count,const VoronoiOptions& o) {
+    if (count > kMaxTiledSites) invalid(ex,"voronoi count must be in 1..28 with tile");
+    const Rectangle wide(ex,Vec2{origin.x-size.x,origin.y-size.y},Vec2{size.x*3,size.y*3});
+    const double width=static_cast<double>(rect.end.x)-origin.x,height=static_cast<double>(rect.end.y)-origin.y;
+    for (i32 iteration=0;;++iteration) {
+        ex.work();
+        ex.spend(9*static_cast<u64>(count));
+        for (u32 i=0;i<count;++i) {
+            ex.work();
+            // A site on the right or the bottom edge is the one on the left or the top.
+            const auto fold=[](double value,double start,double extent) {
+                const double folded=value-extent*std::floor((value-start)/extent);
+                return folded >= start+extent ? start : folded;
+            };
+            const double x=fold(ws.sites[i].x,origin.x,width),y=fold(ws.sites[i].y,origin.y,height);
+            for (u32 copy=0;copy<9;++copy) {
+                ex.work();
+                // The site itself first, then its copies row by row.
+                static constexpr i8 order[9][2]={{0,0},{-1,-1},{0,-1},{1,-1},{-1,0},{1,0},{-1,1},{0,1},{1,1}};
+                ws.sites[copy*count+i]={static_cast<f32>(x+order[copy][0]*width),static_cast<f32>(y+order[copy][1]*height)};
+            }
+        }
+        checkSites(ex,wide,ws,9*count);
+        auto full=construct(ex,wide,ws,9*count,o);
+        if (iteration == o.relax) return middle(ex,*full,ws,count);
+        ex.spend(count);
+        for (u32 i=0;i<count;++i) { ex.work(); ws.sites[i]=full->regions[i].center; }
+        full.reset();
+    }
+}
 std::shared_ptr<const GeometryData> relax(Execution& ex,const Rectangle& rect,Workspace& ws,u32 count,const VoronoiOptions& o) {
     checkSites(ex,rect,ws,count);
     for (i32 iteration=0;;++iteration) {
@@ -403,9 +488,10 @@ std::shared_ptr<const GeometryData> generatedVoronoi(Execution& ex,Vec2 origin,V
         }
         if (!accepted) invalid(ex,"voronoi generated sites collide after 32 attempts");
     }
+    if (o.tile) { checkSites(ex,rect,ws,count); return periodic(ex,origin,size,rect,ws,count,o); }
     return relax(ex,rect,ws,count,o);
 }
-std::shared_ptr<const GeometryData> explicitVoronoi(Execution& ex,Vec2 origin,Vec2 size,std::span<const Vec2> sites,i32 iterations) {
+std::shared_ptr<const GeometryData> explicitVoronoi(Execution& ex,Vec2 origin,Vec2 size,std::span<const Vec2> sites,i32 iterations,bool tile) {
     ex.resources.resourceLifetime()->location=ex.activeInstruction;
     const Rectangle rect(ex,origin,size);
     if (sites.empty() || sites.size() > kMaxGeometrySites) invalid(ex,"voronoi sites count must be in 1..256");
@@ -415,20 +501,27 @@ std::shared_ptr<const GeometryData> explicitVoronoi(Execution& ex,Vec2 origin,Ve
     Workspace ws;
     for (std::size_t i=0;i<sites.size();++i) { ex.work(); ws.sites[i]=sites[i]; }
     VoronoiOptions options; options.relax=iterations;
+    if (tile) {
+        checkSites(ex,rect,ws,static_cast<u32>(sites.size()));
+        return periodic(ex,origin,size,rect,ws,static_cast<u32>(sites.size()),options);
+    }
     return relax(ex,rect,ws,static_cast<u32>(sites.size()),options);
 }
-bool stepVoronoi(Execution& ex,Instruction ins) {
-    switch (ins.opcode) {
+namespace {
+// One voronoi opcode from its stack, plain or tiled.
+void diagram(Execution& ex,Opcode opcode,bool tile) {
+    switch (opcode) {
     case Opcode::Voronoi: case Opcode::VoronoiConfig: case Opcode::VoronoiMetric: case Opcode::VoronoiRows: {
         VoronoiOptions o;
-        if (ins.opcode == Opcode::VoronoiRows) { o.rowOffset=ex.popF32();o.rowJitter=ex.popF32();o.rowBias=ex.popF32(); }
-        if (ins.opcode == Opcode::VoronoiRows || ins.opcode == Opcode::VoronoiMetric) { o.direction=ex.popVec2();o.anisotropy=ex.popF32(); }
-        if (ins.opcode != Opcode::Voronoi) { o.relax=ex.popI32();o.jitter=ex.popF32();o.method=ex.popI32(); }
+        o.tile=tile;
+        if (opcode == Opcode::VoronoiRows) { o.rowOffset=ex.popF32();o.rowJitter=ex.popF32();o.rowBias=ex.popF32(); }
+        if (opcode == Opcode::VoronoiRows || opcode == Opcode::VoronoiMetric) { o.direction=ex.popVec2();o.anisotropy=ex.popF32(); }
+        if (opcode != Opcode::Voronoi) { o.relax=ex.popI32();o.jitter=ex.popF32();o.method=ex.popI32(); }
         o.seed=ex.popI32();o.count=ex.popI32();const auto size=ex.popVec2(),origin=ex.popVec2();
         ex.push(Diagram2dValue{generatedVoronoi(ex,origin,size,o)}); break;
     }
-    case Opcode::VoronoiSites: case Opcode::VoronoiSitesRelax: {
-        const auto iterations=ins.opcode == Opcode::VoronoiSitesRelax ? ex.popI32() : 0;
+    default: {
+        const auto iterations=opcode == Opcode::VoronoiSitesRelax ? ex.popI32() : 0;
         const auto sites=ex.popHandle<ListValue>("voronoi sites");
         if (sites.type != ValueType::list(ValueType::Vec2)) ex.trap("voronoi sites must be list<vec2>",ErrorReason::StackType);
         const auto size=ex.popVec2(),origin=ex.popVec2();
@@ -443,9 +536,21 @@ bool stepVoronoi(Execution& ex,Instruction ins) {
             if (!p) ex.trap("voronoi sites element must be vec2",ErrorReason::StackType);
             points[i]=*p;
         }
-        ex.push(Diagram2dValue{explicitVoronoi(ex,origin,size,std::span(points.data(),sites.data->elements.size()),iterations)});
+        ex.push(Diagram2dValue{explicitVoronoi(ex,origin,size,std::span(points.data(),sites.data->elements.size()),iterations,tile)});
         break;
     }
+    }
+}
+} // namespace
+void tiledVoronoiInstruction(Execution& ex,Opcode base) {
+    const auto tile=ex.popI32();
+    if (tile != 0 && tile != 1) invalid(ex,"voronoi tile must be 0 or 1");
+    diagram(ex,base,tile != 0);
+}
+bool stepVoronoi(Execution& ex,Instruction ins) {
+    switch (ins.opcode) {
+    case Opcode::Voronoi: case Opcode::VoronoiConfig: case Opcode::VoronoiMetric: case Opcode::VoronoiRows:
+    case Opcode::VoronoiSites: case Opcode::VoronoiSitesRelax: diagram(ex,ins.opcode,false); break;
     case Opcode::DiagramCount: case Opcode::DiagramSite: case Opcode::DiagramNeighbors: {
         const auto index=ins.opcode == Opcode::DiagramCount ? 0 : ex.popI32();
         const auto d=ex.popHandle<Diagram2dValue>("diagram2d");

@@ -76,6 +76,9 @@ enum class Op : u8 {
     SkinBlend = 0x7A,
     SkinRegion = 0x7B,
 
+    // The level of detail the host asked for (M5).
+    ModelLod = 0x90,
+
     // 3D outputs (M3): the operand is the slot.
     OutPoint3d = 0x91,
     OutBox3d = 0x92,

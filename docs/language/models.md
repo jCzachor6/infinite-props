@@ -35,8 +35,8 @@ normal and material maps; modifiers such as `skin.fit`, `skin.blend` (glass)
 and `skin.region` (one window of a shared sheet) return changed copies, and
 `alias.name` reads a constant the skin's asset declares. `output point3d` and
 `output box3d` hand the game points and colliders, and `alias.render(seed)`
-builds another render asset as a part. Everything else works as in a draw
-asset: inputs, constants, palettes, helpers, loops, named seeds and random
+builds another render asset as a part, and `model.lod()` is the level of
+detail the game asks for. Everything else works as in a draw asset: inputs, constants, palettes, helpers, loops, named seeds and random
 ranges. Drawing does not: a model has no canvas.
 
 ## A render asset
@@ -596,6 +596,37 @@ is its own, for its use as a model.
 <!-- example: ../../examples/language/model-leg.ips -->
 <!-- example: ../../examples/language/errors/model-part-scale.ips -->
 <!-- example: ../../examples/language/traps/model-part-read.ips -->
+
+## Levels of detail
+
+A game that shows a prop far away does not need all of it. It asks for a
+level of detail when it generates the model, and the model reads it.
+
+### model.lod
+<!-- builtin: model.lod -->
+
+Returns the level the game asked for: 0, the default, is the whole model,
+and a game may ask for up to 7. Build fewer sides and leave small parts out
+as the level grows: `sides = max(16 >> model.lod(), 4)`, or
+`if (model.lod() < 2) { rivets(steel) }`.
+
+Every level must be the same prop. Make every roll before the level is read,
+or from a named seed of its own, so that a level changes no random number:
+then the height, the colours and the outputs are equal on every level, and
+so are the textures, which the game generates once and shares between the
+levels. A skin may still be smaller far away:
+`wood.draw(s, size = {64 >> model.lod(), 64 >> model.lod()})` is another,
+smaller texture.
+
+A game generates the nearest level of every prop first; the farther levels
+then find their textures made. `ipsheet model.iprop3d --lods 3` draws the
+levels of each seed under one another with their triangle counts, and
+`ipgen --lod 2` generates one. The [hydrant](../../examples/models/hydrant.ips)
+drops its bolts, then its outlets, and stands on
+[paving](../../examples/models/skins/textures/paving.ips) cut from a Voronoi
+diagram [that repeats](textures.md#stones-that-repeat).
+
+<!-- example: ../../examples/language/model-lod.ips -->
 
 ## Writing good models
 

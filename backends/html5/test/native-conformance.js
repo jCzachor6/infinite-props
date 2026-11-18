@@ -353,7 +353,7 @@ function run(iprop, toolsDir, geometryProbes = {}) {
         for (const entry of GOLDEN) {
             compare(path.join(__dirname, "assets", entry.file), entry.seed, entry);
         }
-        for (const skin of ["planks", "stone", "enamel", "cloth"]) {
+        for (const skin of ["planks", "stone", "enamel", "cloth", "paving"]) {
             const file = path.join(temporary, skin + "-skin.iprop");
             execFileSync(tool("ipc"), [path.join(repo, "examples/models/skins/textures", skin + ".ips"), "-o", file]);
             compare(file, 42);

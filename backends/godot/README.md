@@ -211,7 +211,20 @@ change in any release until the models contract is frozen.
 - **Shared textures** — meshes of one `IpropModel` share a GPU texture for
   each texture key and image kind, across generations; a texture that no mesh
   holds any more is dropped at the next `generate`. `clear_texture_cache()`
-  stops the sharing, and `get_cached_texture_count()` reports it.
+  stops the sharing, and `get_cached_texture_count()` reports it. Such a
+  texture is not generated again either: the next generation is charged what
+  it cost and takes its images from the model, `reused_texture_count` says
+  how many it took, and a texture's dictionary has `reused`, `fuel` and
+  `work`.
+- **Many props** — `generate(seed, limits, lod)` takes the level of detail
+  the model reads with `model.lod()`, 0 to 7. `generate_async(seed, limits,
+  lod)` runs the generation on a thread of the `WorkerThreadPool` and returns
+  a job number; the signal `generated(job, mesh)` follows on the main thread,
+  with a null mesh after a failure. `bake.gd` saves a scene with a
+  `MeshInstance3D` for each level and its range of distances, with nothing
+  left to generate: `godot --headless --path . --script res://bake.gd --
+  model.iprop3d prop.scn 7 3`, or `Bake.bake(model, seed, levels, distances)`
+  from a script.
 - **The generation's own numbers** stay available after `generate`, exactly
   as generated (model units, counterclockwise triangles): `surfaces` is a
   list of `{index, texture, roughness, metallic, emission, alpha_mode,
@@ -239,7 +252,12 @@ change in any release until the models contract is frozen.
   output, named after it (`name_0`, `name_1` … in a list), and with
   `colliders` (on by default) a `StaticBody3D` named `Colliders` holding a
   `CollisionShape3D` with a `BoxShape3D` for every box output. These children
-  are rebuilt with the mesh and are not saved with a scene.
+  are rebuilt with the mesh and are not saved with a scene. With `lod_levels`
+  above 1 it shows level 0 itself and a child `Lod1`, `Lod2` … for each
+  further level, each within its visibility range: `lod_distances` gives the
+  distances in metres at which the next level takes over (10 m, then 2.5
+  times more a level, where it gives none). With `threaded` the meshes are
+  generated on the `WorkerThreadPool` and appear as they finish.
 
 `model-demo.tscn` shows six chairs from `assets/chair.iprop3d`, each from its
 own seed, turning under a lamp that follows the mouse: **Space** rolls new

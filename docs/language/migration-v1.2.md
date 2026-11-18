@@ -67,6 +67,7 @@ Draw assets also gain the [texture toolkit](textures.md):
 | `surface.multiply`, `.screen`, `.overlay`, `.add`, `.subtract` | Blend modes of `surface.paint` |
 | `opacity = 0.3` in `surface.paint` | A paint faded by a number |
 | `image.gradient(colors)`, `image.levels(black, white, gamma)` | A colour for every brightness; contrast |
+| `tile = true` on `voronoi` | A diagram whose cells cross the edges, for 1 to 28 cells |
 
 `tile`, `period`, `opacity`, `gradient` and `levels` are not reserved: they
 are argument and method names. A call on an import alias is never a layer

@@ -51,15 +51,23 @@ The [texture toolkit](language/textures.md) is covered by the native suite
 blends, the filters, periodic noise, fuel and the assembler), by
 `texture_reference`, an independent oracle in Python for the blend, filter
 and periodic noise arithmetic, by the native/WASM runner on the handbook
-example and the four tiling skins, and by the pixel corpus.
+example and the five tiling skins, and by the pixel corpus. The `[voronoi]`
+tests hold a diagram that repeats to its properties: every pixel of the tile
+in exactly one cell, through the edges too.
 [Models](language/models.md), a preview, are covered by the native suite
 (`model` and the four `capi3d_*` tests), by the native/WASM runner, which
 compares every vertex, index, texture and output of seven models between the two
 runtimes, by the three.js adapter tests of the website job and, where Godot
-is built, by `godot_models`. `model_corpus` pins 78 generations of the
+is built, by `godot_models` and `godot_scale`. The `[scale]` tests cover what
+a scene of many props needs: levels of detail, textures the host holds
+(the same geometry, counters and failures with them as without), the file
+of a stored texture and eight threads on one model; the native/WASM runner
+adds the texture cache and the pool of workers of the JavaScript API.
+`model_corpus` pins 80 generations of the
 showcase props, the handbook's models, a model of edge cases, a model of
 material maps, glass and windows, a model of paths, blocks, outputs and parts
-and a bench in tiling skins: the
+a bench in tiling skins and a hydrant on paving from a diagram that
+repeats: the
 SHA-256 of every compiled file, surface array, texture and texture map in
 `tests/fixtures/model-corpus-v1.2.json`. Every native runner must give
 those bytes, and the WASM runner checks the same file. A runner that differs

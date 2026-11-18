@@ -11,6 +11,7 @@
 #include "iprop/model/Ops.hpp"
 
 #include <map>
+#include <optional>
 #include <span>
 #include <string>
 #include <vector>
@@ -96,10 +97,29 @@ u64 fnv1a64(std::span<const u8> bytes, u64 state = 0xcbf29ce484222325ull);
 
 // ---- generation -------------------------------------------------------------
 
+// The coarsest level of detail a host may ask for (M5); 0 is full detail.
+inline constexpr u32 kMaxLod = 7;
+
+// A texture the host already holds (M5): its key, what generating it cost
+// and which auxiliary images it published, as a result reported them.
+struct KnownTexture {
+    u64 key = 0;
+    u64 fuel = 0, work = 0;
+    u32 kinds = 0; // bit k: an image of AuxImageKind k
+};
+
 struct ModelInputs {
     u32 seed = 0;
     std::map<std::string, UniformValue> uniforms; // root inputs by name
     ExecutionLimits limits{};
+    // What model.lod() returns, 0..kMaxLod.
+    u32 lod = 0;
+    // Textures not to generate again. The generation charges each its
+    // recorded fuel and work, so its result, counters and failures are those
+    // of a generation without the list; only the pixels are left out. The
+    // first record of a key counts. The caller keeps the list alive for the
+    // call and the textures it names until it has used the result.
+    std::span<const KnownTexture> knownTextures;
 };
 
 // Blend (v1.2, M2) mixes the texture over what is behind it by its alpha.
@@ -112,7 +132,18 @@ struct ModelTexture {
     Canvas color;                         // RGBA8, rows from the top
     std::vector<AuxImage> images;         // what the program published
     bool repeats = false;                 // a triangle uses it with the repeat mapping
+    // M5: what generating it cost, the kinds of its images (bit k for
+    // AuxImageKind k) and whether the host named it known. A reused texture
+    // has its size and no pixels: the host holds them under the same key.
+    u64 fuel = 0, work = 0;
+    u32 kinds = 0;
+    bool reused = false;
 };
+
+// The record a host keeps to name a texture known in a later generation.
+inline KnownTexture knownTexture(const ModelTexture& texture) {
+    return {texture.key, texture.fuel, texture.work, texture.kinds};
+}
 
 // The triangles of one host material, in emission order.
 struct ModelSurface {
@@ -166,5 +197,50 @@ ModelResult generateModel(const LoadedModel& model, const ModelInputs& inputs);
 // its declared binary type. `inputs.uniforms` must be empty.
 ModelResult generateModel(const LoadedModel& model, const ModelInputs& inputs,
                           std::span<const UniformValue> rootValues);
+
+// ---- textures across generations (M5) ---------------------------------------
+
+// What a stored texture was made by: the product version and a revision that
+// changes whenever the pixels, fuel or work of a 2D program may. A texture
+// stored under another stamp is not used.
+inline constexpr u32 kTextureRevision = 1;
+u64 textureStamp();
+
+// One texture as the bytes of a file (IPTX): the stamp, the key, its cost and
+// every image. A reused texture has no pixels and cannot be packed
+// (std::invalid_argument).
+std::vector<u8> packTexture(const ModelTexture& texture);
+// The texture packTexture wrote. Throws FormatError for damaged bytes and
+// returns nothing for bytes of another stamp.
+std::optional<ModelTexture> unpackTexture(std::span<const u8> bytes);
+// The record of a stored texture from the first kTextureHeaderBytes of its
+// file, without reading its pixels: nothing for another stamp or for bytes
+// that are no IPTX header. The file is verified when it is unpacked.
+inline constexpr std::size_t kTextureHeaderBytes = 64;
+std::optional<KnownTexture> peekTexture(std::span<const u8> header);
+// The name of a texture's file: its key as sixteen hexadecimal digits and
+// ".iptx".
+std::string textureFileName(u64 key);
+
+// The textures a host keeps between generations, by key. It is not
+// synchronized: one thread at a time, or under a lock of the host's.
+class TextureStore {
+public:
+    // For ModelInputs::knownTextures. Valid until the store changes.
+    std::span<const KnownTexture> known() const { return known_; }
+    std::size_t size() const { return textures_.size(); }
+    const ModelTexture* find(u64 key) const;
+    // Keeps a texture with its pixels and returns whether it was new; one
+    // already held under the key stays.
+    bool add(ModelTexture texture);
+    // After a generation: keeps every new texture and gives every reused one
+    // its pixels back, so the result is complete. Throws std::logic_error
+    // when the result reuses a texture the store does not hold.
+    void complete(ModelResult& result);
+
+private:
+    std::vector<KnownTexture> known_;
+    std::map<u64, ModelTexture> textures_;
+};
 
 } // namespace iprop::model

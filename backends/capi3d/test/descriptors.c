@@ -23,7 +23,9 @@ static const field model_fields[] = {
 static const field skin_fields[] = {
     FIELD(iprop3d_skin_program_info, program_index), FIELD(iprop3d_skin_program_info, width),
     FIELD(iprop3d_skin_program_info, height), NAME(iprop3d_skin_program_info)};
-static const field options_fields[] = {FIELD(iprop3d_generate_options, seed)};
+static const field options_fields[] = {
+    FIELD(iprop3d_generate_options, seed), FIELD(iprop3d_generate_options, lod),
+    FIELD(iprop3d_generate_options, known_textures), FIELD(iprop3d_generate_options, known_texture_count)};
 static const field result_fields[] = {
     FIELD(iprop3d_result_info, bounds_min), FIELD(iprop3d_result_info, bounds_max), FIELD(iprop3d_result_info, size),
     FIELD(iprop3d_result_info, units_per_meter), FIELD(iprop3d_result_info, vertex_count),
@@ -52,7 +54,8 @@ static const field texture_fields[] = {
     FIELD(iprop3d_texture_view, byte_count), FIELD(iprop3d_texture_view, row_stride),
     FIELD(iprop3d_texture_view, pixel_format), FIELD(iprop3d_texture_view, alpha_mode),
     FIELD(iprop3d_texture_view, origin), FIELD(iprop3d_texture_view, image_count),
-    FIELD(iprop3d_texture_view, pixels)};
+    FIELD(iprop3d_texture_view, pixels), FIELD(iprop3d_texture_view, fuel), FIELD(iprop3d_texture_view, work),
+    FIELD(iprop3d_texture_view, image_kinds), FIELD(iprop3d_texture_view, reused)};
 static const field image_fields[] = {
     FIELD(iprop_aux_image_view_ex, image_index), FIELD(iprop_aux_image_view_ex, kind),
     FIELD(iprop_aux_image_view_ex, source), FIELD(iprop_aux_image_view_ex, width),
@@ -183,7 +186,7 @@ int main(int argc, char** argv) {
     iprop3d_model* outputs_model = NULL;
     iprop3d_generate_options options;
     iprop3d_result_info a, b;
-    struct { uint32_t struct_size, flags, seed, tail; } wide;
+    struct { iprop3d_generate_options known; uint32_t tail[2]; } wide;
     uint32_t only_size = 4;
     CHECK(argc == 2);
     CHECK(snprintf(path, sizeof(path), "%s/crate.iprop3d", argv[1]) < (int)sizeof(path));
@@ -228,7 +231,7 @@ int main(int argc, char** argv) {
     CHECK(iprop3d_result_query(zero, &a, NULL) == IPROP_EX_OK && iprop3d_result_query(prefix, &b, NULL) == IPROP_EX_OK);
     CHECK(memcmp(&a, &b, sizeof(a)) == 0);
     iprop3d_result_free(prefix); prefix = NULL;
-    wide.struct_size = sizeof(wide); wide.flags = 0; wide.seed = 0; wide.tail = 0xdeadbeefu;
+    memset(&wide, 0, sizeof(wide)); wide.known.struct_size = sizeof(wide); wide.tail[0] = wide.tail[1] = 0xdeadbeefu;
     CHECK(iprop3d_generate(loaded, (const iprop3d_generate_options*)(const void*)&wide, NULL, NULL, &prefix, NULL) == IPROP_EX_OK);
     CHECK(iprop3d_result_query(prefix, &b, NULL) == IPROP_EX_OK && memcmp(&a, &b, sizeof(a)) == 0);
     iprop3d_result_free(prefix); prefix = NULL;

@@ -175,6 +175,14 @@ the new ones:
     <img src="examples/models/bench-sheet.png" alt="Eight benches from one source: plank seats on stone blocks or on a painted steel frame, with or without a back and a blue cushion, the paint rusted differently on each." width="1024">
 </p>
 
+A game asks for a level of detail, and the model builds less: three levels of
+four hydrants, each with its triangle count, on paving cut from a diagram
+that repeats. The levels share their textures, which are generated once:
+
+<p align="center">
+    <img src="examples/models/hydrant-sheet.png" alt="Four red fire hydrants on cobbled paving, each drawn three times: whole, with fewer sides and no bolts, and as a six-sided post without outlets, from about 1400 triangles down to 132." width="1024">
+</p>
+
 Models run in the browser and in Godot today. They are a preview: the language and the
 `.iprop3d` format may still change. Start with the
 [models chapter](docs/language/models.md).

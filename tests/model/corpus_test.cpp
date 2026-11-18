@@ -24,6 +24,7 @@
 #include "ips/SourceText.hpp"
 #include "model_tools.hpp"
 
+#include <cstring>
 #include <algorithm>
 #include <bit>
 #include <cstdio>
@@ -138,6 +139,10 @@ const std::vector<Case>& cases() {
         {"examples/models/bench.ips", 1, {}},
         {"examples/models/bench.ips", 2, {}},
         {"examples/models/bench.ips", 5, {{"paint", "#7a3b2e"}, {"dye", "#6b2f3a"}}},
+        // A level of detail and a skin of a tiled Voronoi diagram (M5); the
+        // corpus pins level 0, the levels are compared in [scale].
+        {"examples/models/hydrant.ips", 1, {}},
+        {"examples/models/hydrant.ips", 4, {{"paint", "#2f6f4a"}}},
     };
     return list;
 }
@@ -332,6 +337,44 @@ std::string fileName(std::string label) {
 }
 
 } // namespace
+
+// The showcase model with levels of detail (M5): no level changes a draw, so
+// the outputs and the textures of a seed are the same at every level, and
+// each level has fewer triangles than the one before.
+TEST_CASE("the hydrant is one prop at every level of detail", "[scale]") {
+    SourceCompilationOptions options;
+    const auto compiled = compileSource((root / "examples/models/hydrant.ips").generic_string(), [](std::string_view path) {
+        return readText(std::filesystem::path(std::string(path)));
+    }, options);
+    REQUIRE(compiled.succeeded());
+    const auto loaded = model::loadModel(compiled.bytes);
+    model::validateModel(loaded);
+    for (const u32 seed : {1u, 4u, 9u}) {
+        std::vector<model::ModelResult> levels;
+        for (u32 lod = 0; lod < 3; ++lod) {
+            model::ModelInputs inputs;
+            inputs.seed = seed;
+            inputs.lod = lod;
+            levels.push_back(model::generateModel(loaded, inputs));
+        }
+        for (u32 lod = 1; lod < 3; ++lod) {
+            INFO("seed " << seed << " level " << lod);
+            CHECK(levels[lod].triangleCount < levels[lod - 1].triangleCount);
+            REQUIRE(levels[lod].outputs.size() == levels[0].outputs.size());
+            for (std::size_t o = 0; o < levels[0].outputs.size(); ++o) {
+                CHECK(levels[lod].outputs[o].points == levels[0].outputs[o].points);
+                REQUIRE(levels[lod].outputs[o].boxes.size() == levels[0].outputs[o].boxes.size());
+                for (std::size_t b = 0; b < levels[0].outputs[o].boxes.size(); ++b)
+                    CHECK(std::memcmp(&levels[lod].outputs[o].boxes[b], &levels[0].outputs[o].boxes[b], sizeof(model::ModelBox)) == 0);
+            }
+            REQUIRE(levels[lod].textures.size() == levels[0].textures.size());
+            for (std::size_t t = 0; t < levels[0].textures.size(); ++t) {
+                CHECK(levels[lod].textures[t].key == levels[0].textures[t].key);
+                CHECK(levels[lod].textures[t].color.pixels == levels[0].textures[t].color.pixels);
+            }
+        }
+    }
+}
 
 TEST_CASE("the model corpus gives the pinned bytes", "[corpus]") {
     std::vector<Generated> generated;

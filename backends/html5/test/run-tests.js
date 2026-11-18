@@ -71,8 +71,10 @@ async function main() {
         const flat = await require(path.join(root, "js", "api.js"))(() => Promise.resolve(Module3d)).create("");
         const golden = await conformance.run(flat, fetchBytes);
         if (!golden.passed) throw new Error("the model module fails the 2D golden entries: " + golden.failures.join("; "));
-        const iprop3d = await require(path.join(root, "js", "api3d.js"))(() => Promise.resolve(Module3d)).create("");
+        const factory = require(path.join(root, "js", "api3d.js"))(() => Promise.resolve(Module3d));
+        const iprop3d = await factory.create("");
         models = require("./model-conformance.js").run(iprop3d, toolsDir);
+        models.pool = await require("./model-conformance.js").pool(iprop3d, factory, toolsDir);
     }
     report({ passed: result.passed && native.passed, golden: result, native, compression, executionLimits: { ...work, worker },
         ...(models ? { models } : {}) });
@@ -182,7 +184,8 @@ async function main() {
             " exact generations of " + models.vertices + " vertices and " + models.textures + " textures; " +
             models.skins + " skins equal to the 2D generate of the same module; " + models.encodings + " encodings; " +
             models.traps + " matching failures; " + models.corpus + " corpus cases equal to their " + models.pins +
-            " native pins; 2D golden entries hold in the model module)");
+            " native pins; " + models.levels + " levels of detail and " + models.reused + " kept textures; a pool of workers with " +
+            models.pool.generations + " generations; 2D golden entries hold in the model module)");
         else console.log("native/WASM models: not built (no iprop3d.js in " + buildDir + ")");
         if (publishCorpus) publishCorpus();
         process.exit(0);

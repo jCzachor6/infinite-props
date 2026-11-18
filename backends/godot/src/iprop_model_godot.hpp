@@ -9,6 +9,12 @@
 // IpropModelInstance3D (MeshInstance3D): a convenience node holding an
 // IpropModel and a seed; refresh() regenerates the mesh.
 //
+// For scenes with many props (M5): generate() takes a level of detail, the
+// textures a model has made are not generated again while a mesh still
+// wears them, generate_async() runs the generation on a thread of the
+// WorkerThreadPool, and the node shows several levels as children with
+// visibility ranges.
+//
 // A model and Godot agree on everything but two conventions, which the mesh
 // adapts and the raw arrays do not: Godot's front faces are clockwise, so
 // every triangle's index order is reversed, and a scene is in metres, so
@@ -19,6 +25,8 @@
 #pragma once
 
 #include <map>
+#include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -32,6 +40,7 @@
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/object_id.hpp>
 #include <godot_cpp/variant/array.hpp>
+#include <godot_cpp/variant/packed_float32_array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/variant.hpp>
@@ -59,6 +68,25 @@ class IpropModel : public godot::Resource {
     // share them. An entry that no mesh holds any more is dropped at the
     // next generate.
     std::map<std::string, godot::Ref<godot::ImageTexture>> texture_cache_;
+    // What the model holds of each texture in that cache (M5): the record a
+    // later generation takes instead of generating it, and its dictionary.
+    struct Held {
+        uint64_t key = 0, fuel = 0, work = 0;
+        uint32_t kinds = 0;
+        godot::Dictionary entry;
+    };
+    std::map<std::string, Held> held_;
+    int64_t reused_textures_ = 0, lod_ = 0;
+    // One generation from its request to its mesh. A threaded one waits in
+    // jobs_ and keeps its model alive.
+    struct Job;
+    std::map<int64_t, std::unique_ptr<Job>> jobs_;
+    mutable std::mutex jobs_mutex_;
+    int64_t next_job_ = 0;
+    bool begin(Job& job, int64_t seed, const godot::Dictionary& limits, int64_t lod);
+    godot::Ref<godot::ArrayMesh> finish(Job& job);
+    void run_job(int64_t id);
+    void finish_job(int64_t id);
 
 protected:
     static void _bind_methods();
@@ -89,7 +117,18 @@ public:
     // IpropAsset.generate (work_limit, timeout_ns, cancellation) and covers
     // the model and every texture it generates. A failure returns null, sets
     // last_error and keeps the previous generation's properties.
-    godot::Ref<godot::ArrayMesh> generate(int64_t seed, const godot::Dictionary& limits = godot::Dictionary());
+    // `lod` (M5) is the level of detail the model reads with model.lod(): 0
+    // is the whole model, 7 the coarsest.
+    godot::Ref<godot::ArrayMesh> generate(int64_t seed, const godot::Dictionary& limits = godot::Dictionary(),
+                                          int64_t lod = 0);
+    // The same generation on a thread of the WorkerThreadPool (M5), with the
+    // inputs of the moment of the call. Returns a job number at once, or -1
+    // for an invalid request (last_error tells why). The signal
+    // `generated(job, mesh)` follows on the main thread; its mesh is null
+    // after a failure, and last_error and the properties below are then
+    // those of that job. A model cannot be loaded while jobs are pending.
+    int64_t generate_async(int64_t seed, const godot::Dictionary& limits = godot::Dictionary(), int64_t lod = 0);
+    int64_t get_pending_jobs() const;
 
     // The nominal size the source declares, in model units, and the units to
     // a metre.
@@ -110,8 +149,14 @@ public:
     // asset_height, repeats, image, images, normal}: `image` is the RGBA8
     // colour image, `images` its auxiliary images as {index, kind, source,
     // name, image} and `normal` the normal map among them, or null. `key` is
-    // sixteen hex digits: equal keys mean equal pixels.
+    // sixteen hex digits: equal keys mean equal pixels. `fuel` and `work`
+    // are what generating it cost, and `reused` (M5) tells that this
+    // generation did not make it: the model still held it from an earlier
+    // one, and the images are those.
     godot::Array get_textures() const { return textures_; }
+    // How many textures of the latest generation were reused, and its level.
+    int64_t get_reused_texture_count() const { return reused_textures_; }
+    int64_t get_lod() const { return lod_; }
     // The model's outputs (models v1.2, M3), in declaration order and in
     // metres: {index, name, kind ("point3d" or "box3d"), list, points
     // (PackedVector3Array) or boxes ([{transform: Transform3D, size:
@@ -128,7 +173,7 @@ public:
     godot::Dictionary get_last_error() const { return last_error_; }
     // The GPU textures shared between generations, by texture key and image
     // kind. clear_texture_cache stops sharing with the meshes made so far.
-    void clear_texture_cache() { texture_cache_.clear(); }
+    void clear_texture_cache() { texture_cache_.clear(); held_.clear(); }
     int64_t get_cached_texture_count() const { return static_cast<int64_t>(texture_cache_.size()); }
 };
 
@@ -143,6 +188,16 @@ class IpropModelInstance3D : public godot::MeshInstance3D {
     bool markers_ = true, colliders_ = true;
     std::vector<godot::ObjectID> output_nodes_;
     void rebuild_outputs();
+    // Levels of detail (M5): the node shows level 0 and a child for each
+    // further level, each within its visibility range. Threaded, the meshes
+    // arrive one by one as their generations finish.
+    int64_t lod_levels_ = 1;
+    godot::PackedFloat32Array lod_distances_;
+    bool threaded_ = false;
+    std::vector<godot::ObjectID> lod_nodes_;
+    std::map<int64_t, int64_t> lod_jobs_; // a pending job and its level
+    void apply_level(int64_t level, const godot::Ref<godot::ArrayMesh>& mesh);
+    void on_generated(int64_t job, const godot::Ref<godot::ArrayMesh>& mesh);
 
 protected:
     static void _bind_methods();
@@ -167,6 +222,19 @@ public:
     bool get_markers() const { return markers_; }
     void set_colliders(bool enabled);
     bool get_colliders() const { return colliders_; }
+    // How many levels of detail the node shows, 1 (the default) to 8, and
+    // the distances in metres at which each next level takes over: level i
+    // shows from lod_distances[i - 1] to lod_distances[i]. Missing distances
+    // are 10 m for the first and 2.5 times the one before for the rest.
+    void set_lod_levels(int64_t levels);
+    int64_t get_lod_levels() const { return lod_levels_; }
+    void set_lod_distances(const godot::PackedFloat32Array& distances);
+    godot::PackedFloat32Array get_lod_distances() const { return lod_distances_; }
+    // The distance at which level `level` ends, 0 for the last one.
+    double lod_distance(int64_t level) const;
+    // Generate on the WorkerThreadPool instead of blocking the frame.
+    void set_threaded(bool enabled);
+    bool get_threaded() const { return threaded_; }
 };
 
 } // namespace iprop_godot

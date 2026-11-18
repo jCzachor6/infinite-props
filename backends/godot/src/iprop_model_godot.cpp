@@ -15,6 +15,8 @@
 #include <godot_cpp/classes/image_texture.hpp>
 #include <godot_cpp/classes/mesh.hpp>
 #include <godot_cpp/classes/standard_material3d.hpp>
+#include <godot_cpp/classes/worker_thread_pool.hpp>
+#include <godot_cpp/variant/callable.hpp>
 #include <godot_cpp/variant/packed_float32_array.hpp>
 #include <godot_cpp/variant/packed_int32_array.hpp>
 #include <godot_cpp/variant/packed_vector2_array.hpp>
@@ -63,6 +65,29 @@ template<class Packed, class T> bool copyInto(Packed& out, const T* data, size_t
 
 } // namespace
 
+// One generation from its request to its mesh (M5). Only iprop3d_generate
+// runs on another thread, with nothing of Godot's.
+struct IpropModel::Job {
+    int64_t id = 0, lod = 0;
+    iprop3d_generate_options options{};
+    iprop_execution_limits_ex execution{};
+    Ref<IpropCancellation> cancellation;
+    // What the generation is told the model holds, kept until it is read.
+    std::vector<iprop3d_known_texture> known;
+    std::map<std::string, Held> held;
+    std::vector<Ref<ImageTexture>> keep;
+    iprop_parameters* parameters = nullptr; // a threaded job's own copy
+    iprop3d_result* result = nullptr;
+    iprop_status_ex status = IPROP_EX_OK;
+    Failure failure;
+    Ref<IpropModel> self;
+
+    ~Job() {
+        iprop3d_result_free(result);
+        iprop_parameters_free(parameters);
+    }
+};
+
 // ---- IpropModel -----------------------------------------------------------
 
 void IpropModel::_bind_methods() {
@@ -71,7 +96,16 @@ void IpropModel::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_inputs"), &IpropModel::get_inputs);
     ClassDB::bind_method(D_METHOD("set_input", "name", "value"), &IpropModel::set_input);
     ClassDB::bind_method(D_METHOD("reset_inputs"), &IpropModel::reset_inputs);
-    ClassDB::bind_method(D_METHOD("generate", "seed", "limits"), &IpropModel::generate, DEFVAL(Dictionary()));
+    ClassDB::bind_method(D_METHOD("generate", "seed", "limits", "lod"), &IpropModel::generate, DEFVAL(Dictionary()), DEFVAL(0));
+    ClassDB::bind_method(D_METHOD("generate_async", "seed", "limits", "lod"), &IpropModel::generate_async,
+                         DEFVAL(Dictionary()), DEFVAL(0));
+    ClassDB::bind_method(D_METHOD("get_pending_jobs"), &IpropModel::get_pending_jobs);
+    ClassDB::bind_method(D_METHOD("_run_job", "job"), &IpropModel::run_job);
+    ClassDB::bind_method(D_METHOD("_finish_job", "job"), &IpropModel::finish_job);
+    ClassDB::bind_method(D_METHOD("get_reused_texture_count"), &IpropModel::get_reused_texture_count);
+    ClassDB::bind_method(D_METHOD("get_lod"), &IpropModel::get_lod);
+    ADD_SIGNAL(MethodInfo("generated", PropertyInfo(Variant::INT, "job"),
+                          PropertyInfo(Variant::OBJECT, "mesh", PROPERTY_HINT_RESOURCE_TYPE, "ArrayMesh")));
     ClassDB::bind_method(D_METHOD("get_size"), &IpropModel::get_size);
     ClassDB::bind_method(D_METHOD("get_units_per_meter"), &IpropModel::get_units_per_meter);
     ClassDB::bind_method(D_METHOD("get_fuel"), &IpropModel::get_fuel);
@@ -112,6 +146,9 @@ void IpropModel::_bind_methods() {
     ADD_PROPERTY(PropertyInfo(Variant::INT, "fuel_used"), "", "get_fuel_used");
     ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "work"), "", "get_work");
     ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "last_error"), "", "get_last_error");
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "lod"), "", "get_lod");
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "reused_texture_count"), "", "get_reused_texture_count");
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "pending_jobs"), "", "get_pending_jobs");
 }
 
 IpropModel::IpropModel() = default;
@@ -122,6 +159,10 @@ IpropModel::~IpropModel() {
 }
 
 Error IpropModel::load_file(const String& path) {
+    if (get_pending_jobs() != 0) {
+        UtilityFunctions::printerr("iprop: a model cannot be loaded while its generations are pending");
+        return ERR_BUSY;
+    }
     if (!FileAccess::file_exists(path)) {
         UtilityFunctions::printerr("iprop: no such file: ", path);
         return ERR_FILE_NOT_FOUND;
@@ -237,14 +278,20 @@ Error IpropModel::reset_inputs() {
     return OK;
 }
 
-Ref<ArrayMesh> IpropModel::generate(int64_t seed, const Dictionary& limits) {
+// Checks a request and fills its job: the options and the textures the model
+// still holds, which the generation will not make again.
+bool IpropModel::begin(Job& job, int64_t seed, const Dictionary& limits, int64_t lod) {
     last_error_ = Dictionary();
     // A cached texture that only the cache holds belongs to no mesh any more.
     for (auto entry = texture_cache_.begin(); entry != texture_cache_.end();) {
         if (entry->second.is_null() || entry->second->get_reference_count() <= 1) entry = texture_cache_.erase(entry);
         else ++entry;
     }
-    const auto invalid = [&](const char* message) -> Ref<ArrayMesh> {
+    for (auto entry = held_.begin(); entry != held_.end();) {
+        if (!texture_cache_.contains(entry->first + ":0")) entry = held_.erase(entry);
+        else ++entry;
+    }
+    const auto invalid = [&](const char* message) {
         last_error_["status"] = static_cast<int64_t>(IPROP_EX_E_ARGUMENT);
         last_error_["reason"] = static_cast<int64_t>(IPROP_REASON_INVALID_ARGUMENT);
         last_error_["stage"] = static_cast<int64_t>(IPROP_STAGE_ARGUMENTS);
@@ -252,25 +299,105 @@ Ref<ArrayMesh> IpropModel::generate(int64_t seed, const Dictionary& limits) {
         last_error_["pc"] = 0;
         last_error_["message"] = message;
         UtilityFunctions::printerr("iprop: ", message);
-        return {};
+        return false;
     };
-    iprop_execution_limits_ex execution;
-    Ref<IpropCancellation> cancellation;
-    if (const char* problem = readLimits(limits, execution, cancellation)) return invalid(problem);
+    if (const char* problem = readLimits(limits, job.execution, job.cancellation)) return invalid(problem);
     if (seed < 0 || seed > std::numeric_limits<uint32_t>::max()) return invalid("seed must fit u32");
+    if (lod < 0 || lod > static_cast<int64_t>(IPROP3D_MAX_LOD)) return invalid("lod must be in 0..7");
     if (model_ == nullptr) return invalid("generate before load_file");
 
-    iprop3d_generate_options options;
-    iprop3d_generate_options_init(&options, sizeof(options));
-    options.seed = static_cast<uint32_t>(seed);
-    Failure failure;
-    iprop3d_result* result = nullptr;
-    if (iprop3d_generate(model_, &options, parameters_, &execution, &result, failure.get()) != IPROP_EX_OK) {
+    iprop3d_generate_options_init(&job.options, sizeof(job.options));
+    job.options.seed = static_cast<uint32_t>(seed);
+    job.options.lod = static_cast<uint32_t>(lod);
+    job.lod = lod;
+    job.held = held_;
+    for (const auto& [key, held] : job.held) {
+        iprop3d_known_texture record{};
+        record.key = held.key;
+        record.fuel = held.fuel;
+        record.work = held.work;
+        record.image_kinds = held.kinds;
+        job.known.push_back(record);
+        // The GPU textures stay until the result that names them is read.
+        for (uint32_t kind = 0; kind <= IPROP_AUX_IMAGE_EMISSION; ++kind)
+            if (const auto found = texture_cache_.find(key + ":" + std::to_string(kind)); found != texture_cache_.end())
+                job.keep.push_back(found->second);
+    }
+    job.options.known_textures = job.known.empty() ? nullptr : job.known.data();
+    job.options.known_texture_count = static_cast<uint32_t>(job.known.size());
+    return true;
+}
+
+Ref<ArrayMesh> IpropModel::generate(int64_t seed, const Dictionary& limits, int64_t lod) {
+    Job job;
+    if (!begin(job, seed, limits, lod)) return {};
+    job.status = iprop3d_generate(model_, &job.options, parameters_, &job.execution, &job.result, job.failure.get());
+    return finish(job);
+}
+
+int64_t IpropModel::generate_async(int64_t seed, const Dictionary& limits, int64_t lod) {
+    auto job = std::make_unique<Job>();
+    if (!begin(*job, seed, limits, lod)) return -1;
+    if (iprop_parameters_clone(parameters_, &job->parameters, job->failure.get()) != IPROP_EX_OK) {
+        last_error_ = job->failure.details();
+        job->failure.print("model generate");
+        return -1;
+    }
+    const int64_t id = job->id = ++next_job_;
+    job->self = Ref<IpropModel>(this);
+    {
+        const std::lock_guard<std::mutex> lock(jobs_mutex_);
+        jobs_[id] = std::move(job);
+    }
+    WorkerThreadPool::get_singleton()->add_task(Callable(this, "_run_job").bind(id), false, "iprop model");
+    return id;
+}
+
+int64_t IpropModel::get_pending_jobs() const {
+    const std::lock_guard<std::mutex> lock(jobs_mutex_);
+    return static_cast<int64_t>(jobs_.size());
+}
+
+// On a thread of the pool: the generation, and nothing of Godot's but the
+// deferred call that hands it back.
+void IpropModel::run_job(int64_t id) {
+    Job* job = nullptr;
+    {
+        const std::lock_guard<std::mutex> lock(jobs_mutex_);
+        const auto found = jobs_.find(id);
+        if (found == jobs_.end()) return;
+        job = found->second.get();
+    }
+    job->status = iprop3d_generate(model_, &job->options, job->parameters, &job->execution, &job->result, job->failure.get());
+    call_deferred("_finish_job", id);
+}
+
+// On the main thread again: the mesh and the signal.
+void IpropModel::finish_job(int64_t id) {
+    std::unique_ptr<Job> job;
+    {
+        const std::lock_guard<std::mutex> lock(jobs_mutex_);
+        const auto found = jobs_.find(id);
+        if (found == jobs_.end()) return;
+        job = std::move(found->second);
+        jobs_.erase(found);
+    }
+    const Ref<IpropModel> self = job->self; // alive through the signal
+    const Ref<ArrayMesh> mesh = finish(*job);
+    job.reset();
+    emit_signal("generated", id, mesh);
+}
+
+// Reads a finished generation into the mesh and the properties.
+Ref<ArrayMesh> IpropModel::finish(Job& job) {
+    last_error_ = Dictionary();
+    Failure& failure = job.failure;
+    iprop3d_result* const result = job.result;
+    if (job.status != IPROP_EX_OK) {
         last_error_ = failure.details();
         failure.print("model generate");
         return {};
     }
-    const std::unique_ptr<iprop3d_result, decltype(&iprop3d_result_free)> owned(result, iprop3d_result_free);
     const auto readFailure = [&]() -> Ref<ArrayMesh> {
         last_error_ = failure.details();
         if (failure.get()->status == IPROP_EX_OK) {
@@ -293,6 +420,8 @@ Ref<ArrayMesh> IpropModel::generate(int64_t seed, const Dictionary& limits) {
     struct Gpu { Ref<ImageTexture> colour, maps[6]; bool repeats = false; };
     std::vector<Gpu> gpu(info.texture_count);
     Array candidate_textures;
+    std::map<std::string, Held> fresh;
+    int64_t reused = 0;
     for (uint32_t t = 0; t < info.texture_count; ++t) {
         iprop3d_texture_view view;
         String name;
@@ -300,12 +429,27 @@ Ref<ArrayMesh> IpropModel::generate(int64_t seed, const Dictionary& limits) {
             iprop3d_result_texture(result, t, &view, failure.get()) != IPROP_EX_OK ||
             view.pixel_format != IPROP_PIXEL_FORMAT_RGBA8 || !decodeName(view.name, name))
             return readFailure();
-        const Ref<Image> colour = imageOf(view.width, view.height, view.byte_count, view.pixels);
-        if (colour.is_null() || colour->is_empty()) return readFailure();
         char key[17];
         std::snprintf(key, sizeof(key), "%016llx", static_cast<unsigned long long>(view.key));
+        Ref<Image> colour;
         Array images;
         Ref<Image> maps[6]; // by kind: normal, roughness, metallic, ao, emission
+        if (view.reused != 0) {
+            // Not generated again: the images the model has held since it was.
+            const auto found = job.held.find(key);
+            if (found == job.held.end()) return readFailure();
+            colour = found->second.entry["image"];
+            images = found->second.entry["images"];
+            for (int64_t i = 0; i < images.size(); ++i) {
+                const Dictionary aux = images[i];
+                const int64_t kind = aux["kind"];
+                if (kind >= IPROP_AUX_IMAGE_NORMAL && kind <= IPROP_AUX_IMAGE_EMISSION && maps[kind].is_null()) maps[kind] = aux["image"];
+            }
+            ++reused;
+        } else {
+            colour = imageOf(view.width, view.height, view.byte_count, view.pixels);
+        }
+        if (colour.is_null() || colour->is_empty()) return readFailure();
         for (uint32_t i = 0; i < view.image_count; ++i) {
             iprop_aux_image_view_ex aux;
             String aux_name;
@@ -337,7 +481,11 @@ Ref<ArrayMesh> IpropModel::generate(int64_t seed, const Dictionary& limits) {
         entry["image"] = colour;
         entry["images"] = images;
         entry["normal"] = maps[IPROP_AUX_IMAGE_NORMAL];
+        entry["fuel"] = static_cast<int64_t>(view.fuel);
+        entry["work"] = static_cast<int64_t>(view.work);
+        entry["reused"] = view.reused != 0;
         candidate_textures.append(entry);
+        fresh[key] = Held{view.key, view.fuel, view.work, view.image_kinds, entry};
         const auto upload = [&](const Ref<Image>& image, uint32_t kind) -> Ref<ImageTexture> {
             if (image.is_null()) return Ref<ImageTexture>();
             const std::string cached = std::string(key) + ":" + std::to_string(kind);
@@ -525,6 +673,9 @@ Ref<ArrayMesh> IpropModel::generate(int64_t seed, const Dictionary& limits) {
     triangle_count_ = info.triangle_count;
     fuel_used_ = static_cast<int64_t>(info.fuel_used);
     work_ = candidate_work;
+    for (auto& [key, held] : fresh) held_[key] = std::move(held);
+    reused_textures_ = reused;
+    lod_ = job.lod;
     return mesh;
     } catch (const std::exception&) { return readFailure(); }
 }
@@ -541,28 +692,98 @@ void IpropModelInstance3D::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_markers"), &IpropModelInstance3D::get_markers);
     ClassDB::bind_method(D_METHOD("set_colliders", "enabled"), &IpropModelInstance3D::set_colliders);
     ClassDB::bind_method(D_METHOD("get_colliders"), &IpropModelInstance3D::get_colliders);
+    ClassDB::bind_method(D_METHOD("set_lod_levels", "levels"), &IpropModelInstance3D::set_lod_levels);
+    ClassDB::bind_method(D_METHOD("get_lod_levels"), &IpropModelInstance3D::get_lod_levels);
+    ClassDB::bind_method(D_METHOD("set_lod_distances", "distances"), &IpropModelInstance3D::set_lod_distances);
+    ClassDB::bind_method(D_METHOD("get_lod_distances"), &IpropModelInstance3D::get_lod_distances);
+    ClassDB::bind_method(D_METHOD("lod_distance", "level"), &IpropModelInstance3D::lod_distance);
+    ClassDB::bind_method(D_METHOD("set_threaded", "enabled"), &IpropModelInstance3D::set_threaded);
+    ClassDB::bind_method(D_METHOD("get_threaded"), &IpropModelInstance3D::get_threaded);
+    ClassDB::bind_method(D_METHOD("_on_generated", "job", "mesh"), &IpropModelInstance3D::on_generated);
 
     ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "model", PROPERTY_HINT_RESOURCE_TYPE, "IpropModel"),
                  "set_model", "get_model");
     ADD_PROPERTY(PropertyInfo(Variant::INT, "seed"), "set_seed", "get_seed");
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "markers"), "set_markers", "get_markers");
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "colliders"), "set_colliders", "get_colliders");
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "lod_levels", PROPERTY_HINT_RANGE, "1,8,1"), "set_lod_levels", "get_lod_levels");
+    ADD_PROPERTY(PropertyInfo(Variant::PACKED_FLOAT32_ARRAY, "lod_distances"), "set_lod_distances", "get_lod_distances");
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "threaded"), "set_threaded", "get_threaded");
 }
 
 void IpropModelInstance3D::_ready() {
     refresh();
 }
 
+// The distance in metres at which a level hands over to the next: the
+// node's own where it gives one, else 10 m and 2.5 times more a level.
+double IpropModelInstance3D::lod_distance(int64_t level) const {
+    if (level < 0 || level >= lod_levels_ - 1) return 0.0;
+    double distance = 10.0;
+    for (int64_t i = 0; i <= level; ++i) {
+        const double given = i < lod_distances_.size() ? static_cast<double>(lod_distances_[i]) : 0.0;
+        distance = given > 0.0 ? given : (i == 0 ? 10.0 : distance * 2.5);
+    }
+    return distance;
+}
+
+// Level 0 is the node's own mesh; a further level is the child made for it.
+void IpropModelInstance3D::apply_level(int64_t level, const Ref<ArrayMesh>& mesh) {
+    if (level == 0) {
+        set_mesh(mesh);
+        rebuild_outputs();
+        return;
+    }
+    if (level - 1 >= static_cast<int64_t>(lod_nodes_.size())) return;
+    if (auto* child = Object::cast_to<MeshInstance3D>(ObjectDB::get_instance(lod_nodes_[static_cast<size_t>(level - 1)])))
+        child->set_mesh(mesh);
+}
+
+void IpropModelInstance3D::on_generated(int64_t job, const Ref<ArrayMesh>& mesh) {
+    const auto found = lod_jobs_.find(job);
+    if (found == lod_jobs_.end()) return; // another node's, or one a later refresh replaced
+    const int64_t level = found->second;
+    lod_jobs_.erase(found);
+    apply_level(level, mesh);
+}
+
 void IpropModelInstance3D::refresh() {
+    for (const ObjectID id : lod_nodes_) {
+        if (Node* node = Object::cast_to<Node>(ObjectDB::get_instance(id))) {
+            remove_child(node);
+            node->queue_free();
+        }
+    }
+    lod_nodes_.clear();
+    lod_jobs_.clear();
+    set_visibility_range_end(0.0f);
     if (model_.is_null() || !model_->is_loaded()) {
         set_mesh(Ref<Mesh>());
         rebuild_outputs();
         return;
     }
-    // A failed generation returns null: the node then shows nothing.
-    const Ref<ArrayMesh> mesh = model_->generate(seed_);
-    set_mesh(mesh);
-    rebuild_outputs();
+    // A child for each further level, each within its range of distances.
+    set_visibility_range_end(static_cast<float>(lod_distance(0)));
+    for (int64_t level = 1; level < lod_levels_; ++level) {
+        auto* child = memnew(MeshInstance3D);
+        child->set_name(String("Lod") + String::num_int64(level));
+        child->set_visibility_range_begin(static_cast<float>(lod_distance(level - 1)));
+        child->set_visibility_range_end(static_cast<float>(lod_distance(level)));
+        add_child(child);
+        lod_nodes_.push_back(ObjectID(child->get_instance_id()));
+    }
+    if (threaded_) {
+        set_mesh(Ref<Mesh>());
+        rebuild_outputs();
+        for (int64_t level = 0; level < lod_levels_; ++level) {
+            const int64_t job = model_->generate_async(seed_, Dictionary(), level);
+            if (job >= 0) lod_jobs_[job] = level;
+        }
+        return;
+    }
+    // The coarsest first, so that the model's properties end as level 0's.
+    // A failed generation returns null: that level then shows nothing.
+    for (int64_t level = lod_levels_ - 1; level >= 0; --level) apply_level(level, model_->generate(seed_, Dictionary(), level));
 }
 
 // The children of the outputs: removed and made again for each mesh.
@@ -626,14 +847,33 @@ void IpropModelInstance3D::set_colliders(bool enabled) {
 }
 
 void IpropModelInstance3D::set_model(const Ref<IpropModel>& model) {
-    const Callable changed(this, "refresh");
+    const Callable changed(this, "refresh"), generated(this, "_on_generated");
     if (model_.is_valid() && model_->is_connected("changed", changed)) {
         model_->disconnect("changed", changed);
+    }
+    if (model_.is_valid() && model_->is_connected("generated", generated)) {
+        model_->disconnect("generated", generated);
     }
     model_ = model;
     if (model_.is_valid()) {
         model_->connect("changed", changed);
+        model_->connect("generated", generated);
     }
+    refresh();
+}
+
+void IpropModelInstance3D::set_lod_levels(int64_t levels) {
+    lod_levels_ = levels < 1 ? 1 : levels > 8 ? 8 : levels;
+    refresh();
+}
+
+void IpropModelInstance3D::set_lod_distances(const PackedFloat32Array& distances) {
+    lod_distances_ = distances;
+    refresh();
+}
+
+void IpropModelInstance3D::set_threaded(bool enabled) {
+    threaded_ = enabled;
     refresh();
 }
 

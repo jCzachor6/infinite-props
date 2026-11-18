@@ -153,9 +153,18 @@ model.free();                                       // results stay valid
 ```
 
 `model.size`, `model.unitsPerMeter`, `model.inputs` and `model.skinPrograms`
-describe the file. `generate` takes `{seed, uniforms, workLimit, timeoutMs,
-signal, cancelFlag}` with the rules of the 2D `generate`; the limits cover the
-model and every texture it generates. A result holds
+describe the file. `generate` takes `{seed, uniforms, lod, textures, known,
+workLimit, timeoutMs, signal, cancelFlag}` with the rules of the 2D
+`generate`; the limits cover the model and every texture it generates.
+
+For a scene of many props: `lod` is the level of detail the model reads with
+`model.lod()`, 0 to 7. `textures` is a cache from
+`iprop3d.createTextureCache()`: what it holds is not generated again, so the
+levels of a prop and props that wear the same skin share their textures, and
+a result's counters do not depend on it. `Iprop3D.createPool({ size, worker,
+scripts, wasm })` generates on several workers with one cache on the page
+(`pool.load(id, bytes)`, `await pool.generate(id, options)`), and `toLOD`
+of the three.js adapter turns the levels into one `THREE.LOD`. A result holds
 
 - `surfaces`: the triangles of one material each, as `positions`, `normals`,
   `tangents`, `uvs` (`Float32Array`) and `indices` (`Uint32Array`), with
@@ -165,7 +174,8 @@ model and every texture it generates. A result holds
   maps of the texture; without a map they stand alone, and `emission` then
   multiplies the colour;
 - `textures`: `{key, name, width, height, assetWidth, assetHeight, repeats,
-  data, images, normal}` with `data` an RGBA `Uint8Array`, rows from the top,
+  data, images, normal, fuel, work, kinds, reused}` with `data` an RGBA
+  `Uint8Array`, rows from the top,
   and `images` the normal and material maps of the skin (`IMAGE_*` kinds).
   Equal keys mean equal pixels, in any result of any model, so a page can keep
   one GPU texture per key;

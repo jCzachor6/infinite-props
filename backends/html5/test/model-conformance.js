@@ -28,6 +28,8 @@ const corpus = [
       uniforms: [{}, { wide: 6.5, extra: 0 }, { wide: 11.75, stain: "#10a0f080" }] },
     // Skins of the texture toolkit under the model's one fuel budget.
     { name: "bench", source: "examples/models/bench.ips", seeds: [1, 2], uniforms: [{}, { paint: "#7a3b2e" }] },
+    // Levels of detail on a skin of a tiled Voronoi diagram (M5).
+    { name: "hydrant", source: "examples/models/hydrant.ips", seeds: [1, 4], uniforms: [{}, { paint: "#2f6f4a" }] },
     { name: "chair", source: "examples/models/chair.ips", seeds: [0, 1, 2, 3, 4, 5, 9, 13],
       uniforms: [{}, { finish: 5, fabric: 2 }] },
     { name: "empty", source: "backends/capi3d/test/empty.ips", seeds: [0, 9], uniforms: [{}] },
@@ -159,11 +161,13 @@ function run(iprop3d, toolsDir) {
         assert.equal(compiled.status, 0, "ipc " + source + ": " + compiled.stderr);
         return new Uint8Array(fs.readFileSync(output));
     };
-    const stats = { models: 0, generations: 0, vertices: 0, textures: 0, skins: 0, traps: 0, encodings: 0, corpus: 0, pins: 0 };
+    const stats = { models: 0, generations: 0, vertices: 0, textures: 0, skins: 0, traps: 0, encodings: 0, corpus: 0, pins: 0,
+        levels: 0, reused: 0 };
     const Module = iprop3d.module;
     try {
-        assert.deepEqual(iprop3d.version, { major: 0, minor: 2 });
-        assert.deepEqual(iprop3d.limits, { vertices: 65536, triangles: 131072, textures: 32, textureSide: 2048, texels: 4194304 });
+        assert.deepEqual(iprop3d.version, { major: 0, minor: 3 });
+        assert.deepEqual(iprop3d.limits, { vertices: 65536, triangles: 131072, textures: 32, textureSide: 2048, texels: 4194304, lod: 7 });
+        assert.match(iprop3d.textureStamp, /^[0-9a-f]{16}$/);
 
         // ---- the corpus, bit for bit ----
         const files = new Map();
@@ -371,6 +375,62 @@ function run(iprop3d, toolsDir) {
             stats.traps += 4;
         }
 
+        // ---- levels of detail and textures kept between generations (M5) ----
+        {
+            const file = path.join(temporary, "lod.iprop3d");
+            const model = iprop3d.load(compile("examples/language/model-lod.ips", file));
+            const plain = [];
+            for (const lod of [0, 1, 2, 3]) {
+                const native = execute("ipgen", [file, "--seed", "3", "--lod", String(lod), "--dump", "-o", path.join(temporary, "unused.glb")]);
+                assert.equal(native.status, 0, "lod " + lod + ": native ipgen: " + native.stderr);
+                const result = model.generate({ seed: 3, lod });
+                assert.equal(result.lod, lod);
+                assert.equal(difference(dumped(result, 3), JSON.parse(native.stdout)), null, "lod " + lod);
+                // Levels 1 and 2 build less; the example stops at four sides, so 3 equals 2.
+                if (lod === 1 || lod === 2) assert.ok(result.vertexCount < plain[lod - 1].vertexCount, "a coarser level has fewer vertices");
+                if (lod === 3) assert.equal(result.vertexCount, plain[2].vertexCount);
+                // No level changes a draw: the output and the textures are those of level 0.
+                if (lod) {
+                    assert.deepEqual(Array.from(result.outputs[0].values), Array.from(plain[0].outputs[0].values));
+                    assert.equal(result.textures[0].key, plain[0].textures[0].key);
+                }
+                plain.push(result);
+                ++stats.levels;
+            }
+            assert.throws(() => model.generate({ seed: 3, lod: 8 }), /lod must be an integer from 0 to 7/);
+            assert.throws(() => model.generate({ seed: 3, lod: 1.5 }), /lod/);
+
+            // A cache: nothing is generated twice, and each result is whole.
+            const textures = iprop3d.createTextureCache();
+            const first = model.generate({ seed: 3, textures });
+            assert.equal(textures.size, first.textures.length);
+            assert.ok(first.textures.every(texture => !texture.reused && texture.fuel > 0 && texture.work > 0));
+            for (const lod of [0, 1, 2]) {
+                const kept = model.generate({ seed: 3, lod, textures });
+                assert.ok(kept.textures.every(texture => texture.reused), "every texture of level " + lod + " is reused");
+                assert.equal(kept.textures[0].data, first.textures[0].data, "the cache's own pixels");
+                assert.deepEqual(kept.fuel, plain[lod].fuel);
+                assert.deepEqual(kept.work, plain[lod].work);
+                assert.equal(difference(dumped(kept, 3), dumped(plain[lod], 3)), null, "kept textures, level " + lod);
+                stats.reused += kept.textures.length;
+            }
+            assert.equal(model.generate({ seed: 4, textures }).textures[0].reused, false, "another seed, another texture");
+
+            // Across threads the records travel and the pixels stay.
+            const records = textures.known();
+            assert.ok(records.every(record => /^[0-9a-f]{16}$/.test(record.key) && Number.isSafeInteger(record.fuel)));
+            const bare = model.generate({ seed: 3, lod: 1, known: structuredClone(records) });
+            assert.ok(bare.textures.every(texture => texture.reused && texture.data.length === 0 && texture.images.length === 0));
+            assert.equal(bare.textures[0].width, first.textures[0].width);
+            assert.equal(textures.complete(bare), bare.textures.length);
+            assert.equal(difference(dumped(bare, 3), dumped(plain[1], 3)), null);
+            assert.throws(() => iprop3d.createTextureCache().complete(model.generate({ seed: 3, known: records })), /does not hold/);
+            assert.throws(() => model.generate({ seed: 3, textures, known: records }), /not both/);
+            assert.throws(() => model.generate({ seed: 3, known: [{ key: "xyz", fuel: 1, work: 1, kinds: 0 }] }), /sixteen hex digits/);
+            assert.throws(() => model.generate({ seed: 3, textures: {} }), /createTextureCache/);
+            model.free();
+        }
+
         // ---- a result crosses to another thread without a copy ----
         {
             const model = iprop3d.load(files.get("chair").bytes);
@@ -394,4 +454,68 @@ function run(iprop3d, toolsDir) {
     }
 }
 
-module.exports = { run, corpus, dumped, difference, fnv1a64 };
+// The worker pool of api3d.js over stand-in workers that speak the protocol
+// of model-worker.js on this thread: every answer arrives later, as a
+// worker's would.
+async function pool(iprop3d, factory, toolsDir) {
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "iprop-model-pool-"));
+    try {
+        const tool = path.join(toolsDir, "ipc" + (process.platform === "win32" ? ".exe" : ""));
+        const file = path.join(temporary, "lod.iprop3d");
+        const compiled = spawnSync(tool, ["examples/language/model-lod.ips", "-o", file], { cwd: repo, encoding: "utf8" });
+        assert.equal(compiled.status, 0, compiled.stderr);
+        const bytes = new Uint8Array(fs.readFileSync(file));
+        let started = 0;
+        const createWorker = () => {
+            const models = new Map();
+            const worker = { onmessage: null, terminated: false };
+            const answer = message => setTimeout(() => { if (!worker.terminated) worker.onmessage({ data: message }); }, 0);
+            worker.terminate = () => { worker.terminated = true; };
+            worker.postMessage = message => {
+                try {
+                    if (message.type === "init") { ++started; answer({ type: "ready" }); }
+                    else if (message.type === "load") { models.set(message.model, iprop3d.load(message.bytes)); answer({ type: "loaded", model: message.model }); }
+                    else if (message.type === "generate") {
+                        const model = models.get(message.model);
+                        if (!model) throw new Error("no model '" + message.model + "' is loaded");
+                        answer({ type: "result", model: message.model, request: message.request, result: model.generate(message.options) });
+                    } else if (message.type === "free") { models.get(message.model).free(); models.delete(message.model); }
+                } catch (error) {
+                    answer({ type: "error", model: message.model, request: message.request, message: error.message });
+                }
+            };
+            return worker;
+        };
+        const workers = factory.createPool({ size: 3, createWorker });
+        assert.equal(started, 3);
+        await workers.load("bollard", bytes);
+        const direct = iprop3d.load(bytes);
+        const jobs = [];
+        // The nearest level of every prop first, as a scene asks for them:
+        // the coarser levels then find their textures made.
+        for (const lod of [0, 1, 2]) for (let seed = 1; seed <= 4; ++seed) jobs.push({ seed, lod });
+        const results = await Promise.all(jobs.map(job => workers.generate("bollard", job)));
+        let reused = 0;
+        results.forEach((result, i) => {
+            assert.equal(difference(dumped(result, jobs[i].seed), dumped(direct.generate(jobs[i]), jobs[i].seed)), null,
+                "pool generation " + JSON.stringify(jobs[i]));
+            reused += result.textures.filter(texture => texture.reused).length;
+        });
+        // Four seeds, one texture each, generated at level 0; the eight
+        // generations of the coarser levels reuse them, but for those that
+        // started before their texture's answer came back.
+        assert.equal(workers.textures.size, 4);
+        assert.ok(reused >= 6, "the pool's cache is used: " + reused);
+        await assert.rejects(workers.generate("missing", { seed: 1 }), /no model 'missing'/);
+        await assert.rejects(workers.generate("bollard", { seed: 1, lod: 9 }), /lod/);
+        workers.free("bollard");
+        workers.terminate();
+        await assert.rejects(workers.generate("bollard", { seed: 1 }), /terminated/);
+        direct.free();
+        return { generations: results.length, reused };
+    } finally {
+        fs.rmSync(temporary, { recursive: true, force: true });
+    }
+}
+
+module.exports = { run, pool, corpus, dumped, difference, fnv1a64 };

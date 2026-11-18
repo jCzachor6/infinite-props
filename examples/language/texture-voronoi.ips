@@ -1,0 +1,21 @@
+// Stones that repeat: the cells of a Voronoi diagram on a tile. A cell that
+// leaves the tile on one side comes back on the other, so no joint runs
+// along an edge.
+asset cobbles {
+  size 96x96
+  draw {
+    root = seed.initial()
+    cells = voronoi({0, 0}, {96, 96}, 14, root.fork("stones"), voronoi.grid, 0.9, 1, tile = true)
+    stones = regions.gap(regions(cells), 4.0, 0.3, root.fork("joints"))
+
+    rect(0, 0, 96, 96, #3a342c)                      // the sand between the stones
+    // Painted in a tiled capture, a stone that crosses an edge wraps.
+    layer paved(tile = true, alpha = surface.source_over) {
+      for i in 0..regions.count(stones) {
+        tone = int(roll(root.fork("tone").fork(i), -20.0, 20.0))
+        surface.paint(regions.mask(stones, i), color.shade(#8c857a, tone))
+      }
+    }
+    surface.paint(paved, blend = surface.source_over)
+  }
+}

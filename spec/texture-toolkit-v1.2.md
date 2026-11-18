@@ -28,6 +28,7 @@ page, and new values in two existing instructions.
 | 3 | `texture levels 0` | layer, f32 black, f32 white, f32 gamma | layer |
 | the byte of a noise opcode | `texture MNEMONIC 0` | that opcode's inputs, then vec2 period | that opcode's result |
 | the byte of `noise.mask` or `noise.mask_config` | `texture MNEMONIC 0` | that opcode's inputs, then i32 tile | mask |
+| the byte of a voronoi opcode | `texture MNEMONIC 0` | that opcode's inputs, then i32 tile | diagram2d |
 
 The noise opcodes with a periodic form are `noise`, `noise.grad`,
 `noise.fbm`, `noise.fbm_config`, `noise.ridge`, `noise.cell`, `noise.cell2`,
@@ -198,6 +199,46 @@ A periodic scalar noise costs its kernel units, the dispatch unit among them:
 4 for value and grad, 4 an octave for fbm and ridge, 25 for the cell noises,
 32 for `warp_vec` and 48 for `warp`. A tiled noise mask costs the units of
 `noise.mask` at 30 in place of 20 percent.
+
+## Tiled diagrams
+
+The voronoi opcodes with a tiled form are all six: `voronoi`,
+`voronoi.config`, `voronoi.metric`, `voronoi.rows`, `voronoi.sites` and
+`voronoi.sites_relax`. The tile flag is 0 or 1 (`voronoi tile must be 0 or
+1`, `NumericRange`); with 0 the operation is its opcode.
+
+With 1 the result is the diagram of a torus: of the pattern in which every
+site repeats at each whole multiple of the rectangle's width and height.
+
+1. The diagram has 1 to 28 sites (`voronoi count must be in 1..28 with
+   tile`). They are generated or checked as for the opcode, in the
+   rectangle `origin`, `size`.
+2. Each site is folded into the rectangle, its right and bottom edges
+   counting as its left and top ones, and copied eight times: at
+   `(dx*width, dy*height)` for `dx` and `dy` in -1, 0, 1, the site itself
+   first, then the rows `dy = -1`, `0`, `1` with `dx` rising. Sites and
+   copies are checked like any sites (`voronoi sites must be distinct`).
+3. The builder of the opcode runs on these nine times as many sites in the
+   rectangle `origin - size`, `3*size`, with every check and every charge
+   it has.
+4. The cells of the sites themselves are the result, in site order: a
+   diagram of that many regions whose rings are those the builder made,
+   unclipped by the rectangle of the call. An edge two of them share is one
+   edge. A region's neighbours are the sites whose cell or whose copy's
+   cell it touched, each once, in rising order, without the region itself.
+5. A relaxation moves every site to the centre of its cell of step 4 and
+   repeats from step 2.
+
+A region of the result may reach outside the rectangle by less than the
+rectangle's size. Region operations treat it like any region; a mask or a
+bevel of it has the region's bounds, and painting either into a tiled
+capture wraps it. The regions of an offset keep the neighbours they share an
+edge with inside the diagram: neighbours through an edge of the rectangle
+are not carried over.
+
+The charge is that of the builder on nine times the sites, with what copying
+the kept cells into the result adds, at the 20 percent of the voronoi
+opcodes.
 
 ## Model fuel
 
