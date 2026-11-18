@@ -7,6 +7,8 @@
 /* API 0.1 layouts on LP64, including every public field offset. */
 #define LAYOUT(type, size) typedef char layout_##type[(sizeof(type) == (size)) ? 1 : -1]
 #define OFFSET(type, field, offset) typedef char offset_##type##_##field[(offsetof(type, field) == (offset)) ? 1 : -1]
+/* A model's default work limit: six times the 2D one, as its fuel is. */
+typedef char default_work_limit[(IPROP3D_DEFAULT_WORK_LIMIT == 6 * IPROP_DEFAULT_WORK_LIMIT) ? 1 : -1];
 LAYOUT(iprop3d_generate_options, 32);
 OFFSET(iprop3d_generate_options, flags, 4); OFFSET(iprop3d_generate_options, seed, 8);
 OFFSET(iprop3d_generate_options, lod, 12); OFFSET(iprop3d_generate_options, known_textures, 16);
@@ -208,7 +210,24 @@ int main(int argc, char** argv) {
     CHECK(info.bounds_max[0] == 4.0f && info.bounds_max[1] == 10.0f && info.bounds_max[2] == 4.0f);
     CHECK(info.size[0] == 12.0f && info.size[1] == 10.0f && info.size[2] == 8.0f && info.units_per_meter == 50.0f);
     CHECK(info.fuel_budget == crate_fuel && info.fuel_used > 0 && info.fuel_used <= info.fuel_budget);
-    CHECK(info.work_budget == IPROP_DEFAULT_WORK_LIMIT && info.work_used > 32 * 16 && info.work_used < info.work_budget);
+    CHECK(info.work_budget == IPROP3D_DEFAULT_WORK_LIMIT && info.work_used > 32 * 16 && info.work_used < info.work_budget);
+    {
+        /* A zero work limit is the model's default too; a named one stays. */
+        iprop_execution_limits_ex limits;
+        iprop3d_result* named = NULL;
+        iprop3d_result_info counters;
+        CHECK(iprop_execution_limits_ex_init(&limits, sizeof(limits)) == IPROP_EX_OK && limits.work_limit == 0);
+        CHECK(iprop3d_generate(crate, &options, NULL, &limits, &named, NULL) == IPROP_EX_OK && named != NULL);
+        CHECK(info_of(named, &counters) == 0 && counters.work_budget == IPROP3D_DEFAULT_WORK_LIMIT &&
+              counters.work_used == info.work_used);
+        iprop3d_result_free(named);
+        named = NULL;
+        limits.work_limit = IPROP_DEFAULT_WORK_LIMIT;
+        CHECK(iprop3d_generate(crate, &options, NULL, &limits, &named, NULL) == IPROP_EX_OK && named != NULL);
+        CHECK(info_of(named, &counters) == 0 && counters.work_budget == IPROP_DEFAULT_WORK_LIMIT &&
+              counters.work_used == info.work_used);
+        iprop3d_result_free(named);
+    }
 
     /* The box: the texture repeats at one texel to a unit. */
     CHECK(surface_of(first, 0, &surface) == 0 && well_formed(&surface) == 0);

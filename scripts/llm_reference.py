@@ -297,7 +297,7 @@ def model_rules(language):
         f"{between('outline_points')} points. Every instruction costs {fuel['instruction']} fuel unit; a primitive adds "
         f"{fuel['vertex']} for each vertex and {fuel['triangle']} for each triangle it emits, an extrude outline of n points "
         f"adds ceil(n*n/3) (ceil(n*n/2) with a bevel), a place block {fuel['place_reserve']} and a skin call "
-        f"{fuel['skin_draw_reserve']}. Geometry and textures share 150 million fuel. A standalone draw asset gets 25 million.",
+        f"{fuel['skin_draw_reserve']}. Geometry and textures share 150 million fuel and, unless the host names a limit, 600 million work steps. A standalone draw asset gets 25 million and 100 million.",
         'Not callable in a render asset, because they need a canvas, a surface or 2D geometry: ' +
         ', '.join(models['unavailable_builtins']) + '.',
         'Not available in a render asset: ' + ', '.join(name.replace('_', ' ') for name in

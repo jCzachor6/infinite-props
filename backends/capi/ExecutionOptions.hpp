@@ -15,7 +15,12 @@ struct ExecutionRequest {
 // The request stays in the checked call's stack until VM and packing finish.
 // Retain the atomic flag, never the caller's mutable options descriptor.
 inline CallOutcome readExecutionRequest(const iprop_execution_limits_ex* descriptor, ExecutionRequest& out) noexcept {
-    if (!descriptor) return {};
+    // No descriptor is a zero work limit: the default of what runs, a 2D
+    // program's or a model's.
+    if (!descriptor) {
+        out.limits.workLimit = 0;
+        return {};
+    }
     uint32_t size = 0;
     if (!descriptorSize(descriptor, size)) return CallOutcome::argument("execution limits are smaller than four bytes");
     if (readField<uint32_t>(descriptor, size, offsetof(iprop_execution_limits_ex, flags)))

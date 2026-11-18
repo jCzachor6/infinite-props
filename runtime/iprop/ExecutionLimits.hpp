@@ -11,7 +11,8 @@
 namespace iprop {
 
 // Independent of the fuel tariff. Zero in a host request selects this finite
-// default; UINT64_MAX is an explicit (still finite) host override.
+// default for a 2D program (a model has its own, six times larger);
+// UINT64_MAX is an explicit (still finite) host override.
 inline constexpr u64 kDefaultWorkLimit = 100'000'000;
 inline constexpr u64 kWorkPollInterval = 1024;
 inline constexpr std::size_t kMaxWorkCopyBytes = 32 * 1024;

@@ -110,6 +110,9 @@ których stoi plan (nagłówek i `iprop3d.cpp`):
 - tekstura nazwana jako znana nie jest liczona: generacja pobiera zapisane
   paliwo i pracę, a widok ma `reused = 1`, rozmiary, klucz, koszt i rodzaje,
   bez pikseli i z `image_count = 0`;
+- zero albo brak limitu pracy daje modelowi `IPROP3D_DEFAULT_WORK_LIMIT`,
+  600 mln kroków, a nie 100 mln z 2D (zmiana z 2026-11-18, po tym planie):
+  wiązanie przekazuje zero i nie wpisuje tej liczby samo;
 - jeden model wolno generować z kilku wątków naraz, każdy z własnym zestawem
   parametrów.
 

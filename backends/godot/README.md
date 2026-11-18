@@ -186,7 +186,8 @@ change in any release until the models contract is frozen.
   `fuel`, `inputs` and `skin_programs` describe the file; `set_input` and
   `reset_inputs` work as on `IpropAsset`, and `limits` takes the same
   `work_limit`, `timeout_ns` and `cancellation`, which cover the model and
-  every texture it generates.
+  every texture it generates. A zero `work_limit` selects 600,000,000 steps
+  for a model, six times a draw asset's.
 
   ```gdscript
   var model := IpropModel.new()

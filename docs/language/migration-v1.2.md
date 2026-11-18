@@ -80,7 +80,9 @@ opcode`, `unknown surface blend mode` or `unknown layer alpha mode`).
 A model now has one fuel budget, 150,000,000 units, for its program and all
 its textures; in 1.2 previews before this each texture had the 25,000,000 of
 its own program. Recompile a preview model to give it the new budget. A draw
-asset generated alone keeps 25,000,000.
+asset generated alone keeps 25,000,000. Without a work limit from the host a
+model generation has 600,000,000 work steps, six times a draw asset's
+100,000,000; a host that names a limit keeps it.
 
 ## Compiled programs
 

@@ -3,6 +3,7 @@
 Fuel prices follow the [runtime tariff](../spec/fuel-v0.9.md). Default fuel is
 25,000,000 from program metadata. An independent default 100,000,000-unit work
 budget also applies to old entry points. Zero work selects that finite default;
+a model generation (models preview) has 600,000,000 by the same rule;
 zero timeout disables the optional monotonic deadline. A cancellation token is
 one-way and cooperative, not a reusable interrupt or a wall-clock guarantee.
 

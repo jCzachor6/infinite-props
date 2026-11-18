@@ -65,7 +65,10 @@ an ordinary `iprop_parameters`, read and changed by every call of
 the seed in `iprop3d_generate_options`, an optional parameter set (`NULL`
 selects the defaults) and optional `iprop_execution_limits_ex`. One work
 budget, one deadline and one cancellation token cover the model program and
-every texture it generates; see [execution limits](execution-limits.md).
+every texture it generates; see [execution limits](execution-limits.md). A
+zero or absent work limit selects `IPROP3D_DEFAULT_WORK_LIMIT`, 600,000,000
+steps: six times the 2D default, as a model's fuel is six times a draw
+asset's.
 
 Success publishes exactly one new result and does not free a pointer the
 caller left in the output. Failure publishes nothing and leaves the output

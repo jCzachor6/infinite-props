@@ -100,6 +100,16 @@ u64 fnv1a64(std::span<const u8> bytes, u64 state = 0xcbf29ce484222325ull);
 // The coarsest level of detail a host may ask for (M5); 0 is full detail.
 inline constexpr u32 kMaxLod = 7;
 
+// The work limit of a model generation whose host names none, or zero: the
+// 2D default scaled as the fuel budget is, 150,000,000 against 25,000,000.
+inline constexpr u64 kDefaultModelWorkLimit = kDefaultWorkLimit / kDefaultFuelBudget * kDefaultModelFuelBudget;
+static_assert(kDefaultModelWorkLimit == 600'000'000);
+inline ExecutionLimits defaultModelLimits() {
+    ExecutionLimits limits;
+    limits.workLimit = kDefaultModelWorkLimit;
+    return limits;
+}
+
 // A texture the host already holds (M5): its key, what generating it cost
 // and which auxiliary images it published, as a result reported them.
 struct KnownTexture {
@@ -111,7 +121,8 @@ struct KnownTexture {
 struct ModelInputs {
     u32 seed = 0;
     std::map<std::string, UniformValue> uniforms; // root inputs by name
-    ExecutionLimits limits{};
+    // A work limit of zero selects kDefaultModelWorkLimit too.
+    ExecutionLimits limits = defaultModelLimits();
     // What model.lod() returns, 0..kMaxLod.
     u32 lod = 0;
     // Textures not to generate again. The generation charges each its

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Room to work for models (models preview)
+
+A model generation whose host names no work limit has 600,000,000 steps, six
+times a draw asset's 100,000,000, as its fuel is six times a draw asset's.
+Results, counters and failures do not change otherwise: a model reports the
+new budget, and a host that names a limit keeps it. The model C API names
+the value `IPROP3D_DEFAULT_WORK_LIMIT`; `ipgen` without `--work-limit` uses
+it for a model.
+
 ### Shapes that grow together (models preview)
 
 Sculpting: a block that joins lumps into one smooth surface. Existing

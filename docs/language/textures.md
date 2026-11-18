@@ -119,7 +119,8 @@ A paint with one of the five blends or an opacity costs one fuel unit a pixel,
 where a plain paint costs 0.6. `gradient` and `levels` cost half a unit a
 pixel. A shape pays again for each edge it
 crosses, and a blur or a normal of a tiled layer pays for the tile grown by
-its reach. A draw asset generated alone has 25 million fuel units; a model
-has 150 million for its shape and all its textures together, which is what a
-1024-pixel skin with a blur needs. The [contract](../../spec/texture-toolkit-v1.2.md)
+its reach. A draw asset generated alone has 25 million fuel units and 100
+million work steps; a model has 150 million and 600 million for its shape
+and all its textures together, which is what a 1024-pixel skin with a blur
+needs. The [contract](../../spec/texture-toolkit-v1.2.md)
 has every formula.

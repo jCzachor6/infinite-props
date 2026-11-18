@@ -32,7 +32,7 @@ struct Options {
     std::string textureCache; // a directory of stored textures
     u32 sizeX = 0; // 0 = use the meta size
     u32 sizeY = 0;
-    u64 workLimit = kDefaultWorkLimit;
+    u64 workLimit = 0; // the default of what runs
     u64 timeoutMs = 0;
     bool workStats = false;
     std::string output; // PNG path; empty = <stem>-<seed>.png
@@ -78,7 +78,8 @@ void printUsage(std::FILE* out) {
                  "  --normal-detail F   derived share of brightness in the height, 0-1\n"
                  "  --float-bits        encode output coordinates as raw binary32 bits\n"
                  "  --omit-part-outputs preview PNG/legacy outputs without typed part records\n"
-                 "  --work-limit N      independent native work budget (0 = finite default)\n"
+                 "  --work-limit N      independent native work budget (0 = finite default:\n"
+                 "                      100000000 for a program, 600000000 for a model)\n"
                  "  --timeout-ms N      monotonic generation timeout (0 = none)\n"
                  "  --work-stats        include work counters in result JSON\n"
                  "  -h, --help          show this help\n"

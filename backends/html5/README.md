@@ -155,7 +155,8 @@ model.free();                                       // results stay valid
 `model.size`, `model.unitsPerMeter`, `model.inputs` and `model.skinPrograms`
 describe the file. `generate` takes `{seed, uniforms, lod, textures, known,
 workLimit, timeoutMs, signal, cancelFlag}` with the rules of the 2D
-`generate`; the limits cover the model and every texture it generates.
+`generate`; the limits cover the model and every texture it generates, and
+a zero `workLimit` selects 600,000,000 steps, six times a draw asset's.
 
 For a scene of many props: `lod` is the level of detail the model reads with
 `model.lod()`, 0 to 7. `textures` is a cache from

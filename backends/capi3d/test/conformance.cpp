@@ -11,6 +11,9 @@
 #include <string>
 #include <vector>
 
+// The header names the runtime's default.
+static_assert(IPROP3D_DEFAULT_WORK_LIMIT == iprop::model::kDefaultModelWorkLimit);
+
 namespace {
 
 std::vector<uint8_t> readFile(const std::string& path) {

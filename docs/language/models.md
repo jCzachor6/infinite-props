@@ -182,7 +182,9 @@ A skin that was never assigned traps when a solid or a modifier receives it.
 The model program and its textures spend one fuel budget, 150,000,000
 units unless the file says otherwise, so a large skin has room that a draw
 asset generated alone (25,000,000) has not. The host's work limit, deadline
-and cancellation cover the model and its textures together. The inputs evaluate
+and cancellation cover the model and its textures together; without a work
+limit a model has 600,000,000 steps, six times a draw asset's, as its fuel
+is six times. The inputs evaluate
 first, in the imported asset's declaration order, then the seed, then the
 size.
 
@@ -798,7 +800,8 @@ for every node of its grid and every lump, then for its vertices and
 triangles as a primitive does, and 6 more for every point of its surface and
 every lump to shade it. Writing an output costs
 8 for a point and 16 for a box. A box costs
-about 170 units. The default model budget is 150,000,000. A
+about 170 units. The default model budget is 150,000,000 fuel units and
+600,000,000 work steps. A
 generation that passes a limit, runs out of fuel or meets a wrong argument
 traps and publishes nothing, as a draw asset does.
 

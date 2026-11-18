@@ -779,6 +779,35 @@ asset thing {
                ContainsSubstring("'sheet.frontX' reads a constant of an import, which only an asset with render { } can do"));
 }
 
+TEST_CASE("a model generation has six times a draw asset's work unless the host names a limit") {
+    // The work limit grows with the fuel budget: 150,000,000 against 25,000,000.
+    CHECK(model::kDefaultModelWorkLimit == 600'000'000);
+    CHECK(model::kDefaultModelWorkLimit / kDefaultWorkLimit == kDefaultModelFuelBudget / kDefaultFuelBudget);
+    const auto loaded = load(with(thing("box({0,0,0},{1,1,1},wood.draw(1))")));
+    model::ModelInputs inputs;
+    CHECK(inputs.limits.workLimit == model::kDefaultModelWorkLimit);
+    const auto plain = model::generateModel(loaded, inputs);
+    CHECK(plain.workBudget == 600'000'000);
+    // Zero is the same default; a named limit, the 2D one too, is kept.
+    inputs.limits.workLimit = 0;
+    const auto zero = model::generateModel(loaded, inputs);
+    CHECK(zero.workBudget == 600'000'000);
+    inputs.limits.workLimit = kDefaultWorkLimit;
+    const auto named = model::generateModel(loaded, inputs);
+    CHECK(named.workBudget == kDefaultWorkLimit);
+    CHECK(zero.workUsed == plain.workUsed);
+    CHECK(named.workUsed == plain.workUsed);
+    CHECK(named.fuelUsed == plain.fuelUsed);
+    // A limit below what the model needs still stops it.
+    inputs.limits.workLimit = plain.workUsed - 1;
+    try {
+        (void)model::generateModel(loaded, inputs);
+        FAIL("no trap");
+    } catch (const FormatError& error) {
+        CHECK(error.reason == ErrorReason::WorkExhausted);
+    }
+}
+
 TEST_CASE("uncached skins consume the remaining model fuel, including the last unit") {
     auto model = load(with(thing("a = wood.draw(1) b = wood.draw(2) "
         "box({0,0,0},{1,1,1},a) box({2,0,0},{1,1,1},b)")));

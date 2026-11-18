@@ -1208,6 +1208,8 @@ ModelResult generateWith(const LoadedModel& model, const ModelInputs& inputs,
     vmInputs.seed = inputs.seed;
     vmInputs.uniforms = inputs.uniforms;
     vmInputs.limits = inputs.limits;
+    // Zero selects the default of a model, not that of a draw asset.
+    if (vmInputs.limits.workLimit == 0) vmInputs.limits.workLimit = kDefaultModelWorkLimit;
     if (inputs.lod > kMaxLod)
         throw FormatError("model lod must be in 0..7", ErrorReason::NumericRange, ErrorStage::Arguments);
     Machine machine(model, inputs);

@@ -143,6 +143,9 @@ typedef struct {
 } iprop3d_known_texture;
 
 #define IPROP3D_MAX_LOD UINT32_C(7)
+/* The work limit a zero or absent work_limit selects for a model: six times
+ * IPROP_DEFAULT_WORK_LIMIT, as a model's fuel is six times a draw asset's. */
+#define IPROP3D_DEFAULT_WORK_LIMIT UINT64_C(600000000)
 
 /* A four-byte prefix suffices; absent fields are zero. flags must be zero.
  * lod (API 0.3) is the level of detail model.lod() returns: 0 is the whole
@@ -168,8 +171,9 @@ IPROP_API iprop_status_ex iprop3d_generate_options_init(iprop3d_generate_options
 /* Generates one model. model, options and out_result are required.
  * parameters is optional: NULL selects the defaults, and a set must come
  * from this model load (FOREIGN_PARAMETERS otherwise, even for identical
- * bytes). limits is optional and follows iprop_execution_limits_ex: one work
- * budget, deadline and cancellation cover the model program and every
+ * bytes). limits is optional and follows iprop_execution_limits_ex, except
+ * that a zero or absent work_limit selects IPROP3D_DEFAULT_WORK_LIMIT: one
+ * work budget, deadline and cancellation cover the model program and every
  * texture it generates.
  * Invalid options, limits and foreign parameters fail as E_ARGUMENT at
  * ARGUMENTS stage before anything runs. A violation while generating is

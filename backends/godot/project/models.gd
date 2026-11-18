@@ -356,7 +356,7 @@ func check_model(files: Dictionary) -> void:
 	# One generation: a mesh, and the generation's own numbers as properties.
 	var mesh := model.generate(5)
 	demand(mesh != null and mesh.get_surface_count() == 4 and model.vertex_count == 127 and model.triangle_count == 59, "the crate's mesh")
-	demand(model.last_error.is_empty() and model.fuel_used > 0 and model.work.used > 0 and model.work.budget == 100000000, "counters")
+	demand(model.last_error.is_empty() and model.fuel_used > 0 and model.work.used > 0 and model.work.budget == 600000000, "counters")
 	demand(model.bounds_min == Vector3(-4, 0, -4) and model.bounds_max == Vector3(4, 10, 4), "bounds in model units")
 	var aabb := mesh.get_aabb()
 	demand(aabb.position.is_equal_approx(Vector3(-0.08, 0, -0.08)) and aabb.size.is_equal_approx(Vector3(0.16, 0.2, 0.16)), "the mesh is in metres")

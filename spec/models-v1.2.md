@@ -1394,7 +1394,10 @@ triangle and a placement at about the CPU time per unit of a plain
 instruction; the `vec3` operations and the skin modifiers cost one unit each.
 
 **Work.** One budget covers the model program, the textures and the packing
-of the result. A primitive spends one step per vertex and per triangle. A
+of the result. A host's work limit of zero, or none, selects 600,000,000
+steps for a model generation: the 2D default of 100,000,000 scaled as the
+fuel budget is, 150,000,000 against 25,000,000. Any other limit is used as it
+is given. A primitive spends one step per vertex and per triangle. A
 texture's generation runs with the steps that remain and its use is charged
 to the model. Deadlines and cancellation stop either.
 
