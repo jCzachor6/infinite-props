@@ -13,6 +13,7 @@ guards = {
     "unity/Packages/dev.infiniteprops.runtime/Runtime/Model.cs": r"info.ApiMajor != (\d+) \|\| info.ApiMinor != (\d+)",
     "android/iprop/src/main/cpp/iprop3d_jni.cpp": r"info.api_major != (\d+) \|\| info.api_minor != (\d+)",
     "sfml/src/ModelHost.hpp": r"info.api_major != (\d+) \|\| info.api_minor != (\d+)",
+    "bevy/iprop/src/lib.rs": r"\(models.api_major, models.api_minor\) != \((\d+), (\d+)\)",
 }
 for filename, guard in guards.items():
     match = re.search(guard, (root / "backends" / filename).read_text())
@@ -24,4 +25,4 @@ js = (root / "backends/html5/test/model-conformance.js").read_text().split("cons
 missing = set(re.findall(r'source: "([^"]+)"', js)) - {entry[0] for entry in CORPUS}
 if missing:
     sys.exit("Missing binding corpus cases: " + ", ".join(sorted(missing)))
-print(f"Five model bindings match API {version[0]}.{version[1]}")
+print(f"{len(guards)} model bindings match API {version[0]}.{version[1]}")

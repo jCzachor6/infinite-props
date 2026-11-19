@@ -45,6 +45,7 @@ def repository(root):
         "editor/package.json": '{"version":"0.4.0"}',
         "backends/unity/Packages/dev.infiniteprops.runtime/package.json": '{"version":"0.4.0"}',
         "backends/python/pyproject.toml": '[project]\nversion = "0.4.0"\n',
+        "backends/bevy/Cargo.toml": '[workspace]\nmembers = []\n\n[workspace.package]\nversion = "0.4.0"\n',
         "website/package.json": '{"version":"0.4.0"}',
         "website/package-lock.json": '{"version":"0.4.0","packages":{"":{"version":"0.4.0"}}}',
         "CHANGELOG.md": "# Changelog\n\n## v0.4.0 — 2026-01-01\n\nRelease notes.\n",
@@ -161,6 +162,7 @@ class ReleaseGatesTest(unittest.TestCase):
         for file, text in (
             ('backends/unity/Packages/dev.infiniteprops.runtime/package.json', '{"version":"9.9.9"}'),
             ('backends/python/pyproject.toml', '[project]\nversion = "9.9.9"\n'),
+            ('backends/bevy/Cargo.toml', '[workspace]\nmembers = []\n\n[workspace.package]\nversion = "9.9.9"\n'),
         ):
             with self.subTest(file=file), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary) / 'repo'
@@ -189,6 +191,7 @@ class ReleaseGatesTest(unittest.TestCase):
                 "editor/package.json": '{"version":"0.5.0"}',
                 "backends/unity/Packages/dev.infiniteprops.runtime/package.json": '{"version":"0.5.0"}',
                 "backends/python/pyproject.toml": '[project]\nversion = "0.5.0"\n',
+                "backends/bevy/Cargo.toml": '[workspace]\nmembers = []\n\n[workspace.package]\nversion = "0.5.0"\n',
                 "website/package.json": '{"version":"0.5.0"}',
                 "website/package-lock.json": '{"version":"0.5.0","packages":{"":{"version":"0.5.0"}}}',
                 "CHANGELOG.md": "# Changelog\n\n## v0.5.0 — 2026-10-06\n\nRelease notes.\n",

@@ -100,3 +100,4 @@ backends/unity/**/obj/
 backends/unity/Packages/dev.infiniteprops.runtime/Plugins/
 backends/python/**/*.egg-info/
 backends/python/dist/
+backends/bevy/target/

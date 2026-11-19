@@ -1,0 +1,21 @@
+[package]
+name = "bevy_iprop"
+description = "Bevy assets, sprites and models generated from compiled Infinite Props programs"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+iprop = { path = "../iprop" }
+bevy = { version = "0.20.1", default-features = false, features = ["bevy_asset", "bevy_image", "bevy_mesh", "bevy_pbr", "bevy_sprite", "bevy_log"] }
+
+[features]
+# The windowed example needs the rest of Bevy: a window, a renderer and input.
+demo = ["bevy/default"]
+
+[[example]]
+name = "showcase"
+required-features = ["demo"]

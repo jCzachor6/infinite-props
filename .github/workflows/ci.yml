@@ -418,6 +418,31 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  # Rust and Bevy (preview): the iprop crate builds the C API with CMake and
+  # both crates run against the binding fixtures of this checkout's tools.
+  rust-bevy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustc --version
+      - name: Native tools and binding fixtures
+        run: |
+          python scripts/ci_report.py run configure cmake -B build -DCMAKE_BUILD_TYPE=Release -DIPROP_SFML=OFF -DIPROP_GODOT=OFF
+          python scripts/ci_report.py run build cmake --build build --parallel --target ipc ipgen
+          python scripts/ci_report.py run fixtures python backends/test/prepare-bindings.py build/tools build/binding-fixtures
+      - name: Test the iprop crate and the Bevy plugin
+        env:
+          IPROP_FIXTURES: ${{ github.workspace }}/build/binding-fixtures
+        run: python scripts/ci_report.py run cargo-test cargo test --manifest-path backends/bevy/Cargo.toml --workspace --locked --release
+      - name: Summarize the checks
+        if: ${{ !cancelled() }}
+        run: python scripts/ci_report.py summary
+
   release-assets:
     needs: [build-test, wasm, native-backends, sanitizers, android-bindings]
     runs-on: ubuntu-latest

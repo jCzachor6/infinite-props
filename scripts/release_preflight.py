@@ -28,6 +28,11 @@ def metadata(root, tag=None, publishing=False):
     package = re.search(r'''(?m)^version\s*=\s*["']([^"']+)["']\s*$''', project.group(1)) if project else None
     if not package or package.group(1) != version:
         raise RuntimeError(file + " version differs from CMake")
+    file = "backends/bevy/Cargo.toml"
+    workspace = re.search(r"(?ms)^\[workspace\.package\]\s*\n(.*?)(?=^\[|\Z)", (root / file).read_text(encoding="utf-8"))
+    crate = re.search(r'''(?m)^version\s*=\s*"([^"]+)"\s*$''', workspace.group(1)) if workspace else None
+    if not crate or crate.group(1) != version:
+        raise RuntimeError(file + " version differs from CMake")
     changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
     match = re.search(r"^## v" + re.escape(version) + r"\s+[^\n]+\n(.*?)(?=^## |\Z)", changelog, re.M | re.S)
     if not match:

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Rust and Bevy (preview)
+
+Two crates in `backends/bevy`, used from a source checkout. `iprop` loads
+programs and models and generates them with named inputs, limits, levels of
+detail and known textures, returning owned results; it builds the C API
+statically with CMake. `bevy_iprop` is a plugin for Bevy 0.20 that loads
+`.iprop` and `.iprop3d` files as assets, draws programs into sprites and
+builds models into meshes with `StandardMaterial`s that wear their normal
+and material maps, sharing textures through a cache. Both run against the
+binding fixtures, the model corpus included, in a new CI job.
+
 ### Native model bindings (preview)
 
 Python, Swift, C#/Unity, Kotlin/Android and SFML generate models with named inputs, levels of detail, cached textures and concurrent calls. Python and C# can load the new shared library `iprop3dc`. See [native model bindings](docs/native-bindings.md#models-preview).

@@ -3,7 +3,9 @@
 The [Apple](../backends/apple/README.md), [Unity](../backends/unity/README.md),
 [Android](../backends/android/README.md) and [Python](../backends/python/README.md)
 packages call the same [C API](../backends/capi/README.md). They require C API
-0.7 or later on ABI 0.5 (0.8 adds material maps) and load compiled `.iprop` files. Compile `.ips` with `ipc` before
+0.7 or later on ABI 0.5 (0.8 adds material maps) and load compiled `.iprop` files.
+The [Rust and Bevy](../backends/bevy/README.md) crates (a preview) link the
+same C API statically from a source checkout. Compile `.ips` with `ipc` before
 shipping assets. No compiler, server or network connection is needed at runtime.
 
 ## Shared contract
@@ -93,6 +95,8 @@ The following hosts generate [models](language/models.md) through the preview mo
 | C#/Unity | [Model and TextureCache](../backends/unity/README.md#models-preview), Mesh and Texture2D |
 | Kotlin/Android | [Model and TextureCache](../backends/android/README.md#models-preview), Bitmap |
 | SFML | [ModelHost and ModelRender](../backends/sfml/README.md#models-preview), texture upload and PNG export |
+| Rust | [`iprop::Model`](../backends/bevy/README.md#rust-without-an-engine), owned results and known textures |
+| Bevy | [`IpropPlugin`, `IpropModelInstance` and `IpropSprite`](../backends/bevy/README.md#bevy), meshes, `StandardMaterial` and a texture cache |
 
 All five native bindings accept seeds, named inputs, a level of detail from
 0 to 7, execution limits and cancellation. A loaded model can serve

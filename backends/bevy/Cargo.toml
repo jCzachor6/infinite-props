@@ -1,0 +1,13 @@
+# Infinite Props for Rust and Bevy (preview): `iprop` binds the C API of
+# programs and models, `bevy_iprop` turns their results into Bevy assets.
+[workspace]
+resolver = "3"
+members = ["iprop", "bevy_iprop"]
+
+[workspace.package]
+version = "1.1.0"
+edition = "2024"
+rust-version = "1.97.1"
+license = "MPL-2.0"
+repository = "https://github.com/jCzachor6/infinite-props"
+publish = false
