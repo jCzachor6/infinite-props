@@ -206,6 +206,10 @@ def resources(root):
     files += list((root / "tests/fixtures").glob("part-exports-*.ips"))
     files += list((root / "tests/fixtures").glob("part-exports-v0.9.json"))
     files += list((root / "backends/capi/test").glob("part-output-*.ips"))
+    # The installed binding tests regenerate the model oracle with the SDK's tools.
+    for pattern in ("backends/capi3d/test/*.ips", "backends/capi3d/test/models.c",
+                    "backends/html5/test/fixtures/model-*.ips", "tests/model/corpus/**/*.ips"):
+        files += list(root.glob(pattern))
     files += list((root / "tests/reference").glob("dynamic-parts-reference.js"))
     files += [p for p in (root / "docs").glob("*.md") if not p.name.startswith("language-v")]
     files += list((root / "docs").glob("*.schema.json"))
@@ -218,12 +222,13 @@ def resources(root):
     for header in ("backends/capi/iprop.h", "backends/capi3d/iprop3d.h"):
         if (root / header).is_file():
             files.append(root / header)
-    files += [root / name for name in ("backends/ResultQueries.hpp", "backends/sfml/src/Host.hpp", "backends/sfml/src/Render.hpp")
+    files += [root / name for name in ("backends/ResultQueries.hpp", "backends/sfml/src/Host.hpp", "backends/sfml/src/Render.hpp",
+        "backends/sfml/src/ModelHost.hpp", "backends/sfml/src/ModelRender.hpp")
               if (root / name).is_file()]
     # Ship the binding source packages with their linked guides. Never absorb
     # local native binaries, SDK downloads, compiler caches or build products.
     excluded = {".build", ".swiftpm", "Artifacts", ".gradle", ".kotlin", ".cxx", "build", "bin", "obj", "Plugins", "__pycache__", "dist"}
-    suffixes = {".swift", ".h", ".cpp", ".py", ".toml", ".cs", ".csproj", ".shader", ".asmdef", ".meta", ".json", ".kts", ".kt", ".properties", ".xml", ".pro", ".txt", ".md", ".modulemap"}
+    suffixes = {".swift", ".h", ".hpp", ".cpp", ".py", ".toml", ".cs", ".csproj", ".shader", ".asmdef", ".meta", ".json", ".kts", ".kt", ".properties", ".xml", ".pro", ".txt", ".md", ".modulemap"}
     for backend in ("apple", "unity", "android", "python"):
         directory = root / "backends" / backend
         files += [p for p in directory.rglob("*") if p.is_file()
@@ -231,7 +236,7 @@ def resources(root):
                   and not any(part.endswith(".egg-info") for part in p.parts)
                   and p.name != "local.properties"
                   and (p.suffix in suffixes or p.name in {"LICENSE", "CMakeLists.txt"})]
-    files += [root / "backends/test" / name for name in ("bindings.ips", "binding-trap.ips", "binding-unicode.ips", "binding-normal.ips", "binding-maps.ips", "execution-slow.ips", "prepare-bindings.py", "result_fixture.py", "check-python.py", "check-csharp.py", "python-asan.supp", "part_bindings.py", "part-bindings-v0.9.json", "check-part-outputs.py")
+    files += [root / "backends/test" / name for name in ("bindings.ips", "binding-trap.ips", "binding-unicode.ips", "binding-normal.ips", "binding-maps.ips", "execution-slow.ips", "prepare-bindings.py", "result_fixture.py", "check-python.py", "check-csharp.py", "python-asan.supp", "model_bindings.py", "part_bindings.py", "part-bindings-v0.9.json", "check-part-outputs.py")
               if (root / "backends/test" / name).is_file()]
     files += [p for p in (root / "editor/README.md", root / "website/README.md") if p.is_file()]
     files += list((root / "examples/c").glob("*.c"))

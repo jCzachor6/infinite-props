@@ -4,7 +4,7 @@ import CryptoKit
 import Metal
 import InfiniteProps
 
-private struct CorpusReader {
+struct CorpusReader {
     let data: Data
     var at = 0
     mutating func take(_ size: Int) throws -> Data {

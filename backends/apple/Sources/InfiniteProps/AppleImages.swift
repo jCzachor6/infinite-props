@@ -80,3 +80,16 @@ extension AuxiliaryImage {
         try metalTexture(rgba, width, height, rowStride, device: device)
     }
 }
+
+#if IPROP_MODELS
+extension ModelTexture {
+    public func makeCGImage() throws -> CGImage {
+        guard !rgba.isEmpty else { throw ImagePresentationError.allocation }
+        return try cgImage(rgba, width, height, rowStride, space: CGColorSpace.sRGB, alpha: .last)
+    }
+    public func makeMetalTexture(device: MTLDevice) throws -> MTLTexture {
+        guard !rgba.isEmpty else { throw ImagePresentationError.allocation }
+        return try metalTexture(rgba, width, height, rowStride, device: device)
+    }
+}
+#endif

@@ -98,3 +98,23 @@ gradle -p backends/android :iprop:connectedDebugAndroidTest
 ```
 
 No device is needed for `assembleRelease` or `assembleDebugAndroidTest`.
+
+## Models (preview)
+
+The AAR includes the model runtime in its JNI library on all three ABIs.
+
+```kotlin
+val cache = TextureCache()
+Model(bytes).use { model ->
+    val result = model.generate(seed = 5u, textures = cache)
+    val bitmap = result.textures.first().toBitmap()
+    // The caller owns the bitmap.
+    bitmap.recycle()
+}
+```
+
+Workers can share a model and a cache. Each generation owns its parameter
+set. Passing `known = cache.known` returns metadata for reused textures.
+Run `python3 backends/android/tests/run-host.py` with the fixtures and
+pixel corpus described above. The connected Android tests additionally
+compare Bitmap bytes with the generated model texture.

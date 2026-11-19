@@ -70,3 +70,7 @@ integration and linking examples are in the [C API guide](../backends/capi/READM
 The [WASM guide](../backends/html5/README.md) describes the Emscripten build.
 [CI and publication](ci.md) documents candidate packages, extraction checks
 and the separate requirements for freezing/tagging a release.
+
+## Runtime-only model builds
+
+Configure with `-DIPROP_RUNTIME_ONLY=ON -DIPROP_RUNTIME_MODELS=ON` for mobile and plugin builds. Build `iprop_capi3d` for static linkage or `iprop_capi3d_shared` for dynamic loading. The latter contains the C functions used by both 2D and model handles.

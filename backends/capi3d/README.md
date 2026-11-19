@@ -9,13 +9,15 @@ interface and [models](../../docs/language/models.md) how one is written.
 
 **Preview.** API 0.3 follows the models contract, which is a preview until it
 is frozen. Until then a release may change any declaration in `iprop3d.h`
-and no ABI is promised: the library is static only (`iprop3dc`), is not
-installed with the SDK, and a client is built together with it. `iprop.h`
+and no ABI is promised: build the client with a matching model library from the source checkout. `iprop.h`
 and `ipropc` are not affected by anything here.
 
 ## Building
 
-The library is the CMake target `iprop::capi3d`. It links the static 2D C API
+For a shared library, build target `iprop_capi3d_shared`. It exports both C APIs. Obtain every function acting on a handle from the same library.
+The tests `capi3d_models_shared` and `capi3d_threads` cover the shared exports and concurrent parameter creation and generation.
+
+The static library is the CMake target `iprop::capi3d`. It links the static 2D C API
 and the model runtime and carries their include directories:
 
 ```cmake

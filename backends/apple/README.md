@@ -107,3 +107,31 @@ Native archive cross-compilation covers the device/simulator slices; actual
 app deployment remains an application-level check.
 
 Generate the complete [shared pixel corpus](../../docs/native-bindings.md#required-pixel-equality-gate) before testing. The suite requires it and compares every image, CGImage provider and available Metal texture readback byte-for-byte.
+
+## Models (preview)
+
+Build the XCFramework with `build-xcframework.py`. SwiftPM enables the model
+API when the artifact contains the model header. The installed 2D system
+library remains usable by packages that only generate images.
+
+```swift
+let model = try Model(contentsOf: url)
+let cache = TextureCache()
+let result = try model.generate(seed: 5, inputs: ["wide": .float(8)], textures: cache)
+let geometry = try result.makeSCNGeometry()
+model.close()
+```
+
+Concurrent calls retain the model and a snapshot of cached textures.
+`known: cache.known` asks for metadata for reused textures. Model textures
+also provide `makeCGImage()` and `makeMetalTexture(device:)`.
+
+SceneKit geometry uses metres, one element per surface, the original
+counterclockwise triangle order and the original top-left UVs for CGImage
+materials. SceneKit forms the bitangent from tangent cross normal, so the
+adapter negates tangent W. The macOS tests render a raised square under a
+directional light and compare its upper and lower bevels.
+[SceneKit tangent convention](https://developer.apple.com/documentation/scenekit/scnprogram)
+
+Run the Verify command above with the model-enabled XCFramework and fresh
+binding fixtures to replay the entire model corpus.

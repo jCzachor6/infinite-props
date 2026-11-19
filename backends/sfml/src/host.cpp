@@ -14,7 +14,7 @@
 // the seed; --derive-normal asks the runtime to derive one for a prop that
 // publishes none.
 
-#include "Host.hpp"
+#include "ModelRender.hpp"
 #include "Render.hpp"
 
 #include <SFML/Graphics.hpp>
@@ -124,6 +124,7 @@ int run(int argc, char** argv) {
     std::string path = "examples/plant.iprop";
     std::uint32_t seed = 0;
     std::string exportPath;
+    std::string modelTexturesPath;
     std::string normalPath;
     std::string atlasPath;
     std::string screenshotPath;
@@ -133,6 +134,8 @@ int run(int argc, char** argv) {
         const std::string arg = argv[i];
         if (arg == "--seed") {
             seed = parseU32(nextArg(i, argc, argv, "--seed"), "--seed");
+        } else if (arg == "--model-textures") {
+            modelTexturesPath = nextArg(i, argc, argv, "--model-textures");
         } else if (arg == "--export") {
             exportPath = nextArg(i, argc, argv, "--export");
         } else if (arg == "--normal") {
@@ -159,6 +162,17 @@ int run(int argc, char** argv) {
     }
 
     const auto bytes = iprop::sfml_host::readFile(path);
+    if (!modelTexturesPath.empty()) {
+        using namespace iprop::sfml_host;
+        Model model(loadModel(bytes), iprop3d_model_free);
+        auto parameters = createModelParameters(model.get());
+        for (const auto& [name, value] : inputs) setParameter(parameters.get(), name, value);
+        ModelRequest request{};
+        request.seed = seed;
+        ModelResult result(generateModel(model.get(), request, parameters.get()), iprop3d_result_free);
+        exportModelTextures(copyModel(result.get()), modelTexturesPath);
+        return 0;
+    }
     const iprop::sfml_host::Program program(
         iprop::sfml_host::loadProgram(bytes), iprop_program_free);
     const iprop::sfml_host::Parameters parameters = iprop::sfml_host::createParameters(program.get());

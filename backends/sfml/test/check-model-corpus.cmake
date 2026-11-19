@@ -1,0 +1,7 @@
+file(READ "${FIXTURES}/model-corpus.json" manifest)
+string(JSON expected GET "${manifest}" sha256)
+file(SHA256 "${FIXTURES}/model-corpus.bin" actual)
+if(NOT actual STREQUAL expected)
+    message(FATAL_ERROR "Model corpus SHA-256 mismatch")
+endif()
+execute_process(COMMAND "${HOST}" "${FIXTURES}" COMMAND_ERROR_IS_FATAL ANY)

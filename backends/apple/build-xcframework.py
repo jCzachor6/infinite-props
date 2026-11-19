@@ -36,14 +36,16 @@ def main():
         headers = directory / "Headers"
         headers.mkdir(parents=True, exist_ok=True)
         run("cmake", "-S", root, "-B", directory, "-DCMAKE_BUILD_TYPE=Release",
-            "-DIPROP_RUNTIME_ONLY=ON", "-DBUILD_SHARED_LIBS=OFF",
+            "-DIPROP_RUNTIME_ONLY=ON", "-DIPROP_RUNTIME_MODELS=ON", "-DBUILD_SHARED_LIBS=OFF",
             f"-DCMAKE_SYSTEM_NAME={system}", f"-DCMAKE_OSX_SYSROOT={sdk}",
             f"-DCMAKE_OSX_ARCHITECTURES={architectures}", f"-DCMAKE_OSX_DEPLOYMENT_TARGET={minimum}")
-        run("cmake", "--build", directory, "--target", "iprop_capi_static", "--parallel", "4")
+        run("cmake", "--build", directory, "--target", "iprop_capi3d", "--parallel", "4")
         (headers / "iprop.h").write_bytes((root / "backends/capi/iprop.h").read_bytes())
-        (headers / "module.modulemap").write_text('module CIprop { header "iprop.h" export * }\n')
+        (headers / "iprop3d.h").write_bytes((root / "backends/capi3d/iprop3d.h").read_bytes())
+        (headers / "module.modulemap").write_text('module CIprop { header "iprop.h" header "iprop3d.h" export * }\n')
         library = directory / "libCIprop.a"
         run("xcrun", "libtool", "-static", "-o", library,
+            directory / "backends/capi3d/libiprop3dc.a", directory / "model/libiprop_model.a",
             directory / "backends/capi/libipropc.a", directory / "runtime/libiprop_runtime.a")
         libraries.extend(["-library", library, "-headers", headers])
     output.parent.mkdir(parents=True, exist_ok=True)

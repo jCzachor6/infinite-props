@@ -67,7 +67,7 @@ jobs:
       - name: Install and test the Python image package
         run: |
           python scripts/ci_report.py run python-package python -m pip install "./backends/python[images]"
-          python scripts/ci_report.py run python-images python backends/test/check-python.py build/tools build/backends/capi/${{ runner.os == 'Windows' && 'ipropc-0.5.dll' || runner.os == 'macOS' && 'libipropc.dylib' || 'libipropc.so' }} build/binding-fixtures
+          python scripts/ci_report.py run python-images python backends/test/check-python.py build/tools build/backends/capi/${{ runner.os == 'Windows' && 'ipropc-0.5.dll' || runner.os == 'macOS' && 'libipropc.dylib' || 'libipropc.so' }} build/binding-fixtures --models build/backends/capi3d/${{ runner.os == 'Windows' && 'iprop3dc.dll' || runner.os == 'macOS' && 'libiprop3dc.dylib' || 'libiprop3dc.so' }}
       - name: Compare every Python and Pillow pixel with the shared native/WASM corpus
         run: >-
           python scripts/ci_report.py run python-pixel-corpus
@@ -75,7 +75,7 @@ jobs:
       - name: Test the Unity C# native binding
         run: >-
           python scripts/ci_report.py run unity-csharp
-          python backends/test/check-csharp.py build/backends/capi/${{ runner.os == 'Windows' && 'ipropc-0.5.dll' || runner.os == 'macOS' && 'libipropc.dylib' || 'libipropc.so' }} build/binding-fixtures --corpus build/pixel-corpus
+          python backends/test/check-csharp.py build/backends/capi/${{ runner.os == 'Windows' && 'ipropc-0.5.dll' || runner.os == 'macOS' && 'libipropc.dylib' || 'libipropc.so' }} build/binding-fixtures --corpus build/pixel-corpus --models build/backends/capi3d/${{ runner.os == 'Windows' && 'iprop3dc.dll' || runner.os == 'macOS' && 'libiprop3dc.dylib' || 'libiprop3dc.so' }}
       - name: Build and test the Apple package
         if: runner.os == 'macOS'
         env:

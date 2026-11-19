@@ -13,10 +13,10 @@ with zipfile.ZipFile(args.aar) as archive:
     libraries = {name for name in archive.namelist() if name.endswith(".so")}
     assert libraries == {f"jni/{abi}/libiprop_jni.so" for abi in expected}, libraries
     with zipfile.ZipFile(io.BytesIO(archive.read("classes.jar"))) as classes:
-        for name in ("Program", "GeneratedImage", "Native", "AndroidImagesKt", "IpropException"):
+        for name in ("Program", "GeneratedImage", "Model", "ModelNative", "GeneratedModel", "Native", "AndroidImagesKt", "IpropException"):
             assert f"dev/infiniteprops/{name}.class" in classes.namelist(), name
     rules = archive.read("proguard.txt")
-    assert b"dev.infiniteprops.Native" in rules and b"dev.infiniteprops.IpropException" in rules
+    assert b"dev.infiniteprops.ModelNative" in rules and b"dev.infiniteprops.Native" in rules and b"dev.infiniteprops.IpropException" in rules
     for abi, machine in expected.items():
         data = archive.read(f"jni/{abi}/libiprop_jni.so")
         assert data[:4] == b"\x7fELF" and data[5] == 1, abi

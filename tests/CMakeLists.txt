@@ -291,9 +291,11 @@ if(IPROP_NODE_EXECUTABLE)
 endif()
 
 if(Python3_Interpreter_FOUND)
+    add_test(NAME model_binding_versions COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check_model_bindings.py)
     add_test(NAME binding_python COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_SOURCE_DIR}/backends/test/check-python.py
-        $<TARGET_FILE_DIR:ipc> $<TARGET_FILE:iprop_capi> ${CMAKE_BINARY_DIR}/binding-fixtures)
+        $<TARGET_FILE_DIR:ipc> $<TARGET_FILE:iprop_capi> ${CMAKE_BINARY_DIR}/binding-fixtures
+        --models $<TARGET_FILE:iprop_capi3d_shared>)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
             AND CMAKE_CXX_FLAGS MATCHES "-fsanitize=[^ ]*address")
         execute_process(COMMAND "${CMAKE_CXX_COMPILER}" -print-file-name=libasan.so

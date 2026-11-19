@@ -7,19 +7,18 @@
  * structured errors, sized descriptors, input descriptors, parameter sets,
  * execution limits and image tags unchanged.
  *
- * PREVIEW. API 0.2 follows the models contract, which is a preview until it
- * is frozen; 0.2 adds the 3D outputs of a result. Until then a release may change any declaration here, and no
- * ABI is promised: the library is static only (`iprop3dc`) and a client is
- * built together with it. iprop.h and `ipropc` are unaffected.
+ * PREVIEW. API 0.3 may change until the model contract is frozen. Build
+ * the host with its matching static or shared model library. Obtain all
+ * functions that operate on a handle from the same library.
  *
  * Geometry is right-handed with +Y up and +Z toward the viewer; triangles
  * are counterclockwise seen from outside. Positions are in model units;
  * units_per_meter converts them. UV (0, 0) is the upper left corner of the
  * texture image.
  *
- * Ownership and threading follow iprop.h: everything the host receives is
- * owned by an opaque handle and valid until that handle is freed, handles
- * are not thread-safe, and there is no global state.
+ * Views belong to their model or result until that handle is freed.
+ * Threads may create independent parameter sets and generate concurrently
+ * on one loaded model. Keep the model alive through every active call.
  */
 
 #ifndef IPROP3D_H

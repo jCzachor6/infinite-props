@@ -39,3 +39,14 @@ fun AuxiliaryImage.toBitmap(): Bitmap {
         return bitmap
     } catch (error: Throwable) { bitmap.recycle(); throw error }
 }
+
+/** Upload the owned colour texture, including RGB underneath transparent pixels. */
+fun ModelTexture.toBitmap(): Bitmap {
+    require(rgba.isNotEmpty()) { "Missing model texture pixels" }
+    val bitmap = Bitmap.createBitmap(width.toInt(), height.toInt(), Bitmap.Config.ARGB_8888)
+    try {
+        bitmap.setPremultiplied(false)
+        bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(rgba))
+        return bitmap
+    } catch (error: Throwable) { bitmap.recycle(); throw error }
+}

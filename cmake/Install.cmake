@@ -14,6 +14,7 @@ endif()
 install(FILES backends/ResultQueries.hpp DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iprop/backend)
 install(FILES backends/ResultQueries.hpp DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/backends)
 install(FILES backends/sfml/src/Host.hpp backends/sfml/src/Render.hpp
+    backends/sfml/src/ModelHost.hpp backends/sfml/src/ModelRender.hpp
     DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/backends/sfml/src)
 # Required by the static target's runtime dependency. C++ headers are
 # implementation details; only iprop.h has the documented ABI contract.
@@ -67,7 +68,7 @@ endforeach()
 # Binding source packages are usable independently from the source checkout.
 # Mobile native builds additionally need --source/IPROP_SOURCE for the runtime.
 set(iprop_binding_patterns)
-foreach(extension swift h cpp py toml cs csproj shader asmdef meta json kts kt properties xml pro txt md modulemap)
+foreach(extension swift h hpp cpp py toml cs csproj shader asmdef meta json kts kt properties xml pro txt md modulemap)
     list(APPEND iprop_binding_patterns PATTERN "*.${extension}")
 endforeach()
 foreach(backend apple unity android python)
@@ -81,7 +82,7 @@ foreach(backend apple unity android python)
 endforeach()
 install(FILES backends/test/bindings.ips backends/test/binding-trap.ips backends/test/binding-unicode.ips backends/test/binding-normal.ips backends/test/binding-maps.ips backends/test/execution-slow.ips
     backends/test/prepare-bindings.py backends/test/result_fixture.py backends/test/check-python.py backends/test/check-csharp.py
-    backends/test/python-asan.supp backends/test/part_bindings.py
+    backends/test/python-asan.supp backends/test/model_bindings.py backends/test/part_bindings.py
     backends/test/part-bindings-v0.9.json backends/test/check-part-outputs.py
     DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/backends/test)
 foreach(guide editor website)

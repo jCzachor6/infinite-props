@@ -153,3 +153,25 @@ build/backends/sfml/sfml_pixel_corpus build/pixel-corpus/pixel-corpus.bin
 `sfml_part_outputs` separately compares all fields of 23 shared C++/C
 reference scenes through `copyResult`, including holes, D4 mappings and exact
 resource bytes, after freeing both native results and their program.
+
+## Models (preview)
+
+Link `iprop::capi3d` and include `ModelHost.hpp` from the source checkout.
+The helper owns the geometry arrays, outputs and image bytes it copies.
+
+```cpp
+using namespace iprop::sfml_host;
+Model model(loadModel(readFile("crate.iprop3d")), iprop3d_model_free);
+TextureCache cache;
+ModelRequest request{};
+request.seed = 5;
+auto result = cache.generate(model.get(), request);
+sf::Texture texture;
+uploadModelTexture(texture, result.textures.at(0), result.surfaces.at(0).crisp);
+```
+
+Include `ModelRender.hpp` for the GPU upload. Keep the model alive through
+each concurrent call and give each worker its own parameters. The cache can
+be shared by all workers. Export colour textures and auxiliary maps with
+`iprop_sfml crate.iprop3d --seed 5 --model-textures textures`. Verify with
+`ctest --test-dir build -R sfml_ --output-on-failure` on a graphics-capable host.

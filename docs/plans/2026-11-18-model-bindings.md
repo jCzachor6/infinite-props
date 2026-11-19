@@ -1,5 +1,9 @@
 # Interfejs modeli w pięciu wiązaniach: Python, Swift, C#/Unity, Kotlin/Android, SFML
 
+**Realizacja 2026-11-19.** Pięć wiązań jest zaimplementowanych. Pomiary,
+wyniki lokalne i testy oczekujące na pozostałe platformy zapisano
+w [rozdziale 21 wizji](2026-11-16-iprop3d.md#21-wiązania-modeli-po-m6-2026-11-19).
+
 Status: **propozycja z 2026-11-18** dla wykonawcy (Codex), na stanie commita
 `4f1521b` gałęzi `feat/iprop3d` (M5, C API modeli 0.3). W drzewie trwa M6
 (roboczy rozdział 20 [wizji](2026-11-16-iprop3d.md), jeszcze poza commitem);

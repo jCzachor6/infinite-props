@@ -10,11 +10,14 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("tools", type=Path)
 parser.add_argument("library", type=Path)
 parser.add_argument("fixtures", type=Path)
+parser.add_argument("--models", type=Path)
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[2]
 subprocess.run([sys.executable, root / "backends/test/prepare-bindings.py", args.tools, args.fixtures], check=True)
 env = dict(os.environ, PYTHONPATH=str(root / "backends/python/src"),
            IPROP_LIBRARY=str(args.library.resolve()), IPROP_FIXTURES=str(args.fixtures.resolve()))
+if args.models:
+    env["IPROP3D_LIBRARY"] = str(args.models.resolve())
 test_envs = [env]
 if preload := env.get("IPROP_SANITIZER_PRELOAD"):
     # Load ASan and the C++ exception runtime before ctypes loads the native

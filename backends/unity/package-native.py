@@ -14,8 +14,9 @@ def meta(path, platform, cpu):
     os_name = {"OSXUniversal": "OSX", "Win64": "Windows", "Linux64": "Linux"}.get(platform, "AnyOS")
     # Explicit import settings prevent a library for a different target from
     # being loaded in the editor. GUIDs remain stable when the plugin rebuilds.
+    identity = platform + "/" + cpu + ("/models" if "iprop3dc" in path.name else "")
     data = f"""fileFormatVersion: 2
-guid: {uuid.uuid5(uuid.NAMESPACE_URL, 'https://infiniteprops.dev/unity/' + platform + '/' + cpu).hex}
+guid: {uuid.uuid5(uuid.NAMESPACE_URL, 'https://infiniteprops.dev/unity/' + identity).hex}
 PluginImporter:
   externalObjects: {{}}
   serializedVersion: 2
@@ -61,6 +62,7 @@ def main():
     parser.add_argument("--build", type=Path, default=root / "build/unity-native")
     parser.add_argument("--package", type=Path, default=Path(__file__).resolve().parent / "Packages/dev.infiniteprops.runtime")
     parser.add_argument("--ndk", type=Path, help="Android NDK root (required for Android)")
+    parser.add_argument("--models", action="store_true", help="Include the model API 0.3 plugin")
     args = parser.parse_args()
     env = dict(os.environ)
     if sys.platform == "darwin" and "DEVELOPER_DIR" not in env and Path("/Applications/Xcode.app/Contents/Developer").is_dir():
@@ -70,29 +72,38 @@ def main():
     def build(name, *options, target="iprop_capi"):
         directory = args.build.resolve() / name
         run("cmake", "-S", args.source.resolve(), "-B", directory, "-DCMAKE_BUILD_TYPE=Release",
-            "-DIPROP_RUNTIME_ONLY=ON", "-DBUILD_SHARED_LIBS=OFF", *options)
-        run("cmake", "--build", directory, "--config", "Release", "--target", target, "--parallel", "4")
+            "-DIPROP_RUNTIME_ONLY=ON", f"-DIPROP_RUNTIME_MODELS={'ON' if args.models else 'OFF'}", "-DBUILD_SHARED_LIBS=OFF", *options)
+        targets = [target]
+        if args.models:
+            targets.append("iprop_capi3d" if name == "ios" else "iprop_capi3d_shared")
+        run("cmake", "--build", directory, "--config", "Release", "--target", *targets, "--parallel", "4")
         return directory
-    def publish(source, relative, platform, cpu):
+    def publish(directory, source, relative, platform, cpu):
         destination = args.package.resolve() / "Plugins" / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, destination)
         meta(destination, platform, cpu)
         print("Packaged", destination)
+        if args.models and platform != "iPhone":
+            name = source.name.replace("ipropc-0.5", "ipropc").replace("ipropc", "iprop3dc")
+            plugin = directory / "backends/capi3d" / ("Release" if source.parent.name == "Release" else "") / name
+            companion = destination.with_name(name)
+            shutil.copyfile(plugin, companion)
+            meta(companion, platform, cpu)
     if args.platform == "macos":
         d = build("macos", "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64", "-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0")
-        publish(d / "backends/capi/libipropc.dylib", "macOS/libipropc.dylib", "OSXUniversal", "AnyCPU")
+        publish(d, d / "backends/capi/libipropc.dylib", "macOS/libipropc.dylib", "OSXUniversal", "AnyCPU")
     elif args.platform == "windows":
         d = build("windows", "-A", "x64")
         dll = d / "backends/capi/Release/ipropc-0.5.dll"
         if not dll.exists():
             dll = d / "backends/capi/ipropc-0.5.dll"
-        publish(dll, "x86_64/ipropc-0.5.dll", "Win64", "x86_64")
+        publish(d, dll, "x86_64/ipropc-0.5.dll", "Win64", "x86_64")
         # zlib is a runtime dependency when the selected SDK uses shared zlib.
         # Use a static-zlib toolchain, or package its DLL beside this plugin.
     elif args.platform == "linux":
         d = build("linux")
-        publish(d / "backends/capi/libipropc.so", "x86_64/libipropc.so", "Linux64", "x86_64")
+        publish(d, d / "backends/capi/libipropc.so", "x86_64/libipropc.so", "Linux64", "x86_64")
     elif args.platform == "android":
         if not args.ndk:
             parser.error("--ndk is required for Android")
@@ -100,14 +111,15 @@ def main():
             d = build(abi, f"-DCMAKE_TOOLCHAIN_FILE={args.ndk.resolve()}/build/cmake/android.toolchain.cmake",
                 f"-DANDROID_ABI={abi}", "-DANDROID_PLATFORM=android-23", "-DANDROID_STL=c++_static",
                 "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384")
-            publish(d / "backends/capi/libipropc.so", f"Android/{abi}/libipropc.so", "Android", cpu)
+            publish(d, d / "backends/capi/libipropc.so", f"Android/{abi}/libipropc.so", "Android", cpu)
     else:
         d = build("ios", "-DCMAKE_SYSTEM_NAME=iOS", "-DCMAKE_OSX_SYSROOT=iphoneos",
             "-DCMAKE_OSX_ARCHITECTURES=arm64", "-DCMAKE_OSX_DEPLOYMENT_TARGET=15.0", target="iprop_capi_static")
         combined = d / "libipropc.a"
         run("xcrun", "libtool", "-static", "-o", combined,
-            d / "backends/capi/libipropc.a", d / "runtime/libiprop_runtime.a")
-        publish(combined, "iOS/libipropc.a", "iPhone", "ARM64")
+            d / "backends/capi/libipropc.a", d / "runtime/libiprop_runtime.a",
+            *([d / "backends/capi3d/libiprop3dc.a", d / "model/libiprop_model.a"] if args.models else []))
+        publish(d, combined, "iOS/libipropc.a", "iPhone", "ARM64")
 
 
 if __name__ == "__main__":

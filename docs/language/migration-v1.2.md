@@ -106,15 +106,14 @@ A 1.1 binding skips kinds it does not know, except the 1.1 Python package,
 whose `ImageKind` rejects them: use the 1.2 package with a 1.2 library.
 
 - **C.** [`iprop3d.h`](../c-api-models.md) is a separate header and a
-  separate static library with its own version, 0.2: 0.2 adds a model's
-  outputs to the results of 0.1. It is not part of the installed SDK yet.
+  separate library with its own API version, 0.3, available with static or shared linkage. It is not part of the installed SDK yet.
 - **Browser.** `iprop3d.wasm` generates models and also carries the whole 2D
   interface; `iprop.wasm` stays a 2D module. See
   [HTML5/WASM](../../backends/html5/README.md#models-preview).
 - **Godot.** `IpropModel` and `IpropModelInstance3D` join the extension; the
   node turns a model's outputs into markers and colliders. See
   [Godot](../../backends/godot/README.md#models-preview).
-- The Python, Swift, C#, Kotlin and SFML bindings have no model interface.
+- Python, Swift, C#, Kotlin and SFML now expose model generation and cached textures. See the [native binding interfaces](../native-bindings.md#models-preview).
 
 ## Tools
 

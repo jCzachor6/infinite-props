@@ -1,4 +1,4 @@
-// The C API of models (preview, API 0.1): adapters over iprop::model that
+// The C API of models (preview, API 0.3): adapters over iprop::model that
 // share the checked boundary, the sized descriptors and the parameter sets
 // of the 2D C API. Nothing here changes `ipropc`.
 #include "iprop3d.h"

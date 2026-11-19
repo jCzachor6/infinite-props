@@ -171,12 +171,12 @@ func checked(_ body: (UnsafeMutablePointer<iprop_error_ex>) -> UInt32) throws {
     }
 }
 
-private func string(_ view: iprop_utf8_view) -> String {
+func string(_ view: iprop_utf8_view) -> String {
     guard view.byte_count > 0, let pointer = view.data else { return "" }
     return String(decoding: UnsafeRawBufferPointer(start: pointer, count: Int(view.byte_count)), as: UTF8.self)
 }
 
-private func requireRuntime() throws {
+func requireRuntime() throws {
     var library = iprop_library_info_ex()
     iprop_library_info_ex_init(&library, UInt32(MemoryLayout<iprop_library_info_ex>.size))
     try checked { iprop_library_query_ex(&library, $0) }
@@ -189,6 +189,45 @@ private func requireRuntime() throws {
             locationFlags: 0, offsetSpace: 0, functionIndex: 0, pc: 0, debugLine: 0,
             message: "InfiniteProps requires C API 0.7 / ABI 0.5 with typed results, execution limits and auxiliary images", messageTruncated: false)
     }
+}
+
+func setOverrides(_ overrides: [InputOverride], parameters: OpaquePointer?) throws {
+    var seen = Set<Data>()
+    for override in overrides {
+        let bytes = Array(override.name.utf8)
+        guard bytes.count <= UInt32.max, seen.insert(Data(bytes)).inserted else {
+            throw IpropError(status: 4, reason: bytes.count > UInt32.max ? 4000 : 4006,
+                stage: 3, byteOffset: 0, locationFlags: 0, offsetSpace: 0,
+                functionIndex: 0, pc: 0, debugLine: 0,
+                message: "Invalid or duplicate input name", messageTruncated: false)
+        }
+        try bytes.withUnsafeBytes { data in
+            let view = iprop_utf8_view(data: data.baseAddress?.assumingMemoryBound(to: CChar.self),
+                                       byte_count: UInt32(bytes.count))
+            try checked { error in
+                switch override.value {
+                case .float(let f): return iprop_parameters_set_f32_named(parameters, view, f, error)
+                case .uint(let u): return iprop_parameters_set_u32_named(parameters, view, u, error)
+                case .int(let i): return iprop_parameters_set_i32_named(parameters, view, i, error)
+                case .color(let c):
+                    return iprop_parameters_set_color_named(parameters, view,
+                        iprop_color_rgba8(r: c.r, g: c.g, b: c.b, a: c.a), error)
+                }
+            }
+        }
+    }
+}
+
+func declaredInput(_ input: iprop_input_info_ex) -> Input {
+    let value: InputValue
+    switch input.type {
+    case 0:
+        let c = input.color_default
+        value = .color(RGBA8(c.r, c.g, c.b, c.a))
+    case 1: value = .float(input.f32_default)
+    default: value = .uint(input.u32_default)
+    }
+    return Input(index: input.input_index, name: string(input.name), defaultValue: value)
 }
 
 /// Owns a validated program. Calls, including close(), serialize on one lock;
@@ -230,15 +269,7 @@ public final class Program: @unchecked Sendable {
                 var input = iprop_input_info_ex()
                 iprop_input_info_ex_init(&input, UInt32(MemoryLayout<iprop_input_info_ex>.size))
                 try checked { iprop_program_input_get(loaded, index, &input, $0) }
-                let value: InputValue
-                switch input.type {
-                case 0:
-                    let c = input.color_default
-                    value = .color(RGBA8(c.r, c.g, c.b, c.a))
-                case 1: value = .float(input.f32_default)
-                default: value = .uint(input.u32_default)
-                }
-                declarations.append(Input(index: input.input_index, name: string(input.name), defaultValue: value))
+                declarations.append(declaredInput(input))
             }
             inputs = declarations
             try checked { iprop_program_aux_image_count(loaded, &count, $0) }
@@ -279,30 +310,7 @@ public final class Program: @unchecked Sendable {
         var parameters: OpaquePointer?
         try checked { iprop_parameters_create(handle, &parameters, $0) }
         defer { iprop_parameters_free(parameters) }
-        var seen = Set<Data>()
-        for override in overrides {
-            let bytes = Array(override.name.utf8)
-            guard bytes.count <= UInt32.max, seen.insert(Data(bytes)).inserted else {
-                throw IpropError(status: 4, reason: bytes.count > UInt32.max ? 4000 : 4006,
-                    stage: 3, byteOffset: 0, locationFlags: 0, offsetSpace: 0,
-                    functionIndex: 0, pc: 0, debugLine: 0,
-                    message: "Invalid or duplicate input name", messageTruncated: false)
-            }
-            try bytes.withUnsafeBytes { data in
-                let view = iprop_utf8_view(data: data.baseAddress?.assumingMemoryBound(to: CChar.self),
-                                           byte_count: UInt32(bytes.count))
-                try checked { error in
-                    switch override.value {
-                    case .float(let f): return iprop_parameters_set_f32_named(parameters, view, f, error)
-                    case .uint(let u): return iprop_parameters_set_u32_named(parameters, view, u, error)
-                    case .int(let i): return iprop_parameters_set_i32_named(parameters, view, i, error)
-                    case .color(let c):
-                        return iprop_parameters_set_color_named(parameters, view,
-                            iprop_color_rgba8(r: c.r, g: c.g, b: c.b, a: c.a), error)
-                    }
-                }
-            }
-        }
+        try setOverrides(overrides, parameters: parameters)
         var options = iprop_generate_options_ex()
         iprop_generate_options_ex_init(&options, UInt32(MemoryLayout<iprop_generate_options_ex>.size))
         options.flags = 1 // IPROP_GENERATE_PART_OUTPUTS (UINT32_C macros are not imported by Swift).

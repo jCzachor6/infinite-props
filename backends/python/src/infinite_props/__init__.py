@@ -331,6 +331,39 @@ class GeneratedImage:
         return Image.frombytes("RGBA", (self.width, self.height), self.rgba)
 
 
+def _set_inputs(native, parameters, inputs):
+    for name, value in (inputs or {}).items():
+        encoded = name.encode("utf-8")
+        _integer(len(encoded), 0, 0xffffffff)
+        buffer = c.create_string_buffer(encoded)
+        view = n.View(c.addressof(buffer), len(encoded))
+        parameter = n.sized(n.Parameter)
+        if isinstance(value, Color):
+            parameter.type = 0
+            parameter.color = n.Color(value.r, value.g, value.b, value.a)
+        elif isinstance(value, F32):
+            parameter.type = 1
+            c.memmove(c.addressof(parameter) + n.Parameter.f32.offset, struct.pack("=I", value.bits), 4)
+        elif isinstance(value, (U32, I32)):
+            parameter.type = 2
+            parameter.u32 = value.value & 0xffffffff
+        else:
+            raise TypeError("Inputs must be Color, F32, U32 or I32")
+        native.call("parameters_set_named", parameters, view, c.byref(parameter))
+
+
+def _input(info):
+    color = info.color_default
+    if info.type == 0:
+        value = Color(color.r, color.g, color.b, color.a)
+    elif info.type == 1:
+        bits = struct.unpack("=I", c.string_at(c.addressof(info) + n.Input.f32_default.offset, 4))[0]
+        value = F32.from_bits(bits)
+    else:
+        value = U32(info.u32_default)
+    return Input(info.input_index, n.text(info.name), value)
+
+
 class Program:
     """Owns a validated program. Calls and close serialize per instance.
 
@@ -358,15 +391,7 @@ class Program:
             for index in range(count.value):
                 info = n.sized(n.Input)
                 self._native.call("program_input_get", self._handle, index, c.byref(info))
-                color = info.color_default
-                if info.type == 0:
-                    value = Color(color.r, color.g, color.b, color.a)
-                elif info.type == 1:
-                    bits = struct.unpack("=I", c.string_at(c.addressof(info) + n.Input.f32_default.offset, 4))[0]
-                    value = F32.from_bits(bits)
-                else:
-                    value = U32(info.u32_default)
-                inputs.append(Input(info.input_index, n.text(info.name), value))
+                inputs.append(_input(info))
             self.inputs = tuple(inputs)
             self._native.call("program_aux_image_count", self._handle, c.byref(count))
             images = []
@@ -419,24 +444,7 @@ class Program:
             parameters = c.c_void_p()
             self._native.call("parameters_create", self._handle, c.byref(parameters))
             try:
-                for name, value in (inputs or {}).items():
-                    encoded = name.encode("utf-8")
-                    _integer(len(encoded), 0, 0xffffffff)
-                    buffer = c.create_string_buffer(encoded)
-                    view = n.View(c.addressof(buffer), len(encoded))
-                    parameter = n.sized(n.Parameter)
-                    if isinstance(value, Color):
-                        parameter.type = 0
-                        parameter.color = n.Color(value.r, value.g, value.b, value.a)
-                    elif isinstance(value, F32):
-                        parameter.type = 1
-                        c.memmove(c.addressof(parameter) + n.Parameter.f32.offset, struct.pack("=I", value.bits), 4)
-                    elif isinstance(value, (U32, I32)):
-                        parameter.type = 2
-                        parameter.u32 = value.value & 0xffffffff
-                    else:
-                        raise TypeError("Inputs must be Color, F32, U32 or I32")
-                    self._native.call("parameters_set_named", parameters, view, c.byref(parameter))
+                _set_inputs(self._native, parameters, inputs)
                 options = n.sized(n.Options)
                 options.flags = 1  # IPROP_GENERATE_PART_OUTPUTS, negotiated by Native.
                 options.seed, options.size_x, options.size_y = seed, width, height
@@ -535,3 +543,10 @@ class Program:
         return Resource(info.resource_id, info.kind, info.pixel_format, info.width, info.height, info.row_stride,
             c.string_at(info.data, info.byte_count) if info.byte_count else b"", Point(info.scale.x, info.scale.y),
             info.vertex_count, info.edge_count, tuple(rings), tuple(regions))
+
+
+from .models import (Model, ModelMetadata, ModelLibrary, ModelStatistics, GeneratedModel, Surface, ModelTexture,
+                     ModelOutput, SkinProgram, KnownTexture, TextureCache, model_library, MAX_LOD)
+
+__all__ += ["Model", "ModelMetadata", "ModelLibrary", "ModelStatistics", "GeneratedModel", "Surface", "ModelTexture",
+            "ModelOutput", "SkinProgram", "KnownTexture", "TextureCache", "model_library", "MAX_LOD"]

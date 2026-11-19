@@ -208,3 +208,187 @@ class Native:
         status = getattr(self, name)(*args, c.byref(error))
         if status:
             raise IpropError(status, error, buffer.value.decode("utf-8", errors="replace"))
+
+
+class LibraryInfo3D(c.Structure):
+    _fields_ = [
+        ("struct_size", c.c_uint32),
+        ("api_major", c.c_uint32),
+        ("api_minor", c.c_uint32),
+        ("max_vertices", c.c_uint32),
+        ("max_triangles", c.c_uint32),
+        ("max_textures", c.c_uint32),
+        ("max_texture_side", c.c_uint32),
+        ("max_texels", c.c_uint64),
+    ]
+
+
+class ModelInfo(c.Structure):
+    _fields_ = [
+        ("struct_size", c.c_uint32),
+        ("flags", c.c_uint32),
+        ("size_x", c.c_float),
+        ("size_y", c.c_float),
+        ("size_z", c.c_float),
+        ("units_per_meter", c.c_float),
+        ("fuel", c.c_uint64),
+        ("input_count", c.c_uint32),
+        ("skin_program_count", c.c_uint32),
+        ("container_flags", c.c_uint32),
+    ]
+
+
+class SkinProgramInfo(c.Structure):
+    _fields_ = [
+        ("struct_size", c.c_uint32),
+        ("flags", c.c_uint32),
+        ("program_index", c.c_uint32),
+        ("width", c.c_uint32),
+        ("height", c.c_uint32),
+        ("name", View),
+    ]
+
+
+class KnownTexture(c.Structure):
+    _fields_ = [
+        ("key", c.c_uint64),
+        ("fuel", c.c_uint64),
+        ("work", c.c_uint64),
+        ("image_kinds", c.c_uint32),
+        ("reserved", c.c_uint32),
+    ]
+
+
+class GenerateOptions(c.Structure):
+    _fields_ = [
+        ("struct_size", c.c_uint32),
+        ("flags", c.c_uint32),
+        ("seed", c.c_uint32),
+        ("lod", c.c_uint32),
+        ("known_textures", c.c_void_p),
+        ("known_texture_count", c.c_uint32),
+    ]
+
+
+class ResultInfo(c.Structure):
+    _fields_ = [
+        ("struct_size", c.c_uint32),
+        ("flags", c.c_uint32),
+        ("bounds_min", c.c_float * 3),
+        ("bounds_max", c.c_float * 3),
+        ("size", c.c_float * 3),
+        ("units_per_meter", c.c_float),
+        ("vertex_count", c.c_uint32),
+        ("triangle_count", c.c_uint32),
+        ("surface_count", c.c_uint32),
+        ("texture_count", c.c_uint32),
+        ("fuel_budget", c.c_uint64),
+        ("fuel_used", c.c_uint64),
+        ("work_budget", c.c_uint64),
+        ("work_used", c.c_uint64),
+        ("output_count", c.c_uint32),
+    ]
+
+
+class SurfaceView(c.Structure):
+    _fields_ = [
+        ("struct_size", c.c_uint32),
+        ("flags", c.c_uint32),
+        ("surface_index", c.c_uint32),
+        ("texture_index", c.c_uint32),
+        ("roughness", c.c_float),
+        ("metallic", c.c_float),
+        ("emission", c.c_float),
+        ("alpha_mode", c.c_uint32),
+        ("alpha_cutoff", c.c_float),
+        ("two_sided", c.c_uint32),
+        ("crisp", c.c_uint32),
+        ("vertex_count", c.c_uint32),
+        ("index_count", c.c_uint32),
+        ("positions", c.c_void_p),
+        ("normals", c.c_void_p),
+        ("tangents", c.c_void_p),
+        ("uvs", c.c_void_p),
+        ("indices", c.c_void_p),
+    ]
+
+
+class TextureView(c.Structure):
+    _fields_ = [
+        ("struct_size", c.c_uint32),
+        ("flags", c.c_uint32),
+        ("texture_index", c.c_uint32),
+        ("repeats", c.c_uint32),
+        ("key", c.c_uint64),
+        ("name", View),
+        ("asset_width", c.c_uint32),
+        ("asset_height", c.c_uint32),
+        ("width", c.c_uint32),
+        ("height", c.c_uint32),
+        ("byte_count", c.c_uint64),
+        ("row_stride", c.c_uint64),
+        ("pixel_format", c.c_uint32),
+        ("alpha_mode", c.c_uint32),
+        ("origin", c.c_uint32),
+        ("image_count", c.c_uint32),
+        ("pixels", c.c_void_p),
+        ("fuel", c.c_uint64),
+        ("work", c.c_uint64),
+        ("image_kinds", c.c_uint32),
+        ("reused", c.c_uint32),
+    ]
+
+
+class OutputView(c.Structure):
+    _fields_ = [
+        ("struct_size", c.c_uint32),
+        ("flags", c.c_uint32),
+        ("output_index", c.c_uint32),
+        ("kind", c.c_uint32),
+        ("list", c.c_uint32),
+        ("value_count", c.c_uint32),
+        ("floats_per_value", c.c_uint32),
+        ("name", View),
+        ("values", c.c_void_p),
+    ]
+
+
+class ModelNative(Native):
+    def __init__(self, path=None):
+        path = path or os.environ.get("IPROP3D_LIBRARY") or find_library("iprop3dc")
+        if not path:
+            raise OSError("Set IPROP3D_LIBRARY or pass library= with the model library path")
+        super().__init__(path)
+        p, u, ptr = c.c_void_p, c.c_uint32, c.POINTER
+        signatures = {
+            "library_query": [ptr(LibraryInfo3D)],
+            "model_load": [p, c.c_uint64, ptr(p)],
+            "model_query": [p, ptr(ModelInfo)],
+            "model_skin_program": [p, u, ptr(SkinProgramInfo)],
+            "model_input_get": [p, u, ptr(Input)],
+            "model_parameters_create": [p, ptr(p)],
+            "generate": [p, ptr(GenerateOptions), p, ptr(Limits), ptr(p)],
+            "result_query": [p, ptr(ResultInfo)],
+            "result_surface": [p, u, ptr(SurfaceView)],
+            "result_texture": [p, u, ptr(TextureView)],
+            "result_texture_image": [p, u, u, ptr(AuxImage)],
+            "result_output": [p, u, ptr(OutputView)],
+        }
+        for name, args in signatures.items():
+            try:
+                function = getattr(self.library, "iprop3d_" + name)
+            except AttributeError as error:
+                raise OSError("IPROP3D_LIBRARY must provide the model API 0.3") from error
+            function.argtypes, function.restype = args + [ptr(Error)], u
+            setattr(self, "model_api_" + name, function)
+            if name == "library_query":
+                self.info = sized(LibraryInfo3D)
+                self.call("model_api_library_query", c.byref(self.info))
+                if (self.info.api_major, self.info.api_minor) != (0, 3):
+                    raise RuntimeError("Infinite Props requires model API 0.3")
+        for name in ("model_free", "result_free"):
+            function = getattr(self.library, "iprop3d_" + name)
+            function.argtypes, function.restype = [p], None
+            setattr(self, "model_api_" + name, function)
+        self.stamp = self.library.iprop3d_texture_stamp
+        self.stamp.argtypes, self.stamp.restype = [], c.c_uint64

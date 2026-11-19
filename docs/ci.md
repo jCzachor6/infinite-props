@@ -198,3 +198,7 @@ Packaging requires Python 3.12 or newer. To use a separate output directory:
 python3 scripts/release.py --output-dir build/release
 python3 scripts/package_web.py --output-dir build/release
 ```
+
+## Native model bindings
+
+The native matrix runs `model_binding_versions`, `capi3d_models_shared`, `capi3d_threads` and the model corpus in Python and C#. Apple and Android use the same generated corpus. The SFML job compares the colour and map bytes after GPU readback. Unity mesh presentation is exercised in the local Editor suite.

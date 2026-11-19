@@ -47,3 +47,18 @@ if(NOT TARGET backend_part_fixtures)
             ${CMAKE_SOURCE_DIR}/tests/fixtures/part-exports-v0.9.json)
     add_custom_target(backend_part_fixtures DEPENDS ${part_fixtures})
 endif()
+
+if(NOT TARGET backend_model_fixtures)
+    set(model_dir ${CMAKE_BINARY_DIR}/binding-fixtures)
+    file(GLOB_RECURSE model_sources CONFIGURE_DEPENDS
+        ${CMAKE_SOURCE_DIR}/examples/models/*.ips ${CMAKE_SOURCE_DIR}/examples/language/model-*.ips
+        ${CMAKE_SOURCE_DIR}/examples/language/skins/*.ips
+        ${CMAKE_SOURCE_DIR}/backends/capi3d/test/*.ips ${CMAKE_SOURCE_DIR}/tests/model/corpus/*.ips
+        ${CMAKE_SOURCE_DIR}/backends/html5/test/fixtures/*.ips)
+    add_custom_command(OUTPUT ${model_dir}/model-corpus.bin ${model_dir}/model-corpus.json
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/test/prepare-bindings.py
+            $<TARGET_FILE_DIR:ipc> ${model_dir} --models-only
+        DEPENDS ipc ipgen ${model_sources} ${CMAKE_CURRENT_LIST_DIR}/test/model_bindings.py
+            ${CMAKE_CURRENT_LIST_DIR}/test/prepare-bindings.py)
+    add_custom_target(backend_model_fixtures DEPENDS ${model_dir}/model-corpus.bin ${model_dir}/model-corpus.json)
+endif()

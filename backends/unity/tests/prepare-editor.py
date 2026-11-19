@@ -12,11 +12,17 @@ parser.add_argument("--corpus", type=Path, default=Path("build/pixel-corpus"))
 parser.add_argument("--fixtures", type=Path, default=Path("build/binding-fixtures"))
 parser.add_argument("--color-space", choices=("Gamma", "Linear"), help="Change an already initialized Unity project before restarting the Editor")
 parser.add_argument("--version", default="2022.3.62f1")
+parser.add_argument("--models", action="store_true", help="Require the editor model plugin")
 args = parser.parse_args()
 project = args.project.resolve()
 package = Path(__file__).resolve().parents[1] / "Packages/dev.infiniteprops.runtime"
 if not (package / "Plugins").is_dir():
     raise SystemExit("Build the native Unity plugin with package-native.py first")
+if args.models:
+    import sys
+    plugin = {"darwin": "macOS/libiprop3dc.dylib", "win32": "x86_64/iprop3dc.dll"}.get(sys.platform, "x86_64/libiprop3dc.so")
+    if not (package / "Plugins" / plugin).is_file():
+        raise SystemExit("Run package-native.py --models for the editor platform first")
 (project / "Assets").mkdir(parents=True, exist_ok=True)
 (project / "ProjectSettings").mkdir(exist_ok=True)
 (project / "Packages").mkdir(exist_ok=True)

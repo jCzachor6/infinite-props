@@ -107,6 +107,8 @@ class DocumentationTest(unittest.TestCase):
         source = Path(__file__).resolve().parents[2]
         files = {
             "backends/ResultQueries.hpp": "// fixture\n",
+            "backends/sfml/src/ModelHost.hpp": "// model fixture\n",
+            "backends/sfml/src/ModelRender.hpp": "// adapter fixture\n",
             "backends/sfml/src/Host.hpp": "// host fixture\n",
             "backends/sfml/src/Render.hpp": "// render fixture\n",
             "runtime/iprop/Fixture.hpp": "// fixture\n",
@@ -129,7 +131,7 @@ class DocumentationTest(unittest.TestCase):
             files[f"backends/{backend}/README.md"] = "# Backend\n"
         for name in ("bindings.ips", "binding-trap.ips", "binding-unicode.ips", "binding-normal.ips", "binding-maps.ips", "execution-slow.ips", "prepare-bindings.py",
                      "result_fixture.py", "check-python.py", "check-csharp.py", "python-asan.supp",
-                     "part_bindings.py", "part-bindings-v0.9.json", "check-part-outputs.py"):
+                     "model_bindings.py", "part_bindings.py", "part-bindings-v0.9.json", "check-part-outputs.py"):
             files[f"backends/test/{name}"] = "\n"
         for name, content in files.items():
             file = self.root / name

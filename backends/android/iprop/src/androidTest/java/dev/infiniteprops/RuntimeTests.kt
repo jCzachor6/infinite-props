@@ -1,6 +1,7 @@
 package dev.infiniteprops
 
 import androidx.test.platform.app.InstrumentationRegistry
+import dev.infiniteprops.tests.verifyModels
 import dev.infiniteprops.tests.verifyBindings
 import dev.infiniteprops.tests.verifyPixelCorpus
 import dev.infiniteprops.tests.verifyPartOutputs
@@ -12,6 +13,16 @@ import org.junit.Assert.assertEquals
 class RuntimeTests {
     @Test fun nativeContracts() {
         val assets = InstrumentationRegistry.getInstrumentation().context.assets
+        verifyModels { assets.open(it).use { stream -> stream.readBytes() } }
+        Model(assets.open("model-crate.iprop3d").use { it.readBytes() }).use { model ->
+            val texture = model.generate().textures.first()
+            val bitmap = texture.toBitmap()
+            try {
+                val actual = ByteBuffer.allocate(bitmap.byteCount)
+                bitmap.copyPixelsToBuffer(actual)
+                assertArrayEquals(texture.rgba, actual.array())
+            } finally { bitmap.recycle() }
+        }
         verifyBindings { assets.open(it).use { stream -> stream.readBytes() } }
         verifyPartOutputs { assets.open(it).use { stream -> stream.readBytes() } }
         verifyPixelCorpus(load = { assets.open(it).use { stream -> stream.readBytes() } }, transport = { image, expected, index ->

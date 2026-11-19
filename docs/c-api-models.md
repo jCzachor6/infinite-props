@@ -12,8 +12,9 @@ may change in any release until the model contract is frozen; 0.2 added the
 [outputs](#outputs) of a result, and 0.3 adds the level of detail, textures
 the host holds and generation from several threads
 ([many props](#many-props)). No ABI is
-promised: the library is static (`iprop3dc`, CMake target `iprop::capi3d`),
-it is not part of the installed SDK, and a client is built together with it.
+promised: build either the static target `iprop::capi3d` or the shared target `iprop_capi3d_shared`.
+The shared library exports the 2D and model functions together. Use one library for all operations on a handle.
+Build the client and its preview library from the same source revision. The installed SDK ships the stable 2D library.
 [`iprop.h`](../backends/capi/iprop.h), the 2D C API 0.8 and ABI 0.5 do not depend on it.
 
 The header reuses the 2D interface instead of repeating it: status codes,
@@ -37,11 +38,9 @@ model is freed, but only generations of that model load accept it; a set of
 another load fails with `IPROP_REASON_FOREIGN_PARAMETERS`, even for identical
 bytes. Free functions accept `NULL`.
 
-Handles are not thread-safe and there is no global state. A model and the
-parameter sets created from it share loaded data and form one handle group,
-as a program and its sets do in the 2D API: serialize the calls within a
-group and load the model once more for each concurrent worker. A result owns
-its data and may be read on another thread.
+Threads may create independent parameter sets and generate concurrently on one
+loaded model. Keep the model and each call's parameters alive through that call.
+A result owns its data and may be read on another thread.
 
 ## What a model declares
 
@@ -217,10 +216,12 @@ must be zero.
 | `iprop3d_library_info` | 40 |
 | `iprop3d_model_info` | 48 |
 | `iprop3d_skin_program_info` | 40 |
-| `iprop3d_generate_options` | 12 |
-| `iprop3d_result_info` | 96 |
+| `iprop3d_generate_options` | 32 |
+| `iprop3d_result_info` | 104 |
 | `iprop3d_surface_view` | 96 |
-| `iprop3d_texture_view` | 96 |
+| `iprop3d_texture_view` | 120 |
+| `iprop3d_known_texture` | 32 |
+| `iprop3d_output_view` | 56 |
 
 `iprop3d_library_query` reports the API version and the limits of one
 generation.

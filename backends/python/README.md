@@ -125,3 +125,24 @@ native lifetime without CPython 3.12's retained small-string noise. A separate
 interpreter baseline must pass; intentional native heap overflow and leak
 probes must still fail with their named C++ frames. Suppressions match only
 CPython allocator functions, never the native library or ctypes as a whole.
+
+## Models (preview)
+
+Build target `iprop_capi3d_shared` and point `IPROP3D_LIBRARY` at its
+`libiprop3dc.dylib`, `libiprop3dc.so` or `iprop3dc.dll`. Use the same path
+for `IPROP_LIBRARY` when sharing a cancellation token between 2D and 3D.
+
+```python
+from infinite_props import Model, TextureCache, F32
+
+cache = TextureCache()
+with Model("crate.iprop3d") as model:
+    result = model.generate(5, inputs={"wide": F32(8)}, lod=0, textures=cache)
+    image = result.textures[0].to_pillow()
+    xyz = result.surfaces[0].floats("positions")
+```
+
+Concurrent calls can share the model and cache. Each result owns its data.
+Passing only `known=cache.known()` returns metadata for reused textures.
+Check both APIs and the model corpus from the source checkout with
+`python3 backends/test/check-python.py build/tools "$IPROP_LIBRARY" build/binding-fixtures --models "$IPROP3D_LIBRARY"`.

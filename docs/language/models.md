@@ -828,3 +828,5 @@ Hosts generate models in the browser through
 [Godot](../../backends/godot/README.md#models-preview) and through the
 [model C API](../c-api-models.md). `ipa` and `ipdis` do not read model files
 yet.
+
+Python, Swift, C#/Unity, Kotlin/Android and SFML expose the same model inputs, surfaces, textures and outputs. See the [native model bindings](../native-bindings.md#models-preview).

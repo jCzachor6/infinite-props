@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Native model bindings (preview)
+
+Python, Swift, C#/Unity, Kotlin/Android and SFML generate models with named inputs, levels of detail, cached textures and concurrent calls. Python and C# can load the new shared library `iprop3dc`. See [native model bindings](docs/native-bindings.md#models-preview).
+
 ### Room to work for models (models preview)
 
 A model generation whose host names no work limit has 600,000,000 steps, six
@@ -173,7 +177,7 @@ interfaces may change in any release until the contract is frozen.
   library, no ABI promise yet); `iprop3d.wasm` with `Iprop3D`, a worker and a three.js
   adapter beside an unchanged `iprop.wasm`; `IpropModel` and
   `IpropModelInstance3D` in the Godot extension, which share one GPU texture
-  per texture key. The other bindings have no model interface yet. See
+  per texture key. See
   [models in C](docs/c-api-models.md).
 - **Tools.** `ipc` writes `.iprop3d`; `ipval` validates it; `ipgen` writes a
   binary glTF, a picture, the textures or an exact dump; `ipsheet` draws a

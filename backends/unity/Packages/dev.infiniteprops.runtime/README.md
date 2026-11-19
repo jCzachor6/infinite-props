@@ -25,3 +25,37 @@ Generation can run on a worker; Unity object creation belongs on the main thread
 The runtime uses MPL-2.0; the full license is included. This native package
 targets Unity 2022.3+ on desktop, Android and iOS. WebGL integration uses the
 separate Infinite Props WASM backend.
+
+## Models (preview)
+
+Run `python3 backends/unity/package-native.py --models` from the source
+checkout for each target platform. On iOS the package links one static
+archive. Desktop and Android plugins expose the model API in `iprop3dc`.
+
+```csharp
+var cache = new TextureCache();
+using (var model = new Model(bytes))
+{
+    var generated = model.Generate(seed: 5, lod: 0, textures: cache);
+    var mesh = generated.ToMesh();
+    var texture = generated.Textures[0].ToTexture2D();
+    // The caller owns the Unity mesh and texture.
+}
+```
+
+Concurrent calls retain the native handle and a snapshot of cached images.
+Passing `known: cache.Known` alone returns metadata for reused textures.
+Assign materials in the application's render pipeline.
+
+| Mesh attribute | Conversion to Unity |
+| --- | --- |
+| Position | Divide by units per metre and negate Z |
+| Normal | Negate Z |
+| Tangent | Negate Z and W |
+| UV | Replace V with 1 − V for the bottom-up texture upload |
+| Triangles | Swap the second and third index and create one submesh per surface |
+
+Run `backends/test/check-csharp.py` with the normal Verify arguments and
+`--models PATH_TO_MODEL_LIBRARY`. For the engine checks, build the native
+package, pass `--models` to `backends/unity/tests/prepare-editor.py`, and
+run the package's Edit Mode tests in a graphics-enabled Unity Editor.

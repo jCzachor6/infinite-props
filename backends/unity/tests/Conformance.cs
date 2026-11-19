@@ -12,6 +12,7 @@ static class Conformance
     static void Main(string[] args)
     {
         string path = args[0];
+        if (Environment.GetEnvironmentVariable("IPROP3D_LIBRARY") != null) ModelConformance.Run(path);
         PartOutputConformance.Run(path);
         ExecutionControls(path);
         NormalMaps(path);
