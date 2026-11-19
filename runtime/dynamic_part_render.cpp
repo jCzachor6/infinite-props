@@ -93,7 +93,7 @@ void drawPart(Execution& ex,const Part2dValue& part){
     };
     if (!ex.target.tile) { draw(0, 0); return; }
     const auto bounds = surfaceBounds(*mask.buffer, mapping);
-    tileCopies(ex, bounds.x, bounds.y, static_cast<i64>(bounds.x)+bounds.width-1,
-        static_cast<i64>(bounds.y)+bounds.height-1, draw);
+    tileCopies(ex, bounds.x, bounds.y, static_cast<double>(static_cast<i64>(bounds.x)+bounds.width-1),
+        static_cast<double>(static_cast<i64>(bounds.y)+bounds.height-1), draw);
 }
 } // namespace iprop::detail

@@ -212,8 +212,8 @@ static void paintSurfaceCopy(Execution& ex, const LayerValue& image, Composition
 void paintSurface(Execution& ex, const LayerValue& image, CompositionMode mode, u8 opacity) {
     if (!ex.target.tile) { paintSurfaceCopy(ex, image, mode, opacity); return; }
     const auto bounds = surfaceBounds(*image.buffer, image.mapping);
-    tileCopies(ex, bounds.x, bounds.y, static_cast<i64>(bounds.x)+bounds.width-1,
-        static_cast<i64>(bounds.y)+bounds.height-1, [&](i32 dx, i32 dy) {
+    tileCopies(ex, bounds.x, bounds.y, static_cast<double>(static_cast<i64>(bounds.x)+bounds.width-1),
+        static_cast<double>(static_cast<i64>(bounds.y)+bounds.height-1), [&](i32 dx, i32 dy) {
             auto copy = image;
             if (dx || dy) ex.spend(image.buffer->raster.pixels.size());
             copy.mapping.origin.x += dx;

@@ -330,8 +330,8 @@ void weatherPixel(Execution& ex, i32 x, i32 y, Color proposed) {
 template<bool Plain>
 void paintMaskCopies(Execution& ex, const MaskValue& mask, Color color, u16 blend, u8 opacity) {
     const auto bounds = maskBounds(mask);
-    tileCopies(ex, bounds.x, bounds.y, static_cast<i64>(bounds.x)+bounds.width-1,
-        static_cast<i64>(bounds.y)+bounds.height-1, [&](i32 dx, i32 dy) {
+    tileCopies(ex, bounds.x, bounds.y, static_cast<double>(static_cast<i64>(bounds.x)+bounds.width-1),
+        static_cast<double>(static_cast<i64>(bounds.y)+bounds.height-1), [&](i32 dx, i32 dy) {
         ex.spend(static_cast<u64>(bounds.width) * bounds.height);
         const auto mode = resolveComposition(static_cast<CompositionMode>(blend), ex.target.mode);
         const u64 rowSteps = 1u + static_cast<u64>(bounds.width);
