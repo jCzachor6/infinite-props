@@ -6,9 +6,10 @@ contract is frozen; a file written by a preview toolchain need not load in a
 later one. Nothing here changes a `.iprop` file, the
 [1.1 contract set](iprop-v1.1.md) or the 2D C API.
 
-The intent, the examples and the later milestones are in the vision document
-`docs/plans/2026-11-16-iprop3d.md` of the source repository. This document
-states the rules an implementation must follow bit for bit.
+This document states the rules an implementation must follow bit for bit.
+The tags M1 to M6 name the milestones the preview was built in: M1 the
+foundation, M2 material maps, M3 paths, shaping blocks, outputs and parts,
+M4 the texture toolkit, M5 levels of detail and kept textures, M6 sculpting.
 
 ## Contents
 

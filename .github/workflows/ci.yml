@@ -438,7 +438,7 @@ jobs:
       - name: Test the iprop crate and the Bevy plugin
         env:
           IPROP_FIXTURES: ${{ github.workspace }}/build/binding-fixtures
-        run: python scripts/ci_report.py run cargo-test cargo test --manifest-path backends/bevy/Cargo.toml --workspace --locked --release
+        run: python scripts/ci_report.py run cargo-test cargo test --manifest-path backends/bevy/Cargo.toml --workspace --release
       - name: Summarize the checks
         if: ${{ !cancelled() }}
         run: python scripts/ci_report.py summary
