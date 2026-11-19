@@ -130,8 +130,8 @@ SceneKit geometry uses metres, one element per surface, the original
 counterclockwise triangle order and the original top-left UVs for CGImage
 materials. SceneKit forms the bitangent from tangent cross normal, so the
 adapter negates tangent W. The macOS tests render a raised square under a
-directional light and compare its upper and lower bevels.
-[SceneKit tangent convention](https://developer.apple.com/documentation/scenekit/scnprogram)
+directional light and compare its upper and lower bevels. Apple documents
+the tangent convention with `SCNProgram` in the SceneKit reference.
 
 Run the Verify command above with the model-enabled XCFramework and fresh
 binding fixtures to replay the entire model corpus.
